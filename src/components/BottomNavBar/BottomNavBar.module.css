@@ -1,0 +1,15 @@
+.navbar_container {
+    height: 66px;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    background-color: #242424;
+}
+
+.navbar_button {
+    display: flex;
+    justify-content: center;
+    flex: 1;
+    padding: 12px 0; 
+}
+

@@ -1,3 +1,4 @@
+@layer mantine, mantine-datatable;
 :root {
   --max-width: 1100px;
   --border-radius: 12px;
@@ -87,12 +88,7 @@ body {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: rgb(var(--))
 }
 
 a {
@@ -103,5 +99,31 @@ a {
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
+  }
+}
+
+
+.navbar-to-hide {
+  display: block;
+}
+
+.navbar-to-show {
+  display: none;
+}
+
+@media(max-width: 460px) {
+  .navbar-to-hide {
+    display: none;
+  }
+  .navbar-to-show{
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+
+  }
+  .everything-container {
+    padding-bottom: 65px;
   }
 }
