@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 export default function Home() {
   const router = useRouter();
   const { user, isLoading } = useUser();
-
+  console.log(user);
   const navigate = () => {
     router.push('/api/auth/login');
   };
