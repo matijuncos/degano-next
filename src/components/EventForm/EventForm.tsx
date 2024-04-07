@@ -11,17 +11,6 @@ const EventForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
-  const isFormDisabled = () => {
-    return (
-      eventData.type === '' ||
-      eventData.guests === '' ||
-      eventData.eventAddress === '' ||
-      eventData.eventCity === '' ||
-      eventData.salon === '' ||
-      eventData.averageAge === '' ||
-      !eventData.date
-    );
-  };
   const [eventData, setEventData] = useState<EventModel>(event);
   const handleInputChange = (e: any) => {
     setEventData({
@@ -131,12 +120,8 @@ const EventForm = ({
         placeholder='Otros datos'
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <Button disabled={false} onClick={back}>
-          Atrás
-        </Button>
-        <Button disabled={isFormDisabled()} onClick={next}>
-          Siguiente
-        </Button>
+        <Button onClick={back}>Atrás</Button>
+        <Button onClick={next}>Siguiente</Button>
       </div>
     </>
   );

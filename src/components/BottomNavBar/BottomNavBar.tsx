@@ -1,8 +1,8 @@
 'use client';
 import {
   IconCalendar,
-  IconCalendarPlus,
   IconHome,
+  IconListCheck,
   IconPlus,
   IconUser
 } from '@tabler/icons-react';
@@ -27,7 +27,7 @@ const BottomNavBar = () => {
     {
       label: 'Eventos',
       path: '/events',
-      Icon: <IconCalendarPlus color='white' />
+      Icon: <IconListCheck color='white' />
     },
 
     { label: 'Clientes', path: '/clients', Icon: <IconUser color='white' /> },

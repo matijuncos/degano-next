@@ -7,7 +7,8 @@ import {
   IconCalendar,
   IconPlus,
   IconCalendarPlus,
-  IconHome
+  IconHome,
+  IconListCheck
 } from '@tabler/icons-react';
 import degano from '../../assets/logo.png';
 import classes from './Navbar.module.css';
@@ -40,7 +41,7 @@ function NavbarLink({ icon: Icon, label, active, onClick }: NavbarLinkProps) {
 const linksList = [
   { icon: IconHome, label: 'Inicio', path: '/home' },
   { icon: IconCalendar, label: 'Calendario', path: '/calendar' },
-  { icon: IconCalendarPlus, label: 'Eventos', path: '/events' },
+  { icon: IconListCheck, label: 'Eventos', path: '/events' },
   { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' },
   { icon: IconUser, label: 'Clientes', path: '/clients' }
 ];

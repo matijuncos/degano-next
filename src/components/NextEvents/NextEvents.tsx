@@ -2,7 +2,7 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { IconArrowRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-
+import { motion } from 'framer-motion';
 const NextEvents = () => {
   const { allEvents } = useDeganoCtx();
   const router = useRouter();
@@ -14,9 +14,19 @@ const NextEvents = () => {
         const borders = !isLastItem
           ? { borderBottom: 'solid 3px #242424' }
           : {};
-
+        const itemVariants = {
+          hidden: { x: 200, opacity: 0 },
+          visible: {
+            x: 0,
+            opacity: 1,
+            transition: {
+              duration: 0.5 // Duration of the animation
+            }
+          }
+        };
         return (
-          <div
+          <motion.div
+            variants={itemVariants}
             key={event._id}
             onClick={() => router.push(`/event/${event._id}`)}
             style={{
@@ -38,7 +48,7 @@ const NextEvents = () => {
               <p>{new Date(event.date).toLocaleDateString()}</p>
             </div>
             <IconArrowRight />
-          </div>
+          </motion.div>
         );
       })}
     </div>

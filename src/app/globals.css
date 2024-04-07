@@ -117,8 +117,14 @@ a {
   gap: 16px;
 }
 
+.equipment-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr ;
+  gap: 16px;
+}
+
 @media(max-width: 740px) {
-  .inputs-grid {
+  .inputs-grid,.equipment-inputs {
     grid-template-columns:  1fr;
   }
 }

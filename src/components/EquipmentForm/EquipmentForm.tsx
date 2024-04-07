@@ -54,26 +54,30 @@ const EquipmentForm = ({
     <div>
       <h2>Equipamiento necesario</h2>
       <div>
-        <Input
-          type='text'
-          placeholder='Equipamiento'
-          onChange={handleChange}
-          name='name'
-        />
-        <Input
-          type='number'
-          placeholder='Precio'
-          onChange={handleChange}
-          name='price'
-        />
-        <Input
-          type='number'
-          placeholder='Cantidad'
-          onChange={handleChange}
-          name='quantity'
-          min={1}
-        />
-        <Button onClick={addEquipment}>Agregar equipo</Button>
+        <div className='equipment-inputs'>
+          <Input
+            type='text'
+            placeholder='Equipamiento'
+            onChange={handleChange}
+            name='name'
+          />
+          <Input
+            type='number'
+            placeholder='Precio'
+            onChange={handleChange}
+            name='price'
+          />
+          <Input
+            type='number'
+            placeholder='Cantidad'
+            onChange={handleChange}
+            name='quantity'
+            min={1}
+          />
+        </div>
+        <Button onClick={addEquipment} mt='16px'>
+          Agregar equipo
+        </Button>
         <div className='cantidad-precio-lista' style={{ width: '90%' }}>
           {equipment?.equipment
             ?.filter((eq) => eq.quantity > 0)
@@ -102,10 +106,10 @@ const EquipmentForm = ({
           marginTop: '16px'
         }}
       >
-        <Button variant='brand' disabled={false} onClick={back}>
+        <Button variant='brand' onClick={back}>
           Atrás
         </Button>
-        <Button variant='brand' disabled={false} onClick={next}>
+        <Button variant='brand' onClick={next}>
           Siguiente
         </Button>
       </div>

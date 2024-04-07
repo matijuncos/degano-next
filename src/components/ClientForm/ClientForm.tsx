@@ -11,15 +11,6 @@ const ClientForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
-  const formDisabled = () => {
-    return (
-      clientData.fullName === '' ||
-      clientData.phoneNumber === '' ||
-      clientData.age === '' ||
-      clientData.email === '' ||
-      clientData.address === ''
-    );
-  };
   const [clientData, setClientData] = useState(event);
   const handleInputChange = (e: any) => {
     setClientData({
@@ -71,7 +62,7 @@ const ClientForm = ({
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <Button mt='16px' disabled={formDisabled()} onClick={next}>
+        <Button mt='16px' onClick={next}>
           Siguiente
         </Button>
       </div>

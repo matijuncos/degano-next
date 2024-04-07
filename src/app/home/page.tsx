@@ -1,40 +1,65 @@
+'use client';
 import Image from 'next/image';
 import logo from '../../assets/logo.png';
 import HomeTile from '@/components/HomeTile/HomeTile';
 import {
   IconCalendar,
-  IconCalendarPlus,
+  IconListCheck,
   IconPlus,
   IconUser
 } from '@tabler/icons-react';
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
+import { motion } from 'framer-motion';
 const Home = () => {
-  const getTiles = () => {
-    return [
-      {
-        label: 'Calendario',
-        path: '/calendar',
-        Icon: IconCalendar
-      },
-      {
-        label: 'Eventos',
-        path: '/events',
-        Icon: IconCalendarPlus
-      },
-      { label: 'Clientes', path: '/clients', Icon: IconUser },
-      {
-        label: 'Crear Evento',
-        path: '/new-event',
-        Icon: IconPlus
+  const tiles = [
+    {
+      label: 'Calendario',
+      path: '/calendar',
+      Icon: IconCalendar
+    },
+    {
+      label: 'Eventos',
+      path: '/events',
+      Icon: IconListCheck
+    },
+    { label: 'Clientes', path: '/clients', Icon: IconUser },
+    {
+      label: 'Crear Evento',
+      path: '/new-event',
+      Icon: IconPlus
+    }
+  ];
+  const itemVariants = {
+    hidden: { x: -200, opacity: 0 },
+    visible: {
+      x: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5 // Duration of the animation
       }
-    ];
+    }
+  };
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2
+      }
+    }
   };
 
   return (
     <>
       <div className={styles.page_container}>
-        <div className={styles.flex_container}>
+        <motion.div
+          initial='hidden'
+          animate='visible'
+          variants={itemVariants}
+          className={styles.flex_container}
+        >
           <div>
             <h1>Degano</h1>
             <h2>Iluminación y sonido</h2>
@@ -54,10 +79,15 @@ const Home = () => {
               priority
             />
           </div>
-        </div>
-        <div className={styles.grid_layout}>
-          {getTiles().map((tile) => (
-            <HomeTile key={tile.path} {...tile} />
+        </motion.div>
+        <motion.div
+          variants={containerVariants}
+          initial='hidden'
+          animate='visible'
+          className={styles.grid_layout}
+        >
+          {tiles.map((tile) => (
+            <HomeTile {...tile} key={tile.path} />
           ))}
           <div className={styles.next_events}>
             <h2>Proximos eventos</h2>
@@ -70,7 +100,7 @@ const Home = () => {
               <NextEvents />
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </>
   );

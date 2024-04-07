@@ -81,10 +81,10 @@ const PaymentForm = ({
           marginTop: '16px'
         }}
       >
-        <Button variant='brand' disabled={false} onClick={back}>
+        <Button variant='brand' onClick={back}>
           Atrás
         </Button>
-        <Button variant='brand' disabled={false} onClick={save}>
+        <Button variant='brand' onClick={save}>
           Guardar
         </Button>
       </div>
