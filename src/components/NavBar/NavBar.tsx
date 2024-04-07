@@ -48,7 +48,7 @@ const linksList = [
 function Navbar() {
   const router = useRouter();
   const { user } = useUser();
-  const { activeNavTab, setActiveNavTab } = useDeganoCtx();
+  const { activeNavTab } = useDeganoCtx();
 
   const links = user ? (
     linksList.map((link, index) => (
@@ -57,7 +57,6 @@ function Navbar() {
         key={link.label}
         active={index === activeNavTab}
         onClick={() => {
-          setActiveNavTab(index);
           router.push(link.path);
         }}
       />

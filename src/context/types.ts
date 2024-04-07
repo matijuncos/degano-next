@@ -14,7 +14,7 @@ export interface EventModel {
   salon: string;
   averageAge: string;
   eventDate: string;
-  churchDate: string;
+  churchDate?: string;
   civil: string;
   bandName: string;
   manager: string;
@@ -22,15 +22,16 @@ export interface EventModel {
   showtime: string;
   moreData: string;
   music: Music;
-  equipment: Equipment;
-  payment: object;
+  equipment: Equipment[];
+  payment: {
+    upfrontAmount: string;
+    totalPaymentDate: Date;
+    totalToPay: string;
+    partialPaymentDate: Date;
+    partialPayed: boolean;
+    totalPayed: boolean;
+  };
   date: Date;
-  upfrontAmount: string;
-  totalPaymentDate: Date;
-  totalToPay: string;
-  partialPaymentDate: string;
-  partialPayed: boolean;
-  totalPayed: boolean;
   active: boolean;
   playlist: string[];
   _id: string;
@@ -54,6 +55,8 @@ export interface DeganoContextProps {
   setSingleEventData: Function;
   allEvents: EventModel[];
   setAllEvents: Function;
+  formState: number;
+  setFormSted: Function;
 }
 export interface DataverseProviderProps {
   children: ReactNode;
@@ -62,6 +65,7 @@ export interface DataverseProviderProps {
 export interface Equipment {
   name: string;
   quantity: number;
+  price: number;
 }
 
 export interface Music {

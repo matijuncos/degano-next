@@ -9,8 +9,10 @@ import {
 import styles from './BottomNavBar.module.css';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 const BottomNavBar = () => {
-  const { setActiveNavTab, activeNavTab } = useDeganoCtx();
+  const router = useRouter();
+  const { activeNavTab } = useDeganoCtx();
   const tiles: { label: string; path: string; Icon: JSX.Element }[] = [
     {
       label: 'Inicio',
@@ -36,15 +38,15 @@ const BottomNavBar = () => {
     }
   ];
 
-  const handleButtonClick = (index: number): void => {
-    setActiveNavTab(index);
+  const handleButtonClick = (path: string): void => {
+    router.push(path);
   };
 
   return (
     <div className={styles.navbar_container}>
       {tiles.map(({ Icon, path }, idx) => (
         <div
-          onClick={() => handleButtonClick(idx)}
+          onClick={() => handleButtonClick(path)}
           className={
             activeNavTab === idx
               ? `${styles.navbar_button} ${styles.navbar_button_active}`

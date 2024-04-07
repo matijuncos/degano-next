@@ -9,6 +9,7 @@ import {
   SelectedEventType
 } from './types';
 import { mockedEvents } from '@/mockedData/event';
+import { usePathname } from 'next/navigation';
 
 export const DeganoContext = createContext<DeganoContextProps | null>(null);
 
@@ -18,7 +19,7 @@ export const DeganoProvider: ({
   children
 }: DataverseProviderProps) => {
   const [allEvents, setAllEvents] = useState<EventsList>([]);
-
+  const pathname = usePathname();
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventType | null>(
     null
   );
@@ -29,9 +30,23 @@ export const DeganoProvider: ({
     null
   );
 
+  const [formState, setFormSted] = useState(4);
+
   useEffect(() => {
     setAllEvents(mockedEvents);
   }, []);
+
+  useEffect(() => {
+    const paths = {
+      '/home': 0,
+      '/calendar': 1,
+      '/events': 2,
+      '/new-event': 3,
+      '/clients': 4
+    };
+    const path = pathname as keyof typeof paths;
+    setActiveNavTab(paths[path]);
+  }, [pathname]);
 
   const contextValue = {
     selectedEvent,
@@ -41,7 +56,9 @@ export const DeganoProvider: ({
     setAllEvents,
     allEvents,
     singleEventData,
-    setSingleEventData
+    setSingleEventData,
+    formState,
+    setFormSted
   };
   return (
     <DeganoContext.Provider value={contextValue}>

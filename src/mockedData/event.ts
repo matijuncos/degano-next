@@ -28,21 +28,21 @@ export const mockedEvent: EventModel = {
     forbidden: ['Metal', 'Rap'],
     required: ['Jazz Standards', 'Top 40 Pop']
   },
-  equipment: {
-    name: 'PA System',
-    quantity: 1
-  },
+  equipment: [
+    {
+      name: 'PA System',
+      quantity: 1
+    }
+  ],
   payment: {
-    method: 'Credit Card',
-    status: 'Pending'
+    upfrontAmount: '1234123',
+    totalPaymentDate: new Date('2024-04-06T08:30:00.000Z'),
+    totalToPay: '324234234',
+    partialPaymentDate: new Date('2024-04-06T08:30:00.000Z'),
+    partialPayed: true,
+    totalPayed: true
   },
   date: new Date('2024-04-06T08:30:00.000Z'),
-  upfrontAmount: '5000',
-  totalPaymentDate: new Date('2024-04-20T00:00:00.000Z'),
-  totalToPay: '15000',
-  partialPaymentDate: '2024-04-13',
-  partialPayed: false,
-  totalPayed: false,
   active: true,
   playlist: ['Song 1', 'Song 2', 'Song 3'],
   _id: 'evt123456789'
@@ -76,21 +76,21 @@ const mockedSecondEvent: EventModel = {
     forbidden: ['Metal', 'Rap'],
     required: ['Jazz Standards', 'Top 40 Pop']
   },
-  equipment: {
-    name: 'PA System',
-    quantity: 1
-  },
+  equipment: [
+    {
+      name: 'PA System',
+      quantity: 1
+    }
+  ],
   payment: {
-    method: 'Credit Card',
-    status: 'Pending'
+    upfrontAmount: '1234123',
+    totalPaymentDate: new Date('2024-04-06T08:30:00.000Z'),
+    totalToPay: '324234234',
+    partialPaymentDate: new Date('2024-04-06T08:30:00.000Z'),
+    partialPayed: true,
+    totalPayed: true
   },
   date: new Date('2024-04-02T04:30:00.000Z'),
-  upfrontAmount: '5000',
-  totalPaymentDate: new Date('2024-04-20T00:00:00.000Z'),
-  totalToPay: '15000',
-  partialPaymentDate: '2024-04-13',
-  partialPayed: false,
-  totalPayed: false,
   active: true,
   playlist: ['Song 1', 'Song 2', 'Song 3'],
   _id: 'evt123456789'
