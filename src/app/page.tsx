@@ -1,7 +1,6 @@
 'use client';
 import Image from 'next/image';
 import styles from './page.module.css';
-import partyImg from '../assets/partyjpg.jpg';
 import logo from '../assets/logo.png';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -11,7 +10,6 @@ import { useEffect } from 'react';
 export default function Home() {
   const router = useRouter();
   const { user, isLoading } = useUser();
-  console.log(user);
   const navigate = () => {
     router.push('/api/auth/login');
   };
