@@ -10,7 +10,6 @@ import {
 } from './types';
 import { mockedEvents } from '@/mockedData/event';
 import { usePathname } from 'next/navigation';
-import axios from 'axios';
 export const DeganoContext = createContext<DeganoContextProps | null>(null);
 
 export const DeganoProvider: ({
@@ -49,13 +48,6 @@ export const DeganoProvider: ({
     const path = pathname as keyof typeof paths;
     setActiveNavTab(paths[path]);
   }, [pathname]);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await axios.get('/api/getSession');
-      console.log(data);
-    })();
-  }, []);
 
   const contextValue = {
     selectedEvent,
