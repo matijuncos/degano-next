@@ -11,6 +11,8 @@ import {
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+import axios from 'axios';
 const Home = () => {
   const tiles = [
     {
@@ -36,11 +38,11 @@ const Home = () => {
       x: 0,
       opacity: 1,
       transition: {
-        duration: 0.5 // Duration of the animation
+        duration: 0.5
       }
     }
   };
-  // Animation variants
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -50,6 +52,20 @@ const Home = () => {
       }
     }
   };
+
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const { data } = await axios.get('/api/getMovies', {
+          params: { page: 1 }
+        });
+        console.log(data);
+      } catch (error) {
+        console.error('Failed to fetch movies:', error);
+      }
+    };
+    fetchMovies();
+  }, []);
 
   return (
     <>

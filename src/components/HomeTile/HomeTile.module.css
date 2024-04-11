@@ -4,4 +4,25 @@
     width: 100%;
     height: 100%;
     padding: 6px 8px;
+    position: relative;
+
 }
+
+.home_tile:hover {
+    box-shadow: 0 0 2px 0.7px green;
+
+}
+.blurry {
+    cursor: not-allowed;
+}
+
+.noAccessOverlay {
+    backdrop-filter: blur(3px);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10; /* Adjust as necessary to ensure it's above other content */
+    /* Any other styling needed for correct display */
+  }

@@ -1,0 +1,10 @@
+.container {
+    position: absolute;
+    inset: 18px;
+    background-color: rgb(99, 101, 99);
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    backdrop-filter: blur(10px);
+
+}

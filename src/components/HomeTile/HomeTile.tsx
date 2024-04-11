@@ -2,6 +2,9 @@ import { IconArrowRight } from '@tabler/icons-react';
 import Link from 'next/link';
 import styles from './HomeTile.module.css';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import NoAccessTile from '../NoAccessTile/NoAccessTile';
 
 const HomeTile = ({
   label,
@@ -12,6 +15,8 @@ const HomeTile = ({
   path: string;
   Icon: any;
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const { user } = useUser();
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: {
@@ -22,9 +27,21 @@ const HomeTile = ({
       }
     }
   };
+
+  const isForbidden = isHovered && user?.role == 'admin' && path === '/clients';
   return (
-    <motion.div className={styles.home_tile} variants={itemVariants}>
-      <Link href={path}>
+    <motion.div
+      className={`${styles.home_tile} ${isForbidden ? styles.blurry : ''}`}
+      variants={itemVariants}
+      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => setIsHovered(true)}
+    >
+      {isForbidden && (
+        <div className={styles.noAccessOverlay}>
+          <NoAccessTile />
+        </div>
+      )}
+      <Link href={path} style={isForbidden ? { pointerEvents: 'none' } : {}}>
         <div
           style={{
             display: 'flex',
