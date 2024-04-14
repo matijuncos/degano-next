@@ -31,7 +31,8 @@ export const mockedEvent: EventModel = {
   equipment: [
     {
       name: 'PA System',
-      quantity: 1
+      quantity: 1,
+      price: 150,
     }
   ],
   payment: {
@@ -79,7 +80,8 @@ const mockedSecondEvent: EventModel = {
   equipment: [
     {
       name: 'PA System',
-      quantity: 1
+      quantity: 1,
+      price: 150,
     }
   ],
   payment: {

@@ -56,7 +56,7 @@ const Home = () => {
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const { data } = await axios.get('/api/getMovies', {
+        const { data } = await axios.get('/api/getClients', {
           params: { page: 1 }
         });
         console.log(data);

@@ -8,6 +8,7 @@ import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { genres } from '@/context/config';
 import { EventModel } from '@/context/types';
+import axios from 'axios';
 import { useState } from 'react';
 
 const NewEventPage = () => {
@@ -66,8 +67,21 @@ const NewEventPage = () => {
     setEvent(data);
   };
 
+  const saveEvent = async () => {
+    try {
+      const response = await axios.post('/api/postEvent', {
+        body: {}
+      });
+      console.log(response);
+    } catch (err) {
+      console.error('failed to save the event ', err)
+    }
+  };
+
+  console.log('event?? ', event)
+
   const getTabContent = () => {
-    switch (formState) {
+    switch (formState) { 
       case 0:
         return (
           <ClientForm

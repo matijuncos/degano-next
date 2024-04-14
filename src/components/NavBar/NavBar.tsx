@@ -42,8 +42,8 @@ const linksList = [
   { icon: IconHome, label: 'Inicio', path: '/home' },
   { icon: IconCalendar, label: 'Calendario', path: '/calendar' },
   { icon: IconListCheck, label: 'Eventos', path: '/events' },
-  { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' },
-  { icon: IconUser, label: 'Clientes', path: '/clients' }
+  { icon: IconUser, label: 'Clientes', path: '/clients' },
+  { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' }
 ];
 
 function Navbar() {

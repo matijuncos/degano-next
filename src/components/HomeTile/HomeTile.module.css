@@ -5,7 +5,7 @@
     height: 100%;
     padding: 6px 8px;
     position: relative;
-
+    cursor: pointer;
 }
 
 .home_tile:hover {

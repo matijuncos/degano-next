@@ -8,17 +8,19 @@ export const GET = async function handler(req: Request, res: NextApiResponse) {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('sample_mflix');
+    const db = client.db('degano-app');
     const { searchParams } = new URL(req.url);
     const pageSize = 20;
     const page = Number(searchParams.get('page')) || 1;
-    const movies = await db
-      .collection('movies')
+    const clients = await db
+      .collection('clients')
       .find()
       .skip((page - 1) * pageSize) // Calculate the number of documents to skip
       .limit(pageSize)
       .toArray();
-    return NextResponse.json({ movies }, { status: 200 });
+
+      console.log('clients, ', clients)
+    return NextResponse.json({ clients }, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json(
