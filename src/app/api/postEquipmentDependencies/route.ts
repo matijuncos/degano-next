@@ -8,7 +8,7 @@ export const POST = async function handler(req: any, res: NextApiResponse) {
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;
   const client = await typedClientPromise;
-  const db = client.db('sample_mflix');
+  const db = client.db('degano-app');
   const postEqList = await db
     .collection('equipmentList')
     .insertOne({ equipment: body });

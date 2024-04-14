@@ -7,6 +7,7 @@ import _ from 'lodash';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { v4 } from 'uuid';
+
 export enum inputType {
   parent = 'parent',
   child = 'child'
@@ -31,8 +32,8 @@ const EquipmentSelects = () => {
   const [inputList, setInputList] = useState<InputTreeParent[]>([]);
 
   const searchForEquipmentInventory = useCallback(async () => {
-    const { data } = await axios.get('/api/getEquipment');
     const params = new URLSearchParams(searchParams.toString());
+    const { data } = await axios.get('/api/getEquipment');
     params.set('id', data.equipment[0]._id);
     const url = `${pathname}?${params.toString()}`;
     router.replace(url);
@@ -58,7 +59,8 @@ const EquipmentSelects = () => {
 
   const saveEquipmentInventory = async () => {
     await axios.put('/api/updateEquipmentList', {
-      equipment: inputList
+      equipment: inputList,
+      _id: new URLSearchParams(searchParams.toString()).get('id')
     });
     searchForEquipmentInventory();
   };

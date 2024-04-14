@@ -8,7 +8,7 @@ export const GET = async function handler(req: Request, res: NextApiResponse) {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('sample_mflix');
+    const db = client.db('degano-app');
     const equipment = await db.collection('equipmentList').find().toArray();
     return NextResponse.json({ equipment }, { status: 200 });
   } catch (error) {
