@@ -1,6 +1,8 @@
 'use server';
 export async function getEquipmentStock() {
-  const res = await fetch(process.env.URL + '/api/getEquipment');
+  const res = await fetch(process.env.URL + '/api/getEquipment', {
+    next: { revalidate: 0 }
+  });
 
   if (!res.ok) {
     // This will activate the closest `error.js` Error Boundary

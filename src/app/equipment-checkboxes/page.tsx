@@ -1,8 +1,8 @@
 import EquipmentCheckBoxes from '@/components/EquipmentCheckboxes/EquipmentCheboxes';
 import { getEquipmentStock } from '@/lib/getEquipmentStock';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0';
 
-export default async function EquipmentCheckBoxesPage() {
+export default withPageAuthRequired(async function EquipmentCheckBoxesPage() {
   const data = await getEquipmentStock();
-  console.log(data);
   return <EquipmentCheckBoxes inputListProp={data.equipment[0].equipment} />;
-}
+});

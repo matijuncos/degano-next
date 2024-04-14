@@ -1,8 +1,8 @@
 'use client';
 import { InputTreeParent } from '@/app/equipment-stock/page';
-import { FC, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import RecursiveCheckbox from '../RecursiveCheckbox/RecursiveCheckBox';
-import { Button } from '@mantine/core';
+import { Box, Button, Flex } from '@mantine/core';
 
 const EquipmentCheckBoxes: FC<any> = ({
   inputListProp
@@ -16,6 +16,44 @@ const EquipmentCheckBoxes: FC<any> = ({
   const [selectedChildrenCheckBoxes, setSelectedChildrenCheckBoxes] = useState<
     string[]
   >([]);
+
+  const [totalPrice, setTotalPrice] = useState(0);
+
+  const parseAndSaveData = useCallback(() => {
+    const filterChildren = (children: InputTreeParent[]): InputTreeParent[] => {
+      return children
+        .filter((child) => selectedChildrenCheckBoxes.includes(child.value))
+        .map((child) => ({
+          ...child,
+          children: child.children ? filterChildren(child.children) : []
+        }));
+    };
+
+    const filteredInputList = inputListProp
+      .filter((parent) => selectedParentCheckBoxes.includes(parent.value))
+      .map((parent) => ({
+        ...parent,
+        children: parent.children ? filterChildren(parent.children) : []
+      }));
+
+    console.log(filteredInputList); // This is the payload
+    return filteredInputList;
+  }, [inputListProp, selectedChildrenCheckBoxes, selectedParentCheckBoxes]);
+
+  useEffect(() => {
+    const calculateTotalPrice = (items: InputTreeParent[]): number => {
+      return items.reduce((acc, item) => {
+        const childrenPrice = item.children
+          ? calculateTotalPrice(item.children)
+          : 0;
+        const itemPrice =
+          typeof item.price === 'string' ? Number(item.price) : item.price;
+        return acc + (itemPrice || 0) + childrenPrice;
+      }, 0);
+    };
+    const totalPrice = calculateTotalPrice(parseAndSaveData());
+    setTotalPrice(totalPrice);
+  }, [selectedParentCheckBoxes, selectedChildrenCheckBoxes, parseAndSaveData]);
 
   const parentCheckBoxesHandler = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -70,39 +108,26 @@ const EquipmentCheckBoxes: FC<any> = ({
       return updated;
     });
   };
-  const parseAndSaveData = () => {
-    const filterChildren = (children: InputTreeParent[]): InputTreeParent[] => {
-      return children
-        .filter((child) => selectedChildrenCheckBoxes.includes(child.value))
-        .map((child) => ({
-          ...child,
-          children: child.children ? filterChildren(child.children) : []
-        }));
-    };
 
-    const filteredInputList = inputListProp
-      .filter((parent) => selectedParentCheckBoxes.includes(parent.value))
-      .map((parent) => ({
-        ...parent,
-        children: parent.children ? filterChildren(parent.children) : []
-      }));
-
-    console.log(filteredInputList); // This is your payload
-  };
   return (
-    <>
-      {inputListProp?.map((parentEq) => (
-        <RecursiveCheckbox
-          key={parentEq._id}
-          item={parentEq}
-          selectedParentCheckBoxes={selectedParentCheckBoxes}
-          selectedChildrenCheckBoxes={selectedChildrenCheckBoxes}
-          parentCheckBoxesHandler={parentCheckBoxesHandler}
-          childCheckBoxesHandler={childCheckBoxesHandler}
-        />
-      ))}
-      <Button onClick={parseAndSaveData}>Guardar</Button>
-    </>
+    <Flex gap='18px'>
+      <Box flex='1'>
+        {inputListProp?.map((parentEq) => (
+          <RecursiveCheckbox
+            key={parentEq._id}
+            item={parentEq}
+            selectedParentCheckBoxes={selectedParentCheckBoxes}
+            selectedChildrenCheckBoxes={selectedChildrenCheckBoxes}
+            parentCheckBoxesHandler={parentCheckBoxesHandler}
+            childCheckBoxesHandler={childCheckBoxesHandler}
+          />
+        ))}
+        <Button mt='16px' onClick={parseAndSaveData}>
+          Guardar
+        </Button>
+      </Box>
+      <Box w='220px'>Total: ${totalPrice}</Box>
+    </Flex>
   );
 };
 export default EquipmentCheckBoxes;
