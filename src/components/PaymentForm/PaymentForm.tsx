@@ -5,10 +5,12 @@ import { DateTimePicker, DateValue } from '@mantine/dates';
 import { useParams } from 'next/navigation';
 const PaymentForm = ({
   event,
-  onBackTab
+  onBackTab,
+  onFinish
 }: {
   event: EventModel;
   onBackTab: Function;
+  onFinish: Function;
 }) => {
   const [payment, setPayment] = useState<EventModel>(event);
   const { id } = useParams();
@@ -16,7 +18,7 @@ const PaymentForm = ({
     if (id) {
       // update
     } else {
-      // crear
+      await onFinish();
     }
   };
   const back = () => {

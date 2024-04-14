@@ -69,9 +69,7 @@ const NewEventPage = () => {
 
   const saveEvent = async () => {
     try {
-      const response = await axios.post('/api/postEvent', {
-        body: {}
-      });
+      const response = await axios.post('/api/postEvent', event);
       console.log(response);
     } catch (err) {
       console.error('failed to save the event ', err)
@@ -115,7 +113,7 @@ const NewEventPage = () => {
           />
         );
       case 4:
-        return <PaymentForm onBackTab={onBackTab} event={event} />;
+        return <PaymentForm onBackTab={onBackTab} event={event} onFinish={saveEvent}/>;
 
       default:
         break;
