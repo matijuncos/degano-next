@@ -1,5 +1,5 @@
 'use client';
-import { Button, FileInput, Flex, Text } from '@mantine/core';
+import { Box, Button, FileInput, Flex, Text } from '@mantine/core';
 import { IconRowRemove } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { gapi } from 'gapi-script';
@@ -15,7 +15,8 @@ export default function FileUploader() {
   const [value, setValue] = useState<File | null>(null);
   const [allFiles, setAllfiles] = useState<File[]>([]);
   const [authToken, setAuthToken] = useState<string | null>(null);
-  const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderId, setFolderId] = useState('');
+  const [files, setFiles] = useState([]);
   useEffect(() => {
     if (value) {
       setAllfiles((prev: File[]) => {
@@ -28,20 +29,9 @@ export default function FileUploader() {
     }
     setValue(null);
   }, [value]);
-  useEffect(() => {
-    if (authToken) {
-      const initFolder = async () => {
-        const newFolderId = await createFolder('My New Folder');
-        setFolderId(newFolderId);
-      };
-
-      initFolder();
-    }
-  }, [authToken]);
 
   useEffect(() => {
     function updateSigninStatus(isSignedIn: boolean) {
-      console.log('isisgned in', isSignedIn);
       if (isSignedIn) {
         const currentAuth = gapi.auth2
           .getAuthInstance()
@@ -70,73 +60,115 @@ export default function FileUploader() {
         .catch((e: any) => console.log(e));
     });
   }, []);
-  const createFolder = async (folderName: string) => {
-    const metadata = {
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder'
-    };
 
-    const accessToken = authToken; // Assuming authToken is your OAuth 2.0 access token
-
+  const findOrCreateFolder = async (folderName: string) => {
+    const accessToken = authToken;
     try {
-      const response = await fetch(
-        'https://www.googleapis.com/drive/v3/files',
+      const searchResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
         {
-          method: 'POST',
+          method: 'GET',
           headers: new Headers({
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify(metadata)
+            Authorization: 'Bearer ' + accessToken
+          })
         }
       );
-
-      const folder = await response.json();
-
-      console.log('Folder created', folder);
-      return folder.id; // Returns the ID of the newly created folder
+      const searchResult = await searchResponse.json();
+      const folders = searchResult.files;
+      if (folders.length > 0) {
+        console.log('Folder exists', folders[0]);
+        setFolderId(folders[0].id);
+        return folders[0].id;
+      } else {
+        const metadata = {
+          name: folderName,
+          mimeType: 'application/vnd.google-apps.folder'
+        };
+        const createResponse = await fetch(
+          'https://www.googleapis.com/drive/v3/files',
+          {
+            method: 'POST',
+            headers: new Headers({
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json'
+            }),
+            body: JSON.stringify(metadata)
+          }
+        );
+        const folder = await createResponse.json();
+        console.log('Folder created', folder);
+        setFolderId(folder.id);
+        return folder.id;
+      }
     } catch (error) {
-      console.error('Error creating folder', error);
+      console.error('Error finding or creating folder', error);
       return null;
     }
   };
-  const uploadFile = (file: File) => {
-    if (!folderId) return;
-    const form = new FormData();
-    form.append(
-      'metadata',
-      new Blob(
-        [
-          JSON.stringify({
-            name: file.name,
-            mimeType: file.type,
-            parents: [folderId]
-          })
-        ],
-        { type: 'application/json' }
-      )
-    );
-    form.append('file', file);
 
-    fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-      {
-        method: 'POST',
-        headers: new Headers({ Authorization: 'Bearer ' + authToken }),
-        body: form
-      }
-    )
-      .then((response) => response.json())
-      .then((result) => {
-        console.log('File uploaded successfully', result);
-      })
-      .catch((error) => {
-        console.error('Error uploading file', error);
-      });
+  useEffect(() => {
+    if (authToken && folderId) {
+      fetchFilesFromFolder(folderId).then(setFiles);
+    }
+  }, [authToken, folderId]);
+
+  const handleUploadClick = async () => {
+    const newfolderId = await findOrCreateFolder('Otra carpeta'); // Use client name, salon and date to build the name
+    if (!newfolderId) return;
+
+    allFiles.forEach((file) => {
+      const form = new FormData();
+      form.append(
+        'metadata',
+        new Blob(
+          [
+            JSON.stringify({
+              name: file.name,
+              mimeType: file.type,
+              parents: [newfolderId]
+            })
+          ],
+          { type: 'application/json' }
+        )
+      );
+      form.append('file', file);
+
+      fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+          method: 'POST',
+          headers: new Headers({ Authorization: 'Bearer ' + authToken }),
+          body: form
+        }
+      )
+        .then((response) => response.json())
+        .then((result) => {
+          console.log('File uploaded successfully', result);
+        })
+        .catch((error) => {
+          console.error('Error uploading file', error);
+        });
+    });
   };
 
-  const handleUploadClick = () => {
-    allFiles.forEach(uploadFile);
+  const fetchFilesFromFolder = async (folderId: string) => {
+    const accessToken = authToken; // Assuming authToken is your OAuth 2.0 access token
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
+        {
+          method: 'GET',
+          headers: new Headers({
+            Authorization: 'Bearer ' + accessToken
+          })
+        }
+      );
+      const result = await response.json();
+      return result.files; // Returns an array of files
+    } catch (error) {
+      console.error('Error fetching files from folder', error);
+      return [];
+    }
   };
 
   return (
@@ -161,6 +193,25 @@ export default function FileUploader() {
         </Flex>
       ))}
       <Button onClick={handleUploadClick}>Subir Archivos</Button>
+      <Box py='24px'>
+        <hr />
+      </Box>
+      {files.map(
+        (file: { id: string; webContentLink?: string; name: string }) => (
+          <div key={file.id}>
+            <a
+              href={
+                file.webContentLink ||
+                `https://drive.google.com/uc?id=${file.id}&export=download`
+              }
+              target='_blank'
+              rel='noopener noreferrer'
+            >
+              Download {file.name}
+            </a>
+          </div>
+        )
+      )}
     </>
   );
 }
