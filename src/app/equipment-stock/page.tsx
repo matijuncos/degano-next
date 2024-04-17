@@ -1,5 +1,6 @@
 'use client';
 import EquipmentItem from '@/components/EquipmentItem/EquipmentItem';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import { Button, Flex, Input } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
@@ -22,7 +23,7 @@ export type InputTreeParent = {
   parentValue?: string;
 };
 
-const EquipmentSelects = () => {
+const EquipmentSelects = withPageAuthRequired(() => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -159,5 +160,5 @@ const EquipmentSelects = () => {
       <hr />
     </Flex>
   );
-};
+});
 export default EquipmentSelects;
