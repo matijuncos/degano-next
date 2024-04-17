@@ -4,24 +4,11 @@ import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import { Button, Flex, Input } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
-import _ from 'lodash';
+import _, { cloneDeep } from 'lodash';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { v4 } from 'uuid';
-
-export enum inputType {
-  parent = 'parent',
-  child = 'child'
-}
-
-export type InputTreeParent = {
-  value: string;
-  type: inputType;
-  children?: InputTreeParent[];
-  price?: string;
-  _id: any;
-  parentValue?: string;
-};
+import { InputTreeParent, inputType } from './types';
 
 const EquipmentSelects = withPageAuthRequired(() => {
   const router = useRouter();
@@ -35,10 +22,10 @@ const EquipmentSelects = withPageAuthRequired(() => {
   const searchForEquipmentInventory = useCallback(async () => {
     const params = new URLSearchParams(searchParams.toString());
     const { data } = await axios.get('/api/getEquipment');
-    params.set('id', data.equipment[0]._id);
+    params.set('id', data.equipment.at(-1)._id);
     const url = `${pathname}?${params.toString()}`;
     router.replace(url);
-    setInputList(data.equipment[0].equipment);
+    setInputList(data.equipment.at(-1).equipment);
   }, [router, searchParams, pathname]);
 
   useEffect(() => {
@@ -46,8 +33,9 @@ const EquipmentSelects = withPageAuthRequired(() => {
   }, [searchForEquipmentInventory]);
 
   const addInputHandler = () => {
-    setInputList([
-      ...inputList,
+    let clonedState = cloneDeep(inputList);
+    const newState = [
+      ...clonedState,
       {
         value: equipmentInputNameValue,
         type: inputType.parent,
@@ -55,16 +43,22 @@ const EquipmentSelects = withPageAuthRequired(() => {
         price: equipmentInputPriceValue,
         _id: v4()
       }
-    ]);
+    ];
+    setInputList(newState);
+    saveEquipmentInventory(newState);
   };
 
-  const saveEquipmentInventory = async () => {
-    await axios.put('/api/updateEquipmentList', {
-      equipment: inputList,
-      _id: new URLSearchParams(searchParams.toString()).get('id')
-    });
-    searchForEquipmentInventory();
-  };
+  const saveEquipmentInventory = useCallback(
+    async (state: any) => {
+      if (!state.length) return;
+      await axios.put('/api/updateEquipmentList', {
+        equipment: state,
+        _id: new URLSearchParams(searchParams.toString()).get('id')
+      });
+      searchForEquipmentInventory();
+    },
+    [searchParams, searchForEquipmentInventory]
+  );
 
   const addNestedChild = (
     path: any[],
@@ -73,7 +67,6 @@ const EquipmentSelects = withPageAuthRequired(() => {
     const clonedState = _.cloneDeep(inputList);
     let target = clonedState;
 
-    // Navigate to the target parent using the path
     for (const id of path) {
       const nextTarget = target.find((item) => item._id === id);
       if (!nextTarget) throw new Error('Path not found');
@@ -90,12 +83,12 @@ const EquipmentSelects = withPageAuthRequired(() => {
     });
 
     setInputList(clonedState);
+    saveEquipmentInventory(clonedState);
   };
 
   const deleteNestedItem = (path: any[]) => {
     const clonedState = _.cloneDeep(inputList);
     let target = clonedState;
-
     // Navigate to the parent of the target item
     const itemId = path.pop();
     for (const id of path) {
@@ -104,14 +97,13 @@ const EquipmentSelects = withPageAuthRequired(() => {
         throw new Error('Path not found');
       target = nextTarget.children;
     }
-
     // Remove the target item
     const index = target.findIndex((item) => item._id === itemId);
     if (index > -1) {
       target.splice(index, 1);
     }
-
     setInputList(clonedState);
+    saveEquipmentInventory(clonedState);
   };
   const handleAddChild = (
     parentIdPath: any[],
@@ -137,7 +129,6 @@ const EquipmentSelects = withPageAuthRequired(() => {
             placeholder='Costo de equipo'
             onChange={(e) => setEquipmentInputPriceValue(e.target.value)}
           />
-
           <Button onClick={addInputHandler}>
             Agregar equipo
             <IconPlus />
@@ -154,10 +145,6 @@ const EquipmentSelects = withPageAuthRequired(() => {
           ))}
         </Flex>
       </Flex>
-      <Button onClick={saveEquipmentInventory}>
-        Guardar cambios de inventario
-      </Button>
-      <hr />
     </Flex>
   );
 });
