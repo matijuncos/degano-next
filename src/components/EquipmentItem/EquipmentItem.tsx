@@ -2,7 +2,6 @@ import { inputType } from '@/app/equipment-stock/types';
 import { Flex, Text, Button, Input, Modal } from '@mantine/core';
 import {
   IconCheckupList,
-  IconChevronCompactRight,
   IconMusicCode,
   IconPlus,
   IconTrash
@@ -38,9 +37,10 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
   const [childName, setChildName] = useState('');
   const [childPrice, setChildPrice] = useState('');
   const [opened, { open, close }] = useDisclosure(false);
+
   const iconsbyIndex: { [key: string]: JSX.Element } = {
-    [inputType.parent]: <IconMusicCode size={14} />,
-    [inputType.child]: <IconCheckupList size={14} />
+    [inputType.parent]: <IconMusicCode size={14} color='green' />,
+    [inputType.child]: <IconCheckupList size={14} color='green' />
   };
 
   return (
@@ -93,7 +93,7 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
           </>
         )}
         {item.children && (
-          <Flex direction='column' pl='20px'>
+          <Flex direction='column' pl='30px'>
             {item.children.map((child: EquipmentItem, idx) => {
               return (
                 <EquipmentItem

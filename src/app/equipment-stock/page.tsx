@@ -1,7 +1,7 @@
 'use client';
 import EquipmentItem from '@/components/EquipmentItem/EquipmentItem';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
-import { Button, Flex, Input } from '@mantine/core';
+import { Box, Button, Flex, Input, Text } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import _, { cloneDeep } from 'lodash';
@@ -118,34 +118,49 @@ const EquipmentSelects = withPageAuthRequired(() => {
   };
 
   return (
-    <Flex direction='column' gap='42px'>
-      <Flex direction='column' gap='24px'>
-        <Flex direction='column' flex='1' gap='6px'>
-          <Input
-            placeholder='Nombre de equipo'
-            onChange={(e) => setEquipmentInputNameValue(e.target.value)}
-          />
-          <Input
-            placeholder='Costo de equipo'
-            onChange={(e) => setEquipmentInputPriceValue(e.target.value)}
-          />
-          <Button onClick={addInputHandler}>
-            Agregar equipo
-            <IconPlus />
-          </Button>
-        </Flex>
-        <Flex direction='column' flex='1' gap='6px'>
-          {inputList.map((itm) => (
-            <EquipmentItem
-              key={itm._id}
-              item={itm}
-              onAddChild={handleAddChild}
-              onDelete={handleDeleteItem}
+    <Box maw='1140px' m='auto'>
+      <Box mb='12px'>
+        <Text size='28px'>Equipos disponibles</Text>
+        <Text>(Anidamiento jerárquico)</Text>
+      </Box>
+      <Flex direction='column' gap='42px' maw='1140px' m='auto'>
+        <Flex direction='column' gap='24px'>
+          <Flex direction='column' flex='1' gap='6px'>
+            <Input
+              placeholder='Nombre de equipo'
+              onChange={(e) => setEquipmentInputNameValue(e.target.value)}
             />
-          ))}
+            <Input
+              placeholder='Costo de equipo'
+              onChange={(e) => setEquipmentInputPriceValue(e.target.value)}
+            />
+            <Button onClick={addInputHandler}>
+              Agregar equipo
+              <IconPlus />
+            </Button>
+          </Flex>
+          <hr />
+          <Flex
+            direction='column'
+            flex='1'
+            gap='6px'
+            mah='400px'
+            style={{
+              overflow: 'auto'
+            }}
+          >
+            {inputList.map((itm) => (
+              <EquipmentItem
+                key={itm._id}
+                item={itm}
+                onAddChild={handleAddChild}
+                onDelete={handleDeleteItem}
+              />
+            ))}
+          </Flex>
         </Flex>
       </Flex>
-    </Flex>
+    </Box>
   );
 });
 export default EquipmentSelects;

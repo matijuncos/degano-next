@@ -1,4 +1,4 @@
-import { InputTreeParent, inputType } from '@/app/equipment-stock/page';
+import { InputTreeParent, inputType } from '@/app/equipment-stock/types';
 import { Checkbox, Grid, Box, Flex, Text } from '@mantine/core';
 type RecursiveCheckboxProps = {
   item: InputTreeParent;

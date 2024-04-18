@@ -1,8 +1,8 @@
 'use client';
-import { InputTreeParent } from '@/app/equipment-stock/page';
 import { FC, useCallback, useEffect, useState } from 'react';
 import RecursiveCheckbox from '../RecursiveCheckbox/RecursiveCheckBox';
-import { Box, Button, Flex } from '@mantine/core';
+import { Box, Button, Flex, Text } from '@mantine/core';
+import { InputTreeParent } from '@/app/equipment-stock/types';
 
 const EquipmentCheckBoxes: FC<any> = ({
   inputListProp
@@ -67,7 +67,7 @@ const EquipmentCheckBoxes: FC<any> = ({
     const collectAllDescendantValues = (item: InputTreeParent): string[] => {
       let values: string[] = [];
       if (item.children) {
-        item.children.forEach((child) => {
+        item.children.forEach((child: InputTreeParent) => {
           values.push(child.value, ...collectAllDescendantValues(child));
         });
       }
@@ -97,7 +97,7 @@ const EquipmentCheckBoxes: FC<any> = ({
         : prev.filter((val) => val !== value);
       if (childItem.children) {
         const grandchildrenValues = childItem.children.map(
-          (grandchild) => grandchild.value
+          (grandchild: InputTreeParent) => grandchild.value
         );
         if (checked) {
           updated = Array.from(new Set([...updated, ...grandchildrenValues]));
@@ -111,7 +111,7 @@ const EquipmentCheckBoxes: FC<any> = ({
 
   return (
     <Flex gap='18px'>
-      <Box flex='1'>
+      <Box flex='1' mah='640px' style={{ overflow: 'auto' }}>
         {inputListProp?.map((parentEq) => (
           <RecursiveCheckbox
             key={parentEq._id}
@@ -126,7 +126,12 @@ const EquipmentCheckBoxes: FC<any> = ({
           Guardar
         </Button>
       </Box>
-      <Box w='220px'>Total: ${totalPrice}</Box>
+      <Flex direction='column' w='220px' gap='12px'>
+        <Text size='48px'>Total:</Text>
+        <Text ml='8px' size='32px'>
+          ${totalPrice}
+        </Text>
+      </Flex>
     </Flex>
   );
 };
