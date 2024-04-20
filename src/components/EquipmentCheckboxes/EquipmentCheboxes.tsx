@@ -263,7 +263,6 @@ const EquipmentCheckBoxes: FC<any> = ({
 
   // Use this function to update your list before rendering
   const updatedList = updateQuantitiesInList(inputListPropWithInitialQuantity);
-  console.log(updatedList);
 
   return (
     <>
