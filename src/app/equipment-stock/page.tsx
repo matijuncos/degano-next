@@ -99,7 +99,6 @@ const EquipmentSelects = withPageAuthRequired(() => {
   const deleteNestedItem = (path: any[]) => {
     const clonedState = _.cloneDeep(inputList);
     let target = clonedState;
-    // Navigate to the parent of the target item
     const itemId = path.pop();
     for (const id of path) {
       const nextTarget = target.find((item) => item._id === id);
@@ -107,7 +106,6 @@ const EquipmentSelects = withPageAuthRequired(() => {
         throw new Error('Path not found');
       target = nextTarget.children;
     }
-    // Remove the target item
     const index = target.findIndex((item) => item._id === itemId);
     if (index > -1) {
       target.splice(index, 1);

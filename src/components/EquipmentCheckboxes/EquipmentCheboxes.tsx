@@ -55,7 +55,7 @@ const EquipmentCheckBoxes: FC<any> = ({
           );
           return {
             ...child,
-            quantity: selectedChild ? selectedChild.quantity : '1', // Keep as string
+            quantity: selectedChild ? selectedChild.quantity : '1',
             children: child.children ? filterChildren(child.children) : []
           };
         });
@@ -71,7 +71,7 @@ const EquipmentCheckBoxes: FC<any> = ({
         );
         return {
           ...parent,
-          quantity: selectedParent ? selectedParent.quantity : '1', // Keep as string
+          quantity: selectedParent ? selectedParent.quantity : '1',
           children: parent.children ? filterChildren(parent.children) : []
         };
       });
@@ -90,7 +90,7 @@ const EquipmentCheckBoxes: FC<any> = ({
           : 0;
         const itemPrice =
           typeof item.price === 'string' ? Number(item.price) : item.price;
-        const quantity = Number(item.quantity) || 1; // Default quantity to 1 if not specified
+        const quantity = Number(item.quantity) || 1;
         return acc + (itemPrice || 0) * quantity + childrenPrice;
       }, 0);
     };

@@ -47,12 +47,11 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
   const changeQuantityInputChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const newQuantity = e.target.value; // Get the new quantity from the event
-    updateItemQuantity(item.value, Number(newQuantity)); // Update the state with the new quantity
+    const newQuantity = e.target.value;
+    updateItemQuantity(item.value, Number(newQuantity));
   };
 
   const findQuantityForItem = (itemName: string): string => {
-    // First, try to find the item in the selectedParentCheckBoxes array
     const parentItem = selectedParentCheckBoxes.find(
       (item) => item.name === itemName
     );
@@ -60,7 +59,6 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
       return parentItem.quantity;
     }
 
-    // If not found, try to find the item in the selectedChildrenCheckBoxes array
     const childItem = selectedChildrenCheckBoxes.find(
       (item) => item.name === itemName
     );
@@ -68,7 +66,6 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
       return childItem.quantity;
     }
 
-    // If the item is not found in either array, default to '1'
     return '1';
   };
 
