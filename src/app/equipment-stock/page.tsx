@@ -1,19 +1,21 @@
 'use client';
 import EquipmentItem from '@/components/EquipmentItem/EquipmentItem';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
-import { Box, Button, Flex, Input, Text } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react';
+import { Box, Button, Flex, Input, Modal, Text } from '@mantine/core';
+import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import axios from 'axios';
 import _, { cloneDeep } from 'lodash';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { v4 } from 'uuid';
 import { InputTreeParent, inputType } from './types';
+import { useDisclosure } from '@mantine/hooks';
 
 const EquipmentSelects = withPageAuthRequired(() => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [opened, { open, close }] = useDisclosure(false);
 
   const [equipmentInputNameValue, setEquipmentInputNameValue] = useState('');
   const [equipmentInputPriceValue, setEquipmentInputPriceValue] = useState('');
@@ -22,10 +24,11 @@ const EquipmentSelects = withPageAuthRequired(() => {
   const searchForEquipmentInventory = useCallback(async () => {
     const params = new URLSearchParams(searchParams.toString());
     const { data } = await axios.get('/api/getEquipment');
-    params.set('id', data.equipment.at(-1)._id);
+    const equipment = data.equipment.at(-1);
+    params.set('id', equipment._id);
     const url = `${pathname}?${params.toString()}`;
     router.replace(url);
-    setInputList(data.equipment.at(-1).equipment);
+    setInputList(equipment.equipment);
   }, [router, searchParams, pathname]);
 
   useEffect(() => {
@@ -49,12 +52,19 @@ const EquipmentSelects = withPageAuthRequired(() => {
   };
 
   const saveEquipmentInventory = useCallback(
-    async (state: any) => {
+    async (state: any, removeEverything?: boolean) => {
       if (!state.length) return;
-      await axios.put('/api/updateEquipmentList', {
+
+      const payload = {
         equipment: state,
         _id: new URLSearchParams(searchParams.toString()).get('id')
-      });
+      };
+
+      if (removeEverything) {
+        Object.assign(payload, { cleanStock: true });
+      }
+
+      await axios.put('/api/updateEquipmentList', payload);
       searchForEquipmentInventory();
     },
     [searchParams, searchForEquipmentInventory]
@@ -117,50 +127,78 @@ const EquipmentSelects = withPageAuthRequired(() => {
     deleteNestedItem(itemIdPath);
   };
 
+  const onDeleteEverything = () => {
+    saveEquipmentInventory(inputList, true);
+    close();
+  };
+
   return (
-    <Box maw='1140px' m='auto'>
-      <Box mb='12px'>
-        <Text size='28px'>Equipos disponibles</Text>
-        <Text>(Anidamiento jerárquico)</Text>
-      </Box>
-      <Flex direction='column' gap='42px' maw='1140px' m='auto'>
-        <Flex direction='column' gap='24px'>
-          <Flex direction='column' flex='1' gap='6px'>
-            <Input
-              placeholder='Nombre de equipo'
-              onChange={(e) => setEquipmentInputNameValue(e.target.value)}
-            />
-            <Input
-              placeholder='Costo de equipo'
-              onChange={(e) => setEquipmentInputPriceValue(e.target.value)}
-            />
-            <Button onClick={addInputHandler}>
-              Agregar equipo
-              <IconPlus />
-            </Button>
-          </Flex>
-          <hr />
-          <Flex
-            direction='column'
-            flex='1'
-            gap='6px'
-            mah='400px'
-            style={{
-              overflow: 'auto'
-            }}
+    <>
+      <Modal
+        opened={opened}
+        onClose={close}
+        title='¿Seguro que desea eliminar todos los items?'
+      >
+        <Flex direction='column' align='center' gap='16px'>
+          <IconAlertTriangle size={80} />
+          <Button
+            w='100%'
+            variant='gradient'
+            onClick={() => onDeleteEverything()}
           >
-            {inputList.map((itm) => (
-              <EquipmentItem
-                key={itm._id}
-                item={itm}
-                onAddChild={handleAddChild}
-                onDelete={handleDeleteItem}
+            Confirmar
+          </Button>
+        </Flex>
+      </Modal>
+      <Box maw='1140px' m='auto'>
+        <Flex justify='space-between'>
+          <Box mb='12px'>
+            <Text size='28px'>Equipos disponibles</Text>
+            <Text>(Anidamiento jerárquico)</Text>
+          </Box>
+          <Button color='red' onClick={() => open()}>
+            Borrar Todos los items <IconTrash />
+          </Button>
+        </Flex>
+        <Flex direction='column' gap='42px' maw='1140px' m='auto'>
+          <Flex direction='column' gap='24px'>
+            <Flex direction='column' flex='1' gap='6px'>
+              <Input
+                placeholder='Nombre de equipo'
+                onChange={(e) => setEquipmentInputNameValue(e.target.value)}
               />
-            ))}
+              <Input
+                placeholder='Costo de equipo'
+                onChange={(e) => setEquipmentInputPriceValue(e.target.value)}
+              />
+              <Button onClick={addInputHandler}>
+                Agregar equipo
+                <IconPlus />
+              </Button>
+            </Flex>
+            <hr />
+            <Flex
+              direction='column'
+              flex='1'
+              gap='6px'
+              mah='calc(100vh - 300px)'
+              style={{
+                overflow: 'auto'
+              }}
+            >
+              {inputList.map((itm) => (
+                <EquipmentItem
+                  key={itm._id}
+                  item={itm}
+                  onAddChild={handleAddChild}
+                  onDelete={handleDeleteItem}
+                />
+              ))}
+            </Flex>
           </Flex>
         </Flex>
-      </Flex>
-    </Box>
+      </Box>
+    </>
   );
 });
 export default EquipmentSelects;

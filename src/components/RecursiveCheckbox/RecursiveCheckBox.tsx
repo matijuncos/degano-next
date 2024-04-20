@@ -1,5 +1,6 @@
 import { InputTreeParent, inputType } from '@/app/equipment-stock/types';
-import { Checkbox, Grid, Box, Flex, Text } from '@mantine/core';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { Checkbox, Box, Flex } from '@mantine/core';
 type RecursiveCheckboxProps = {
   item: InputTreeParent;
   selectedParentCheckBoxes: string[];
@@ -25,6 +26,8 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
   const isParentChecked =
     selectedParentCheckBoxes.includes(item.value) ||
     selectedChildrenCheckBoxes.includes(item.value);
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin';
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (item.type === 'parent') {
@@ -35,7 +38,9 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
   };
 
   return (
-    <Box
+    <Flex
+      direction='column'
+      gap='1em'
       w='100%'
       miw='fit-content'
       key={item._id}
@@ -46,24 +51,41 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
               backgroundColor: 'rgba(130,130,130,0.1)',
               padding: '16px'
             }
-          : {}
+          : {
+              paddingLeft: '32px'
+            }
       }
     >
       <Checkbox
         w='fit-content'
         miw='220px'
+        id={item._id}
         value={item.value}
         checked={isParentChecked}
-        label={`${item.value} - $${item.price || 0}`}
-        mb='1em'
+        label={
+          <label htmlFor={item._id}>
+            <Box
+              bg={isParentChecked ? 'green' : 'white'}
+              p='8px'
+              style={{
+                borderRadius: '6px',
+                fontWeight: '600',
+                color: isParentChecked ? 'white' : 'black',
+                cursor: 'pointer'
+              }}
+            >
+              {`${item.value}${isAdmin ? ` - $${item.price || 0}` : ''}`}
+            </Box>
+          </label>
+        }
         onChange={handleCheckboxChange}
       />
       {isParentChecked && item.children && (
-        <Grid justify='flex-start' align='flex-start' columns={9} pl='2em'>
+        <>
           {item.children
             .map((child) => ({ ...child, parentValue: item.value }))
             .map((child) => (
-              <Grid.Col span={9} key={child._id}>
+              <Box key={child._id}>
                 <RecursiveCheckbox
                   item={child}
                   selectedParentCheckBoxes={selectedParentCheckBoxes}
@@ -71,11 +93,11 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
                   parentCheckBoxesHandler={parentCheckBoxesHandler}
                   childCheckBoxesHandler={childCheckBoxesHandler}
                 />
-              </Grid.Col>
+              </Box>
             ))}
-        </Grid>
+        </>
       )}
-    </Box>
+    </Flex>
   );
 };
 

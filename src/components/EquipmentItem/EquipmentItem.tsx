@@ -1,6 +1,7 @@
 import { inputType } from '@/app/equipment-stock/types';
-import { Flex, Text, Button, Input, Modal } from '@mantine/core';
+import { Flex, Text, Button, Input, Modal, Box, Badge } from '@mantine/core';
 import {
+  IconAlertTriangle,
   IconCheckupList,
   IconMusicCode,
   IconPlus,
@@ -40,7 +41,7 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
 
   const iconsbyIndex: { [key: string]: JSX.Element } = {
     [inputType.parent]: <IconMusicCode size={14} color='green' />,
-    [inputType.child]: <IconCheckupList size={14} color='green' />
+    [inputType.child]: <IconCheckupList size={14} color='white' />
   };
 
   return (
@@ -50,15 +51,35 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
         onClose={close}
         title='¿Seguro que desea eliminar este item?'
       >
-        <Button onClick={() => onDelete(currentPath)}>Confirmar</Button>
+        <Flex direction='column' align='center' gap='16px'>
+          <IconAlertTriangle size={80} />
+          <Button
+            w='100%'
+            variant='gradient'
+            onClick={() => onDelete(currentPath)}
+          >
+            Confirmar
+          </Button>
+        </Flex>
       </Modal>
       <Flex direction='column' gap='8px'>
         <Flex align='center' justify='space-between'>
           <Flex align='center' gap='8px'>
             {iconsbyIndex[item.type]}
-            <Text>
-              {capitalizeWords(item.value)} - ${item.price}
-            </Text>
+            <Flex gap='12px'>
+              <Text style={{ fontWeight: '600' }}>
+                {capitalizeWords(item.value)}{' '}
+              </Text>
+              {item.price && (
+                <>
+                  <Text>-</Text>
+                  <Badge size='lg' color='indigo'>
+                    {' '}
+                    {item.price ? `$${item.price}` : 0}
+                  </Badge>
+                </>
+              )}
+            </Flex>
           </Flex>
           <Flex gap='8px'>
             <Button size='xs' onClick={() => setShowInputs(!showInputs)}>

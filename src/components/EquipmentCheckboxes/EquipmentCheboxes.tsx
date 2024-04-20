@@ -1,8 +1,9 @@
 'use client';
 import { FC, useCallback, useEffect, useState } from 'react';
 import RecursiveCheckbox from '../RecursiveCheckbox/RecursiveCheckBox';
-import { Box, Button, Flex, Text } from '@mantine/core';
+import { Box, Button, Flex, List, ListItem, Text } from '@mantine/core';
 import { InputTreeParent } from '@/app/equipment-stock/types';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 const EquipmentCheckBoxes: FC<any> = ({
   inputListProp
@@ -18,7 +19,12 @@ const EquipmentCheckBoxes: FC<any> = ({
   >([]);
 
   const [totalPrice, setTotalPrice] = useState(0);
+  const allSelectedItems = [
+    ...selectedChildrenCheckBoxes,
+    ...selectedParentCheckBoxes
+  ];
 
+  const { user } = useUser();
   const parseAndSaveData = useCallback(() => {
     const filterChildren = (children: InputTreeParent[]): InputTreeParent[] => {
       return children
@@ -36,7 +42,6 @@ const EquipmentCheckBoxes: FC<any> = ({
         children: parent.children ? filterChildren(parent.children) : []
       }));
 
-    console.log(filteredInputList); // This is the payload
     return filteredInputList;
   }, [inputListProp, selectedChildrenCheckBoxes, selectedParentCheckBoxes]);
 
@@ -109,30 +114,61 @@ const EquipmentCheckBoxes: FC<any> = ({
     });
   };
 
-  return (
-    <Flex gap='18px'>
-      <Box flex='1' mah='640px' style={{ overflow: 'auto' }}>
-        {inputListProp?.map((parentEq) => (
-          <RecursiveCheckbox
-            key={parentEq._id}
-            item={parentEq}
-            selectedParentCheckBoxes={selectedParentCheckBoxes}
-            selectedChildrenCheckBoxes={selectedChildrenCheckBoxes}
-            parentCheckBoxesHandler={parentCheckBoxesHandler}
-            childCheckBoxesHandler={childCheckBoxesHandler}
-          />
+  const RecursiveItemList = ({ item }: { item: InputTreeParent }) => {
+    return (
+      <>
+        <ListItem>{item.value}</ListItem>
+        {item?.children?.filter(checkIfItemIsSelected).map((item) => (
+          <Box key={item._id} pl='16px'>
+            <ListItem>{item.value}</ListItem>
+          </Box>
         ))}
-        <Button mt='16px' onClick={parseAndSaveData}>
-          Guardar
-        </Button>
-      </Box>
-      <Flex direction='column' w='220px' gap='12px'>
-        <Text size='48px'>Total:</Text>
-        <Text ml='8px' size='32px'>
-          ${totalPrice}
-        </Text>
+      </>
+    );
+  };
+
+  const checkIfItemIsSelected = (item: InputTreeParent) => {
+    return allSelectedItems.includes(item.value);
+  };
+  const isAdmin = user?.role === 'admin';
+  return (
+    <>
+      <Flex gap='18px'>
+        <Box flex='1' mah='640px' style={{ overflow: 'auto' }}>
+          {inputListProp?.map((parentEq) => (
+            <RecursiveCheckbox
+              key={parentEq._id}
+              item={parentEq}
+              selectedParentCheckBoxes={selectedParentCheckBoxes}
+              selectedChildrenCheckBoxes={selectedChildrenCheckBoxes}
+              parentCheckBoxesHandler={parentCheckBoxesHandler}
+              childCheckBoxesHandler={childCheckBoxesHandler}
+            />
+          ))}
+        </Box>
+
+        <Flex direction='column' w='420px' gap='12px'>
+          {isAdmin && (
+            <>
+              <Text size='48px'>Total:</Text>
+              <Text ml='8px' size='32px'>
+                ${totalPrice}
+              </Text>
+            </>
+          )}
+          <br />
+
+          <List>
+            {inputListProp.filter(checkIfItemIsSelected).map((list) => {
+              return <RecursiveItemList key={list._id} item={list} />;
+            })}
+          </List>
+        </Flex>
       </Flex>
-    </Flex>
+      <Button mt='16px' onClick={parseAndSaveData}>
+        Guardar
+      </Button>
+    </>
   );
 };
 export default EquipmentCheckBoxes;
