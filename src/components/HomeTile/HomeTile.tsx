@@ -32,7 +32,7 @@ const HomeTile = ({
   const restrictedPaths = ['/clients', '/equipment-stock'];
 
   const isForbidden =
-    isHovered && user?.role === 'admin' && restrictedPaths.includes(path);
+    isHovered && user?.role !== 'admin' && restrictedPaths.includes(path);
   return (
     <motion.div
       className={`${styles.home_tile} ${isForbidden ? styles.blurry : ''}`}
