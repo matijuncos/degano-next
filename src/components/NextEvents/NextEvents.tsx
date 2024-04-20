@@ -3,6 +3,7 @@ import { useDeganoCtx } from '@/context/DeganoContext';
 import { IconArrowRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import styles from './NextEvents.module.css';
 const NextEvents = () => {
   const { allEvents } = useDeganoCtx();
   const router = useRouter();
@@ -37,6 +38,11 @@ const NextEvents = () => {
               backgroundColor: 'rgba(100,100,100,0.3)',
               ...borders
             }}
+            whileHover={{
+              scale: 1.02,
+              transition: { duration: 0.3 }
+            }}
+            className={styles.nextEvents}
           >
             <div
               style={{

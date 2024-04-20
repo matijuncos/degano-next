@@ -5,17 +5,35 @@ import { Box, Button, Flex, List, ListItem, Text } from '@mantine/core';
 import { InputTreeParent } from '@/app/equipment-stock/types';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
+export type SelectedEquipmentItem = {
+  name: string;
+  quantity: string;
+};
+
 const EquipmentCheckBoxes: FC<any> = ({
   inputListProp
 }: {
-  inputListProp: InputTreeParent[];
+  inputListProp: InputTreeParent[] & { quantity: number };
 }) => {
+  const addQuantityRecursively = (
+    items: InputTreeParent[]
+  ): InputTreeParent[] => {
+    return items.map((item) => ({
+      ...item,
+      quantity: '1',
+      children: addQuantityRecursively(item.children || [])
+    }));
+  };
+
+  const inputListPropWithInitialQuantity =
+    addQuantityRecursively(inputListProp);
+
   const [selectedParentCheckBoxes, setSelectedParentCheckBoxes] = useState<
-    string[]
+    SelectedEquipmentItem[]
   >([]);
 
   const [selectedChildrenCheckBoxes, setSelectedChildrenCheckBoxes] = useState<
-    string[]
+    SelectedEquipmentItem[]
   >([]);
 
   const [totalPrice, setTotalPrice] = useState(0);
@@ -28,22 +46,41 @@ const EquipmentCheckBoxes: FC<any> = ({
   const parseAndSaveData = useCallback(() => {
     const filterChildren = (children: InputTreeParent[]): InputTreeParent[] => {
       return children
-        .filter((child) => selectedChildrenCheckBoxes.includes(child.value))
-        .map((child) => ({
-          ...child,
-          children: child.children ? filterChildren(child.children) : []
-        }));
+        .filter((child) =>
+          selectedChildrenCheckBoxes.some((item) => item.name === child.value)
+        )
+        .map((child) => {
+          const selectedChild = selectedChildrenCheckBoxes.find(
+            (item) => item.name === child.value
+          );
+          return {
+            ...child,
+            quantity: selectedChild ? selectedChild.quantity : '1', // Keep as string
+            children: child.children ? filterChildren(child.children) : []
+          };
+        });
     };
 
-    const filteredInputList = inputListProp
-      .filter((parent) => selectedParentCheckBoxes.includes(parent.value))
-      .map((parent) => ({
-        ...parent,
-        children: parent.children ? filterChildren(parent.children) : []
-      }));
-
+    const filteredInputList = inputListPropWithInitialQuantity
+      .filter((parent) =>
+        selectedParentCheckBoxes.some((item) => item.name === parent.value)
+      )
+      .map((parent) => {
+        const selectedParent = selectedParentCheckBoxes.find(
+          (item) => item.name === parent.value
+        );
+        return {
+          ...parent,
+          quantity: selectedParent ? selectedParent.quantity : '1', // Keep as string
+          children: parent.children ? filterChildren(parent.children) : []
+        };
+      });
     return filteredInputList;
-  }, [inputListProp, selectedChildrenCheckBoxes, selectedParentCheckBoxes]);
+  }, [
+    inputListPropWithInitialQuantity,
+    selectedChildrenCheckBoxes,
+    selectedParentCheckBoxes
+  ]);
 
   useEffect(() => {
     const calculateTotalPrice = (items: InputTreeParent[]): number => {
@@ -53,7 +90,8 @@ const EquipmentCheckBoxes: FC<any> = ({
           : 0;
         const itemPrice =
           typeof item.price === 'string' ? Number(item.price) : item.price;
-        return acc + (itemPrice || 0) + childrenPrice;
+        const quantity = Number(item.quantity) || 1; // Default quantity to 1 if not specified
+        return acc + (itemPrice || 0) * quantity + childrenPrice;
       }, 0);
     };
     const totalPrice = calculateTotalPrice(parseAndSaveData());
@@ -65,15 +103,23 @@ const EquipmentCheckBoxes: FC<any> = ({
     item: InputTreeParent
   ) => {
     const { value, checked } = e.target;
-    setSelectedParentCheckBoxes((prev) => {
-      return checked ? [...prev, value] : prev.filter((val) => val !== value);
+
+    setSelectedParentCheckBoxes((prev: SelectedEquipmentItem[]) => {
+      return checked
+        ? [...prev, { name: value, quantity: '1' }]
+        : prev.filter((val) => val.name !== value);
     });
 
-    const collectAllDescendantValues = (item: InputTreeParent): string[] => {
-      let values: string[] = [];
+    const collectAllDescendantValues = (
+      item: InputTreeParent
+    ): SelectedEquipmentItem[] => {
+      let values: SelectedEquipmentItem[] = [];
       if (item.children) {
         item.children.forEach((child: InputTreeParent) => {
-          values.push(child.value, ...collectAllDescendantValues(child));
+          values.push(
+            { name: child.value, quantity: child.quantity || '1' },
+            ...collectAllDescendantValues(child)
+          );
         });
       }
       return values;
@@ -81,10 +127,13 @@ const EquipmentCheckBoxes: FC<any> = ({
 
     if (item.children) {
       const descendantValues = collectAllDescendantValues(item);
-      setSelectedChildrenCheckBoxes((prev) => {
+      setSelectedChildrenCheckBoxes((prev: SelectedEquipmentItem[]) => {
         const newChildrenSet = checked
           ? Array.from(new Set([...prev, ...descendantValues])) // Add all descendants if checked
-          : prev.filter((val) => !descendantValues.includes(val)); // Remove all descendants if unchecked
+          : prev.filter(
+              (val) =>
+                !descendantValues.some((item) => val.name === item.quantity)
+            ); // Remove all descendants if unchecked
         return newChildrenSet;
       });
     }
@@ -96,18 +145,25 @@ const EquipmentCheckBoxes: FC<any> = ({
   ) => {
     const { value, checked } = e.target;
 
-    setSelectedChildrenCheckBoxes((prev) => {
-      let updated = checked
-        ? [...prev, value]
-        : prev.filter((val) => val !== value);
+    setSelectedChildrenCheckBoxes((prev: SelectedEquipmentItem[]) => {
+      let updated: SelectedEquipmentItem[] = checked
+        ? [...prev, { name: value, quantity: '1' }]
+        : prev.filter((val) => val.name !== value);
       if (childItem.children) {
         const grandchildrenValues = childItem.children.map(
-          (grandchild: InputTreeParent) => grandchild.value
+          (grandchild: InputTreeParent) => {
+            return {
+              name: grandchild.value,
+              quantity: grandchild.quantity
+            } as SelectedEquipmentItem;
+          }
         );
         if (checked) {
           updated = Array.from(new Set([...updated, ...grandchildrenValues]));
         } else {
-          updated = updated.filter((val) => !grandchildrenValues.includes(val));
+          updated = updated.filter(
+            (val) => !grandchildrenValues.some((item) => item.name === val.name)
+          );
         }
       }
       return updated;
@@ -117,10 +173,20 @@ const EquipmentCheckBoxes: FC<any> = ({
   const RecursiveItemList = ({ item }: { item: InputTreeParent }) => {
     return (
       <>
-        <ListItem>{item.value}</ListItem>
+        <ListItem>
+          {item.value}({item.quantity}) - ${item.price}
+          <Text>- Subtotal: ${Number(item.quantity) * Number(item.price)}</Text>
+        </ListItem>
         {item?.children?.filter(checkIfItemIsSelected).map((item) => (
           <Box key={item._id} pl='16px'>
-            <ListItem>{item.value}</ListItem>
+            <ListItem>
+              <Text>
+                {item.value}({item.quantity}) - ${item.price}
+              </Text>
+              <Text>
+                - Subtotal: ${Number(item.quantity) * Number(item.price)}
+              </Text>
+            </ListItem>
           </Box>
         ))}
       </>
@@ -128,17 +194,86 @@ const EquipmentCheckBoxes: FC<any> = ({
   };
 
   const checkIfItemIsSelected = (item: InputTreeParent) => {
-    return allSelectedItems.includes(item.value);
+    return allSelectedItems.some((el) => el.name === item.value);
   };
   const isAdmin = user?.role === 'admin';
+
+  const updateItemQuantity = (itemId: string, newQuantity: number) => {
+    // Update quantity for parent checkboxes
+    setSelectedParentCheckBoxes((prev) =>
+      prev.map((item) =>
+        item.name === itemId
+          ? { ...item, quantity: newQuantity.toString() }
+          : item
+      )
+    );
+
+    // Update quantity for child checkboxes
+    setSelectedChildrenCheckBoxes((prev) =>
+      prev.map((item) =>
+        item.name === itemId
+          ? { ...item, quantity: newQuantity.toString() }
+          : item
+      )
+    );
+  };
+
+  const updateQuantitiesInList = (
+    list: InputTreeParent[]
+  ): InputTreeParent[] => {
+    const findQuantity = (itemName: string): string => {
+      // First, try to find the item in the selectedParentCheckBoxes array
+      const parentItem = selectedParentCheckBoxes.find(
+        (item) => item.name === itemName
+      );
+      if (parentItem) {
+        return parentItem.quantity;
+      }
+
+      // If not found, try to find the item in the selectedChildrenCheckBoxes array
+      const childItem = selectedChildrenCheckBoxes.find(
+        (item) => item.name === itemName
+      );
+      if (childItem) {
+        return childItem.quantity;
+      }
+
+      // If the item is not found in either array, default to the original quantity
+      return '1';
+    };
+
+    const updateItemQuantities = (
+      items: InputTreeParent[]
+    ): InputTreeParent[] => {
+      return items.map((item) => {
+        const updatedQuantity = findQuantity(item.value);
+        const updatedChildren = item.children
+          ? updateItemQuantities(item.children)
+          : [];
+        return {
+          ...item,
+          quantity: updatedQuantity,
+          children: updatedChildren
+        };
+      });
+    };
+
+    return updateItemQuantities(list);
+  };
+
+  // Use this function to update your list before rendering
+  const updatedList = updateQuantitiesInList(inputListPropWithInitialQuantity);
+  console.log(updatedList);
+
   return (
     <>
       <Flex gap='18px'>
         <Box flex='1' mah='640px' style={{ overflow: 'auto' }}>
-          {inputListProp?.map((parentEq) => (
+          {inputListPropWithInitialQuantity?.map((parentEq) => (
             <RecursiveCheckbox
               key={parentEq._id}
               item={parentEq}
+              updateItemQuantity={updateItemQuantity}
               selectedParentCheckBoxes={selectedParentCheckBoxes}
               selectedChildrenCheckBoxes={selectedChildrenCheckBoxes}
               parentCheckBoxesHandler={parentCheckBoxesHandler}
@@ -159,7 +294,7 @@ const EquipmentCheckBoxes: FC<any> = ({
           <br />
 
           <List>
-            {inputListProp.filter(checkIfItemIsSelected).map((list) => {
+            {updatedList.filter(checkIfItemIsSelected).map((list) => {
               return <RecursiveItemList key={list._id} item={list} />;
             })}
           </List>

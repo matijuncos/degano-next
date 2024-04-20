@@ -10,4 +10,5 @@ export type InputTreeParent = {
   price?: string;
   _id: any;
   parentValue?: string;
+  quantity?: string;
 };

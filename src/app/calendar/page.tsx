@@ -6,7 +6,6 @@ import {
   momentLocalizer
 } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import moment from 'moment';
 import 'moment/locale/es';
 import { Drawer } from '@mantine/core';
 import { useCallback, useMemo, useState } from 'react';
@@ -71,7 +70,6 @@ export default function Home() {
       <Calendar
         onSelectEvent={(value) => handleSelectedSlot(value)}
         localizer={localizer}
-        //popup
         date={date}
         onNavigate={onNavigate}
         onView={onView}
