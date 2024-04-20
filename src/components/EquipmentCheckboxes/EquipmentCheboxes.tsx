@@ -129,11 +129,11 @@ const EquipmentCheckBoxes: FC<any> = ({
       const descendantValues = collectAllDescendantValues(item);
       setSelectedChildrenCheckBoxes((prev: SelectedEquipmentItem[]) => {
         const newChildrenSet = checked
-          ? Array.from(new Set([...prev, ...descendantValues])) // Add all descendants if checked
+          ? Array.from(new Set([...prev, ...descendantValues]))
           : prev.filter(
               (val) =>
                 !descendantValues.some((item) => val.name === item.quantity)
-            ); // Remove all descendants if unchecked
+            );
         return newChildrenSet;
       });
     }
@@ -199,7 +199,6 @@ const EquipmentCheckBoxes: FC<any> = ({
   const isAdmin = user?.role === 'admin';
 
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
-    // Update quantity for parent checkboxes
     setSelectedParentCheckBoxes((prev) =>
       prev.map((item) =>
         item.name === itemId
@@ -208,7 +207,6 @@ const EquipmentCheckBoxes: FC<any> = ({
       )
     );
 
-    // Update quantity for child checkboxes
     setSelectedChildrenCheckBoxes((prev) =>
       prev.map((item) =>
         item.name === itemId
@@ -222,7 +220,6 @@ const EquipmentCheckBoxes: FC<any> = ({
     list: InputTreeParent[]
   ): InputTreeParent[] => {
     const findQuantity = (itemName: string): string => {
-      // First, try to find the item in the selectedParentCheckBoxes array
       const parentItem = selectedParentCheckBoxes.find(
         (item) => item.name === itemName
       );
@@ -230,7 +227,6 @@ const EquipmentCheckBoxes: FC<any> = ({
         return parentItem.quantity;
       }
 
-      // If not found, try to find the item in the selectedChildrenCheckBoxes array
       const childItem = selectedChildrenCheckBoxes.find(
         (item) => item.name === itemName
       );
@@ -238,7 +234,6 @@ const EquipmentCheckBoxes: FC<any> = ({
         return childItem.quantity;
       }
 
-      // If the item is not found in either array, default to the original quantity
       return '1';
     };
 
@@ -261,7 +256,6 @@ const EquipmentCheckBoxes: FC<any> = ({
     return updateItemQuantities(list);
   };
 
-  // Use this function to update your list before rendering
   const updatedList = updateQuantitiesInList(inputListPropWithInitialQuantity);
 
   return (

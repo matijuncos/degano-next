@@ -21,7 +21,7 @@ const NextEvents = () => {
             x: 0,
             opacity: 1,
             transition: {
-              duration: 0.5 // Duration of the animation
+              duration: 0.5
             }
           }
         };

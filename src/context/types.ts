@@ -37,7 +37,6 @@ export interface EventModel {
   _id: string;
 }
 export interface SelectedEventType extends EventModel {
-  // Object that comes from calendar click event
   title?: string;
   start?: string;
   end?: string;
