@@ -56,7 +56,9 @@ export interface DeganoContextProps {
   allEvents: EventModel[];
   setAllEvents: Function;
   formState: number;
-  setFormSted: Function;
+  setFormState: Function;
+  validate: boolean;
+  setValidate: Function;
 }
 export interface DataverseProviderProps {
   children: ReactNode;

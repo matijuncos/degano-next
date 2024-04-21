@@ -8,7 +8,7 @@ const NextEvents = () => {
   const router = useRouter();
   return (
     <div style={{ padding: '0px' }}>
-      {allEvents.slice(0, 7).map((event, idx) => {
+      {allEvents?.slice(0, 7).map((event, idx) => {
         const isLastItem = idx === allEvents.length - 1 && allEvents.length > 1;
 
         const borders = !isLastItem

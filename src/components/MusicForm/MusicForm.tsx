@@ -18,7 +18,7 @@ const MusicForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
-  const { setFormSted } = useDeganoCtx();
+  const { setFormState } = useDeganoCtx();
   const [musicData, setMusicData] = useState(event);
   const id = useId();
 
@@ -104,6 +104,12 @@ const MusicForm = ({
       };
     });
   };
+  const next = () => {
+    onNextTab(3, musicData);
+  };
+  const back = () => {
+    onBackTab(1, musicData);
+  };
   return (
     <div>
       <h2>Musica de preferencia</h2>
@@ -173,10 +179,10 @@ const MusicForm = ({
         </div>
       </div>
       <Flex direction='column' gap='12px'>
-        <Button onClick={() => setFormSted((prev: number) => prev - 1)}>
-          Anterior
+        <Button onClick={back}>
+          Anterior``
         </Button>
-        <Button onClick={() => setFormSted((prev: number) => prev + 1)}>
+        <Button onClick={next}>
           Siguiente
         </Button>
       </Flex>

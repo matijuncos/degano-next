@@ -13,7 +13,9 @@ import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import axios from 'axios';
+import { useDeganoCtx } from '@/context/DeganoContext';
 const Home = () => {
+  const {setAllEvents} = useDeganoCtx();
   const tiles = [
     {
       label: 'Calendario',
@@ -54,17 +56,17 @@ const Home = () => {
   };
 
   useEffect(() => {
-    const fetchMovies = async () => {
+    const fetchEvents = async () => {
       try {
-        const { data } = await axios.get('/api/getMovies', {
+        const { data } = await axios.get('/api/getEvents', {
           params: { page: 1 }
         });
-        console.log(data);
+        setAllEvents(data.events);
       } catch (error) {
         console.error('Failed to fetch movies:', error);
       }
     };
-    fetchMovies();
+    fetchEvents();
   }, []);
 
   return (
