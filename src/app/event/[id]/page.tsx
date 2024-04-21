@@ -1,21 +1,28 @@
 'use client';
+import { useDeganoCtx } from '@/context/DeganoContext';
 import { EventModel } from '@/context/types';
-import { mockedEvent } from '@/mockedData/event';
 import { Accordion, Container, Title } from '@mantine/core';
 import { IconStar, IconStarFilled, IconStarOff } from '@tabler/icons-react';
+import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
 const EventPage = () => {
+  const { allEvents } = useDeganoCtx();
+  const { id } = useParams();
+  const router = useRouter();
   const [dateString, setDateString] = useState('');
-  const selectedEvent: EventModel = mockedEvent;
-
+  const selectedEvent: EventModel = allEvents.find(
+    (event) => event._id === id
+  )!;
   useEffect(() => {
-    const date = new Date(selectedEvent.date).toLocaleString('en-US', {
+    const date = new Date(selectedEvent?.date).toLocaleString('en-US', {
       timeZone: 'UTC'
     });
     setDateString(date);
-  }, [selectedEvent.date]);
-
+  }, [selectedEvent?.date]);
+  const redirect = () => {
+    router.push('/home');
+  };
   const AccordionSet = ({
     children,
     value
@@ -35,7 +42,7 @@ const EventPage = () => {
     );
   };
 
-  return (
+  return selectedEvent ? (
     <Container size='xl'>
       <Title mb='16px'>{selectedEvent.fullName + ' - ' + dateString}</Title>
       <div>
@@ -131,6 +138,8 @@ const EventPage = () => {
         <p>{selectedEvent.moreData}</p>
       </AccordionSet>
     </Container>
+  ) : (
+    redirect()
   );
 };
 export default EventPage;

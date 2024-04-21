@@ -70,12 +70,13 @@ function Navbar() {
     <nav className={classes.navbar}>
       <Center>
         <Image
-          style={{ borderRadius: '100%' }}
+          style={{ borderRadius: '100%', cursor: 'pointer' }}
           src={degano}
           alt='Next.js Logo'
           width={30}
           height={30}
           priority
+          onClick={() => router.push('/home')}
         />
       </Center>
 

@@ -3,7 +3,7 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
-export const POST = async function handler(
+export const UPDATE = async function handler(
   req: Request,
   res: NextApiResponse
 ) {
@@ -12,12 +12,20 @@ export const POST = async function handler(
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const { _id, ...bodyWithoutId } = body;
     const db = client.db('degano-app');
-    const event = await db.collection('events').insertOne(!_id ? bodyWithoutId : body);
+    const eventId = body._id;
+    delete body._id;
+    console.log('body? ', body);
+    const event = await db
+      .collection('events')
+      .findOneAndUpdate(
+        { _id: eventId },
+        { $set: body },
+        { returnDocument: 'after' }
+      );
     return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

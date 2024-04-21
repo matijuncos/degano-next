@@ -12,7 +12,7 @@ import axios from 'axios';
 import { useState } from 'react';
 
 const NewEventPage = () => {
-  const { formState, selectedEvent, setFormSted } = useDeganoCtx();
+  const { formState, selectedEvent, setFormState, validate, setValidate } = useDeganoCtx();
   const [event, setEvent] = useState<EventModel>({
     _id: selectedEvent?._id || '', // Use empty string instead of null
     fullName: selectedEvent?.fullName || '',
@@ -40,9 +40,7 @@ const NewEventPage = () => {
       required: selectedEvent?.music?.required || [],
       forbidden: selectedEvent?.music?.forbidden || []
     },
-    equipment: selectedEvent?.equipment || [
-      { name: '', quantity: 0, price: 0 }
-    ],
+    equipment: selectedEvent?.equipment || [],
     payment: {
       upfrontAmount: selectedEvent?.payment?.upfrontAmount || '',
       totalPaymentDate: selectedEvent?.payment?.totalPaymentDate
@@ -59,24 +57,21 @@ const NewEventPage = () => {
   });
 
   const onNextTab = (tab: number, data: EventModel) => {
-    setFormSted(tab);
+    setFormState(tab);
     setEvent(data);
   };
   const onBackTab = (tab: number, data: EventModel) => {
-    setFormSted(tab);
+    setFormState(tab);
     setEvent(data);
   };
 
-  const saveEvent = async () => {
+  const saveEvent = async (newEvent: EventModel) => {
     try {
-      const response = await axios.post('/api/postEvent', event);
-      console.log(response);
+      const response = await axios.post('/api/postEvent', newEvent);
     } catch (err) {
       console.error('failed to save the event ', err)
     }
   };
-
-  console.log('event?? ', event)
 
   const getTabContent = () => {
     switch (formState) { 
@@ -86,6 +81,8 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
+            validate={validate}
+            setValidate={setValidate}
           />
         );
       case 1:
@@ -94,6 +91,8 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
+            validate={validate}
+            setValidate={setValidate}
           />
         );
       case 2:
