@@ -42,8 +42,8 @@ const linksList = [
   { icon: IconHome, label: 'Inicio', path: '/home' },
   { icon: IconCalendar, label: 'Calendario', path: '/calendar' },
   { icon: IconListCheck, label: 'Eventos', path: '/events' },
-  { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' },
-  { icon: IconUser, label: 'Clientes', path: '/clients' }
+  { icon: IconUser, label: 'Clientes', path: '/clients' },
+  { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' }
 ];
 
 function Navbar() {
@@ -70,12 +70,13 @@ function Navbar() {
     <nav className={classes.navbar}>
       <Center>
         <Image
-          style={{ borderRadius: '100%' }}
+          style={{ borderRadius: '100%', cursor: 'pointer' }}
           src={degano}
           alt='Next.js Logo'
           width={30}
           height={30}
           priority
+          onClick={() => router.push('/home')}
         />
       </Center>
 

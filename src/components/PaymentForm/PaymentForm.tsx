@@ -1,23 +1,25 @@
 import { EventModel } from '@/context/types';
 import { Button, Input } from '@mantine/core';
-import { useState } from 'react';
 import { DateTimePicker, DateValue } from '@mantine/dates';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 const PaymentForm = ({
   event,
-  onBackTab
+  onBackTab,
+  onFinish,
 }: {
   event: EventModel;
   onBackTab: Function;
+  onFinish: Function;
 }) => {
   const [payment, setPayment] = useState<EventModel>(event);
   const { id } = useParams();
   const save = async () => {
-    if (id) {
-      // update
-    } else {
-      // crear
-    }
+      if (id) {
+        // update
+      } else {
+        await onFinish(payment);
+      }
   };
   const back = () => {
     onBackTab(3, payment);

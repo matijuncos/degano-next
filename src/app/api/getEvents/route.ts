@@ -11,13 +11,14 @@ export const GET = async function handler(
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('sample_mflix');
-    const movies = await db
-      .collection('movies')
-      .findOne({ _id: new ObjectId('573a1390f29313caabcd42e8') }); // Use ObjectId
+    const db = client.db('degano-app');
+    const events = await db
+      .collection('events')
+      .find()
+      .toArray(); // Use ObjectId
     // If I wanted to get all, add limit and pagination
-    console.log(movies);
-    return NextResponse.json({ movies }, { status: 200 });
+    console.log(events);
+    return NextResponse.json({ events }, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json(

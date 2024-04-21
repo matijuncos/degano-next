@@ -5,45 +5,60 @@ import { useState } from 'react';
 const ClientForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  validate,
+  setValidate
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  validate: boolean;
+  setValidate: Function;
 }) => {
-  const [clientData, setClientData] = useState(event);
+  const [clientData, setClientData] = useState<EventModel>(event);
+  const requiredFields: (keyof EventModel)[] = ['fullName', 'phoneNumber', 'email'];
   const handleInputChange = (e: any) => {
     setClientData({
       ...clientData,
       [e.target.name]: e.target.value
     });
   };
-
+  const validateRequiredFields = () => {
+    setValidate(true);
+    const isValid: boolean = requiredFields.every((field: keyof EventModel) => clientData[field] && String(clientData[field]).trim() !== '');
+    return isValid;
+  }
   const next = () => {
-    onNextTab(1, clientData);
+    if (validateRequiredFields()) {
+      setValidate(false);
+      onNextTab(1, clientData);
+    }
   };
   return (
-    <div className='flex'>
+    <div className='flex directionColumn'>
       <div className='inputs-grid'>
         <Input
-          placeholder='Nombre y Apellido'
+          placeholder='Nombre y Apellido *'
           name='fullName'
           onChange={handleInputChange}
           autoComplete='off'
+          error={validate && !clientData.fullName}
           value={clientData.fullName && clientData.fullName}
         />
         <Input
-          placeholder='Teléfono'
+          placeholder='Teléfono *'
           name='phoneNumber'
           onChange={handleInputChange}
           autoComplete='off'
+          error={validate && !clientData.phoneNumber}
           value={clientData.phoneNumber && clientData.phoneNumber}
         />
         <Input
-          placeholder='Dirección de email'
+          placeholder='Dirección de email *'
           name='email'
           onChange={handleInputChange}
           autoComplete='off'
+          error={validate && !clientData.email}
           value={clientData.email && clientData.email}
         />
         <Input

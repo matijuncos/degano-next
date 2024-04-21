@@ -5,21 +5,34 @@ import { useState } from 'react';
 const EventForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  validate,
+  setValidate
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  validate: boolean;
+  setValidate: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
+  const requiredFields: (keyof EventModel)[] = ['type', 'eventAddress', 'eventCity', 'salon']
   const handleInputChange = (e: any) => {
     setEventData({
       ...eventData,
       [e.target.name]: e.target.value
     });
   };
+  const validateRequiredFields = () => {
+    setValidate(true);
+    const isValid: boolean = requiredFields.every((field: keyof EventModel) => eventData[field] && String(eventData[field]).trim() !== '');
+    return isValid;
+  };
   const next = () => {
-    onNextTab(2, eventData);
+    if(validateRequiredFields()) {
+      setValidate(false)
+      onNextTab(2, eventData);
+    }
   };
   const back = () => {
     onBackTab(0, eventData);
@@ -36,11 +49,12 @@ const EventForm = ({
       <div className='inputs-grid'>
         <Input
           type='text'
-          placeholder='Tipo de evento'
+          placeholder='Tipo de evento *'
           name='type'
           onChange={handleInputChange}
           autoComplete='off'
           value={eventData.type}
+          error={validate && !eventData.type}
         />
         <Input
           placeholder='Invitados'
@@ -52,27 +66,30 @@ const EventForm = ({
         />
         <Input
           type='text'
-          placeholder='Direccion'
+          placeholder='Direccion *'
           name='eventAddress'
           value={eventData.eventAddress}
           onChange={handleInputChange}
           autoComplete='off'
+          error={validate && !eventData.eventAddress}
         />
         <Input
           type='text'
-          placeholder='Localidad'
+          placeholder='Localidad *'
           name='eventCity'
           value={eventData.eventCity}
           onChange={handleInputChange}
           autoComplete='off'
+          error={validate && !eventData.eventCity}
         />
         <Input
           type='text'
           name='salon'
           value={eventData.salon}
           onChange={handleInputChange}
-          placeholder='Salón'
+          placeholder='Salón *'
           autoComplete='off'
+          error={validate && !eventData.salon}
         />
         <Input
           type='text'
