@@ -10,6 +10,7 @@ import '@mantine/dropzone/styles.css';
 import Navbar from '@/components/NavBar/NavBar';
 import { DeganoProvider } from '@/context/DeganoContext';
 import BottomNavBar from '@/components/BottomNavBar/BottomNavBar';
+import { Suspense } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -46,7 +47,7 @@ export default function RootLayout({
                     padding: '16px'
                   }}
                 >
-                  {children}
+                  <Suspense fallback={'Loading....'}>{children}</Suspense>
                 </div>
               </div>
             </UserProvider>

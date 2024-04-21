@@ -4,6 +4,7 @@ import logo from '../../assets/logo.png';
 import HomeTile from '@/components/HomeTile/HomeTile';
 import {
   IconCalendar,
+  IconCheckupList,
   IconListCheck,
   IconPlus,
   IconUser
@@ -32,6 +33,11 @@ const Home = () => {
       label: 'Crear Evento',
       path: '/new-event',
       Icon: IconPlus
+    },
+    {
+      label: 'Administrar Stock',
+      path: '/equipment-stock',
+      Icon: IconCheckupList
     }
   ];
   const itemVariants = {
