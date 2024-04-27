@@ -15,9 +15,7 @@ interface FileItem {
   id: string;
   [key: string]: any;
 }
-const CLIENT_ID =
-  '748888465127-r6pcrtqkpse3ecuq2ih7nm5ph4chm64b.apps.googleusercontent.com';
-const API_KEY = 'AIzaSyANXpqjioeOdn_NR4OGTuMATDxXkKNW9Mk';
+
 const DISCOVERY_DOCS = [
   'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
 ];
@@ -58,8 +56,8 @@ export default function FileUploader() {
     gapi.load('client:auth2', () => {
       gapi.client
         .init({
-          apiKey: API_KEY,
-          clientId: CLIENT_ID,
+          apiKey: process.env.NEXT_PUBLIC_API_KEY,
+          clientId: process.env.NEXT_PUBLIC_CLIENT_ID,
           discoveryDocs: DISCOVERY_DOCS,
           scope: SCOPES
         })

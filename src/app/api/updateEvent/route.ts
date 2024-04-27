@@ -3,7 +3,7 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
-export const UPDATE = async function handler(
+export const PUT = async function handler(
   req: Request,
   res: NextApiResponse
 ) {
