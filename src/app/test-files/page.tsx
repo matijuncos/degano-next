@@ -42,6 +42,7 @@ export default function FileUploader() {
 
   useEffect(() => {
     function updateSigninStatus(isSignedIn: boolean) {
+      if (window === undefined) return;
       if (isSignedIn) {
         const currentAuth = gapi.auth2
           .getAuthInstance()
@@ -72,6 +73,9 @@ export default function FileUploader() {
 
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
+      if (window === undefined) {
+        return;
+      }
       const accessToken = authToken;
       try {
         const searchResponse = await fetch(
@@ -120,6 +124,9 @@ export default function FileUploader() {
 
   const fetchFilesFromFolder = useCallback(
     async (folderId: string) => {
+      if (window === undefined) {
+        return;
+      }
       try {
         const response = await fetch(
           `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
