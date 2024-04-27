@@ -1,5 +1,5 @@
 import { MongoClient, ObjectId } from 'mongodb'; // Import ObjectId
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
@@ -19,7 +19,7 @@ export const GET = async function handler(req: Request, res: NextApiResponse) {
       .limit(pageSize)
       .toArray();
 
-      console.log('clients, ', clients)
+    console.log('clients, ', clients);
     return NextResponse.json({ clients }, { status: 200 });
   } catch (error) {
     console.log(error);
