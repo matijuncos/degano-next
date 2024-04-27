@@ -5,12 +5,12 @@
     height: 100%;
     padding: 6px 8px;
     position: relative;
-
+    cursor: pointer;
 }
 
 .home_tile:hover {
     box-shadow: 0 0 2px 0.7px green;
-
+    transition: all ease 0.3s;
 }
 .blurry {
     cursor: not-allowed;

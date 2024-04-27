@@ -3,12 +3,13 @@ import { useDeganoCtx } from '@/context/DeganoContext';
 import { IconArrowRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import styles from './NextEvents.module.css';
 const NextEvents = () => {
   const { allEvents } = useDeganoCtx();
   const router = useRouter();
   return (
     <div style={{ padding: '0px' }}>
-      {allEvents.slice(0, 7).map((event, idx) => {
+      {allEvents?.slice(0, 7).map((event, idx) => {
         const isLastItem = idx === allEvents.length - 1 && allEvents.length > 1;
 
         const borders = !isLastItem
@@ -20,7 +21,7 @@ const NextEvents = () => {
             x: 0,
             opacity: 1,
             transition: {
-              duration: 0.5 // Duration of the animation
+              duration: 0.5
             }
           }
         };
@@ -37,6 +38,11 @@ const NextEvents = () => {
               backgroundColor: 'rgba(100,100,100,0.3)',
               ...borders
             }}
+            whileHover={{
+              scale: 1.02,
+              transition: { duration: 0.3 }
+            }}
+            className={styles.nextEvents}
           >
             <div
               style={{

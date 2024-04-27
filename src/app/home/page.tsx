@@ -4,6 +4,7 @@ import logo from '../../assets/logo.png';
 import HomeTile from '@/components/HomeTile/HomeTile';
 import {
   IconCalendar,
+  IconCheckupList,
   IconListCheck,
   IconPlus,
   IconUser
@@ -13,7 +14,9 @@ import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import axios from 'axios';
+import { useDeganoCtx } from '@/context/DeganoContext';
 const Home = () => {
+  const {setAllEvents} = useDeganoCtx();
   const tiles = [
     {
       label: 'Calendario',
@@ -30,6 +33,11 @@ const Home = () => {
       label: 'Crear Evento',
       path: '/new-event',
       Icon: IconPlus
+    },
+    {
+      label: 'Administrar Stock',
+      path: '/equipment-stock',
+      Icon: IconCheckupList
     }
   ];
   const itemVariants = {
@@ -54,17 +62,17 @@ const Home = () => {
   };
 
   useEffect(() => {
-    const fetchMovies = async () => {
+    const fetchEvents = async () => {
       try {
-        const { data } = await axios.get('/api/getMovies', {
+        const { data } = await axios.get('/api/getEvents', {
           params: { page: 1 }
         });
-        console.log(data);
+        setAllEvents(data.events);
       } catch (error) {
         console.error('Failed to fetch movies:', error);
       }
     };
-    fetchMovies();
+    fetchEvents();
   }, []);
 
   return (

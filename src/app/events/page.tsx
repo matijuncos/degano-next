@@ -1,6 +1,5 @@
 'use client';
 
-import { mockedEvents } from '@/mockedData/event';
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
 import { useEffect, useState } from 'react';
 import { sortBy } from 'lodash';
@@ -8,16 +7,18 @@ import { ActionIcon, Group } from '@mantine/core';
 import { IconEdit, IconEye, IconTrash } from '@tabler/icons-react';
 import { EventModel } from '@/context/types';
 import { useRouter } from 'next/navigation';
+import { useDeganoCtx } from '@/context/DeganoContext';
 
 export default function EventPage() {
+  const { allEvents } = useDeganoCtx();
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<any>>({
     columnAccessor: 'name',
     direction: 'asc'
   });
-  const [records, setRecords] = useState(sortBy(mockedEvents, 'date'));
+  const [records, setRecords] = useState(sortBy(allEvents, 'date'));
   const router = useRouter();
   useEffect(() => {
-    const data = sortBy(mockedEvents, sortStatus.columnAccessor) as any;
+    const data = sortBy(allEvents, sortStatus.columnAccessor) as any;
     setRecords(sortStatus.direction === 'desc' ? data.reverse() : data);
   }, [sortStatus]);
   enum actions {
@@ -35,6 +36,9 @@ export default function EventPage() {
     console.log(event, action);
     if (action === actions.see) {
       router.push(`/event/${event._id}`);
+    } else if (action === actions.edit) {
+      // Agregar cuando se defina la nueva pantalla
+      return;
     }
   };
 

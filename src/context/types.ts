@@ -37,7 +37,6 @@ export interface EventModel {
   _id: string;
 }
 export interface SelectedEventType extends EventModel {
-  // Object that comes from calendar click event
   title?: string;
   start?: string;
   end?: string;
@@ -56,7 +55,9 @@ export interface DeganoContextProps {
   allEvents: EventModel[];
   setAllEvents: Function;
   formState: number;
-  setFormSted: Function;
+  setFormState: Function;
+  validate: boolean;
+  setValidate: Function;
 }
 export interface DataverseProviderProps {
   children: ReactNode;

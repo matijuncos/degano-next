@@ -31,7 +31,8 @@ export const mockedEvent: EventModel = {
   equipment: [
     {
       name: 'PA System',
-      quantity: 1
+      quantity: 1,
+      price: 50
     }
   ],
   payment: {
@@ -79,7 +80,8 @@ const mockedSecondEvent: EventModel = {
   equipment: [
     {
       name: 'PA System',
-      quantity: 1
+      quantity: 1,
+      price: 50
     }
   ],
   payment: {
@@ -93,7 +95,7 @@ const mockedSecondEvent: EventModel = {
   date: new Date('2024-04-02T04:30:00.000Z'),
   active: true,
   playlist: ['Song 1', 'Song 2', 'Song 3'],
-  _id: 'evt123456789'
+  _id: 'evt123456788'
 };
 
 export const mockedEvents: EventsList = [mockedEvent, mockedSecondEvent];

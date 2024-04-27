@@ -55,7 +55,7 @@ const BottomNavBar = () => {
           key={path}
         >
           {React.cloneElement(Icon, {
-            color: activeNavTab === idx ? 'green' : 'white' // Change 'red' to your active color
+            color: activeNavTab === idx ? 'green' : 'white'
           })}
         </div>
       ))}

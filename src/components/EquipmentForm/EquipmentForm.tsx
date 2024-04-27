@@ -1,6 +1,8 @@
-import { EventModel } from '@/context/types';
+import { Equipment, EventModel } from '@/context/types';
 import { Button, Input } from '@mantine/core';
+import { ActionIcon } from '@mantine/core';
 import { useParams } from 'next/navigation';
+import { IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 
 const EquipmentForm = ({
@@ -13,12 +15,13 @@ const EquipmentForm = ({
   onBackTab: Function;
 }) => {
   const [equipment, setEquipment] = useState<EventModel>(event);
-  const [newEquipment, setNewEquipment] = useState({
+  const newDefaultEquipment: Equipment = {
     name: '',
     price: 0,
     quantity: 0
-  });
-  const [price, setPrice] = useState(0);
+  };
+  const [newEquipment, setNewEquipment] = useState(newDefaultEquipment);
+  const [price, setPrice] = useState<number>(0);
   const { id } = useParams();
   const priceSum = () => {
     if (id) {
@@ -37,6 +40,7 @@ const EquipmentForm = ({
       equipment: [...equipment.equipment, newEquipment]
     });
     setPrice(price + newEquipment.price * newEquipment.quantity);
+    setNewEquipment(newDefaultEquipment);
   };
   const next = () => {
     onNextTab(4, equipment);
@@ -50,6 +54,18 @@ const EquipmentForm = ({
       [e.target.name]: e.target.value
     });
   };
+  const handleRemoveEquipment = (idxToRemove: number) => {
+    setEquipment((prevEquipment) => {
+      const updatedEquipment = prevEquipment.equipment.filter(
+        (_, idx) => idx !== idxToRemove
+      );
+      const newPrice = updatedEquipment.reduce((totalPrice, equipment) => {
+        return totalPrice + equipment.price * equipment.quantity;
+      }, 0);
+      setPrice(newPrice);
+      return { ...prevEquipment, equipment: updatedEquipment };
+    });
+  };
   return (
     <div>
       <h2>Equipamiento necesario</h2>
@@ -60,12 +76,14 @@ const EquipmentForm = ({
             placeholder='Equipamiento'
             onChange={handleChange}
             name='name'
+            value={newEquipment.name}
           />
           <Input
             type='number'
             placeholder='Precio'
             onChange={handleChange}
             name='price'
+            value={newEquipment.price ? newEquipment.price : ''}
           />
           <Input
             type='number'
@@ -73,6 +91,7 @@ const EquipmentForm = ({
             onChange={handleChange}
             name='quantity'
             min={1}
+            value={newEquipment.quantity ? newEquipment.quantity : ''}
           />
         </div>
         <Button onClick={addEquipment} mt='16px'>
@@ -83,10 +102,22 @@ const EquipmentForm = ({
             ?.filter((eq) => eq.quantity > 0)
             .map((item, idx) => {
               return (
-                <div key={item.name + idx} className='equipmentDiv'>
-                  <p className='itemName'>{item.name}</p>
-                  <p className='price'>${item.price}</p>
-                  <p className='quantity'>{item.quantity}</p>
+                <div key={item.name + idx} className='equipmentDiv flex'>
+                  <div>
+                    <p className='itemName'>{item.name}</p>
+                    <p className='price'>${item.price}</p>
+                    <p className='quantity'>{item.quantity}</p>
+                  </div>
+                  <div style={{marginLeft: '10px'}}>
+                    <ActionIcon
+                      size='sm'
+                      variant='subtle'
+                      color='red'
+                      onClick={(e) => handleRemoveEquipment(idx)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </div>
                 </div>
               );
             })}

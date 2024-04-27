@@ -123,6 +123,14 @@ a {
   gap: 16px;
 }
 
+.flex {
+  display: flex;
+}
+
+.directionColumn {
+  flex-direction: column;
+}
+
 @media(max-width: 740px) {
   .inputs-grid,.equipment-inputs {
     grid-template-columns:  1fr;
@@ -139,7 +147,7 @@ a {
     bottom: 0;
     left: 0;
     width: 100%;
-
+    z-index: 333;
   }
   .everything-container {
     padding-bottom: 65px;
