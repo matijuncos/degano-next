@@ -42,7 +42,7 @@ export default function FileUploader() {
 
   useEffect(() => {
     function updateSigninStatus(isSignedIn: boolean) {
-      if (typeof window === 'undefined') return;
+      if (typeof window === undefined) return;
       if (isSignedIn) {
         const currentAuth = gapi.auth2
           .getAuthInstance()
@@ -54,7 +54,7 @@ export default function FileUploader() {
       }
     }
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== undefined) {
       gapi.load('client:auth2', () => {
         gapi.client
           .init({
@@ -75,7 +75,7 @@ export default function FileUploader() {
 
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
-      if (typeof window === 'undefined') {
+      if (typeof window === undefined) {
         return;
       }
       const accessToken = authToken;
@@ -126,7 +126,7 @@ export default function FileUploader() {
 
   const fetchFilesFromFolder = useCallback(
     async (folderId: string) => {
-      if (typeof window === 'undefined') {
+      if (typeof window === undefined) {
         return [];
       }
       try {
