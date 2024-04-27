@@ -42,7 +42,7 @@ export default function FileUploader() {
 
   useEffect(() => {
     function updateSigninStatus(isSignedIn: boolean) {
-      if (window === undefined) return;
+      if (typeof window === 'undefined') return;
       if (isSignedIn) {
         const currentAuth = gapi.auth2
           .getAuthInstance()
@@ -54,26 +54,28 @@ export default function FileUploader() {
       }
     }
 
-    gapi.load('client:auth2', () => {
-      gapi.client
-        .init({
-          apiKey: process.env.NEXT_PUBLIC_API_KEY,
-          clientId: process.env.NEXT_PUBLIC_CLIENT_ID,
-          discoveryDocs: DISCOVERY_DOCS,
-          scope: SCOPES
-        })
-        .then(() => {
-          gapi.auth2.getAuthInstance().signIn();
-          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-        })
-        .catch((e: any) => console.log(e));
-    });
+    if (typeof window !== 'undefined') {
+      gapi.load('client:auth2', () => {
+        gapi.client
+          .init({
+            apiKey: process.env.NEXT_PUBLIC_API_KEY,
+            clientId: process.env.NEXT_PUBLIC_CLIENT_ID,
+            discoveryDocs: DISCOVERY_DOCS,
+            scope: SCOPES
+          })
+          .then(() => {
+            gapi.auth2.getAuthInstance().signIn();
+            gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+            updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+          })
+          .catch((e: any) => console.log(e));
+      });
+    }
   }, []);
 
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
-      if (window === undefined) {
+      if (typeof window === 'undefined') {
         return;
       }
       const accessToken = authToken;
@@ -124,8 +126,8 @@ export default function FileUploader() {
 
   const fetchFilesFromFolder = useCallback(
     async (folderId: string) => {
-      if (window === undefined) {
-        return;
+      if (typeof window === 'undefined') {
+        return [];
       }
       try {
         const response = await fetch(
