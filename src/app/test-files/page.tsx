@@ -9,8 +9,7 @@ import {
   IconFile3d
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
-import { useEffect, useState, useCallback } from 'react';
-import { gapi } from 'gapi-script';
+import { useEffect, useState, useCallback, useRef } from 'react';
 interface FileItem {
   id: string;
   [key: string]: any;
@@ -40,44 +39,55 @@ export default function FileUploader() {
     setValue(null);
   }, [value]);
 
+  function updateSigninStatus(isSignedIn: boolean) {
+    if (isSignedIn) {
+      const currentAuth = gapiRef.current.auth2
+        .getAuthInstance()
+        .currentUser.get()
+        .getAuthResponse().access_token;
+      setAuthToken(currentAuth);
+    } else {
+      console.log('User not signed in.');
+    }
+  }
+
+  const gapiConfig = {
+    apiKey: 'AIzaSyANXpqjioeOdn_NR4OGTuMATDxXkKNW9Mk',
+    clientId:
+      '748888465127-r6pcrtqkpse3ecuq2ih7nm5ph4chm64b.apps.googleusercontent.com',
+    discoveryDocs: DISCOVERY_DOCS,
+    scope: SCOPES
+  };
+  const gapiRef = useRef<any>(null);
   useEffect(() => {
-    function updateSigninStatus(isSignedIn: boolean) {
-      if (typeof window === 'undefined') return;
-      if (isSignedIn) {
-        const currentAuth = gapi.auth2
-          .getAuthInstance()
-          .currentUser.get()
-          .getAuthResponse().access_token;
-        setAuthToken(currentAuth);
+    async function start() {
+      const gapiModule = await import('gapi-script');
+      gapiRef.current = gapiModule.gapi || gapiModule.default.gapi; // Adjust based on actual module structure
+      if (gapiRef.current) {
+        gapiRef.current.load('client:auth2', () => {
+          gapiRef.current.client
+            .init(gapiConfig)
+            .then(() => {
+              gapiRef.current.auth2.getAuthInstance().signIn();
+              gapiRef.current.auth2
+                .getAuthInstance()
+                .isSignedIn.listen(updateSigninStatus);
+              updateSigninStatus(
+                gapiRef.current.auth2.getAuthInstance().isSignedIn.get()
+              );
+            })
+            .catch((e: any) => console.log(e));
+        });
       } else {
-        console.log('User not signed in.');
+        console.error('Failed to load gapi from gapi-script');
       }
     }
-
-    if (typeof window !== 'undefined') {
-      gapi.load('client:auth2', () => {
-        gapi.client
-          .init({
-            apiKey: process.env.NEXT_PUBLIC_API_KEY,
-            clientId: process.env.NEXT_PUBLIC_CLIENT_ID,
-            discoveryDocs: DISCOVERY_DOCS,
-            scope: SCOPES
-          })
-          .then(() => {
-            gapi.auth2.getAuthInstance().signIn();
-            gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-            updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-          })
-          .catch((e: any) => console.log(e));
-      });
-    }
+    start();
   }, []);
 
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
-      if (typeof window === 'undefined') {
-        return;
-      }
+      if (!authToken) return;
       const accessToken = authToken;
       try {
         const searchResponse = await fetch(
@@ -90,8 +100,8 @@ export default function FileUploader() {
           }
         );
         const searchResult = await searchResponse.json();
-        const folders = searchResult.files;
-        if (folders.length > 0) {
+        const folders = searchResult?.files;
+        if (folders?.length > 0) {
           console.log('Folder exists', folders[0]);
           setFolderId(folders[0].id);
           return folders[0].id;
@@ -126,9 +136,6 @@ export default function FileUploader() {
 
   const fetchFilesFromFolder = useCallback(
     async (folderId: string) => {
-      if (typeof window === 'undefined') {
-        return [];
-      }
       try {
         const response = await fetch(
           `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
@@ -238,181 +245,185 @@ export default function FileUploader() {
 
   return (
     <>
-      <Flex w='100%'>
-        <Dropzone
-          multiple
-          onDrop={(files) => setAllfiles((prev) => [...prev, ...files])}
-          onReject={(files) => console.log('rejected files', files)}
-          maxSize={10 * 1024 ** 2}
-          style={{ width: '100%', flex: 5 }}
-        >
-          <Group
-            justify='center'
-            gap='xl'
-            mih={220}
-            style={{ pointerEvents: 'none' }}
-          >
-            {!allFiles.length ? (
-              <>
-                <Dropzone.Accept>
-                  <IconUpload
-                    style={{
-                      width: rem(52),
-                      height: rem(52),
-                      color: 'var(--mantine-color-blue-6)'
-                    }}
-                    stroke={1.5}
-                  />
-                </Dropzone.Accept>
-                <Dropzone.Idle>
-                  <IconPhoto
-                    style={{
-                      width: rem(52),
-                      height: rem(52),
-                      color: 'var(--mantine-color-dimmed)'
-                    }}
-                    stroke={1.5}
-                  />
-                </Dropzone.Idle>
-                <div>
-                  <Text size='xl' inline>
-                    Arrastra archivos o haz click
-                  </Text>
-                  <Text size='sm' c='dimmed' inline mt={7}>
-                    Adjunta la cantidad de archivos que quieras. Cada archivo no
-                    debe exceder los 5mb
-                  </Text>
-                </div>
-              </>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '22px',
-                  width: '90%',
-                  flexWrap: 'wrap',
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start'
-                }}
+      {typeof window !== 'undefined' && (
+        <>
+          <Flex w='100%'>
+            <Dropzone
+              multiple
+              onDrop={(files) => setAllfiles((prev) => [...prev, ...files])}
+              onReject={(files) => console.log('rejected files', files)}
+              maxSize={10 * 1024 ** 2}
+              style={{ width: '100%', flex: 5 }}
+            >
+              <Group
+                justify='center'
+                gap='xl'
+                mih={220}
+                style={{ pointerEvents: 'none' }}
               >
+                {!allFiles.length ? (
+                  <>
+                    <Dropzone.Accept>
+                      <IconUpload
+                        style={{
+                          width: rem(52),
+                          height: rem(52),
+                          color: 'var(--mantine-color-blue-6)'
+                        }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Accept>
+                    <Dropzone.Idle>
+                      <IconPhoto
+                        style={{
+                          width: rem(52),
+                          height: rem(52),
+                          color: 'var(--mantine-color-dimmed)'
+                        }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Idle>
+                    <div>
+                      <Text size='xl' inline>
+                        Arrastra archivos o haz click
+                      </Text>
+                      <Text size='sm' c='dimmed' inline mt={7}>
+                        Adjunta la cantidad de archivos que quieras. Cada
+                        archivo no debe exceder los 5mb
+                      </Text>
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '22px',
+                      width: '90%',
+                      flexWrap: 'wrap',
+                      justifyContent: 'flex-start',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    {allFiles.map((file) => {
+                      return (
+                        <div
+                          key={file.name}
+                          onClick={() => console.log(file)}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            width: '120px',
+                            justifyContent: 'flex-start',
+                            flex: 1
+                          }}
+                        >
+                          <IconFile3d size={34} />
+                          <div
+                            style={{
+                              width: '100px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
+                            {file.name}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Group>
+            </Dropzone>
+            {!!allFiles.length && (
+              <Flex direction='column' p='18px' gap='8px' flex={1}>
                 {allFiles.map((file) => {
                   return (
-                    <div
-                      key={file.name}
-                      onClick={() => console.log(file)}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        width: '120px',
-                        justifyContent: 'flex-start',
-                        flex: 1
-                      }}
-                    >
-                      <IconFile3d size={34} />
+                    <Flex key={file.name} gap='16px' justify='space-between'>
                       <div
                         style={{
-                          width: '100px',
+                          width: '150px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis'
                         }}
                       >
-                        {file.name}
+                        <>{file.name}</>
                       </div>
-                    </div>
+                      <IconTrash
+                        color='red'
+                        onClick={() =>
+                          setAllfiles((prev) =>
+                            prev.filter((f) => f.name !== file.name)
+                          )
+                        }
+                      />
+                    </Flex>
                   );
                 })}
-              </div>
+              </Flex>
             )}
-          </Group>
-        </Dropzone>
-        {!!allFiles.length && (
-          <Flex direction='column' p='18px' gap='8px' flex={1}>
-            {allFiles.map((file) => {
-              return (
-                <Flex key={file.name} gap='16px' justify='space-between'>
-                  <div
-                    style={{
-                      width: '150px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    <>{file.name}</>
-                  </div>
-                  <IconTrash
-                    color='red'
-                    onClick={() =>
-                      setAllfiles((prev) =>
-                        prev.filter((f) => f.name !== file.name)
-                      )
-                    }
-                  />
-                </Flex>
-              );
-            })}
           </Flex>
-        )}
-      </Flex>
 
-      <Button
-        disabled={allFiles.length === 0}
-        mt='18px'
-        w='100%'
-        onClick={handleUploadClick}
-      >
-        Subir Archivos
-      </Button>
-      <Box py='24px'>
-        <hr />
-      </Box>
-      <Flex direction='column' gap='12px' align='flex-start'>
-        <h2>Archivos en la carpeta de este evento (Google drive)</h2>
-        {files?.map((file) => (
-          <Flex
-            gap='12px'
-            key={file.id}
-            justify='space-between'
-            p='12px 18px'
-            flex={1}
+          <Button
+            disabled={allFiles.length === 0}
+            mt='18px'
             w='100%'
-            maw='350px'
-            style={{
-              border: 'solid 1px rgba(180, 180, 180, 0.3)',
-              borderRadius: '6px',
-              width: '100%',
-              maxWidth: '350px'
-            }}
+            onClick={handleUploadClick}
           >
-            <div
-              style={{
-                width: '250px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}
-            >
-              <a
-                href={
-                  file.webContentLink ||
-                  `https://drive.google.com/uc?id=${file.id}&export=download`
-                }
-                target='_blank'
-                rel='noopener noreferrer'
+            Subir Archivos
+          </Button>
+          <Box py='24px'>
+            <hr />
+          </Box>
+          <Flex direction='column' gap='12px' align='flex-start'>
+            <h2>Archivos en la carpeta de este evento (Google drive)</h2>
+            {files?.map((file) => (
+              <Flex
+                gap='12px'
+                key={file.id}
+                justify='space-between'
+                p='12px 18px'
+                flex={1}
+                w='100%'
+                maw='350px'
+                style={{
+                  border: 'solid 1px rgba(180, 180, 180, 0.3)',
+                  borderRadius: '6px',
+                  width: '100%',
+                  maxWidth: '350px'
+                }}
               >
-                Download {file.name}
-              </a>
-            </div>
-            <IconTrash
-              color='red'
-              onClick={() => deleteFileFromFolder(file.id)}
-              cursor='pointer'
-            />
+                <div
+                  style={{
+                    width: '250px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  <a
+                    href={
+                      file.webContentLink ||
+                      `https://drive.google.com/uc?id=${file.id}&export=download`
+                    }
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  >
+                    Download {file.name}
+                  </a>
+                </div>
+                <IconTrash
+                  color='red'
+                  onClick={() => deleteFileFromFolder(file.id)}
+                  cursor='pointer'
+                />
+              </Flex>
+            ))}
           </Flex>
-        ))}
-      </Flex>
+        </>
+      )}
     </>
   );
 }
