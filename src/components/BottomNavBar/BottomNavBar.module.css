@@ -4,6 +4,10 @@
     align-items: center;
     justify-content: space-evenly;
     background-color: #242424;
+    position: fixed;
+    z-index: 999;
+    bottom: 0;
+    width: 100%;
 }
 
 .navbar_button {

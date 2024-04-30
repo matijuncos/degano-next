@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { UserProvider } from '@auth0/nextjs-auth0/client';
-import { ColorSchemeScript, MantineProvider } from '@mantine/core';
+import { ColorSchemeScript, Flex, MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 import 'mantine-datatable/styles.layer.css';
 import '@mantine/dates/styles.css';
@@ -30,10 +30,41 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={inter.className}>
-        <MantineProvider defaultColorScheme='dark'>
+        <MantineProvider forceColorScheme='dark' defaultColorScheme='dark'>
           <DeganoProvider>
             <UserProvider>
-              <div style={{ display: 'flex', width: '100%' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  minHeight: '100vh',
+                  position: 'relative'
+                }}
+              >
+                <div className='navbar-to-hide'>
+                  <Navbar />
+                </div>
+                <div
+                  className='everything-container'
+                  style={{
+                    width: '100%',
+                    padding: '16px'
+                  }}
+                >
+                  {children}
+                </div>
+              </div>
+              <div className='navbar-to-show'>
+                <BottomNavBar />
+              </div>
+              {/*  <div
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  minHeight: '100vh',
+                  position: 'relative'
+                }}
+              >
                 <div className='navbar-to-hide'>
                   <Navbar />
                 </div>
@@ -49,7 +80,7 @@ export default function RootLayout({
                 >
                   <Suspense fallback={'Loading....'}>{children}</Suspense>
                 </div>
-              </div>
+              </div> */}
             </UserProvider>
           </DeganoProvider>
         </MantineProvider>

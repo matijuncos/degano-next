@@ -6,7 +6,7 @@
     "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro",
     "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
 
-  --foreground-rgb: 0, 0, 0;
+  --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
 
@@ -84,6 +84,8 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
+  position: relative;
+  min-height: 100%;
 }
 
 body {
@@ -138,18 +140,18 @@ a {
 }
 
 @media(max-width: 460px) {
+ html {
+  padding-bottom: 60px;
+ }
   .navbar-to-hide {
     display: none;
   }
-  .navbar-to-show{
+  .navbar-to-show {
     display: block;
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     z-index: 333;
-  }
-  .everything-container {
-    padding-bottom: 65px;
   }
 }

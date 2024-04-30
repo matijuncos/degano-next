@@ -43,7 +43,7 @@ const BottomNavBar = () => {
   };
 
   return (
-    <div className={styles.navbar_container}>
+    <div className={`${styles.navbar_container} navbar-to-show`}>
       {tiles.map(({ Icon, path }, idx) => (
         <div
           onClick={() => handleButtonClick(path)}

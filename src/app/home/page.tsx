@@ -16,7 +16,8 @@ import { useEffect } from 'react';
 import axios from 'axios';
 import { useDeganoCtx } from '@/context/DeganoContext';
 const Home = () => {
-  const {setAllEvents} = useDeganoCtx();
+  console.log(process.env.NEXT_PUBLIC_AUTH0_BASE_URL);
+  const { setAllEvents } = useDeganoCtx();
   const tiles = [
     {
       label: 'Calendario',
