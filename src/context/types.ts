@@ -58,6 +58,9 @@ export interface DeganoContextProps {
   setFormState: Function;
   validate: boolean;
   setValidate: Function;
+  fetchEvents: () => void;
+  loading: boolean;
+  setLoading: Function;
 }
 export interface DataverseProviderProps {
   children: ReactNode;
