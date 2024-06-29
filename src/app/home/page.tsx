@@ -12,12 +12,7 @@ import {
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
-import { useEffect } from 'react';
-import axios from 'axios';
-import { useDeganoCtx } from '@/context/DeganoContext';
 const Home = () => {
-  console.log(process.env.NEXT_PUBLIC_AUTH0_BASE_URL);
-  const { setAllEvents } = useDeganoCtx();
   const tiles = [
     {
       label: 'Calendario',
@@ -61,20 +56,6 @@ const Home = () => {
       }
     }
   };
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const { data } = await axios.get('/api/getEvents', {
-          params: { page: 1 }
-        });
-        setAllEvents(data.events);
-      } catch (error) {
-        console.error('Failed to fetch movies:', error);
-      }
-    };
-    fetchEvents();
-  }, []);
 
   return (
     <>
