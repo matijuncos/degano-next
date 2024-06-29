@@ -56,7 +56,6 @@ export default function Home() {
       selectable: true
     };
   });
-  console.log(allEvents);
 
   const onNavigate = useCallback(
     (newDate: any) => {
