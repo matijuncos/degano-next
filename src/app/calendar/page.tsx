@@ -32,7 +32,7 @@ export default function Home() {
     locales
   });
 
-  const { setSelectedEvent } = useDeganoCtx();
+  const { setSelectedEvent, allEvents } = useDeganoCtx();
   const [date, setDate] = useState(new Date());
   const [view, setView] = useState(Views.MONTH);
 
@@ -46,7 +46,7 @@ export default function Home() {
     }),
     []
   );
-  const events = mockedEvents.map((evnt) => {
+  const events = allEvents.map((evnt) => {
     return {
       ...evnt,
       title: evnt.fullName,
