@@ -60,14 +60,9 @@ const DrawerContent = () => {
         <div>
           <NavLink
             active
-            onClick={() => {
-              setActiveNavTab(1);
-              router.push(`/event/${selectedEvent?._id}`);
-            }}
+            onClick={() => router.push(`/event/${selectedEvent?._id}`)}
             label='Ver Evento'
-          >
-            Ver Evento
-          </NavLink>
+          ></NavLink>
         </div>
       </div>
     </>

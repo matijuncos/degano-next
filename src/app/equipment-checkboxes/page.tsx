@@ -10,10 +10,10 @@ export default withPageAuthRequired(async function EquipmentCheckBoxesPage() {
       <h2>Selecciona el equipamiento</h2>
       <Text my='14px'>
         {
-          'Al seleccionar un equipo, sus equipos "hijos", se eleccionan por defecto. Puede des-seleccionar lo que quieras'
+          'Al seleccionar un equipo, sus equipos "hijos", se eleccionan por defecto. Puede desseleccionar lo que quieras'
         }
       </Text>
-      <EquipmentCheckBoxes inputListProp={data.equipment.at(-1).equipment} />
+      <EquipmentCheckBoxes inputListProp={data?.equipment?.at(-1)?.equipment} />
     </>
   );
 });
