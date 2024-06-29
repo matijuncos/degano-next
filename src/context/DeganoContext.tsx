@@ -23,21 +23,23 @@ export const DeganoProvider: ({
     null
   );
 
+  const fetchEvents = async () => {
+    try {
+      const { data } = await axios.get('/api/getEvents', {
+        params: { page: 1 }
+      });
+      setAllEvents(data.events);
+    } catch (error) {
+      console.error('Failed to fetch movies:', error);
+    }
+  };
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const { data } = await axios.get('/api/getEvents', {
-          params: { page: 1 }
-        });
-        setAllEvents(data.events);
-      } catch (error) {
-        console.error('Failed to fetch movies:', error);
-      }
-    };
     fetchEvents();
   }, []);
 
   const [token, setToken] = useState();
+
+  const [loading, setLoading] = useState(false);
 
   const [activeNavTab, setActiveNavTab] = useState<number>(0);
 
@@ -73,7 +75,10 @@ export const DeganoProvider: ({
     formState,
     setFormState,
     validate,
-    setValidate
+    setValidate,
+    fetchEvents,
+    loading,
+    setLoading
   };
   return (
     <DeganoContext.Provider value={contextValue}>
