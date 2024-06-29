@@ -74,13 +74,20 @@ export default function EventPage() {
     <>
       <Modal
         opened={showConfirmationModal}
-        onClose={close}
+        onClose={() => setShowConfirmationModal(false)}
         title='¿Seguro que quiere eliminar este evento?'
       >
         <Flex direction='column' align='center' gap='16px'>
           <IconAlertTriangle size={80} />
           <Button w='100%' variant='gradient' onClick={() => removeEvent()}>
             Confirmar
+          </Button>
+          <Button
+            w='100%'
+            variant='gradient'
+            onClick={() => setShowConfirmationModal(false)}
+          >
+            Cancelar
           </Button>
         </Flex>
       </Modal>
