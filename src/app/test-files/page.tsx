@@ -94,6 +94,7 @@ export default function FileUploader() {
           `https://www.googleapis.com/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
           {
             method: 'GET',
+            cache: 'no-store',
             headers: new Headers({
               Authorization: 'Bearer ' + accessToken
             })
@@ -141,6 +142,7 @@ export default function FileUploader() {
           `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
           {
             method: 'GET',
+            cache: 'no-store',
             headers: new Headers({
               Authorization: 'Bearer ' + authToken
             })

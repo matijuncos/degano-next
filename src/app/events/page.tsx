@@ -13,7 +13,6 @@ import {
 import { EventModel } from '@/context/types';
 import { useRouter } from 'next/navigation';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import axios from 'axios';
 import Loader from '@/components/Loader/Loader';
 
 export default function EventPage() {
@@ -40,7 +39,11 @@ export default function EventPage() {
     setShowConfirmationModal(false);
     setLoading(true);
     try {
-      const { data } = await axios.delete(`/api/deleteEvent/${eventId}`);
+      const response = await fetch(`/api/deleteEvent/${eventId}`, {
+        method: 'DELETE',
+        cache: 'no-store'
+      });
+      const data = await response.json();
       if (data.success) {
         fetchEvents();
       }

@@ -3,10 +3,7 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
-export const PUT = async function handler(
-  req: Request,
-  res: NextApiResponse
-) {
+export const PUT = async function handler(req: Request, res: NextApiResponse) {
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;

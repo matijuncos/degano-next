@@ -8,11 +8,11 @@ import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { genres } from '@/context/config';
 import { EventModel } from '@/context/types';
-import axios from 'axios';
 import { useState } from 'react';
 
 const NewEventPage = () => {
-  const { formState, selectedEvent, setFormState, validate, setValidate } = useDeganoCtx();
+  const { formState, selectedEvent, setFormState, validate, setValidate } =
+    useDeganoCtx();
   const [event, setEvent] = useState<EventModel>({
     _id: selectedEvent?._id || '', // Use empty string instead of null
     fullName: selectedEvent?.fullName || '',
@@ -67,14 +67,22 @@ const NewEventPage = () => {
 
   const saveEvent = async (newEvent: EventModel) => {
     try {
-      const response = await axios.post('/api/postEvent', newEvent);
+      const response = await fetch('/api/postEvent', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newEvent)
+      });
+      // TODO: redirect to list of events?
     } catch (err) {
-      console.error('failed to save the event ', err)
+      console.error('failed to save the event ', err);
     }
   };
 
   const getTabContent = () => {
-    switch (formState) { 
+    switch (formState) {
       case 0:
         return (
           <ClientForm
@@ -112,7 +120,13 @@ const NewEventPage = () => {
           />
         );
       case 4:
-        return <PaymentForm onBackTab={onBackTab} event={event} onFinish={saveEvent}/>;
+        return (
+          <PaymentForm
+            onBackTab={onBackTab}
+            event={event}
+            onFinish={saveEvent}
+          />
+        );
 
       default:
         break;

@@ -9,7 +9,7 @@ import {
   SelectedEventType
 } from './types';
 import { usePathname } from 'next/navigation';
-import axios from 'axios';
+
 export const DeganoContext = createContext<DeganoContextProps | null>(null);
 
 export const DeganoProvider: ({
@@ -25,9 +25,10 @@ export const DeganoProvider: ({
 
   const fetchEvents = async () => {
     try {
-      const { data } = await axios.get('/api/getEvents', {
-        params: { page: 1 }
+      const response = await fetch('/api/getEvents?page=1', {
+        cache: 'no-store'
       });
+      const data = await response.json();
       setAllEvents(data.events);
     } catch (error) {
       console.error('Failed to fetch movies:', error);

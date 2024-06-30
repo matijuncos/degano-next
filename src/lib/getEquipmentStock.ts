@@ -1,7 +1,7 @@
 'use server';
 export async function getEquipmentStock() {
   const res = await fetch(process.env.URL + '/api/getEquipment', {
-    next: { revalidate: 0 }
+    cache: 'no-store'
   });
 
   if (!res.ok) {

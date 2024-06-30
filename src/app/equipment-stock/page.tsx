@@ -3,7 +3,6 @@ import EquipmentItem from '@/components/EquipmentItem/EquipmentItem';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import { Box, Button, Flex, Input, Modal, Text } from '@mantine/core';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
-import axios from 'axios';
 import _, { cloneDeep } from 'lodash';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -23,7 +22,8 @@ const EquipmentSelects = withPageAuthRequired(() => {
 
   const searchForEquipmentInventory = useCallback(async () => {
     const params = new URLSearchParams(searchParams.toString());
-    const { data } = await axios.get('/api/getEquipment');
+    const response = await fetch('/api/getEquipment', { cache: 'no-store' });
+    const data = await response.json();
     const equipment = data.equipment.at(-1);
     params.set('id', equipment._id);
     const url = `${pathname}?${params.toString()}`;
@@ -64,7 +64,14 @@ const EquipmentSelects = withPageAuthRequired(() => {
         Object.assign(payload, { cleanStock: true });
       }
 
-      await axios.put('/api/updateEquipmentList', payload);
+      await fetch('/api/updateEquipmentList', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       searchForEquipmentInventory();
     },
     [searchParams, searchForEquipmentInventory]
