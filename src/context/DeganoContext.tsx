@@ -24,8 +24,10 @@ export const DeganoProvider: ({
   );
 
   const fetchEvents = async () => {
+    const timestamp = Date.parse(new Date().toString());
+
     try {
-      const response = await fetch('/api/getEvents?page=1', {
+      const response = await fetch(`/api/getEvents?page=1&time=${timestamp}`, {
         cache: 'no-store'
       });
       const data = await response.json();

@@ -22,10 +22,13 @@ const EquipmentSelects = withPageAuthRequired(() => {
 
   const searchForEquipmentInventory = useCallback(async () => {
     const params = new URLSearchParams(searchParams.toString());
+    const timestamp = new Date();
+
     const response = await fetch('/api/getEquipment', { cache: 'no-store' });
     const data = await response.json();
     const equipment = data.equipment.at(-1);
     params.set('id', equipment._id);
+    params.set('stamp', timestamp.toString());
     const url = `${pathname}?${params.toString()}`;
     router.replace(url);
     setInputList(equipment.equipment);
