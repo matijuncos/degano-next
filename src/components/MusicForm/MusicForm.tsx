@@ -59,7 +59,6 @@ const MusicForm = ({
     }
   };
   const rateGenre = (value: number, index: number) => {
-    console.log(value);
     setMusicData((prevData) => {
       if (!prevData) return prevData;
       const updatedGenres = prevData.music.genres.map((genre, idx) =>
@@ -76,7 +75,6 @@ const MusicForm = ({
     });
   };
   const deleteSongForbidden = (arg: any) => {
-    console.log(arg);
     const newList = musicData?.music.forbidden.filter((song) => song !== arg);
     setMusicData((prevData: any) => {
       if (!prevData) return null; // Ensure prevData is not null
@@ -179,12 +177,8 @@ const MusicForm = ({
         </div>
       </div>
       <Flex direction='column' gap='12px'>
-        <Button onClick={back}>
-          Anterior``
-        </Button>
-        <Button onClick={next}>
-          Siguiente
-        </Button>
+        <Button onClick={back}>Anterior</Button>
+        <Button onClick={next}>Siguiente</Button>
       </Flex>
     </div>
   );
