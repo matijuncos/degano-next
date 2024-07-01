@@ -1,5 +1,4 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { EventModel } from '@/context/types';
 import {
   Box,
   CheckIcon,
@@ -7,10 +6,11 @@ import {
   Flex,
   Input,
   Rating,
-  Text
+  Text,
+  Textarea
 } from '@mantine/core';
 import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
 
 const EditableData = ({
@@ -34,6 +34,9 @@ const EditableData = ({
   });
 
   const updateEvent = async (event: any) => {
+    const areOjectsEqual = isEqual(selectedEvent, event);
+    console.log(areOjectsEqual);
+    if (areOjectsEqual) return;
     const timeStamp = new Date().toISOString();
     try {
       const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
@@ -72,7 +75,7 @@ const EditableData = ({
     setEditState((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: any) => {
     setEditState((prev) => ({ ...prev, inputValue: e.target.value }));
   };
 
@@ -118,7 +121,7 @@ const EditableData = ({
       }}
     >
       <Box w='100%'>
-        <strong>{title}:</strong>
+        {title && <strong>{title}:</strong>}
         {editState.showInput ? (
           <Input
             width='100%'
@@ -287,6 +290,46 @@ const EditableData = ({
     </>
   );
 
+  const typeTextArea = () => {
+    return (
+      <Flex
+        gap='8px'
+        align='center'
+        py='10px'
+        justify='space-between'
+        style={{
+          borderBottom: '1px solid white'
+        }}
+      >
+        <Box w='100%'>
+          {title && <strong>{title}:</strong>}
+          {editState.showInput ? (
+            <Textarea
+              onChange={handleInputChange}
+              value={editState.inputValue}
+            />
+          ) : (
+            <p style={{ paddingLeft: '12px' }}>{editState.inputValue}</p>
+          )}
+        </Box>
+        {editState.showInput ? (
+          <CheckIcon
+            cursor='pointer'
+            size={22}
+            color='green'
+            onClick={() => toggleEdit('showInput', 'save')}
+          />
+        ) : (
+          <IconEdit
+            cursor='pointer'
+            size={22}
+            onClick={() => toggleEdit('showInput', 'open')}
+          />
+        )}
+      </Flex>
+    );
+  };
+
   return (
     <>
       {type === 'text' ? (
@@ -295,6 +338,8 @@ const EditableData = ({
         typeChipsData()
       ) : type === 'rate' ? (
         typeRatingData()
+      ) : type === 'textarea' ? (
+        typeTextArea()
       ) : (
         // Add text area
         <></>

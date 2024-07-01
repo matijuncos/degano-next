@@ -179,7 +179,14 @@ const EventPage = () => {
         </AccordionSet>
       </AccordionSet>
       <AccordionSet value='Más Información'>
-        <p>{selectedEvent.moreData}</p>
+        <EditableData
+          type='textarea'
+          //  title='Más Información'
+          property='moreData'
+          value={selectedEvent.moreData}
+        />
+        {/*         <p>{selectedEvent.moreData}</p>
+         */}
       </AccordionSet>
       <AccordionSet value='Equipos'>
         <Table>
