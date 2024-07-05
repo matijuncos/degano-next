@@ -1,7 +1,6 @@
 import { Equipment, EventModel } from '@/context/types';
-import { Button, Input } from '@mantine/core';
+import { Button, Flex, Input, Text } from '@mantine/core';
 import { ActionIcon } from '@mantine/core';
-import { useParams } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 
@@ -22,18 +21,7 @@ const EquipmentForm = ({
   };
   const [newEquipment, setNewEquipment] = useState(newDefaultEquipment);
   const [price, setPrice] = useState<number>(0);
-  const { id } = useParams();
-  const priceSum = () => {
-    if (id) {
-      const totalPrice = event.equipment.reduce(
-        (total, equipment) => total + equipment.price * equipment.quantity,
-        0
-      );
-      setPrice(totalPrice);
-    } else {
-      console.log(price);
-    }
-  };
+
   const addEquipment = () => {
     setEquipment({
       ...equipment,
@@ -97,36 +85,48 @@ const EquipmentForm = ({
         <Button onClick={addEquipment} mt='16px'>
           Agregar equipo
         </Button>
-        <div className='cantidad-precio-lista' style={{ width: '90%' }}>
+        <Flex
+          className='cantidad-precio-lista'
+          direction='column'
+          gap='6px'
+          style={{ width: '90%' }}
+          mt='12px'
+        >
           {equipment?.equipment
             ?.filter((eq) => eq.quantity > 0)
             .map((item, idx) => {
               return (
-                <div key={item.name + idx} className='equipmentDiv flex'>
-                  <div>
-                    <p className='itemName'>{item.name}</p>
-                    <p className='price'>${item.price}</p>
-                    <p className='quantity'>{item.quantity}</p>
-                  </div>
-                  <div style={{marginLeft: '10px'}}>
-                    <ActionIcon
-                      size='sm'
-                      variant='subtle'
-                      color='red'
-                      onClick={(e) => handleRemoveEquipment(idx)}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </div>
-                </div>
+                <Flex
+                  gap='6px'
+                  key={item.name + idx}
+                  className='equipmentDiv flex'
+                  p='3px 6px'
+                  style={{
+                    border: 'solid 1px white',
+                    width: 'fit-content',
+                    borderRadius: '4px'
+                  }}
+                >
+                  <Text className='itemName'> {item.name}</Text>|
+                  <Text className='quantity'>Cantidad: {item.quantity}</Text>|
+                  <Text className='price'>Precio: ${item.price}</Text>-
+                  <ActionIcon
+                    size='sm'
+                    variant='subtle'
+                    color='red'
+                    onClick={(e) => handleRemoveEquipment(idx)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Flex>
               );
             })}
-          <div
-            style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}
-          >
-            <h3 style={{ fontWeight: 'bold' }}>Total: </h3>
-            <p>${price}</p>
-          </div>
+        </Flex>
+        <div
+          style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}
+        >
+          <h3 style={{ fontWeight: 'bold' }}>Total: </h3>
+          <p>${price}</p>
         </div>
       </div>
       <div
