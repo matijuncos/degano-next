@@ -14,6 +14,18 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
     const event = await db
       .collection('events')
       .insertOne(!_id ? bodyWithoutId : body);
+
+    const existingClient = await db
+      .collection('clients')
+      .findOne({ email: body.email });
+
+    if (!existingClient) {
+      await db.collection('clients').insertOne({
+        fullName: body.fullName,
+        phoneNumber: body.phoneNumber,
+        email: body.email
+      });
+    }
     return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
     console.log(error);
