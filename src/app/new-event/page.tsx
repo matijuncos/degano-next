@@ -8,11 +8,14 @@ import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { genres } from '@/context/config';
 import { EventModel } from '@/context/types';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 const NewEventPage = () => {
   const { formState, selectedEvent, setFormState, validate, setValidate } =
     useDeganoCtx();
+  const router = useRouter();
+
   const [event, setEvent] = useState<EventModel>({
     _id: selectedEvent?._id || '', // Use empty string instead of null
     fullName: selectedEvent?.fullName || '',
@@ -75,7 +78,7 @@ const NewEventPage = () => {
         },
         body: JSON.stringify(newEvent)
       });
-      // TODO: redirect to list of events?
+      router.push('/home');
     } catch (err) {
       console.error('failed to save the event ', err);
     }

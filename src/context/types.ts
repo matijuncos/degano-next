@@ -33,7 +33,10 @@ export interface EventModel {
   };
   date: Date;
   active: boolean;
-  playlist: string[];
+  playlist: {
+    label: string;
+    url: string;
+  }[];
   _id: string;
 }
 export interface SelectedEventType extends EventModel {
