@@ -126,14 +126,7 @@ export default function EventPage() {
                   >
                     <IconEye size={16} />
                   </ActionIcon>
-                  <ActionIcon
-                    size='sm'
-                    variant='subtle'
-                    color='blue'
-                    onClick={() => handleEvent({ event, action: actions.edit })}
-                  >
-                    <IconEdit size={16} />
-                  </ActionIcon>
+
                   <ActionIcon
                     size='sm'
                     variant='subtle'

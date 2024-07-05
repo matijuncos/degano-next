@@ -1,10 +1,15 @@
+import clientPromise from '@/lib/mongodb';
+import { MongoClient } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
 
 export const GET = async function handler(req: Request, res: NextApiResponse) {
   try {
-    const clients = {};
-    console.log('clients, ', clients);
+    const typedClientPromise: Promise<MongoClient> =
+      clientPromise as Promise<MongoClient>;
+    const client = await typedClientPromise;
+    const db = client.db('degano-app');
+    const clients = await db.collection('clients').find().toArray();
     return NextResponse.json({ clients }, { status: 200 });
   } catch (error) {
     console.log(error);
