@@ -35,7 +35,6 @@ const EditableData = ({
 
   const updateEvent = async (event: any) => {
     const areOjectsEqual = isEqual(selectedEvent, event);
-    console.log(areOjectsEqual);
     if (areOjectsEqual) return;
     const timeStamp = new Date().toISOString();
     try {
