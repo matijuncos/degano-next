@@ -63,67 +63,81 @@ const PrintableEvent = () => {
   const styles = StyleSheet.create({
     page: {
       padding: 18,
-      flexDirection: 'column'
+      flexDirection: 'column',
+      color: 'black'
     },
     header: {
       padding: 8,
-      marginBottom: 16
+      marginBottom: 16,
+      color: 'black'
     },
     logo: {
       width: 40,
       height: 40,
       borderRadius: '100%',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      color: 'black'
     },
     title: {
       fontWeight: 700,
       fontSize: 20,
-      marginBottom: 12
+      marginBottom: 12,
+      color: 'black'
     },
     section: {
       marginBottom: 10,
       flexDirection: 'row',
-      alignItems: 'center'
+      alignItems: 'center',
+      color: 'black'
     },
     playlist: {
-      marginTop: 10
+      marginTop: 10,
+      color: 'black'
     },
     equipment: {
-      marginTop: 20
+      marginTop: 20,
+      color: 'black'
     },
     equipmentTitle: {
       fontWeight: 700,
       fontSize: 20,
-      marginBottom: 28
+      marginBottom: 28,
+      color: 'black'
     },
     table: {
       marginTop: 10,
       borderWidth: 1,
-      borderColor: '#000'
+      borderColor: '#000',
+      color: 'black'
     },
     tableHeader: {
       flexDirection: 'row',
       borderBottomWidth: 1,
       borderBottomColor: '#000',
       padding: 5,
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+      color: 'black'
     },
     tableRow: {
       flexDirection: 'row',
       padding: 5,
       borderBottomWidth: 1,
-      borderBottomColor: '#000'
+      borderBottomColor: '#000',
+      color: 'black'
     },
     tableCell: {
-      flex: 1
+      flex: 1,
+      color: 'black'
     },
     keyName: {
       fontSize: 16,
-      fontWeight: 700
+      fontWeight: 700,
+      color: 'black'
     },
     keyValue: {
       fontSize: 14,
-      fontWeight: 400
+      fontWeight: 400,
+      color: 'black'
     }
   });
 
