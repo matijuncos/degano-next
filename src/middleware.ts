@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
 
   // Apply auth middleware to /calendar route
   if (pathname.startsWith('/calendar')) {
-    return withMiddlewareAuthRequired();
+    return withMiddlewareAuthRequired()(request, {} as any);
   }
 
   // Apply cache headers middleware to /api routes
