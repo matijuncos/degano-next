@@ -69,7 +69,7 @@ const EventPage = () => {
               <Title mb='16px'>
                 {selectedEvent.fullName + ' - ' + dateString}
               </Title>
-              <div>
+              <AccordionSet value='Información Principal'>
                 <EditableData
                   type='text'
                   property='phoneNumber'
@@ -150,7 +150,7 @@ const EventPage = () => {
                   title='Teléfono Manager'
                   value={selectedEvent.managerPhone}
                 />
-              </div>
+              </AccordionSet>
               <AccordionSet value='Música'>
                 <AccordionSet value='Prohibidos'>
                   <EditableData
