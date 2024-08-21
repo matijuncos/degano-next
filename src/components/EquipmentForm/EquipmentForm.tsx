@@ -1,8 +1,9 @@
 import { Equipment, EventModel } from '@/context/types';
-import { Button, Flex, Input, Text } from '@mantine/core';
+import { Box, Button, Checkbox, Flex, Input, Text } from '@mantine/core';
 import { ActionIcon } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { NewEquipment } from '../equipmentStockTable/types';
 
 const EquipmentForm = ({
   event,
@@ -14,6 +15,8 @@ const EquipmentForm = ({
   onBackTab: Function;
 }) => {
   const [equipment, setEquipment] = useState<EventModel>(event);
+  const [useEquipmentDataBase, setUseEquipmentDataBase] = useState(true);
+  const [equipmentFromDB, setEquipmentFromDB] = useState<NewEquipment[]>([]);
   const newDefaultEquipment: Equipment = {
     name: '',
     price: 0,
@@ -54,37 +57,85 @@ const EquipmentForm = ({
       return { ...prevEquipment, equipment: updatedEquipment };
     });
   };
+
+  useEffect(() => {
+    const getEquipmentFromDB = async () => {
+      const response = await fetch('/api/getEquipmentV2');
+      const data = await response.json();
+      setEquipmentFromDB(data.equipment[0]?.equipment as NewEquipment[]);
+    };
+    getEquipmentFromDB();
+  }, []);
+
+  const ChoseComponentFromDBComponent = () => {
+    return (
+      <>
+        <Box>
+          {(equipmentFromDB as NewEquipment[])?.map((eq) => {
+            return (
+              <Flex key={eq._id} align='center' gap='8px'>
+                <Checkbox />
+                <Text>{eq.name}</Text>
+                <Input type='numer' placeholder='cuantos llevas?' />
+              </Flex>
+            );
+          })}
+        </Box>
+      </>
+    );
+  };
+
   return (
     <div>
-      <h2>Equipamiento necesario</h2>
+      <h2>
+        Equipamiento necesario{' '}
+        <Text
+          display='inline'
+          onClick={() => setUseEquipmentDataBase(!useEquipmentDataBase)}
+          ml='12px'
+        >
+          {useEquipmentDataBase
+            ? 'Escribir equipos'
+            : 'Seleccionar de base de datos'}
+        </Text>
+      </h2>
       <div>
-        <div className='equipment-inputs'>
-          <Input
-            type='text'
-            placeholder='Equipamiento'
-            onChange={handleChange}
-            name='name'
-            value={newEquipment.name}
-          />
-          <Input
-            type='number'
-            placeholder='Precio'
-            onChange={handleChange}
-            name='price'
-            value={newEquipment.price ? newEquipment.price : ''}
-          />
-          <Input
-            type='number'
-            placeholder='Cantidad'
-            onChange={handleChange}
-            name='quantity'
-            min={1}
-            value={newEquipment.quantity ? newEquipment.quantity : ''}
-          />
-        </div>
-        <Button onClick={addEquipment} mt='16px'>
-          Agregar equipo
-        </Button>
+        {useEquipmentDataBase ? (
+          <>
+            <ChoseComponentFromDBComponent />
+          </>
+        ) : (
+          <>
+            <div className='equipment-inputs'>
+              <Input
+                type='text'
+                placeholder='Equipamiento'
+                onChange={handleChange}
+                name='name'
+                value={newEquipment.name}
+              />
+              <Input
+                type='number'
+                placeholder='Precio'
+                onChange={handleChange}
+                name='price'
+                value={newEquipment.price ? newEquipment.price : ''}
+              />
+              <Input
+                type='number'
+                placeholder='Cantidad'
+                onChange={handleChange}
+                name='quantity'
+                min={1}
+                value={newEquipment.quantity ? newEquipment.quantity : ''}
+              />
+            </div>
+            <Button onClick={addEquipment} mt='16px'>
+              Agregar equipo
+            </Button>
+          </>
+        )}
+
         <Flex
           className='cantidad-precio-lista'
           direction='column'

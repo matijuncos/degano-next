@@ -63,7 +63,7 @@ const NewEventPage = () => {
   };
 
   useEffect(() => {
-    setFormState(0);
+    setFormState(3);
   }, []);
 
   const saveEvent = async (newEvent: EventModel) => {

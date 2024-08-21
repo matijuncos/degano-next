@@ -3,7 +3,7 @@ import { TableTd, Input } from '@mantine/core';
 import { Equipment } from '@/context/types';
 
 interface CustomCellProps {
-  field: keyof Equipment;
+  field: any;
   value: string | number;
   isEditing: boolean;
   handleChange: (field: keyof Equipment, value: string | number) => void;
