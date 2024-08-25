@@ -15,7 +15,7 @@ interface FileItem {
   [key: string]: any;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL;
+const baseUrl = process.env.GOOGLE_BASE_URL;
 
 const DISCOVERY_DOCS = [
   baseUrl+'/discovery/v1/apis/drive/v3/rest'
@@ -54,8 +54,8 @@ export default function FileUploader() {
   }
 
   const gapiConfig = {
-    apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
-    clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
+    apiKey: process.env.GAPICONFIG_APIKEY,
+    clientId: process.env.GAPICONFIG_CLIENTID,
     discoveryDocs: DISCOVERY_DOCS,
     scope: SCOPES
   };
