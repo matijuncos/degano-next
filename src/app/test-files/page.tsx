@@ -85,7 +85,8 @@ export default function FileUploader() {
     }
     start();
   }, []);
-
+  console.log('gapiConfig? ', gapiConfig)
+  console.log('baseUrl ', baseUrl)
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
       if (!authToken) return;
