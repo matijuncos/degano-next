@@ -85,10 +85,6 @@ export default function FileUploader() {
     }
     start();
   }, []);
-  console.log('gapiConfig? ', gapiConfig)
-  console.log('env? ', process.env)
-  console.log('proces next> ', process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY)
-  console.log('segunda ', process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID)
 
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
