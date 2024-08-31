@@ -7,7 +7,7 @@ export default async function equipmentStock() {
   const cursor = await getEquipmentAction();
   const data = await cursor?.toArray();
   const formattedEquipment = data?.[0]?.equipment?.map(({ ...equip }) => ({
-    _id: equip.toString(),
+    _id: equip._id.toString(),
     name: equip.name,
     price: equip.price,
     totalQuantity: equip.totalQuantity,
@@ -17,7 +17,7 @@ export default async function equipmentStock() {
     <Box>
       <Text>Lista de equipos</Text>
       <EquipmentStockTable
-        id={data?.[0]._id.toString() as string}
+        id={data?.[0]?._id?.toString() as string}
         equipment={formattedEquipment}
       />
     </Box>

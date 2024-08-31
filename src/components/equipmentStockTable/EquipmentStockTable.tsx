@@ -8,8 +8,7 @@ import {
   TableThead,
   TableTr
 } from '@mantine/core';
-import axios from 'axios';
-import { IconCheck, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconPlus } from '@tabler/icons-react';
 import React, { useState } from 'react';
 import { columns } from './config';
 import { NewEquipment } from './types';
@@ -43,10 +42,11 @@ const EquipmentStockTable = ({
   const handleAddEquipment = async () => {
     const payload = [
       ...equipmentList,
-      { ...newEquipment, _id: Date.now().toString() }
+      { ...newEquipment, _id: new Date().toISOString() }
     ];
     setShowInputsToAdd(false);
-    makePutRequest(payload);
+    await makePutRequest(payload);
+
     setEquipmentList(payload);
     setNewEquipment({
       name: '',

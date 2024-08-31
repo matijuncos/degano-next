@@ -4,4 +4,5 @@ export type NewEquipment = {
   price: number;
   totalQuantity: number;
   currentQuantity: number;
+  selectedQuantity?: number;
 };

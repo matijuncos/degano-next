@@ -10,12 +10,12 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
   const client = await typedClientPromise;
   const db = client.db('degano-app');
   console.log(body);
-  if (!body?.equipment?.length) {
+  /*   if (!body?.equipment?.length) {
     return NextResponse.json(
       { message: 'Equipment Array is empty and it will remove everything.' },
       { status: 400 }
     );
-  }
+  } */
 
   if (body.cleanStock) {
     const updateResult = await db
@@ -37,6 +37,21 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
       },
       {
         status: 201
+      }
+    );
+  }
+
+  if (!body._id && body?.equipment?.length) {
+    const newEquimentColection = await db
+      .collection('equipmentListV2')
+      .insertOne({ equipment: body.equipment });
+    return NextResponse.json(
+      {
+        message: 'Equipment added successfully',
+        newEquimentColection
+      },
+      {
+        status: 200
       }
     );
   }

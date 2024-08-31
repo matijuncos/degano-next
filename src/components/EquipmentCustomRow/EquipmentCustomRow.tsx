@@ -6,16 +6,16 @@ import {
   IconEdit,
   IconTrash
 } from '@tabler/icons-react';
-import { Equipment } from '@/context/types';
 import CustomCell from '../CustomCell/CustomCell';
 import { cloneDeep } from 'lodash';
 import { useDeganoCtx } from '@/context/DeganoContext';
+import { NewEquipment } from '../equipmentStockTable/types';
 
 interface CustomRowProps {
-  eq: Equipment;
+  eq: NewEquipment;
   index: number;
-  setEquipmentListToEdit: React.Dispatch<React.SetStateAction<Equipment[]>>;
-  equipmentListToEdit: Equipment[];
+  setEquipmentListToEdit: React.Dispatch<React.SetStateAction<NewEquipment[]>>;
+  equipmentListToEdit: NewEquipment[];
 }
 
 const CustomRow: React.FC<CustomRowProps> = ({
@@ -27,7 +27,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmationOpen, setIsconfirmationOpen] = useState(false);
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
-  const handleChange = (field: keyof Equipment, value: string | number) => {
+  const handleChange = (field: keyof NewEquipment, value: string | number) => {
     setEquipmentListToEdit((prev) =>
       prev.map((item, idx) =>
         idx === index ? { ...item, [field]: value } : item
@@ -42,10 +42,11 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const handleSaveEdit = async () => {
     setIsEditing(false);
     setLoading(true);
+    console.log(equipmentListToEdit);
     makePutRequest(equipmentListToEdit);
   };
 
-  const makePutRequest = async (newEquipment: Equipment[]) => {
+  const makePutRequest = async (newEquipment: NewEquipment[]) => {
     const event = cloneDeep(selectedEvent);
     event!.equipment = newEquipment;
     try {
@@ -104,10 +105,16 @@ const CustomRow: React.FC<CustomRowProps> = ({
           handleChange={handleChange}
         />
         <CustomCell
-          field='quantity'
-          value={eq.quantity}
+          field='selectedQuantity'
+          value={eq.selectedQuantity || ''}
           isEditing={isEditing}
           handleChange={handleChange}
+          color={
+            Number(eq.currentQuantity) >= Number(eq.selectedQuantity) ||
+            !eq.currentQuantity
+              ? 'green'
+              : 'red'
+          }
         />
         <CustomCell
           field='price'
@@ -115,7 +122,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <TableTd>${Number(eq.price) * Number(eq.quantity)}</TableTd>
+        <TableTd>${Number(eq.price) * Number(eq.selectedQuantity)}</TableTd>
         <TableTd>
           <Flex align='center' gap='24px'>
             {isEditing ? (

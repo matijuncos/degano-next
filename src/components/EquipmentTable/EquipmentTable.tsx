@@ -31,7 +31,7 @@ const EquipmentTable = () => {
 
   const calculateTotal = () => {
     return equipmentListToEdit.reduce(
-      (acc, item) => acc + item.price * item.quantity,
+      (acc, item) => acc + item.price * (item.selectedQuantity || 1),
       0
     );
   };

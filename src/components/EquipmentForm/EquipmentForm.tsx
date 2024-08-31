@@ -1,9 +1,10 @@
-import { Equipment, EventModel } from '@/context/types';
-import { Box, Button, Checkbox, Flex, Input, Text } from '@mantine/core';
+import { EventModel } from '@/context/types';
+import { Box, Button, Flex, Input, Switch, Text } from '@mantine/core';
 import { ActionIcon } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
+import ChoseComponentFromDBComponent from './ChooseComponentFromDB';
 
 const EquipmentForm = ({
   event,
@@ -17,10 +18,12 @@ const EquipmentForm = ({
   const [equipment, setEquipment] = useState<EventModel>(event);
   const [useEquipmentDataBase, setUseEquipmentDataBase] = useState(true);
   const [equipmentFromDB, setEquipmentFromDB] = useState<NewEquipment[]>([]);
-  const newDefaultEquipment: Equipment = {
+  const newDefaultEquipment: NewEquipment = {
     name: '',
     price: 0,
-    quantity: 0
+    currentQuantity: 0,
+    totalQuantity: 0,
+    _id: new Date().toISOString()
   };
   const [newEquipment, setNewEquipment] = useState(newDefaultEquipment);
   const [price, setPrice] = useState<number>(0);
@@ -30,7 +33,9 @@ const EquipmentForm = ({
       ...equipment,
       equipment: [...equipment.equipment, newEquipment]
     });
-    setPrice(price + newEquipment.price * newEquipment.quantity);
+    setPrice(
+      price + newEquipment.price * Number(newEquipment.selectedQuantity)
+    );
     setNewEquipment(newDefaultEquipment);
   };
   const next = () => {
@@ -51,7 +56,9 @@ const EquipmentForm = ({
         (_, idx) => idx !== idxToRemove
       );
       const newPrice = updatedEquipment.reduce((totalPrice, equipment) => {
-        return totalPrice + equipment.price * equipment.quantity;
+        return (
+          totalPrice + equipment.price * Number(equipment.selectedQuantity)
+        );
       }, 0);
       setPrice(newPrice);
       return { ...prevEquipment, equipment: updatedEquipment };
@@ -67,42 +74,32 @@ const EquipmentForm = ({
     getEquipmentFromDB();
   }, []);
 
-  const ChoseComponentFromDBComponent = () => {
-    return (
-      <>
-        <Box>
-          {(equipmentFromDB as NewEquipment[])?.map((eq) => {
-            return (
-              <Flex key={eq._id} align='center' gap='8px'>
-                <Checkbox />
-                <Text>{eq.name}</Text>
-                <Input type='numer' placeholder='cuantos llevas?' />
-              </Flex>
-            );
-          })}
-        </Box>
-      </>
-    );
-  };
-
   return (
     <div>
-      <h2>
-        Equipamiento necesario{' '}
+      <h2>Equipamiento necesario </h2>
+      <Flex gap='12px' align='center' my='18px'>
         <Text
-          display='inline'
+          size='20px'
           onClick={() => setUseEquipmentDataBase(!useEquipmentDataBase)}
-          ml='12px'
         >
           {useEquipmentDataBase
-            ? 'Escribir equipos'
+            ? 'Escribir equipos manualmente'
             : 'Seleccionar de base de datos'}
         </Text>
-      </h2>
+        <Switch
+          color='green'
+          checked={useEquipmentDataBase}
+          onChange={() => setUseEquipmentDataBase(!useEquipmentDataBase)}
+        />
+      </Flex>
       <div>
         {useEquipmentDataBase ? (
           <>
-            <ChoseComponentFromDBComponent />
+            <ChoseComponentFromDBComponent
+              equipment={equipment}
+              setEquipment={setEquipment}
+              equipmentFromDB={equipmentFromDB}
+            />
           </>
         ) : (
           <>
@@ -125,9 +122,13 @@ const EquipmentForm = ({
                 type='number'
                 placeholder='Cantidad'
                 onChange={handleChange}
-                name='quantity'
+                name='selectedQuantity'
                 min={1}
-                value={newEquipment.quantity ? newEquipment.quantity : ''}
+                value={
+                  newEquipment.selectedQuantity
+                    ? newEquipment.selectedQuantity
+                    : ''
+                }
               />
             </div>
             <Button onClick={addEquipment} mt='16px'>
@@ -144,7 +145,7 @@ const EquipmentForm = ({
           mt='12px'
         >
           {equipment?.equipment
-            ?.filter((eq) => eq.quantity > 0)
+            ?.filter((eq) => Number(eq.selectedQuantity) > 0)
             .map((item, idx) => {
               return (
                 <Flex
@@ -159,8 +160,10 @@ const EquipmentForm = ({
                   }}
                 >
                   <Text className='itemName'> {item.name}</Text>|
-                  <Text className='quantity'>Cantidad: {item.quantity}</Text>|
-                  <Text className='price'>Precio: ${item.price}</Text>-
+                  <Text className='quantity'>
+                    Cantidad: {item.selectedQuantity}
+                  </Text>
+                  |<Text className='price'>Precio: ${item.price}</Text>-
                   <ActionIcon
                     size='sm'
                     variant='subtle'

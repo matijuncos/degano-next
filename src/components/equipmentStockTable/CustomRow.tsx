@@ -30,7 +30,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmationOpen, setIsconfirmationOpen] = useState(false);
   const { setLoading } = useDeganoCtx();
-  const handleChange = (field: keyof Equipment, value: string | number) => {
+  const handleChange = (field: keyof NewEquipment, value: string | number) => {
     setEquipmentListToEdit((prev) =>
       prev.map((item, idx) =>
         idx === index ? { ...item, [field]: value } : item
@@ -54,7 +54,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const deleteRowHandler = async () => {
     const equipmentCopy = cloneDeep(equipmentListToEdit);
     const filteredEquipment = equipmentCopy.filter(
-      (item, idx) => idx !== index
+      (_item, idx) => idx !== index
     );
     await makePutRequest(filteredEquipment);
     setEquipmentListToEdit(filteredEquipment);
