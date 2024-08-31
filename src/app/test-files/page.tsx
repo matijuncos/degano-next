@@ -15,7 +15,7 @@ interface FileItem {
   [key: string]: any;
 }
 
-const baseUrl = process.env.GOOGLE_BASE_URL;
+const baseUrl = 'https://www.googleapis.com';
 
 const DISCOVERY_DOCS = [
   baseUrl+'/discovery/v1/apis/drive/v3/rest'
@@ -54,8 +54,8 @@ export default function FileUploader() {
   }
 
   const gapiConfig = {
-    apiKey: process.env.GAPICONFIG_APIKEY,
-    clientId: process.env.GAPICONFIG_CLIENTID,
+    apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
+    clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
     discoveryDocs: DISCOVERY_DOCS,
     scope: SCOPES
   };
@@ -86,7 +86,10 @@ export default function FileUploader() {
     start();
   }, []);
   console.log('gapiConfig? ', gapiConfig)
-  console.log('baseUrl ', baseUrl)
+  console.log('env? ', process.env)
+  console.log('proces next> ', process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY)
+  console.log('segunda ', process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID)
+
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
       if (!authToken) return;
