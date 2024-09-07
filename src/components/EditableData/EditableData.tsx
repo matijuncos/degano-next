@@ -12,6 +12,7 @@ import {
 import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
+import useLoadingCursor from '../../hooks/useLoadingCursor';
 
 const EditableData = ({
   title,
@@ -25,6 +26,7 @@ const EditableData = ({
   type: string;
 }) => {
   const { selectedEvent } = useDeganoCtx();
+  const [loading, setLoading] = useState(false);
   const [editState, setEditState] = useState({
     showInput: false,
     showEditableChips: false,
@@ -33,7 +35,10 @@ const EditableData = ({
     newChip: ''
   });
 
+  useLoadingCursor(loading)
+
   const updateEvent = async (event: any) => {
+    setLoading(true);
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
     const timeStamp = new Date().toISOString();
@@ -50,6 +55,8 @@ const EditableData = ({
       console.log(data);
     } catch (error) {
       console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 
