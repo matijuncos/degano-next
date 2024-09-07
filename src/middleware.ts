@@ -6,20 +6,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-    // Get the base URL (protocol + host)
-    const host = request.nextUrl.origin;
-
-  // Invalidate cache for all get requests
-  if (request.method === 'GET' && pathname !== '/api/auth/me') {
-    await fetch(`${host}/api/revalidate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ path: pathname}),
-    });
-  }
-
   // Apply auth middleware to /calendar route
   if (pathname.startsWith('/calendar')) {
     return withMiddlewareAuthRequired()(request, {} as any);

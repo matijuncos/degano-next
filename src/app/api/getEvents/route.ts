@@ -12,8 +12,8 @@ export const GET = async function handler(req: Request, res: NextApiResponse) {
     const db = client.db('degano-app');
     const events = await db.collection('events').find().toArray(); // Use ObjectId
 
-    // // Invalidate cache for the specific path after fetching new data
-    // revalidatePath('/api/getEvents');
+    // Invalidate cache for the specific path after fetching new data
+    revalidatePath('/api/getEvents');
     
     // If I wanted to get all, add limit and pagination
     return NextResponse.json({ events }, { status: 200 });
