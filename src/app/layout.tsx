@@ -7,10 +7,12 @@ import '@mantine/core/styles.css';
 import 'mantine-datatable/styles.layer.css';
 import '@mantine/dates/styles.css';
 import '@mantine/dropzone/styles.css';
+import '@mantine/notifications/styles.css';
 import Navbar from '@/components/NavBar/NavBar';
 import { DeganoProvider } from '@/context/DeganoContext';
 import BottomNavBar from '@/components/BottomNavBar/BottomNavBar';
 import { Suspense } from 'react';
+import { Notifications } from '@mantine/notifications';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -31,6 +33,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <MantineProvider forceColorScheme='dark' defaultColorScheme='dark'>
+          <Notifications />
           <DeganoProvider>
             <UserProvider>
               <div
