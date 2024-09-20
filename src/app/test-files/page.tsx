@@ -15,10 +15,12 @@ interface FileItem {
   [key: string]: any;
 }
 
+const baseUrl = 'https://www.googleapis.com';
+
 const DISCOVERY_DOCS = [
-  'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+  baseUrl+'/discovery/v1/apis/drive/v3/rest'
 ];
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = baseUrl+'/auth/drive.file';
 
 export default function FileUploader() {
   const [value, setValue] = useState<File | null>(null);
@@ -52,9 +54,8 @@ export default function FileUploader() {
   }
 
   const gapiConfig = {
-    apiKey: 'AIzaSyANXpqjioeOdn_NR4OGTuMATDxXkKNW9Mk',
-    clientId:
-      '748888465127-r6pcrtqkpse3ecuq2ih7nm5ph4chm64b.apps.googleusercontent.com',
+    apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
+    clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
     discoveryDocs: DISCOVERY_DOCS,
     scope: SCOPES
   };
@@ -91,7 +92,7 @@ export default function FileUploader() {
       const accessToken = authToken;
       try {
         const searchResponse = await fetch(
-          `https://www.googleapis.com/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          `${baseUrl}/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
           {
             method: 'GET',
             cache: 'no-store',
@@ -112,7 +113,7 @@ export default function FileUploader() {
             mimeType: 'application/vnd.google-apps.folder'
           };
           const createResponse = await fetch(
-            'https://www.googleapis.com/drive/v3/files',
+            baseUrl+'/drive/v3/files',
             {
               method: 'POST',
               headers: new Headers({
@@ -139,7 +140,7 @@ export default function FileUploader() {
     async (folderId: string) => {
       try {
         const response = await fetch(
-          `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
+          `${baseUrl}/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
           {
             method: 'GET',
             cache: 'no-store',
@@ -195,7 +196,7 @@ export default function FileUploader() {
       form.append('file', file);
 
       fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        baseUrl+'/upload/drive/v3/files?uploadType=multipart',
         {
           method: 'POST',
           headers: new Headers({ Authorization: 'Bearer ' + authToken }),
@@ -225,7 +226,7 @@ export default function FileUploader() {
 
     try {
       const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        `${baseUrl}/drive/v3/files/${fileId}`,
         {
           method: 'DELETE',
           headers: new Headers({
