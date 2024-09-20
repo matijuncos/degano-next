@@ -5,4 +5,6 @@ export type NewEquipment = {
   totalQuantity: number;
   currentQuantity: number;
   selectedQuantity?: number;
+  brand?: string;
+  codeNumber?: string;
 };

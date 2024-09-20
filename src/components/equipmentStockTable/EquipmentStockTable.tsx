@@ -26,7 +26,9 @@ const EquipmentStockTable = ({
     name: '',
     price: 0,
     totalQuantity: 0,
-    currentQuantity: 0
+    currentQuantity: 0,
+    brand: '',
+    codeNumber: ''
   });
   const [equipmentList, setEquipmentList] = useState<NewEquipment[]>(
     equipment || []
@@ -52,7 +54,9 @@ const EquipmentStockTable = ({
       name: '',
       price: 0,
       totalQuantity: 0,
-      currentQuantity: 0
+      currentQuantity: 0,
+      brand: '',
+      codeNumber: ''
     });
   };
 

@@ -87,19 +87,31 @@ const CustomRow: React.FC<CustomRowProps> = ({
         />
         <CustomCell
           field='totalQuantity'
-          value={eq.totalQuantity}
+          value={eq.totalQuantity || '-'}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <CustomCell
           field='currentQuantity'
-          value={eq.currentQuantity}
+          value={eq.currentQuantity || '-'}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <CustomCell
           field='price'
-          value={eq.price}
+          value={eq.price || '-'}
+          isEditing={isEditing}
+          handleChange={handleChange}
+        />
+        <CustomCell
+          field='brand'
+          value={eq.brand || '-'}
+          isEditing={isEditing}
+          handleChange={handleChange}
+        />
+        <CustomCell
+          field='codeNumber'
+          value={eq.codeNumber || '-'}
           isEditing={isEditing}
           handleChange={handleChange}
         />

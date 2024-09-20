@@ -14,5 +14,13 @@ export const columns = [
   {
     index: 'price',
     name: 'Precio del equipo ($)'
+  },
+  {
+    name: 'Marca',
+    index: 'brand'
+  },
+  {
+    name: 'Número de serie',
+    index: 'codeNumber'
   }
 ];

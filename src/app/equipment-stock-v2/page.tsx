@@ -11,7 +11,9 @@ export default async function equipmentStock() {
     name: equip.name,
     price: equip.price,
     totalQuantity: equip.totalQuantity,
-    currentQuantity: equip.currentQuantity
+    currentQuantity: equip.currentQuantity,
+    brand: equip.brand,
+    codeNumber: equip.codeNumber
   }));
   return (
     <Box>
