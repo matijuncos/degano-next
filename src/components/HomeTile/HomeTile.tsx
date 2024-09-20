@@ -29,7 +29,7 @@ const HomeTile = ({
     }
   };
 
-  const restrictedPaths = ['/clients', '/equipment-stock'];
+  const restrictedPaths = ['/clients', '/equipment-stock-v2'];
 
   const isForbidden =
     isHovered && user?.role !== 'admin' && restrictedPaths.includes(path);

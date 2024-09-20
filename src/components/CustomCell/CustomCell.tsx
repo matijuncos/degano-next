@@ -1,29 +1,32 @@
 import React from 'react';
-import { TableTd, Input } from '@mantine/core';
-import { Equipment } from '@/context/types';
+import { TableTd, Input, Text } from '@mantine/core';
+import { NewEquipment } from '../equipmentStockTable/types';
 
 interface CustomCellProps {
-  field: keyof Equipment;
+  field: any;
   value: string | number;
   isEditing: boolean;
-  handleChange: (field: keyof Equipment, value: string | number) => void;
+  handleChange: (field: keyof NewEquipment, value: string | number) => void;
+  color?: string;
 }
 
 const CustomCell: React.FC<CustomCellProps> = ({
   field,
   value,
   isEditing,
-  handleChange
+  handleChange,
+  color,
+  ...props
 }) => {
   return (
-    <TableTd>
+    <TableTd c={color}>
       {isEditing ? (
         <Input
           value={value}
           onChange={(e) => handleChange(field, e.target.value)}
         />
       ) : (
-        value
+        <Text>{value}</Text>
       )}
     </TableTd>
   );

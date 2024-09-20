@@ -10,13 +10,17 @@ import {
 } from '@mantine/core';
 import { cloneDeep, concat } from 'lodash';
 import React, { useState } from 'react';
+import { NewEquipment } from '../equipmentStockTable/types';
 
 const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
   const { selectedEvent, setLoading, setSelectedEvent } = useDeganoCtx();
-  const [newEquipment, setNewEquipment] = useState<Equipment>({
+  const [newEquipment, setNewEquipment] = useState<NewEquipment>({
     name: '',
-    quantity: 0,
-    price: 0
+    selectedQuantity: 0,
+    price: 0,
+    currentQuantity: 0,
+    totalQuantity: 0,
+    _id: new Date().toISOString()
   });
   const onChangeHandler = (e: any) => {
     setNewEquipment({
@@ -28,10 +32,10 @@ const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
   const addNewEquipment = () => {
     const eventClone = cloneDeep(selectedEvent);
     const newEquipmentToSave = concat(eventClone?.equipment, newEquipment);
-    makePutRequest(newEquipmentToSave as Equipment[]);
+    makePutRequest(newEquipmentToSave as NewEquipment[]);
   };
 
-  const makePutRequest = async (newEquipment: Equipment[]) => {
+  const makePutRequest = async (newEquipment: NewEquipment[]) => {
     const event = cloneDeep(selectedEvent);
     event!.equipment = newEquipment;
     try {
@@ -58,7 +62,7 @@ const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
         <Input onChange={onChangeHandler} name='name' />
       </TableTd>
       <TableTd>
-        <Input onChange={onChangeHandler} name='quantity' />
+        <Input onChange={onChangeHandler} name='selectedQuantity' />
       </TableTd>
       <TableTd>
         <Input onChange={onChangeHandler} name='price' />

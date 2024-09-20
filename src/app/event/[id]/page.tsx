@@ -67,7 +67,7 @@ const EventPage = () => {
           ) : (
             <>
               <Title mb='16px'>
-                {selectedEvent.fullName + ' - ' + dateString}
+                {`${selectedEvent.fullName} - ${dateString} - ${selectedEvent.salon}`}
               </Title>
               <AccordionSet value='Información Principal'>
                 <EditableData
