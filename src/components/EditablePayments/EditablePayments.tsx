@@ -84,7 +84,6 @@ const EditablePayments = () => {
       }
     };
     setSubsequentPayments([]);
-    console.log(eventUpdated);
     updateEvent(eventUpdated);
   };
   const sumOfPartialPayments =
