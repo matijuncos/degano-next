@@ -155,3 +155,10 @@ a {
     z-index: 333;
   }
 }
+body.loading {
+  cursor: wait !important;
+}
+
+body.loading * {
+  pointer-events: none;
+}
