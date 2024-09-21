@@ -142,9 +142,23 @@ const EditablePayments = () => {
         </Text>
         <hr />
         <Box my='12px'>
+          <Flex gap='8px'>
+            <Text fw={600}>Pago Inicial: </Text>
+            <Text>
+              {new Date(
+                selectedEvent.payment.partialPaymentDate
+              ).toLocaleDateString()}{' '}
+              -
+            </Text>
+            <Text>
+              ${Number(selectedEvent.payment.upfrontAmount).toLocaleString()}
+            </Text>
+          </Flex>
           {selectedEvent.payment.subsequentPayments?.map((payment) => (
             <Box key={payment.id}>
               <Flex gap='8px'>
+                <Text fw={600}>Pago parcial:</Text>
+
                 <Text>{new Date(payment.date).toLocaleDateString()}</Text>
                 <Text> - ${Number(payment.amount).toLocaleString()}</Text>
               </Flex>
@@ -200,7 +214,6 @@ const EditablePayments = () => {
           border: 'solid 2px white'
         }}
       >
-        <Text fw={600}>Pago Inicial: ${initialPayment.toLocaleString()}</Text>
         <Text fw={600} mb='8px'>
           Suma de pagos parciales: ${sumOfPayments.toLocaleString()}
         </Text>
