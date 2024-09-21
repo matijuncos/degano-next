@@ -5,6 +5,7 @@ import Loader from '@/components/Loader/Loader';
 import PrintableEvent from '@/components/PrintableEvent/PrintableEvent';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EventModel } from '@/context/types';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import { Accordion, Box, Button, Container, Title } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
@@ -221,4 +222,4 @@ const EventPage = () => {
     </Container>
   ) : null;
 };
-export default EventPage;
+export default withPageAuthRequired(EventPage);

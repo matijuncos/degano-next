@@ -17,7 +17,8 @@ import parse from 'date-fns/parse';
 import startOfWeek from 'date-fns/startOfWeek';
 import getDay from 'date-fns/getDay';
 import es from 'date-fns/locale/es';
-export default function Home() {
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+export default withPageAuthRequired(function CalendarPage() {
   const [isOpen, setIsOpen] = useState(false);
 
   const locales = {
@@ -92,4 +93,4 @@ export default function Home() {
       </Drawer>
     </>
   );
-}
+});

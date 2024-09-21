@@ -1,4 +1,5 @@
 'use client';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import Image from 'next/image';
 import logo from '../../assets/logo.png';
 import HomeTile from '@/components/HomeTile/HomeTile';
@@ -112,4 +113,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default withPageAuthRequired(Home);

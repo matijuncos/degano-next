@@ -7,10 +7,21 @@ import styles from './NextEvents.module.css';
 const NextEvents = () => {
   const { allEvents } = useDeganoCtx();
   const router = useRouter();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 1); // Set to the start of today
+
+  const sortedFutureEvents = allEvents
+    ?.filter((event) => new Date(event.date) >= today)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 7);
+
   return (
     <div style={{ padding: '0px' }}>
-      {allEvents?.slice(0, 7).map((event, idx) => {
-        const isLastItem = idx === allEvents.length - 1 && allEvents.length > 1;
+      {sortedFutureEvents?.map((event, idx) => {
+        const isLastItem =
+          idx === sortedFutureEvents.length - 1 &&
+          sortedFutureEvents.length > 1;
 
         const borders = !isLastItem
           ? { borderBottom: 'solid 3px #242424' }

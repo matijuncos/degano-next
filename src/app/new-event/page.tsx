@@ -10,6 +10,7 @@ import { genres } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 const NewEventPage = () => {
   const { formState, setFormState, validate, setValidate } = useDeganoCtx();
   const router = useRouter();
@@ -137,4 +138,4 @@ const NewEventPage = () => {
   return <div>{getTabContent()}</div>;
 };
 
-export default NewEventPage;
+export default withPageAuthRequired(NewEventPage);
