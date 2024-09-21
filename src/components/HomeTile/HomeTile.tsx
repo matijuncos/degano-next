@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import NoAccessTile from '../NoAccessTile/NoAccessTile';
 import { Box } from '@mantine/core';
+import { useRouter } from 'next/navigation';
 
 const HomeTile = ({
   label,
@@ -18,6 +19,7 @@ const HomeTile = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const { user } = useUser();
+  const router = useRouter();
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: {
@@ -33,12 +35,18 @@ const HomeTile = ({
 
   const isForbidden =
     isHovered && user?.role !== 'admin' && restrictedPaths.includes(path);
+
+  const navigate = (path: string) => {
+    router.push(path);
+  };
+
   return (
     <motion.div
       className={`${styles.home_tile} ${isForbidden ? styles.blurry : ''}`}
       variants={itemVariants}
       onMouseLeave={() => setIsHovered(false)}
       onMouseEnter={() => setIsHovered(true)}
+      onClick={isForbidden ? undefined : () => navigate(path)}
     >
       {isForbidden && (
         <motion.div
@@ -51,21 +59,19 @@ const HomeTile = ({
           <NoAccessTile />
         </motion.div>
       )}
-      <Link href={path} style={isForbidden ? { pointerEvents: 'none' } : {}}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'right',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <p style={{ fontSize: '12px' }}>Acceder</p>
-          <IconArrowRight size={16} />
-        </div>
-        {<Icon />}
-        <h3>{label}</h3>
-      </Link>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'right',
+          alignItems: 'center',
+          gap: '6px'
+        }}
+      >
+        <p style={{ fontSize: '12px' }}>Acceder</p>
+        <IconArrowRight size={16} />
+      </div>
+      {<Icon />}
+      <h3>{label}</h3>
     </motion.div>
   );
 };

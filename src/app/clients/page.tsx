@@ -1,6 +1,7 @@
 'use client';
 import { getClientsList } from '@/lib/getClientsList';
 import { removeClient } from '@/lib/removeClient';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import {
   Table,
   TableTbody,
@@ -19,7 +20,7 @@ interface Client {
   _id: string;
 }
 
-export default function ClientsPage() {
+export default withPageAuthRequired(function ClientsPage() {
   const [clientsList, setClientsList] = useState<Client[]>([]);
 
   useEffect(() => {
@@ -71,4 +72,4 @@ export default function ClientsPage() {
       </TableTbody>
     </Table>
   );
-}
+});
