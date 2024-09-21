@@ -6,27 +6,30 @@ import {
   IconEdit,
   IconTrash
 } from '@tabler/icons-react';
+import { Equipment } from '@/context/types';
 import CustomCell from '../CustomCell/CustomCell';
 import { cloneDeep } from 'lodash';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment } from './types';
 
 interface CustomRowProps {
   eq: NewEquipment;
   index: number;
   setEquipmentListToEdit: React.Dispatch<React.SetStateAction<NewEquipment[]>>;
   equipmentListToEdit: NewEquipment[];
+  makePutRequest: (arg: NewEquipment[]) => Promise<any>;
 }
 
 const CustomRow: React.FC<CustomRowProps> = ({
   eq,
   index,
   equipmentListToEdit,
-  setEquipmentListToEdit
+  setEquipmentListToEdit,
+  makePutRequest
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmationOpen, setIsconfirmationOpen] = useState(false);
-  const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
+  const { setLoading } = useDeganoCtx();
   const handleChange = (field: keyof NewEquipment, value: string | number) => {
     setEquipmentListToEdit((prev) =>
       prev.map((item, idx) =>
@@ -42,43 +45,21 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const handleSaveEdit = async () => {
     setIsEditing(false);
     setLoading(true);
-    console.log(equipmentListToEdit);
-    makePutRequest(equipmentListToEdit);
-  };
-
-  const makePutRequest = async (newEquipment: NewEquipment[]) => {
-    const event = cloneDeep(selectedEvent);
-    event!.equipment = newEquipment;
-    try {
-      const response = await fetch(`/api/updateEvent`, {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(event)
-      });
-      const data = await response.json();
-      setSelectedEvent(data.event);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
+    await makePutRequest(equipmentListToEdit);
   };
 
   const handleRemoveRow = () => {
     setIsconfirmationOpen(true);
   };
-  const deleteRowHandler = () => {
+  const deleteRowHandler = async () => {
     const equipmentCopy = cloneDeep(equipmentListToEdit);
     const filteredEquipment = equipmentCopy.filter(
-      (item, idx) => idx !== index
+      (_item, idx) => idx !== index
     );
+    await makePutRequest(filteredEquipment);
     setEquipmentListToEdit(filteredEquipment);
-    makePutRequest(filteredEquipment);
+    setIsconfirmationOpen(false);
   };
-
   return (
     <>
       <Modal
@@ -105,24 +86,35 @@ const CustomRow: React.FC<CustomRowProps> = ({
           handleChange={handleChange}
         />
         <CustomCell
-          field='selectedQuantity'
-          value={eq.selectedQuantity || ''}
+          field='totalQuantity'
+          value={eq.totalQuantity || '-'}
           isEditing={isEditing}
           handleChange={handleChange}
-          color={
-            Number(eq.currentQuantity) >= Number(eq.selectedQuantity) ||
-            !eq.currentQuantity
-              ? 'green'
-              : 'red'
-          }
+        />
+        <CustomCell
+          field='currentQuantity'
+          value={eq.currentQuantity || '-'}
+          isEditing={isEditing}
+          handleChange={handleChange}
         />
         <CustomCell
           field='price'
-          value={eq.price}
+          value={eq.price || '-'}
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <TableTd>${Number(eq.price) * Number(eq.selectedQuantity)}</TableTd>
+        <CustomCell
+          field='brand'
+          value={eq.brand || '-'}
+          isEditing={isEditing}
+          handleChange={handleChange}
+        />
+        <CustomCell
+          field='codeNumber'
+          value={eq.codeNumber || '-'}
+          isEditing={isEditing}
+          handleChange={handleChange}
+        />
         <TableTd>
           <Flex align='center' gap='24px'>
             {isEditing ? (

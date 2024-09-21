@@ -67,7 +67,7 @@ const EventPage = () => {
           ) : (
             <>
               <Title mb='16px'>
-                {selectedEvent.fullName + ' - ' + dateString}
+                {`${selectedEvent.fullName} - ${dateString} - ${selectedEvent.salon}`}
               </Title>
               <AccordionSet value='Información Principal'>
                 <EditableData
@@ -82,6 +82,23 @@ const EventPage = () => {
                   title='Tipo de evento'
                   value={selectedEvent.type}
                 />
+                <EditableData
+                  type='text'
+                  property='type'
+                  title='Fecha'
+                  value={new Date(selectedEvent.date).toLocaleDateString()}
+                />
+                {selectedEvent.endDate ? (
+                  <EditableData
+                    type='text'
+                    property='type'
+                    title='Fecha Finalizacion'
+                    value={new Date(selectedEvent.endDate).toLocaleDateString()}
+                  />
+                ) : (
+                  <></>
+                )}
+
                 <EditableData
                   type='text'
                   property='salon'

@@ -1,3 +1,4 @@
+import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { ReactNode } from 'react';
 
 export interface EventModel {
@@ -22,7 +23,7 @@ export interface EventModel {
   showtime: string;
   moreData: string;
   music: Music;
-  equipment: Equipment[];
+  equipment: NewEquipment[];
   payment: {
     upfrontAmount: string;
     totalPaymentDate: Date;
@@ -32,6 +33,7 @@ export interface EventModel {
     totalPayed: boolean;
   };
   date: Date;
+  endDate?: Date;
   active: boolean;
   playlist: {
     label: string;
