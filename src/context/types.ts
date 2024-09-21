@@ -32,6 +32,7 @@ export interface EventModel {
     totalPayed: boolean;
   };
   date: Date;
+  endDate?: Date;
   active: boolean;
   playlist: {
     label: string;

@@ -51,7 +51,7 @@ export default function Home() {
       ...evnt,
       title: evnt.fullName,
       start: new Date(evnt.date),
-      end: new Date(evnt.date),
+      end: evnt.endDate ? new Date(evnt.endDate) : new Date(evnt.date),
       allDay: false,
       selectable: true
     };

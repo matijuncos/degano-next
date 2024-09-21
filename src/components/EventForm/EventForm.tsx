@@ -16,7 +16,12 @@ const EventForm = ({
   setValidate: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
-  const requiredFields: (keyof EventModel)[] = ['type', 'eventAddress', 'eventCity', 'salon']
+  const requiredFields: (keyof EventModel)[] = [
+    'type',
+    'eventAddress',
+    'eventCity',
+    'salon'
+  ];
   const handleInputChange = (e: any) => {
     setEventData({
       ...eventData,
@@ -25,12 +30,15 @@ const EventForm = ({
   };
   const validateRequiredFields = () => {
     setValidate(true);
-    const isValid: boolean = requiredFields.every((field: keyof EventModel) => eventData[field] && String(eventData[field]).trim() !== '');
+    const isValid: boolean = requiredFields.every(
+      (field: keyof EventModel) =>
+        eventData[field] && String(eventData[field]).trim() !== ''
+    );
     return isValid;
   };
   const next = () => {
-    if(validateRequiredFields()) {
-      setValidate(false)
+    if (validateRequiredFields()) {
+      setValidate(false);
       onNextTab(2, eventData);
     }
   };
@@ -47,6 +55,16 @@ const EventForm = ({
     <>
       <h3>Datos del evento</h3>
       <div className='inputs-grid'>
+        <Input
+          type='datetime-local'
+          name='date'
+          onChange={(e) => onDateChange('date', e.target.value)}
+        />
+        <Input
+          type='datetime-local'
+          name='endDate'
+          onChange={(e) => onDateChange('endDate', e.target.value)}
+        />
         <Input
           type='text'
           placeholder='Tipo de evento *'
