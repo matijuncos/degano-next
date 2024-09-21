@@ -6,7 +6,7 @@ import EventForm from '@/components/EventForm/EventForm';
 import MusicForm from '@/components/MusicForm/MusicForm';
 import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { genres } from '@/context/config';
+import { EVENT_TABS, genres } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,7 +44,6 @@ const NewEventPage = () => {
     equipment: [],
     payment: {
       upfrontAmount: '',
-      totalPaymentDate: new Date(),
       totalToPay: '',
       partialPaymentDate: new Date(),
       partialPayed: false,
@@ -64,7 +63,7 @@ const NewEventPage = () => {
   };
 
   useEffect(() => {
-    setFormState(0);
+    setFormState(EVENT_TABS.CLIENT);
   }, []);
 
   const saveEvent = async (newEvent: EventModel) => {
@@ -85,7 +84,7 @@ const NewEventPage = () => {
 
   const getTabContent = () => {
     switch (formState) {
-      case 0:
+      case EVENT_TABS.CLIENT:
         return (
           <ClientForm
             onNextTab={onNextTab}
@@ -95,7 +94,7 @@ const NewEventPage = () => {
             setValidate={setValidate}
           />
         );
-      case 1:
+      case EVENT_TABS.EVENT:
         return (
           <EventForm
             onNextTab={onNextTab}
@@ -105,7 +104,7 @@ const NewEventPage = () => {
             setValidate={setValidate}
           />
         );
-      case 2:
+      case EVENT_TABS.MUSIC:
         return (
           <MusicForm
             onNextTab={onNextTab}
@@ -113,7 +112,7 @@ const NewEventPage = () => {
             event={event}
           />
         );
-      case 3:
+      case EVENT_TABS.EQUIPMENT:
         return (
           <EquipmentForm
             onNextTab={onNextTab}
@@ -121,7 +120,7 @@ const NewEventPage = () => {
             event={event}
           />
         );
-      case 4:
+      case EVENT_TABS.PAYMENT:
         return (
           <PaymentForm
             onBackTab={onBackTab}
@@ -129,7 +128,6 @@ const NewEventPage = () => {
             onFinish={saveEvent}
           />
         );
-
       default:
         break;
     }

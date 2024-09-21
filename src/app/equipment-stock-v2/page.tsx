@@ -1,6 +1,6 @@
 import EquipmentStockTable from '@/components/equipmentStockTable/EquipmentStockTable';
 import { getEquipmentAction } from '@/lib/getEquipmentAction';
-import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0';
 import { Box, Text } from '@mantine/core';
 import React from 'react';
 

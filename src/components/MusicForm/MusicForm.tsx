@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { EventModel } from '@/context/types';
 import { IconX } from '@tabler/icons-react';
 import styles from './MusicForm.module.css';
+import { EVENT_TABS } from '@/context/config';
 
 type GenreType = {
   genre: string;
@@ -103,10 +104,10 @@ const MusicForm = ({
     });
   };
   const next = () => {
-    onNextTab(3, musicData);
+    onNextTab(EVENT_TABS.EQUIPMENT, musicData);
   };
   const back = () => {
-    onBackTab(1, musicData);
+    onBackTab(EVENT_TABS.EVENT, musicData);
   };
   return (
     <div>

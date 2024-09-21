@@ -1,3 +1,4 @@
+import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { Button, Input } from '@mantine/core';
 import { useState } from 'react';
@@ -16,7 +17,11 @@ const ClientForm = ({
   setValidate: Function;
 }) => {
   const [clientData, setClientData] = useState<EventModel>(event);
-  const requiredFields: (keyof EventModel)[] = ['fullName', 'phoneNumber', 'email'];
+  const requiredFields: (keyof EventModel)[] = [
+    'fullName',
+    'phoneNumber',
+    'email'
+  ];
   const handleInputChange = (e: any) => {
     setClientData({
       ...clientData,
@@ -25,13 +30,16 @@ const ClientForm = ({
   };
   const validateRequiredFields = () => {
     setValidate(true);
-    const isValid: boolean = requiredFields.every((field: keyof EventModel) => clientData[field] && String(clientData[field]).trim() !== '');
+    const isValid: boolean = requiredFields.every(
+      (field: keyof EventModel) =>
+        clientData[field] && String(clientData[field]).trim() !== ''
+    );
     return isValid;
-  }
+  };
   const next = () => {
     if (validateRequiredFields()) {
       setValidate(false);
-      onNextTab(1, clientData);
+      onNextTab(EVENT_TABS.EVENT, clientData);
     }
   };
   return (

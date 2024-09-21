@@ -1,12 +1,22 @@
 'use client';
 import EditableData from '@/components/EditableData/EditableData';
+import EditablePayments from '@/components/EditablePayments/EditablePayments';
 import EquipmentTable from '@/components/EquipmentTable/EquipmentTable';
 import Loader from '@/components/Loader/Loader';
 import PrintableEvent from '@/components/PrintableEvent/PrintableEvent';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EventModel } from '@/context/types';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
-import { Accordion, Box, Button, Container, Title } from '@mantine/core';
+import {
+  Accordion,
+  Box,
+  Button,
+  Container,
+  Flex,
+  Grid,
+  Text,
+  Title
+} from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
@@ -16,6 +26,8 @@ const EventPage = () => {
   const { id } = useParams();
   const [dateString, setDateString] = useState('');
   const [showPrintableComponent, setShowPrintableComponent] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
   useEffect(() => {
     if (allEvents.length) {
       const selectedEvent: EventModel = allEvents.find(
@@ -57,6 +69,7 @@ const EventPage = () => {
     setShowPrintableComponent((prev) => !prev);
   };
 
+  console.log(selectedEvent?.payment);
   return selectedEvent ? (
     <Container size='xl'>
       {loading ? (
@@ -71,103 +84,107 @@ const EventPage = () => {
                 {`${selectedEvent.fullName} - ${dateString} - ${selectedEvent.salon}`}
               </Title>
               <AccordionSet value='Información Principal'>
-                <EditableData
-                  type='text'
-                  property='phoneNumber'
-                  title='Teléfono'
-                  value={selectedEvent.phoneNumber}
-                />
-                <EditableData
-                  type='text'
-                  property='type'
-                  title='Tipo de evento'
-                  value={selectedEvent.type}
-                />
-                <EditableData
-                  type='text'
-                  property='type'
-                  title='Fecha'
-                  value={new Date(selectedEvent.date).toLocaleDateString()}
-                />
-                {selectedEvent.endDate ? (
+                <Box>
+                  <EditableData
+                    type='text'
+                    property='phoneNumber'
+                    title='Teléfono'
+                    value={selectedEvent.phoneNumber}
+                  />
                   <EditableData
                     type='text'
                     property='type'
-                    title='Fecha Finalizacion'
-                    value={new Date(selectedEvent.endDate).toLocaleDateString()}
+                    title='Tipo de evento'
+                    value={selectedEvent.type}
                   />
-                ) : (
-                  <></>
-                )}
+                  <EditableData
+                    type='text'
+                    property='type'
+                    title='Fecha'
+                    value={new Date(selectedEvent.date).toLocaleDateString()}
+                  />
+                  {selectedEvent.endDate ? (
+                    <EditableData
+                      type='text'
+                      property='type'
+                      title='Fecha Finalizacion'
+                      value={new Date(
+                        selectedEvent.endDate
+                      ).toLocaleDateString()}
+                    />
+                  ) : (
+                    <></>
+                  )}
 
-                <EditableData
-                  type='text'
-                  property='salon'
-                  title='Salon'
-                  value={selectedEvent.salon}
-                />
-                <EditableData
-                  type='text'
-                  property='eventAddress'
-                  title='Dirección'
-                  value={selectedEvent.eventAddress}
-                />
-                <EditableData
-                  type='text'
-                  property='eventCity'
-                  title='Localidad'
-                  value={selectedEvent.eventCity}
-                />
-                <EditableData
-                  type='text'
-                  property='guests'
-                  title='Cantidad de invitados'
-                  value={selectedEvent.guests}
-                />
-                <EditableData
-                  type='text'
-                  property='age'
-                  title='Edad'
-                  value={selectedEvent.age}
-                />
-                <EditableData
-                  type='text'
-                  property='averageAge'
-                  title='Edad Promedio'
-                  value={selectedEvent.averageAge}
-                />
-                <EditableData
-                  type='text'
-                  property='email'
-                  title='Email'
-                  value={selectedEvent.email}
-                />
+                  <EditableData
+                    type='text'
+                    property='salon'
+                    title='Salon'
+                    value={selectedEvent.salon}
+                  />
+                  <EditableData
+                    type='text'
+                    property='eventAddress'
+                    title='Dirección'
+                    value={selectedEvent.eventAddress}
+                  />
+                  <EditableData
+                    type='text'
+                    property='eventCity'
+                    title='Localidad'
+                    value={selectedEvent.eventCity}
+                  />
+                  <EditableData
+                    type='text'
+                    property='guests'
+                    title='Cantidad de invitados'
+                    value={selectedEvent.guests}
+                  />
+                  <EditableData
+                    type='text'
+                    property='age'
+                    title='Edad'
+                    value={selectedEvent.age}
+                  />
+                  <EditableData
+                    type='text'
+                    property='averageAge'
+                    title='Edad Promedio'
+                    value={selectedEvent.averageAge}
+                  />
+                  <EditableData
+                    type='text'
+                    property='email'
+                    title='Email'
+                    value={selectedEvent.email}
+                  />
 
-                <EditableData
-                  type='text'
-                  property='bandName'
-                  title='Banda'
-                  value={selectedEvent.bandName}
-                />
+                  <EditableData
+                    type='text'
+                    property='bandName'
+                    title='Banda'
+                    value={selectedEvent.bandName}
+                  />
 
-                <EditableData
-                  type='text'
-                  property='guests'
-                  title='Invitados'
-                  value={selectedEvent.guests}
-                />
-                <EditableData
-                  type='text'
-                  property='manager'
-                  title='Manager'
-                  value={selectedEvent.manager}
-                />
-                <EditableData
-                  type='text'
-                  property='managerPhone'
-                  title='Teléfono Manager'
-                  value={selectedEvent.managerPhone}
-                />
+                  <EditableData
+                    type='text'
+                    property='guests'
+                    title='Invitados'
+                    value={selectedEvent.guests}
+                  />
+                  <EditableData
+                    type='text'
+                    property='manager'
+                    title='Manager'
+                    value={selectedEvent.manager}
+                  />
+                  <EditableData
+                    type='text'
+                    property='managerPhone'
+                    title='Teléfono Manager'
+                    value={selectedEvent.managerPhone}
+                  />
+                </Box>
               </AccordionSet>
               <AccordionSet value='Música'>
                 <AccordionSet value='Prohibidos'>
@@ -210,6 +227,9 @@ const EventPage = () => {
               <AccordionSet value='Equipos'>
                 <EquipmentTable />
               </AccordionSet>
+              <AccordionSet value='Historial de pagos'>
+                <EditablePayments />
+              </AccordionSet>
             </>
           )}
         </>
@@ -222,4 +242,5 @@ const EventPage = () => {
     </Container>
   ) : null;
 };
+
 export default withPageAuthRequired(EventPage);

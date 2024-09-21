@@ -5,6 +5,7 @@ import { IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import ChoseComponentFromDBComponent from './ChooseComponentFromDB';
+import { EVENT_TABS } from '@/context/config';
 
 const EquipmentForm = ({
   event,
@@ -42,7 +43,7 @@ const EquipmentForm = ({
     onNextTab(4, equipment);
   };
   const back = () => {
-    onBackTab(2, equipment);
+    onBackTab(EVENT_TABS.MUSIC, equipment);
   };
   const handleChange = (e: any) => {
     setNewEquipment({

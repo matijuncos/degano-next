@@ -24,3 +24,11 @@ export const genres = [
   { genre: 'Lentos actuales', value: 0 },
   { genre: 'Trap', value: 0 }
 ];
+
+export const EVENT_TABS = {
+  CLIENT: 0,
+  EVENT: 1,
+  MUSIC: 2,
+  EQUIPMENT: 3,
+  PAYMENT: 4
+};

@@ -26,11 +26,12 @@ export interface EventModel {
   equipment: NewEquipment[];
   payment: {
     upfrontAmount: string;
-    totalPaymentDate: Date;
+    totalPaymentDate?: Date;
     totalToPay: string;
     partialPaymentDate: Date;
     partialPayed: boolean;
     totalPayed: boolean;
+    subsequentPayments?: any[];
   };
   date: Date;
   endDate?: Date;
