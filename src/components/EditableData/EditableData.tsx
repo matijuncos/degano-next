@@ -110,15 +110,7 @@ const EditableData = ({
   };
 
   const typeTextData = () => (
-    <Flex
-      gap='8px'
-      align='center'
-      py='10px'
-      justify='space-between'
-      style={{
-        borderBottom: '1px solid white'
-      }}
-    >
+    <Flex gap='8px' align='center' py='10px' justify='space-between'>
       <Box w='100%'>
         {title && <strong>{title}:</strong>}
         {editState.showInput ? (

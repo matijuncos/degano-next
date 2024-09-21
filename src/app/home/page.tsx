@@ -32,7 +32,7 @@ const Home = () => {
     },
     {
       label: 'Administrar Stock',
-      path: '/equipment-stock',
+      path: '/equipment-stock-v2',
       Icon: IconCheckupList
     }
   ];
