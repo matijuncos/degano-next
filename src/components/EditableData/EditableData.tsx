@@ -27,7 +27,7 @@ const EditableData = ({
   type: string;
 }) => {
   const { selectedEvent } = useDeganoCtx();
-  const [loading, setLoading] = useState(false);
+  const setLoadingCursor = useLoadingCursor();
   const [editState, setEditState] = useState({
     showInput: false,
     showEditableChips: false,
@@ -36,12 +36,11 @@ const EditableData = ({
     newChip: ''
   });
 
-  useLoadingCursor(loading);
   const notify = useNotification();
 
   const updateEvent = async (event: any) => {
-    setLoading(true);
-    notify('', '', '', true);
+    setLoadingCursor(true);
+    notify('', '', '', true)
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
     const timeStamp = new Date().toISOString();
@@ -61,7 +60,7 @@ const EditableData = ({
       notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
       console.log(error);
     } finally {
-      setLoading(false);
+      setLoadingCursor(false);
     }
   };
 
