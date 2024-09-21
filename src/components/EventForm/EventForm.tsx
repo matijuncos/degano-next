@@ -1,5 +1,6 @@
+import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Button, Input, Textarea } from '@mantine/core';
+import { Button, Input, InputLabel, Textarea } from '@mantine/core';
 import { useState } from 'react';
 
 const EventForm = ({
@@ -39,11 +40,11 @@ const EventForm = ({
   const next = () => {
     if (validateRequiredFields()) {
       setValidate(false);
-      onNextTab(2, eventData);
+      onNextTab(EVENT_TABS.MUSIC, eventData);
     }
   };
   const back = () => {
-    onBackTab(0, eventData);
+    onBackTab(EVENT_TABS.CLIENT, eventData);
   };
   const onDateChange = (name: string, value: string) => {
     setEventData({
@@ -55,16 +56,24 @@ const EventForm = ({
     <>
       <h3>Datos del evento</h3>
       <div className='inputs-grid'>
-        <Input
-          type='datetime-local'
-          name='date'
-          onChange={(e) => onDateChange('date', e.target.value)}
-        />
-        <Input
-          type='datetime-local'
-          name='endDate'
-          onChange={(e) => onDateChange('endDate', e.target.value)}
-        />
+        <InputLabel>
+          Fecha del evento
+          <Input
+            type='datetime-local'
+            name='date'
+            placeholder='Fecha del evento'
+            onChange={(e) => onDateChange('date', e.target.value)}
+          />
+        </InputLabel>
+        <InputLabel>
+          Fecha de finalización del evento (opcional)
+          <Input
+            type='datetime-local'
+            name='endDate'
+            placeholder='Fecha de finalizaciòn del evento'
+            onChange={(e) => onDateChange('endDate', e.target.value)}
+          />
+        </InputLabel>
         <Input
           type='text'
           placeholder='Tipo de evento *'

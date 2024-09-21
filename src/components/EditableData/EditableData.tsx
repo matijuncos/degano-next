@@ -57,11 +57,7 @@ const EditableData = ({
       notify();
       console.log(data);
     } catch (error) {
-      notify(
-        'Operación errónea',
-        'Algo salio mal, vuelve a intentarlo',
-        'red'
-      )
+      notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
       console.log(error);
     } finally {
       setLoadingCursor(false);
@@ -347,7 +343,6 @@ const EditableData = ({
       ) : type === 'textarea' ? (
         typeTextArea()
       ) : (
-        // Add text area
         <></>
       )}
     </>
