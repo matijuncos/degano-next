@@ -3,6 +3,7 @@ import EditableData from '@/components/EditableData/EditableData';
 import EquipmentTable from '@/components/EquipmentTable/EquipmentTable';
 import Loader from '@/components/Loader/Loader';
 import PrintableEvent from '@/components/PrintableEvent/PrintableEvent';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EventModel } from '@/context/types';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
@@ -14,6 +15,7 @@ const EventPage = () => {
   const { allEvents, setSelectedEvent, selectedEvent, loading } =
     useDeganoCtx();
   const { id } = useParams();
+  const setLoadingCursor = useLoadingCursor();
   const [dateString, setDateString] = useState('');
   const [showPrintableComponent, setShowPrintableComponent] = useState(false);
   useEffect(() => {
@@ -33,6 +35,10 @@ const EventPage = () => {
       setDateString(date);
     }
   }, [selectedEvent?.date]);
+
+  useEffect(() => {
+    setLoadingCursor(false);
+  },[])
 
   const AccordionSet = ({
     children,
