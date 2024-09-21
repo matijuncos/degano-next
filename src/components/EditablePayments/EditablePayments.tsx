@@ -45,6 +45,7 @@ const EditablePayments = () => {
         ...selectedEvent,
         payment: { ...selectedEvent!.payment, totalToPay: editedTotalToPay }
       };
+      updateEvent(eventUpdated);
     }
     setIsEditing(!isEditing);
   };
