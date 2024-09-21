@@ -84,6 +84,23 @@ const EventPage = () => {
                 />
                 <EditableData
                   type='text'
+                  property='type'
+                  title='Fecha'
+                  value={new Date(selectedEvent.date).toLocaleDateString()}
+                />
+                {selectedEvent.endDate ? (
+                  <EditableData
+                    type='text'
+                    property='type'
+                    title='Fecha Finalizacion'
+                    value={new Date(selectedEvent.endDate).toLocaleDateString()}
+                  />
+                ) : (
+                  <></>
+                )}
+
+                <EditableData
+                  type='text'
                   property='salon'
                   title='Salon'
                   value={selectedEvent.salon}
