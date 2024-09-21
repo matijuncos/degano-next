@@ -12,6 +12,8 @@ import {
 import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
+import useLoadingCursor from '../../hooks/useLoadingCursor';
+import useNotification from '../../hooks/useNotification';
 
 const EditableData = ({
   title,
@@ -25,6 +27,7 @@ const EditableData = ({
   type: string;
 }) => {
   const { selectedEvent } = useDeganoCtx();
+  const [loading, setLoading] = useState(false);
   const [editState, setEditState] = useState({
     showInput: false,
     showEditableChips: false,
@@ -33,7 +36,12 @@ const EditableData = ({
     newChip: ''
   });
 
+  useLoadingCursor(loading);
+  const notify = useNotification();
+
   const updateEvent = async (event: any) => {
+    setLoading(true);
+    notify('', '', '', true)
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
     const timeStamp = new Date().toISOString();
@@ -47,9 +55,17 @@ const EditableData = ({
         body: JSON.stringify(event)
       });
       const data = await response.json();
+      notify();
       console.log(data);
     } catch (error) {
+      notify(
+        'Operación errónea',
+        'Algo salio mal, vuelve a intentarlo',
+        'red'
+      )
       console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 

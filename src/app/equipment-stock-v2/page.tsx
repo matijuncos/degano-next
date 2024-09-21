@@ -1,9 +1,10 @@
 import EquipmentStockTable from '@/components/equipmentStockTable/EquipmentStockTable';
 import { getEquipmentAction } from '@/lib/getEquipmentAction';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import { Box, Text } from '@mantine/core';
 import React from 'react';
 
-export default async function equipmentStock() {
+export default withPageAuthRequired(async function equipmentStock() {
   const cursor = await getEquipmentAction();
   const data = await cursor?.toArray();
   const formattedEquipment = data?.[0]?.equipment?.map(({ ...equip }) => ({
@@ -24,4 +25,4 @@ export default async function equipmentStock() {
       />
     </Box>
   );
-}
+});

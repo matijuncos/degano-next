@@ -3,19 +3,23 @@
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
 import { useEffect, useState } from 'react';
 import { sortBy } from 'lodash';
-import { ActionIcon, Button, Flex, Group, Modal } from '@mantine/core';
 import {
-  IconAlertTriangle,
-  IconEdit,
-  IconEye,
-  IconTrash
-} from '@tabler/icons-react';
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Modal,
+  Text
+} from '@mantine/core';
+import { IconAlertTriangle, IconEye, IconTrash } from '@tabler/icons-react';
 import { EventModel } from '@/context/types';
 import { useRouter } from 'next/navigation';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import Loader from '@/components/Loader/Loader';
+import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 
-export default function EventPage() {
+export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<any>>({
     columnAccessor: 'name',
@@ -97,55 +101,81 @@ export default function EventPage() {
       {loading ? (
         <Loader />
       ) : (
-        <DataTable
-          columns={[
-            { accessor: 'fullName', title: 'Nombre' },
-            {
-              accessor: 'date',
-              title: 'Fecha',
-              render: ({ date }) => new Date(date).toLocaleDateString(),
-              sortable: true
-            },
-            {
-              accessor: 'date',
-              title: 'Hora',
-              render: ({ date }) => new Date(date).toLocaleTimeString()
-            },
-            { accessor: 'salon', title: 'Salón' },
-            { accessor: 'type', title: 'Tipo de evento' },
-            {
-              accessor: 'actions',
-              title: 'Acciones',
-              render: (event) => (
-                <Group gap={4} justify='left' wrap='nowrap'>
-                  <ActionIcon
-                    size='sm'
-                    variant='subtle'
-                    color='green'
-                    onClick={() => handleEvent({ event, action: actions.see })}
-                  >
-                    <IconEye size={16} />
-                  </ActionIcon>
+        <>
+          <Text size='lg'>Eventos</Text>
+          <Flex direction='column' align='flex-end' mb='18px'>
+            <Flex align='center' gap='6px'>
+              Futuros{'  '}{' '}
+              <Box
+                w='18px'
+                h='5px'
+                bg='green'
+                style={{ borderRadius: '6px' }}
+              />
+            </Flex>
+            <Flex align='center' gap='6px'>
+              Pasados{'  '}{' '}
+              <Box w='18px' h='5px' bg='grey' style={{ borderRadius: '6px' }} />
+            </Flex>
+          </Flex>
+          <DataTable
+            highlightOnHover
+            rowColor={({ date }) => {
+              const now = new Date();
+              if (now <= new Date(date)) return 'green';
+              return 'grey';
+            }}
+            columns={[
+              { accessor: 'fullName', title: 'Nombre' },
+              {
+                accessor: 'date',
+                title: 'Fecha',
+                render: ({ date }) => new Date(date).toLocaleDateString(),
+                sortable: true
+              },
+              {
+                accessor: 'date',
+                title: 'Hora',
+                render: ({ date }) => new Date(date).toLocaleTimeString()
+              },
+              { accessor: 'salon', title: 'Salón' },
+              { accessor: 'type', title: 'Tipo de evento' },
+              {
+                accessor: 'actions',
+                title: 'Acciones',
+                render: (event) => (
+                  <Group gap={4} justify='left' wrap='nowrap'>
+                    <ActionIcon
+                      size='sm'
+                      variant='subtle'
+                      color='green'
+                      onClick={() =>
+                        handleEvent({ event, action: actions.see })
+                      }
+                    >
+                      <IconEye size={16} />
+                    </ActionIcon>
 
-                  <ActionIcon
-                    size='sm'
-                    variant='subtle'
-                    color='red'
-                    onClick={() =>
-                      handleEvent({ event, action: actions.remove })
-                    }
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Group>
-              )
-            }
-          ]}
-          records={records}
-          sortStatus={sortStatus}
-          onSortStatusChange={setSortStatus}
-        />
+                    <ActionIcon
+                      size='sm'
+                      variant='subtle'
+                      color='red'
+                      onClick={() =>
+                        handleEvent({ event, action: actions.remove })
+                      }
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
+                )
+              }
+            ]}
+            records={records}
+            sortStatus={sortStatus}
+            onSortStatusChange={setSortStatus}
+          />
+        </>
       )}
     </>
   );
-}
+});
