@@ -3,10 +3,19 @@ import { useDeganoCtx } from '@/context/DeganoContext';
 import { IconArrowRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 import styles from './NextEvents.module.css';
+
 const NextEvents = () => {
+  const setLoadingCursor = useLoadingCursor();
   const { allEvents } = useDeganoCtx();
+
   const router = useRouter();
+  
+  const handleClick = async (id: string) => {
+    setLoadingCursor(true);
+    router.push(`/event/${id}`);
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 1); // Set to the start of today
@@ -40,7 +49,7 @@ const NextEvents = () => {
           <motion.div
             variants={itemVariants}
             key={event._id}
-            onClick={() => router.push(`/event/${event._id}`)}
+            onClick={() => handleClick(event._id)}
             style={{
               display: 'flex',
               padding: '8px 8px',

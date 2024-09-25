@@ -1,28 +1,23 @@
+import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { Button, Input } from '@mantine/core';
 import { DateTimePicker, DateValue } from '@mantine/dates';
-import { useParams } from 'next/navigation';
 import { useState } from 'react';
 const PaymentForm = ({
   event,
   onBackTab,
-  onFinish,
+  onFinish
 }: {
   event: EventModel;
   onBackTab: Function;
   onFinish: Function;
 }) => {
   const [payment, setPayment] = useState<EventModel>(event);
-  const { id } = useParams();
   const save = async () => {
-      if (id) {
-        // update
-      } else {
-        await onFinish(payment);
-      }
+    await onFinish(payment);
   };
   const back = () => {
-    onBackTab(3, payment);
+    onBackTab(EVENT_TABS.EQUIPMENT, payment);
   };
   const handlechange = (e: any) => {
     setPayment({
@@ -45,10 +40,18 @@ const PaymentForm = ({
   return (
     <div>
       <h3>Datos de pago</h3>
+      <Input
+        type='number'
+        placeholder='Monto total del evento ($)'
+        onChange={handlechange}
+        name='totalToPay'
+        value={payment.payment.totalToPay}
+        mb='16px'
+      />
       <div className='inputs-grid'>
         <Input
           type='number'
-          placeholder='Monto Seña'
+          placeholder='Monto del pago inicial ($)'
           onChange={handlechange}
           name='upfrontAmount'
           value={payment.payment.upfrontAmount}
@@ -57,22 +60,8 @@ const PaymentForm = ({
           name='partialPaymentDate'
           dropdownType='modal'
           valueFormat='DD MMM YYYY hh:mm A'
-          placeholder='Fecha de seña'
+          placeholder='Fecha de pago inicial'
           onChange={(value) => handleDates(value, 'partialPaymentDate')}
-        />
-        <Input
-          type='number'
-          placeholder='Monto total'
-          onChange={handlechange}
-          name='totalToPay'
-          value={payment.payment.totalToPay}
-        />
-        <DateTimePicker
-          name='totalPaymentDate'
-          dropdownType='modal'
-          valueFormat='DD MMM YYYY hh:mm A'
-          placeholder='Fecha de seña'
-          onChange={(value) => handleDates(value, 'totalPaymentDate')}
         />
       </div>
       <div
