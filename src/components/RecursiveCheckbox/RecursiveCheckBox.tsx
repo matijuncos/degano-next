@@ -109,7 +109,7 @@ const RecursiveCheckbox: React.FC<RecursiveCheckboxProps> = ({
                   cursor: 'pointer'
                 }}
               >
-                {`${item.value}${isAdmin ? ` - $${item.price || 0}` : ''}`}
+                {`${item.value}${isAdmin ? ` - $${item.price || 0}` : '-'}`}
                 {isParentChecked && (
                   <>
                     <Flex align='center' gap='6px'>

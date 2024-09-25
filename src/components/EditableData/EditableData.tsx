@@ -40,7 +40,7 @@ const EditableData = ({
 
   const updateEvent = async (event: any) => {
     setLoadingCursor(true);
-    notify('', '', '', true)
+    notify('', '', '', true);
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
     const timeStamp = new Date().toISOString();
