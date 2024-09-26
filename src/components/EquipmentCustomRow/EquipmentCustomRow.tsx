@@ -10,6 +10,7 @@ import CustomCell from '../CustomCell/CustomCell';
 import { cloneDeep } from 'lodash';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { NewEquipment } from '../equipmentStockTable/types';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 interface CustomRowProps {
   eq: NewEquipment;
@@ -24,6 +25,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   equipmentListToEdit,
   setEquipmentListToEdit
 }) => {
+  const { user } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmationOpen, setIsconfirmationOpen] = useState(false);
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
@@ -42,7 +44,6 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const handleSaveEdit = async () => {
     setIsEditing(false);
     setLoading(true);
-    console.log(equipmentListToEdit);
     makePutRequest(equipmentListToEdit);
   };
 
@@ -118,11 +119,15 @@ const CustomRow: React.FC<CustomRowProps> = ({
         />
         <CustomCell
           field='price'
-          value={eq.price}
+          value={user?.role === 'admin' ? eq.price : '****'}
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <TableTd>${Number(eq.price) * Number(eq.selectedQuantity)}</TableTd>
+        <TableTd>
+          {user?.role === 'admin'
+            ? Number(eq.price) * Number(eq.selectedQuantity)
+            : '****'}
+        </TableTd>
         <TableTd>
           <Flex align='center' gap='24px'>
             {isEditing ? (

@@ -11,13 +11,16 @@ import React, { useEffect, useState } from 'react';
 import CustomRow from '../EquipmentCustomRow/EquipmentCustomRow';
 import { IconPlus } from '@tabler/icons-react';
 import RowWithInputs from '../RowWithInputs/RowWithInputs';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 const EquipmentTable = () => {
   const { selectedEvent } = useDeganoCtx();
   const [equipmentListToEdit, setEquipmentListToEdit] = useState(
     selectedEvent?.equipment || []
   );
+  const { user } = useUser();
   const [showInputRow, setShowInputRow] = useState(false);
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (selectedEvent) {
@@ -30,10 +33,12 @@ const EquipmentTable = () => {
   };
 
   const calculateTotal = () => {
-    return equipmentListToEdit.reduce(
-      (acc, item) => acc + item.price * (item.selectedQuantity || 1),
-      0
-    );
+    return isAdmin
+      ? equipmentListToEdit.reduce(
+          (acc, item) => acc + item.price * (item.selectedQuantity || 1),
+          0
+        )
+      : '****';
   };
 
   return (

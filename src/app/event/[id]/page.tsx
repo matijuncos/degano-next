@@ -8,27 +8,22 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EventModel } from '@/context/types';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
-import {
-  Accordion,
-  Box,
-  Button,
-  Container,
-  Flex,
-  Grid,
-  Text,
-  Title
-} from '@mantine/core';
+import { Accordion, Box, Button, Container, Title } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 const EventPage = () => {
   const { allEvents, setSelectedEvent, selectedEvent, loading } =
     useDeganoCtx();
+  const { user } = useUser();
+
+  const isAdmin = user?.role === 'admin';
+
   const { id } = useParams();
   const setLoadingCursor = useLoadingCursor();
   const [dateString, setDateString] = useState('');
   const [showPrintableComponent, setShowPrintableComponent] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (allEvents.length) {
@@ -50,7 +45,7 @@ const EventPage = () => {
 
   useEffect(() => {
     setLoadingCursor(false);
-  },[])
+  }, []);
 
   const AccordionSet = ({
     children,
@@ -75,7 +70,6 @@ const EventPage = () => {
     setShowPrintableComponent((prev) => !prev);
   };
 
-  console.log(selectedEvent?.payment);
   return selectedEvent ? (
     <Container size='xl'>
       {loading ? (
@@ -233,9 +227,11 @@ const EventPage = () => {
               <AccordionSet value='Equipos'>
                 <EquipmentTable />
               </AccordionSet>
-              <AccordionSet value='Historial de pagos'>
-                <EditablePayments />
-              </AccordionSet>
+              {isAdmin && (
+                <AccordionSet value='Historial de pagos'>
+                  <EditablePayments />
+                </AccordionSet>
+              )}
             </>
           )}
         </>

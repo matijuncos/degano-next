@@ -1,4 +1,5 @@
 import clientPromise from '@/lib/mongodb';
+import { getSession } from '@auth0/nextjs-auth0';
 import { MongoClient } from 'mongodb';
 import { NextResponse } from 'next/server';
 
@@ -7,6 +8,16 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const eventId = params.id;
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const isAdmin = session?.user?.role === 'admin';
+  if (!isAdmin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   if (!eventId) {
     return NextResponse.json(
       { message: 'Event ID is missing', success: false },
