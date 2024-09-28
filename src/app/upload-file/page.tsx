@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useDeganoCtx } from '@/context/DeganoContext';
 interface FileItem {
   id: string;
   [key: string]: any;
@@ -23,6 +24,7 @@ const DISCOVERY_DOCS = [
 const SCOPES = baseUrl+'/auth/drive.file';
 
 export default function FileUploader() {
+  const { folderName } = useDeganoCtx();
   const [value, setValue] = useState<File | null>(null);
   const [allFiles, setAllfiles] = useState<File[]>([]);
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -160,7 +162,7 @@ export default function FileUploader() {
   );
 
   useEffect(() => {
-    findOrCreateFolder('Otra carpeta');
+    findOrCreateFolder(folderName);
   }, [findOrCreateFolder]);
 
   useEffect(() => {
@@ -175,7 +177,7 @@ export default function FileUploader() {
   }, [authToken, folderId, fetchFilesFromFolder]);
 
   const handleUploadClick = async () => {
-    const newfolderId = await findOrCreateFolder('Otra carpeta'); // Use client name, salon and date to build the name
+    const newfolderId = await findOrCreateFolder(folderName); // Use client name, salon and date to build the name
     if (!newfolderId) return;
 
     allFiles.forEach((file) => {
