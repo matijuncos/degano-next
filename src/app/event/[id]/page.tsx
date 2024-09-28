@@ -12,9 +12,10 @@ import { Accordion, Box, Button, Container, Title } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 
 const EventPage = () => {
-  const { allEvents, setSelectedEvent, selectedEvent, loading } =
+  const { allEvents, setSelectedEvent, selectedEvent, loading, setFolderName } =
     useDeganoCtx();
   const { user } = useUser();
 
@@ -31,6 +32,15 @@ const EventPage = () => {
         (event) => event._id === id
       )!;
       setSelectedEvent(selectedEvent);
+      setFolderName(
+        `${selectedEvent.fullName} - ${selectedEvent.salon} - ${new Date(
+          selectedEvent.date
+        ).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit'
+        })}`
+      );
     }
   }, [allEvents, id]);
 
@@ -226,6 +236,9 @@ const EventPage = () => {
               </AccordionSet>
               <AccordionSet value='Equipos'>
                 <EquipmentTable />
+              </AccordionSet>
+              <AccordionSet value='Archivos'>
+                <FilesHandlerComponent />
               </AccordionSet>
               {isAdmin && (
                 <AccordionSet value='Historial de pagos'>
