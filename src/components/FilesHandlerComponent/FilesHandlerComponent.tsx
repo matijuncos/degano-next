@@ -1,6 +1,6 @@
 'use client';
 import '@mantine/dropzone/styles.css';
-import { Box, Button, Flex } from '@mantine/core';
+import { Box, Button, Flex, Loader } from '@mantine/core';
 import { Group, Text, rem } from '@mantine/core';
 import {
   IconUpload,
@@ -16,6 +16,13 @@ interface FileItem {
   [key: string]: any;
 }
 
+interface LoadingState {
+  findingFolder: boolean;
+  fetchingFiles: boolean;
+  uploading: boolean;
+  deletingFile: string | null;
+}
+
 const baseUrl = 'https://www.googleapis.com';
 
 const DISCOVERY_DOCS = [baseUrl + '/discovery/v1/apis/drive/v3/rest'];
@@ -29,7 +36,12 @@ export default function FilesHandlerComponent() {
   const [folderId, setFolderId] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [showUploadSection, setShowUploadSection] = useState(false);
-
+  const [loading, setLoading] = useState<LoadingState>({
+    findingFolder: false,
+    fetchingFiles: false,
+    uploading: false,
+    deletingFile: null
+  });
   useEffect(() => {
     if (value) {
       setAllfiles((prev: File[]) => {
@@ -91,7 +103,7 @@ export default function FilesHandlerComponent() {
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
       if (!authToken) return;
-      const accessToken = authToken;
+      setLoading((prev) => ({ ...prev, findingFolder: true }));
       try {
         const searchResponse = await fetch(
           `${baseUrl}/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
@@ -99,7 +111,7 @@ export default function FilesHandlerComponent() {
             method: 'GET',
             cache: 'no-store',
             headers: new Headers({
-              Authorization: 'Bearer ' + accessToken
+              Authorization: 'Bearer ' + authToken
             })
           }
         );
@@ -117,7 +129,7 @@ export default function FilesHandlerComponent() {
           const createResponse = await fetch(baseUrl + '/drive/v3/files', {
             method: 'POST',
             headers: new Headers({
-              Authorization: 'Bearer ' + accessToken,
+              Authorization: 'Bearer ' + authToken,
               'Content-Type': 'application/json'
             }),
             body: JSON.stringify(metadata)
@@ -130,6 +142,8 @@ export default function FilesHandlerComponent() {
       } catch (error) {
         console.error('Error finding or creating folder', error);
         return null;
+      } finally {
+        setLoading((prev) => ({ ...prev, findingFolder: false }));
       }
     },
     [authToken, setFolderId]
@@ -137,6 +151,7 @@ export default function FilesHandlerComponent() {
 
   const fetchFilesFromFolder = useCallback(
     async (folderId: string) => {
+      setLoading((prev) => ({ ...prev, fetchingFiles: true }));
       try {
         const response = await fetch(
           `${baseUrl}/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
@@ -153,6 +168,8 @@ export default function FilesHandlerComponent() {
       } catch (error) {
         console.error('Error fetching files from folder', error);
         return [];
+      } finally {
+        setLoading((prev) => ({ ...prev, fetchingFiles: false }));
       }
     },
     [authToken]
@@ -169,49 +186,60 @@ export default function FilesHandlerComponent() {
         .then((res) => {
           setFiles(res);
         })
-        .catch((e) => console.log(e));
+        .catch((e) => console.log(e))
+        .finally(() =>
+          setLoading((prev) => ({ ...prev, fetchingFiles: false }))
+        );
     }
   }, [authToken, folderId, fetchFilesFromFolder]);
 
   const handleUploadClick = async () => {
-    const newfolderId = await findOrCreateFolder(folderName); // Use client name, salon and date to build the name
-    if (!newfolderId) return;
+    setLoading((prev) => ({ ...prev, uploading: true }));
+    try {
+      const newfolderId = await findOrCreateFolder(folderName); // Use client name, salon and date to build the name
+      if (!newfolderId) return;
 
-    allFiles.forEach((file) => {
-      const form = new FormData();
-      form.append(
-        'metadata',
-        new Blob(
-          [
-            JSON.stringify({
-              name: file.name,
-              mimeType: file.type,
-              parents: [newfolderId]
-            })
-          ],
-          { type: 'application/json' }
-        )
-      );
-      form.append('file', file);
+      allFiles.forEach((file) => {
+        const form = new FormData();
+        form.append(
+          'metadata',
+          new Blob(
+            [
+              JSON.stringify({
+                name: file.name,
+                mimeType: file.type,
+                parents: [newfolderId]
+              })
+            ],
+            { type: 'application/json' }
+          )
+        );
+        form.append('file', file);
 
-      fetch(baseUrl + '/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: new Headers({ Authorization: 'Bearer ' + authToken }),
-        body: form
-      })
-        .then((response) => response.json())
-        .then(() => {
-          fetchFilesFromFolder(folderId)
-            .then((res) => {
-              setFiles(res);
-              setAllfiles([]);
-            })
-            .catch((e) => console.log(e));
+        fetch(baseUrl + '/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: new Headers({ Authorization: 'Bearer ' + authToken }),
+          body: form
         })
-        .catch((error) => {
-          console.error('Error uploading file', error);
-        });
-    });
+          .then((response) => response.json())
+          .then(() => {
+            fetchFilesFromFolder(folderId)
+              .then((res) => {
+                setFiles(res);
+                setAllfiles([]);
+              })
+              .catch((e) => console.log(e))
+              .finally(() =>
+                setLoading((prev) => ({ ...prev, uploading: false }))
+              );
+          })
+          .catch((error) => {
+            console.error('Error uploading file', error);
+          });
+      });
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const deleteFileFromFolder = async (fileId: string) => {
@@ -220,6 +248,7 @@ export default function FilesHandlerComponent() {
       return;
     }
 
+    setLoading((prev) => ({ ...prev, deletingFile: fileId }));
     try {
       const response = await fetch(`${baseUrl}/drive/v3/files/${fileId}`, {
         method: 'DELETE',
@@ -236,6 +265,8 @@ export default function FilesHandlerComponent() {
       }
     } catch (error) {
       console.error('Error deleting file:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, deletingFile: null }));
     }
   };
 
@@ -252,6 +283,8 @@ export default function FilesHandlerComponent() {
               ? 'Ocultar sección de carga'
               : 'Mostrar sección de carga'}
           </Button>
+
+          {loading.findingFolder && <Loader size='sm' />}
 
           {showUploadSection && (
             <>
@@ -379,12 +412,15 @@ export default function FilesHandlerComponent() {
               </Flex>
 
               <Button
-                disabled={allFiles.length === 0}
+                disabled={allFiles.length === 0 || loading.uploading}
                 mt='18px'
                 w='100%'
                 onClick={handleUploadClick}
+                leftSection={
+                  loading.uploading && <Loader size='sm' color='white' />
+                }
               >
-                Subir Archivos
+                {loading.uploading ? 'Subiendo...' : 'Subir Archivos'}
               </Button>
               <Box py='24px'>
                 <hr />
@@ -394,48 +430,56 @@ export default function FilesHandlerComponent() {
 
           <Flex direction='column' gap='12px' align='flex-start'>
             <h2>Archivos en la carpeta de este evento (Google drive)</h2>
-            {files?.map((file) => (
-              <Flex
-                gap='12px'
-                key={file.id}
-                justify='space-between'
-                p='12px 18px'
-                flex={1}
-                w='100%'
-                maw='350px'
-                style={{
-                  border: 'solid 1px rgba(180, 180, 180, 0.3)',
-                  borderRadius: '6px',
-                  width: '100%',
-                  maxWidth: '350px'
-                }}
-              >
-                <div
+            {loading.fetchingFiles ? (
+              <Loader size='sm' />
+            ) : (
+              files?.map((file) => (
+                <Flex
+                  gap='12px'
+                  key={file.id}
+                  justify='space-between'
+                  p='12px 18px'
+                  flex={1}
+                  w='100%'
+                  maw='350px'
                   style={{
-                    width: '250px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                    border: 'solid 1px rgba(180, 180, 180, 0.3)',
+                    borderRadius: '6px',
+                    width: '100%',
+                    maxWidth: '350px'
                   }}
                 >
-                  <a
-                    href={
-                      file.webContentLink ||
-                      `https://drive.google.com/uc?id=${file.id}&export=download`
-                    }
-                    target='_blank'
-                    rel='noopener noreferrer'
+                  <div
+                    style={{
+                      width: '250px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
                   >
-                    Descargar - {file.name}
-                  </a>
-                </div>
-                <IconTrash
-                  color='red'
-                  onClick={() => deleteFileFromFolder(file.id)}
-                  cursor='pointer'
-                />
-              </Flex>
-            ))}
+                    <a
+                      href={
+                        file.webContentLink ||
+                        `https://drive.google.com/uc?id=${file.id}&export=download`
+                      }
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      Descargar - {file.name}
+                    </a>
+                  </div>
+                  {loading.deletingFile === file.id ? (
+                    <Loader size='xs' />
+                  ) : (
+                    <IconTrash
+                      color='red'
+                      onClick={() => deleteFileFromFolder(file.id)}
+                      cursor='pointer'
+                    />
+                  )}
+                </Flex>
+              ))
+            )}
           </Flex>
         </>
       )}

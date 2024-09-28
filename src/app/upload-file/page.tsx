@@ -1,6 +1,6 @@
 'use client';
 import '@mantine/dropzone/styles.css';
-import { Box, Button, Flex } from '@mantine/core';
+import { Box, Button, Flex, Loader } from '@mantine/core';
 import { Group, Text, rem } from '@mantine/core';
 import {
   IconUpload,
@@ -23,7 +23,7 @@ const DISCOVERY_DOCS = [baseUrl + '/discovery/v1/apis/drive/v3/rest'];
 const SCOPES = baseUrl + '/auth/drive.file';
 
 export default function FileUploader() {
-  const { folderName } = useDeganoCtx();
+  const { folderName, loading, setLoading } = useDeganoCtx();
   const router = useRouter();
   const [value, setValue] = useState<File | null>(null);
   const [allFiles, setAllfiles] = useState<File[]>([]);
@@ -174,45 +174,52 @@ export default function FileUploader() {
   }, [authToken, folderId, fetchFilesFromFolder]);
 
   const handleUploadClick = async () => {
-    const newfolderId = await findOrCreateFolder(folderName); // Use client name, salon and date to build the name
-    if (!newfolderId) return;
+    setLoading(true);
+    try {
+      const newfolderId = await findOrCreateFolder(folderName); // Use client name, salon and date to build the name
+      if (!newfolderId) return;
 
-    allFiles.forEach((file) => {
-      const form = new FormData();
-      form.append(
-        'metadata',
-        new Blob(
-          [
-            JSON.stringify({
-              name: file.name,
-              mimeType: file.type,
-              parents: [newfolderId]
-            })
-          ],
-          { type: 'application/json' }
-        )
-      );
-      form.append('file', file);
+      allFiles.forEach((file) => {
+        const form = new FormData();
+        form.append(
+          'metadata',
+          new Blob(
+            [
+              JSON.stringify({
+                name: file.name,
+                mimeType: file.type,
+                parents: [newfolderId]
+              })
+            ],
+            { type: 'application/json' }
+          )
+        );
+        form.append('file', file);
 
-      fetch(baseUrl + '/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: new Headers({ Authorization: 'Bearer ' + authToken }),
-        body: form
-      })
-        .then((response) => response.json())
-        .then(() => {
-          fetchFilesFromFolder(folderId)
-            .then((res) => {
-              setFiles(res);
-              setAllfiles([]);
-            })
-            .catch((e) => console.log(e));
+        fetch(baseUrl + '/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: new Headers({ Authorization: 'Bearer ' + authToken }),
+          body: form
         })
-        .catch((error) => {
-          console.error('Error uploading file', error);
-        });
-    });
-    router.push('/home');
+          .then((response) => response.json())
+          .then(() => {
+            fetchFilesFromFolder(folderId)
+              .then((res) => {
+                setFiles(res);
+                setAllfiles([]);
+              })
+              .catch((e) => console.log(e));
+          })
+          .catch((error) => {
+            console.error('Error uploading file', error);
+          });
+      });
+      router.push('/home');
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const deleteFileFromFolder = async (fileId: string) => {
@@ -364,14 +371,20 @@ export default function FileUploader() {
           </Flex>
 
           <Button
-            disabled={allFiles.length === 0}
+            disabled={allFiles.length === 0 || loading}
             mt='18px'
             w='100%'
             onClick={handleUploadClick}
+            leftSection={loading && <Loader size='sm' color='white' />}
           >
-            Subir Archivos
+            {loading ? 'Subiendo...' : 'Subir Archivos'}
           </Button>
-          <Button onClick={() => router.push('/home')} mt='18px' w='100%'>
+          <Button
+            onClick={() => router.push('/home')}
+            mt='18px'
+            w='100%'
+            disabled={loading}
+          >
             Terminar sin subir archivos
           </Button>
           <Box py='24px'>
