@@ -10,6 +10,7 @@ import {
 import { useState } from 'react';
 import { capitalizeWords } from './utils';
 import { useDisclosure } from '@mantine/hooks';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 type EquipmentItem = {
   value: string;
@@ -33,6 +34,7 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
   onDelete,
   parentIdPath = []
 }) => {
+  const { user } = useUser();
   const currentPath = [...parentIdPath, item._id];
   const [showInputs, setShowInputs] = useState(false);
   const [childName, setChildName] = useState('');
@@ -70,7 +72,7 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
               <Text style={{ fontWeight: '600' }}>
                 {capitalizeWords(item.value)}{' '}
               </Text>
-              {item.price && (
+              {user?.role === 'admin' && item.price && (
                 <>
                   <Text>-</Text>
                   <Badge size='lg' color='indigo'>

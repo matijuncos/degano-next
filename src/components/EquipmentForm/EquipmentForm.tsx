@@ -5,6 +5,8 @@ import { IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import ChoseComponentFromDBComponent from './ChooseComponentFromDB';
+import { EVENT_TABS } from '@/context/config';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 const EquipmentForm = ({
   event,
@@ -15,6 +17,7 @@ const EquipmentForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
+  const { user } = useUser();
   const [equipment, setEquipment] = useState<EventModel>(event);
   const [useEquipmentDataBase, setUseEquipmentDataBase] = useState(true);
   const [equipmentFromDB, setEquipmentFromDB] = useState<NewEquipment[]>([]);
@@ -42,7 +45,7 @@ const EquipmentForm = ({
     onNextTab(4, equipment);
   };
   const back = () => {
-    onBackTab(2, equipment);
+    onBackTab(EVENT_TABS.MUSIC, equipment);
   };
   const handleChange = (e: any) => {
     setNewEquipment({
@@ -163,7 +166,11 @@ const EquipmentForm = ({
                   <Text className='quantity'>
                     Cantidad: {item.selectedQuantity}
                   </Text>
-                  |<Text className='price'>Precio: ${item.price}</Text>-
+                  |
+                  {user?.role === 'admin' && (
+                    <Text className='price'>Precio: ${item.price}</Text>
+                  )}
+                  -
                   <ActionIcon
                     size='sm'
                     variant='subtle'

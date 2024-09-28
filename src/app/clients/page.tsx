@@ -12,7 +12,8 @@ import {
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
-
+import { useRouter } from 'next/navigation';
+import useNotification from '@/hooks/useNotification';
 interface Client {
   fullName: string;
   phoneNumber: string;
@@ -21,12 +22,27 @@ interface Client {
 }
 
 export default withPageAuthRequired(function ClientsPage() {
+  const router = useRouter();
+  const notify = useNotification();
+
   const [clientsList, setClientsList] = useState<Client[]>([]);
 
   useEffect(() => {
     const fetchClients = async () => {
-      const clients = await getClientsList();
-      setClientsList(clients.clients);
+      try {
+        const clients = await getClientsList();
+        if (clients === 'Unauthorized') {
+          notify(
+            'No autorizado',
+            'No tienes acceso. Contactate con tu administrador',
+            'red'
+          );
+          router.push('/home');
+        }
+        if (clients.clients) setClientsList(clients.clients);
+      } catch (error) {
+        console.log(error);
+      }
     };
     fetchClients();
   }, []);

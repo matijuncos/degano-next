@@ -167,8 +167,6 @@ const PrintableEvent = () => {
 
   const eventToArray = Object.keys(selectedEvent || {});
 
-  console.log(typeof selectedEvent?.music);
-
   const MyDocument = (
     <Document>
       <Page size='A4' style={styles.page}>
@@ -226,7 +224,9 @@ const PrintableEvent = () => {
               {selectedEvent?.equipment.map((equipment) => (
                 <View style={styles.tableRow} key={equipment.name}>
                   <Text style={styles.tableCell}>{equipment.name}</Text>
-                  <Text style={styles.tableCell}>{equipment.quantity}</Text>
+                  <Text style={styles.tableCell}>
+                    {equipment.selectedQuantity}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -309,7 +309,7 @@ const PrintableEvent = () => {
                 {selectedEvent?.equipment.map((equipment) => (
                   <TableTr key={equipment.name}>
                     <TableTd>{equipment.name}</TableTd>
-                    <TableTd>{equipment.quantity}</TableTd>
+                    <TableTd>{equipment.selectedQuantity}</TableTd>
                   </TableTr>
                 ))}
               </TableTbody>

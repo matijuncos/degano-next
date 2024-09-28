@@ -2,6 +2,7 @@ import { MongoClient, ObjectId } from 'mongodb'; // Import ObjectId
 import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
+import { getSession } from '@auth0/nextjs-auth0';
 
 export const PUT = async function handler(req: Request, res: NextApiResponse) {
   try {
@@ -10,6 +11,10 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
     const client = await typedClientPromise;
     const body = await req.json();
     const db = client.db('degano-app');
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const eventId = body._id;
     // delete body._id;
     delete body._id;

@@ -9,6 +9,7 @@ import {
   SelectedEventType
 } from './types';
 import { usePathname } from 'next/navigation';
+import { EVENT_TABS } from './config';
 
 export const DeganoContext = createContext<DeganoContextProps | null>(null);
 
@@ -40,17 +41,15 @@ export const DeganoProvider: ({
     fetchEvents();
   }, []);
 
-  const [token, setToken] = useState();
-
   const [loading, setLoading] = useState(false);
 
-  const [activeNavTab, setActiveNavTab] = useState<number>(0);
+  const [activeNavTab, setActiveNavTab] = useState<number>(4);
 
   const [singleEventData, setSingleEventData] = useState<EventModel | null>(
     null
   );
 
-  const [formState, setFormState] = useState(0);
+  const [formState, setFormState] = useState(EVENT_TABS.CLIENT);
 
   const [validate, setValidate] = useState(false);
 
