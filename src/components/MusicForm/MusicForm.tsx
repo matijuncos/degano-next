@@ -1,6 +1,15 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { Button, Chip, Flex, Input, Rating, rem } from '@mantine/core';
-import { useId, useState } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  Flex,
+  Input,
+  Rating,
+  rem,
+  Text
+} from '@mantine/core';
+import { useState } from 'react';
 import { EventModel } from '@/context/types';
 import { IconX } from '@tabler/icons-react';
 import styles from './MusicForm.module.css';
@@ -10,6 +19,12 @@ type GenreType = {
   genre: string;
   value: number;
 };
+
+type SpotifyLink = {
+  label: string;
+  url: string;
+};
+
 const MusicForm = ({
   event,
   onNextTab,
@@ -19,9 +34,10 @@ const MusicForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
-  const { setFormState } = useDeganoCtx();
   const [musicData, setMusicData] = useState(event);
-  const id = useId();
+  const [spotifyLinks, setSpotifyLinks] = useState<SpotifyLink[]>([]);
+  const [spotifyLinkInputValue, setSpotifyLinkInputValue] = useState('');
+  const [spotifyLabelInputValue, setSpotifyLabelInputValue] = useState('');
 
   const handleForbidden = (e: any) => {
     const target = e.target as HTMLInputElement;
@@ -104,11 +120,29 @@ const MusicForm = ({
     });
   };
   const next = () => {
-    onNextTab(EVENT_TABS.EQUIPMENT, musicData);
+    onNextTab(EVENT_TABS.EQUIPMENT, { ...musicData, playlist: spotifyLinks });
   };
   const back = () => {
-    onBackTab(EVENT_TABS.EVENT, musicData);
+    onBackTab(EVENT_TABS.EVENT, { ...musicData, playlist: spotifyLinks });
   };
+
+  const handleSpotifyLinks = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      addSpotifyLinkButton();
+    }
+  };
+
+  const addSpotifyLinkButton = () => {
+    if (spotifyLinkInputValue && spotifyLabelInputValue) {
+      setSpotifyLinks((prev) => [
+        ...prev,
+        { label: spotifyLabelInputValue, url: spotifyLinkInputValue }
+      ]);
+      setSpotifyLinkInputValue('');
+      setSpotifyLabelInputValue('');
+    }
+  };
+
   return (
     <div>
       <h2>Musica de preferencia</h2>
@@ -177,6 +211,62 @@ const MusicForm = ({
           })}
         </div>
       </div>
+      <Box mt='md'>
+        <Text fw={500} size='lg' mb='xs'>
+          Spotify Playlists
+        </Text>
+        <Flex mb='md' gap='8px'>
+          <Input
+            placeholder='Playlist Label'
+            value={spotifyLabelInputValue}
+            onChange={(e) => setSpotifyLabelInputValue(e.target.value)}
+            style={{ flexGrow: 1 }}
+          />
+          <Input
+            placeholder='Spotify playlist URL'
+            value={spotifyLinkInputValue}
+            onChange={(e) => setSpotifyLinkInputValue(e.target.value)}
+            onKeyDown={handleSpotifyLinks}
+            style={{ flexGrow: 2 }}
+          />
+          <Button onClick={addSpotifyLinkButton}>Agregar</Button>
+        </Flex>
+
+        {spotifyLinks.map((link, index) => (
+          <Flex key={index} align='center' mb='xs' gap='8px'>
+            <Box style={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+              <Text fw={500} mr='xs'>
+                {link.label}:
+              </Text>
+              <Text
+                style={{
+                  flexGrow: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {link.url}
+              </Text>
+            </Box>
+            <Button
+              variant='light'
+              onClick={() => window.open(link.url, '_blank')}
+            >
+              Visitar
+            </Button>
+            <Button
+              variant='light'
+              color='red'
+              onClick={() => {
+                setSpotifyLinks((links) => links.filter((_, i) => i !== index));
+              }}
+            >
+              <IconX size={16} />
+            </Button>
+          </Flex>
+        ))}
+      </Box>
       <Flex direction='column' gap='12px'>
         <Button onClick={back}>Anterior</Button>
         <Button onClick={next}>Siguiente</Button>

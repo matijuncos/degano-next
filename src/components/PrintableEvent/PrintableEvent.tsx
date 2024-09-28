@@ -40,7 +40,6 @@ const eventDetailsLabels = {
   salon: 'Salón',
   date: 'Fecha',
   averageAge: 'Edad promedio',
-  eventDate: 'Fecha del evento',
   civil: 'Civil',
   bandName: 'Nombre de banda',
   manager: 'Manager',

@@ -18,10 +18,8 @@ interface FileItem {
 
 const baseUrl = 'https://www.googleapis.com';
 
-const DISCOVERY_DOCS = [
-  baseUrl+'/discovery/v1/apis/drive/v3/rest'
-];
-const SCOPES = baseUrl+'/auth/drive.file';
+const DISCOVERY_DOCS = [baseUrl + '/discovery/v1/apis/drive/v3/rest'];
+const SCOPES = baseUrl + '/auth/drive.file';
 
 export default function FileUploader() {
   const { folderName } = useDeganoCtx();
@@ -114,17 +112,14 @@ export default function FileUploader() {
             name: folderName,
             mimeType: 'application/vnd.google-apps.folder'
           };
-          const createResponse = await fetch(
-            baseUrl+'/drive/v3/files',
-            {
-              method: 'POST',
-              headers: new Headers({
-                Authorization: 'Bearer ' + accessToken,
-                'Content-Type': 'application/json'
-              }),
-              body: JSON.stringify(metadata)
-            }
-          );
+          const createResponse = await fetch(baseUrl + '/drive/v3/files', {
+            method: 'POST',
+            headers: new Headers({
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json'
+            }),
+            body: JSON.stringify(metadata)
+          });
           const folder = await createResponse.json();
           console.log('Folder created', folder);
           setFolderId(folder.id);
@@ -162,8 +157,8 @@ export default function FileUploader() {
   );
 
   useEffect(() => {
-    findOrCreateFolder(folderName);
-  }, [findOrCreateFolder]);
+    if (folderName) findOrCreateFolder(folderName);
+  }, [findOrCreateFolder, folderName]);
 
   useEffect(() => {
     if (authToken && folderId) {
@@ -197,14 +192,11 @@ export default function FileUploader() {
       );
       form.append('file', file);
 
-      fetch(
-        baseUrl+'/upload/drive/v3/files?uploadType=multipart',
-        {
-          method: 'POST',
-          headers: new Headers({ Authorization: 'Bearer ' + authToken }),
-          body: form
-        }
-      )
+      fetch(baseUrl + '/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: new Headers({ Authorization: 'Bearer ' + authToken }),
+        body: form
+      })
         .then((response) => response.json())
         .then(() => {
           fetchFilesFromFolder(folderId)
@@ -227,15 +219,12 @@ export default function FileUploader() {
     }
 
     try {
-      const response = await fetch(
-        `${baseUrl}/drive/v3/files/${fileId}`,
-        {
-          method: 'DELETE',
-          headers: new Headers({
-            Authorization: `Bearer ${authToken}`
-          })
-        }
-      );
+      const response = await fetch(`${baseUrl}/drive/v3/files/${fileId}`, {
+        method: 'DELETE',
+        headers: new Headers({
+          Authorization: `Bearer ${authToken}`
+        })
+      });
 
       if (response.ok) {
         console.log(`File with ID ${fileId} deleted successfully.`);

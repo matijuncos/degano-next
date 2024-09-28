@@ -14,7 +14,6 @@ export interface EventModel {
   eventCity: string;
   salon: string;
   averageAge: string;
-  eventDate: string;
   churchDate?: string;
   civil: string;
   bandName: string;
