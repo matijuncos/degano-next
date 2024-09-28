@@ -66,6 +66,8 @@ export const DeganoProvider: ({
     setActiveNavTab(paths[path]);
   }, [pathname]);
 
+  const [folderName, setFolderName] = useState('untitled');
+
   const contextValue = {
     selectedEvent,
     setSelectedEvent,
@@ -81,7 +83,9 @@ export const DeganoProvider: ({
     setValidate,
     fetchEvents,
     loading,
-    setLoading
+    setLoading,
+    folderName,
+    setFolderName
   };
   return (
     <DeganoContext.Provider value={contextValue}>

@@ -66,6 +66,8 @@ export interface DeganoContextProps {
   fetchEvents: () => void;
   loading: boolean;
   setLoading: Function;
+  folderName: string;
+  setFolderName: Function;
 }
 export interface DataverseProviderProps {
   children: ReactNode;
