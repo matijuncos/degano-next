@@ -1,6 +1,8 @@
+import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { Button, Input, InputLabel, Textarea } from '@mantine/core';
+import { DateInput, DatesProvider, DateValue, MonthPickerInput, DatePickerInput } from '@mantine/dates';
 import { useState } from 'react';
 
 const EventForm = ({
@@ -18,6 +20,7 @@ const EventForm = ({
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
   const requiredFields: (keyof EventModel)[] = [
+    'date',
     'type',
     'eventAddress',
     'eventCity',
@@ -46,7 +49,7 @@ const EventForm = ({
   const back = () => {
     onBackTab(EVENT_TABS.CLIENT, eventData);
   };
-  const onDateChange = (name: string, value: string) => {
+  const onDateChange = (name: string, value: DateValue) => {
     setEventData({
       ...eventData,
       [name]: value
@@ -58,20 +61,22 @@ const EventForm = ({
       <div className='inputs-grid'>
         <InputLabel>
           Fecha del evento
-          <Input
-            type='datetime-local'
-            name='date'
-            placeholder='Fecha del evento'
-            onChange={(e) => onDateChange('date', e.target.value)}
-          />
+        <DateInput
+          placeholder='Fecha del evento *'
+          name='date'
+          locale='es'
+          valueFormat='DD/MM/YYYY'
+          onChange={(value: DateValue) => onDateChange('date', value)}
+        />
         </InputLabel>
         <InputLabel>
           Fecha de finalización del evento (opcional)
-          <Input
-            type='datetime-local'
-            name='endDate'
+          <DateInput
             placeholder='Fecha de finalizaciòn del evento'
-            onChange={(e) => onDateChange('endDate', e.target.value)}
+            name='endDate'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            onChange={(value: DateValue) => onDateChange('endDate', value)}
           />
         </InputLabel>
         <Input
