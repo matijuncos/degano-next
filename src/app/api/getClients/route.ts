@@ -1,5 +1,4 @@
 import clientPromise from '@/lib/mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
 import { MongoClient } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import { revalidatePath } from 'next/cache';
@@ -10,10 +9,6 @@ export const GET = async function handler(
   res: NextApiResponse
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
