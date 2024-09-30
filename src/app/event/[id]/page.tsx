@@ -12,6 +12,7 @@ import { Accordion, Box, Button, Container, Title } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 
 const EventPage = () => {
   const { allEvents, setSelectedEvent, selectedEvent, loading } =
@@ -215,6 +216,9 @@ const EventPage = () => {
                       value={selectedEvent.music.genres}
                     />
                   </div>
+                </AccordionSet>
+                <AccordionSet value='Playlist'>
+                  <SpotifyTable />
                 </AccordionSet>
               </AccordionSet>
               <AccordionSet value='Más Información'>

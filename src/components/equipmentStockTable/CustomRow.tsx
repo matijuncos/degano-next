@@ -56,6 +56,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
     const filteredEquipment = equipmentCopy.filter(
       (_item, idx) => idx !== index
     );
+    console.log(filteredEquipment);
     await makePutRequest(filteredEquipment);
     setEquipmentListToEdit(filteredEquipment);
     setIsconfirmationOpen(false);
