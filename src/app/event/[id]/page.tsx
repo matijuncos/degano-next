@@ -13,6 +13,7 @@ import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
+import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 
 const EventPage = () => {
   const { allEvents, setSelectedEvent, selectedEvent, loading, setFolderName } =
@@ -225,6 +226,9 @@ const EventPage = () => {
                       value={selectedEvent.music.genres}
                     />
                   </div>
+                </AccordionSet>
+                <AccordionSet value='Playlist'>
+                  <SpotifyTable />
                 </AccordionSet>
               </AccordionSet>
               <AccordionSet value='Más Información'>

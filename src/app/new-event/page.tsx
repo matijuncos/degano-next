@@ -35,7 +35,6 @@ const NewEventPage = () => {
     salon: '',
     date: new Date(),
     averageAge: '',
-    eventDate: '',
     churchDate: '',
     civil: new Date().toISOString(),
     bandName: '',

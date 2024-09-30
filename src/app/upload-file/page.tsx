@@ -159,8 +159,8 @@ export default function FileUploader() {
   );
 
   useEffect(() => {
-    findOrCreateFolder(folderName);
-  }, [findOrCreateFolder]);
+    if (folderName) findOrCreateFolder(folderName);
+  }, [findOrCreateFolder, folderName]);
 
   useEffect(() => {
     if (authToken && folderId) {
