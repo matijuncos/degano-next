@@ -13,6 +13,7 @@ import {
 import { IconTrash } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+
 import useNotification from '@/hooks/useNotification';
 interface Client {
   fullName: string;
@@ -31,14 +32,6 @@ export default withPageAuthRequired(function ClientsPage() {
     const fetchClients = async () => {
       try {
         const clients = await getClientsList();
-        if (clients === 'Unauthorized') {
-          notify(
-            'No autorizado',
-            'No tienes acceso. Contactate con tu administrador',
-            'red'
-          );
-          router.push('/home');
-        }
         if (clients.clients) setClientsList(clients.clients);
       } catch (error) {
         console.log(error);

@@ -12,16 +12,21 @@ export async function getEquipmentAction(session: Session) {
     const client = await typedClientPromise;
     const db = client.db('degano-app');
     const equipment = await db.collection('equipmentListV2').find().toArray();
+    console.log(equipment);
     const returnedEquipment = equipment?.[0]?.equipment;
-
-    return isAdmin
-      ? returnedEquipment
-      : returnedEquipment.map((eq: any) => {
-          return {
-            ...eq,
-            price: '****'
-          };
-        });
+    const collectionId = equipment?.[0]?._id;
+    const response = {
+      collectionId,
+      equipment: isAdmin
+        ? returnedEquipment
+        : returnedEquipment.map((eq: any) => {
+            return {
+              ...eq,
+              price: '****'
+            };
+          })
+    };
+    return response;
   } catch (error) {
     console.log(error);
   }

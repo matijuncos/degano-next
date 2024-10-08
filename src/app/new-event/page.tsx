@@ -12,7 +12,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 const NewEventPage = () => {
-  const { formState, setFormState, validate, setValidate, setFolderName } = useDeganoCtx();
+  const {
+    formState,
+    setFormState,
+    validate,
+    setValidate,
+    setFolderName,
+    setAllEvents
+  } = useDeganoCtx();
   const router = useRouter();
   const [event, setEvent] = useState<EventModel>({
     _id: '', // Use empty string instead of null
@@ -28,7 +35,6 @@ const NewEventPage = () => {
     salon: '',
     date: new Date(),
     averageAge: '',
-    eventDate: '',
     churchDate: '',
     civil: new Date().toISOString(),
     bandName: '',
@@ -76,13 +82,20 @@ const NewEventPage = () => {
         },
         body: JSON.stringify(newEvent)
       });
-      if(response) {
-        setFolderName(`${newEvent.fullName} - ${newEvent.salon} - ${new Date(newEvent.date).toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: '2-digit'
-        })}`);
-        router.push('/upload-file/')
+      const data = await response.json();
+      if (data) {
+        setFolderName(
+          `${newEvent.fullName} - ${newEvent.salon} - ${new Date(
+            newEvent.date
+          ).toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+          })}`
+        );
+        if (data.event)
+          setAllEvents((prev: EventModel[]) => [...prev, data.event]);
+        router.push('/upload-file');
       }
     } catch (err) {
       console.error('failed to save the event ', err);

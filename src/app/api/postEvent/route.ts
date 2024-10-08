@@ -19,7 +19,9 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
     const event = await db
       .collection('events')
       .insertOne(!_id ? bodyWithoutId : body);
-
+    const newEvent = await db
+      .collection('events')
+      .findOne({ _id: event.insertedId });
     const existingClient = await db
       .collection('clients')
       .findOne({ email: body.email });
@@ -31,7 +33,7 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
         email: body.email
       });
     }
-    return NextResponse.json({ event }, { status: 200 });
+    return NextResponse.json({ event: newEvent }, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json(

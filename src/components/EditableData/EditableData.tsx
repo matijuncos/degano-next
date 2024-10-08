@@ -55,7 +55,6 @@ const EditableData = ({
       });
       const data = await response.json();
       notify();
-      console.log(data);
     } catch (error) {
       notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
       console.log(error);
