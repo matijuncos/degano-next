@@ -65,9 +65,10 @@ export default withPageAuthRequired(function ClientsPage() {
               <TableTd>{client.email}</TableTd>
               <TableTd>{client.phoneNumber}</TableTd>
               <TableTd>
-                <button onClick={() => handleRemoveClient(client._id)}>
-                  <IconTrash color='red' />
-                </button>
+                <IconTrash
+                  color='red'
+                  onClick={() => handleRemoveClient(client._id)}
+                />
               </TableTd>
             </TableTr>
           ))

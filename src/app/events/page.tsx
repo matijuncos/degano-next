@@ -10,7 +10,8 @@ import {
   Flex,
   Group,
   Modal,
-  Text
+  Text,
+  Select
 } from '@mantine/core';
 import { IconAlertTriangle, IconEye, IconTrash } from '@tabler/icons-react';
 import { EventModel } from '@/context/types';
@@ -29,6 +30,25 @@ export default withPageAuthRequired(function EventPage() {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const router = useRouter();
   const [eventId, setEventId] = useState('');
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [salonFilter, setSalonFilter] = useState<string | null>(null);
+  const [filteredRecords, setFilteredRecords] = useState(records);
+
+  useEffect(() => {
+    const filtered = records.filter(
+      (event) =>
+        (clientFilter === null || event.fullName === clientFilter) &&
+        (salonFilter === null || event.salon === salonFilter)
+    );
+    setFilteredRecords(filtered);
+  }, [records, clientFilter, salonFilter]);
+
+  const uniqueClients = Array.from(new Set(records.map((r) => r.fullName)));
+  const uniqueSalons = Array.from(new Set(records.map((r) => r.salon)));
+
+  const sortedClients = [...uniqueClients].sort((a, b) => a.localeCompare(b));
+  const sortedSalons = [...uniqueSalons].sort((a, b) => a.localeCompare(b));
+
   useEffect(() => {
     const data = sortBy(allEvents, sortStatus.columnAccessor) as any;
     setRecords(sortStatus.direction === 'desc' ? data.reverse() : data);
@@ -102,20 +122,59 @@ export default withPageAuthRequired(function EventPage() {
         <Loader />
       ) : (
         <>
-          <Text size='lg'>Eventos</Text>
-          <Flex direction='column' align='flex-end' mb='18px'>
-            <Flex align='center' gap='6px'>
-              Futuros{'  '}{' '}
-              <Box
-                w='18px'
-                h='5px'
-                bg='green'
-                style={{ borderRadius: '6px' }}
+          <Text size='xl' fw={700}>
+            Eventos
+          </Text>
+          <Flex justify='space-between' mb='md'>
+            <Flex gap='md' mb='md'>
+              <Select
+                placeholder='Filtrar por cliente'
+                value={clientFilter}
+                onChange={setClientFilter}
+                data={[
+                  { value: '', label: 'Todos los clientes' },
+                  ...sortedClients.map((client) => ({
+                    value: client,
+                    label: client
+                  }))
+                ]}
+                clearable
+                searchable
+              />
+              <Select
+                placeholder='Filtrar por salón'
+                value={salonFilter}
+                onChange={setSalonFilter}
+                data={[
+                  { value: '', label: 'Todos los salones' },
+                  ...sortedSalons.map((salon) => ({
+                    value: salon,
+                    label: salon
+                  }))
+                ]}
+                clearable
+                searchable
               />
             </Flex>
-            <Flex align='center' gap='6px'>
-              Pasados{'  '}{' '}
-              <Box w='18px' h='5px' bg='grey' style={{ borderRadius: '6px' }} />
+            <Flex align='flex-end' mb='18px' gap='12px'>
+              <Flex align='center' gap='6px'>
+                Futuros{'  '}{' '}
+                <Box
+                  w='18px'
+                  h='5px'
+                  bg='green'
+                  style={{ borderRadius: '6px' }}
+                />
+              </Flex>
+              <Flex align='center' gap='6px'>
+                Pasados{'  '}{' '}
+                <Box
+                  w='18px'
+                  h='5px'
+                  bg='grey'
+                  style={{ borderRadius: '6px' }}
+                />
+              </Flex>
             </Flex>
           </Flex>
           <DataTable
@@ -170,7 +229,7 @@ export default withPageAuthRequired(function EventPage() {
                 )
               }
             ]}
-            records={records}
+            records={filteredRecords}
             sortStatus={sortStatus}
             onSortStatusChange={setSortStatus}
           />
