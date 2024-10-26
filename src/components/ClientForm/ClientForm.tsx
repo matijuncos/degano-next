@@ -44,6 +44,8 @@ const ClientForm = ({
   };
   return (
     <div className='flex directionColumn'>
+      <h3>Datos del cliente</h3>
+      <br/>
       <div className='inputs-grid'>
         <Input
           placeholder='Nombre y Apellido *'

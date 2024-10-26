@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const useLoadingCursor = (loading) => {
+const useLoadingCursor = () => {
   const setLoadingCursor = (loading) => {
     if (loading) {
     document.body.classList.add('loading');

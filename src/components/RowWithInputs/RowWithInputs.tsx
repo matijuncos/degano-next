@@ -11,9 +11,11 @@ import {
 import { cloneDeep, concat } from 'lodash';
 import React, { useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
+import useNotification from '@/hooks/useNotification';
 
 const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
   const { selectedEvent, setLoading, setSelectedEvent } = useDeganoCtx();
+  const notify = useNotification();
   const [newEquipment, setNewEquipment] = useState<NewEquipment>({
     name: '',
     selectedQuantity: 0,
@@ -38,6 +40,7 @@ const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
   const makePutRequest = async (newEquipment: NewEquipment[]) => {
     const event = cloneDeep(selectedEvent);
     event!.equipment = newEquipment;
+    notify({loading: true});
     try {
       const response = await fetch(`/api/updateEvent`, {
         method: 'PUT',
@@ -48,8 +51,10 @@ const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
         body: JSON.stringify(event)
       });
       const data = await response.json();
+      notify({message: 'Se actualizo el evento correctamente'});
       setSelectedEvent(data.event);
     } catch (error) {
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoading(false);

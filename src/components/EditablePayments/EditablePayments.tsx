@@ -17,7 +17,7 @@ const EditablePayments = () => {
   const [subsequentPayments, setSubsequentPayments] = useState<any[]>([]);
   const updateEvent = async (event: any) => {
     setLoading(true);
-    notify('', '', '', true);
+    notify({loading: true});
 
     const timeStamp = new Date().toISOString();
     try {
@@ -33,7 +33,7 @@ const EditablePayments = () => {
       notify();
       setSelectedEvent(data.event);
     } catch (error) {
-      notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoading(false);

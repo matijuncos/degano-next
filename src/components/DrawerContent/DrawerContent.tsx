@@ -1,11 +1,13 @@
 'use client';
 import { useDeganoCtx } from '@/context/DeganoContext';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { DrawerHeader, NavLink } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 
 const DrawerContent = () => {
   const { selectedEvent, setActiveNavTab } = useDeganoCtx();
   const router = useRouter();
+  const setLoadingCursor = useLoadingCursor();
   return (
     <>
       <DrawerHeader>
@@ -60,7 +62,7 @@ const DrawerContent = () => {
         <div>
           <NavLink
             active
-            onClick={() => router.push(`/event/${selectedEvent?._id}`)}
+            onClick={() => {setLoadingCursor(true); router.push(`/event/${selectedEvent?._id}`)}}
             label='Ver Evento'
           ></NavLink>
         </div>

@@ -19,6 +19,8 @@ import { useRouter } from 'next/navigation';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import Loader from '@/components/Loader/Loader';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import useNotification from '@/hooks/useNotification';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 
 export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
@@ -33,6 +35,8 @@ export default withPageAuthRequired(function EventPage() {
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [salonFilter, setSalonFilter] = useState<string | null>(null);
   const [filteredRecords, setFilteredRecords] = useState(records);
+  const notify = useNotification();
+  const setLoadingCursor = useLoadingCursor();
 
   useEffect(() => {
     const filtered = records.filter(
@@ -62,6 +66,8 @@ export default withPageAuthRequired(function EventPage() {
   const removeEvent = async () => {
     setShowConfirmationModal(false);
     setLoading(true);
+    setLoadingCursor(true);
+    notify({loading: true});
     try {
       const response = await fetch(`/api/deleteEvent/${eventId}`, {
         method: 'DELETE',
@@ -71,10 +77,13 @@ export default withPageAuthRequired(function EventPage() {
       if (data.success) {
         fetchEvents();
       }
+      notify({message: 'Se elimino el evento correctamente'});
     } catch (error) {
+      notify({type: 'defaultError'});
       console.error(error);
     } finally {
       setLoading(false);
+      setLoadingCursor(true);
     }
   };
 
@@ -90,6 +99,7 @@ export default withPageAuthRequired(function EventPage() {
       setEventId(event._id);
     }
     if (action === actions.see) {
+      setLoadingCursor(true);
       router.push(`/event/${event._id}`);
     } else if (action === actions.edit) {
       // Agregar cuando se defina la nueva pantalla
@@ -178,6 +188,7 @@ export default withPageAuthRequired(function EventPage() {
             </Flex>
           </Flex>
           <DataTable
+            style={{height: 'auto'}}
             highlightOnHover
             rowColor={({ date }) => {
               const now = new Date();

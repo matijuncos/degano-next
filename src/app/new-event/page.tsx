@@ -11,6 +11,9 @@ import { EventModel } from '@/context/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
+import useNotification from '@/hooks/useNotification';
+
 const NewEventPage = () => {
   const {
     formState,
@@ -59,6 +62,9 @@ const NewEventPage = () => {
     playlist: []
   });
 
+  const setLoadingCursor = useLoadingCursor();
+  const notify = useNotification();
+
   const onNextTab = (tab: number, data: EventModel) => {
     setFormState(tab);
     setEvent(data);
@@ -69,11 +75,27 @@ const NewEventPage = () => {
   };
 
   useEffect(() => {
-    setFormState(EVENT_TABS.CLIENT);
+    setFormState(EVENT_TABS.EQUIPMENT);
   }, []);
-
+  console.log('newEvent', event)
   const saveEvent = async (newEvent: EventModel) => {
+    setLoadingCursor(true);
+    notify({loading: true});
     try {
+      // agregar update del equipment
+      // const payload = {
+      //   _id: id,
+      //   equipment
+      // },
+      // const equipmentResponse = await fetch('/api/updateEquipmentV2', {
+      //   method: 'PUT',
+      //   body: JSON.stringify(payload),
+      //   cache: 'no-store',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   }
+      // });
+      // console.log('equipmentResposne ', equipmentResponse)
       const response = await fetch('/api/postEvent', {
         method: 'POST',
         cache: 'no-store',
@@ -97,8 +119,12 @@ const NewEventPage = () => {
           setAllEvents((prev: EventModel[]) => [...prev, data.event]);
         router.push('/upload-file');
       }
+      notify();
     } catch (err) {
+      notify({type: 'defaultError'});
       console.error('failed to save the event ', err);
+    } finally {
+      setLoadingCursor(false);
     }
   };
 

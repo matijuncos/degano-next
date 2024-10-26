@@ -9,11 +9,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { v4 } from 'uuid';
 import { InputTreeParent, inputType } from './types';
 import { useDisclosure } from '@mantine/hooks';
+import useNotification from '@/hooks/useNotification';
 
 const EquipmentSelects = withPageAuthRequired(() => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const notify = useNotification();
   const [opened, { open, close }] = useDisclosure(false);
 
   const [equipmentInputNameValue, setEquipmentInputNameValue] = useState('');
@@ -66,16 +68,24 @@ const EquipmentSelects = withPageAuthRequired(() => {
       if (removeEverything) {
         Object.assign(payload, { cleanStock: true });
       }
-
-      await fetch('/api/updateEquipmentList', {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      searchForEquipmentInventory();
+      
+      notify({loading: true});
+      try {
+        await fetch('/api/updateEquipmentList', {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        notify({message: 'Se ga guardado el equipo correctamente'});
+        searchForEquipmentInventory();
+      } catch (err) {
+        notify({type: 'defaultError'});
+        console.error('Error guardando el equipo', err);
+        throw err;
+      }
     },
     [searchParams, searchForEquipmentInventory]
   );
