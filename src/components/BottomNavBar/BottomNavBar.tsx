@@ -10,9 +10,11 @@ import styles from './BottomNavBar.module.css';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 const BottomNavBar = () => {
   const router = useRouter();
   const { activeNavTab } = useDeganoCtx();
+  const setLoadingCursor = useLoadingCursor();
   const tiles: { label: string; path: string; Icon: JSX.Element }[] = [
     {
       label: 'Inicio',
@@ -39,6 +41,7 @@ const BottomNavBar = () => {
   ];
 
   const handleButtonClick = (path: string): void => {
+    setLoadingCursor(true);
     router.push(path);
   };
 

@@ -4,12 +4,13 @@ import { IconCheck, IconX } from '@tabler/icons-react';
 
 const useNotification = () => {
   const notify = useCallback(
-    (
+    ({
       title = 'Operación exitosa',
       message = 'Se ha guardado correctamente',
       color = 'teal',
+      type = 'success',
       loading = false
-    ) => {
+    } = {}) => {
       if (loading) {
         notifications.show({
           id: 'notify-notification',
@@ -21,7 +22,7 @@ const useNotification = () => {
           withCloseButton: false
         });
       } else {
-        notifications.update({
+        let notificationProps = {
           id: 'notify-notification',
           loading,
           title,
@@ -30,7 +31,18 @@ const useNotification = () => {
           icon: color === 'teal' ? <IconCheck /> : <IconX />,
           autoClose: 4000,
           withCloseButton: true
-        });
+        };
+
+        if (type === 'defaultError') {
+          notificationProps = {
+            ...notificationProps,
+            title: 'Operación errónea',
+            message: 'Algo salió mal, vuelve a intentarlo',
+            color: 'red',
+            icon: <IconX />,
+          };
+        }
+        notifications.update(notificationProps);
       }
     },
     []

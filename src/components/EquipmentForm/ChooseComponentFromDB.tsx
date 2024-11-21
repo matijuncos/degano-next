@@ -78,6 +78,7 @@ const ChoseComponentFromDBComponent = ({
                     <Checkbox
                       checked={Boolean(selectedItem)}
                       onChange={() => handleCheckEquipment(eq)}
+                      className='cursorPointer'
                     />
                   </TableTd>
                   <TableTd>{eq.name}</TableTd>

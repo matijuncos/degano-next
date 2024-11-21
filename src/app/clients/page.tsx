@@ -41,10 +41,18 @@ export default withPageAuthRequired(function ClientsPage() {
   }, []);
 
   const handleRemoveClient = async (clientId: string) => {
-    await removeClient(clientId);
-    setClientsList((prevClients) =>
-      prevClients.filter((client) => client._id !== clientId)
-    );
+    notify({loading: true});
+    try {
+      await removeClient(clientId);
+      setClientsList((prevClients) =>
+        prevClients.filter((client) => client._id !== clientId)
+      );
+      notify({message: 'Se elimino el cliente correctamente'});
+    } catch (err) {
+      console.error('Error en la solicitud', err);
+      notify({type: 'defaultError'});
+      throw err;
+    }
   };
 
   return (

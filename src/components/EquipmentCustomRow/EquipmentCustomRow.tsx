@@ -11,6 +11,7 @@ import { cloneDeep } from 'lodash';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { NewEquipment } from '../equipmentStockTable/types';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import useNotification from '@/hooks/useNotification';
 
 interface CustomRowProps {
   eq: NewEquipment;
@@ -29,6 +30,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmationOpen, setIsconfirmationOpen] = useState(false);
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
+  const notify = useNotification();
   const handleChange = (field: keyof NewEquipment, value: string | number) => {
     setEquipmentListToEdit((prev) =>
       prev.map((item, idx) =>
@@ -50,6 +52,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const makePutRequest = async (newEquipment: NewEquipment[]) => {
     const event = cloneDeep(selectedEvent);
     event!.equipment = newEquipment;
+    notify({loading: true});
     try {
       const response = await fetch(`/api/updateEvent`, {
         method: 'PUT',
@@ -60,8 +63,10 @@ const CustomRow: React.FC<CustomRowProps> = ({
         body: JSON.stringify(event)
       });
       const data = await response.json();
+      notify({message: 'Se actualizo el evento correctamente'});
       setSelectedEvent(data.event);
     } catch (error) {
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoading(false);

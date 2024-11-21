@@ -1,7 +1,7 @@
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { Button, Input } from '@mantine/core';
-import { DateTimePicker, DateValue } from '@mantine/dates';
+import { DateValue, DateInput } from '@mantine/dates';
 import { useState } from 'react';
 const PaymentForm = ({
   event,
@@ -56,10 +56,10 @@ const PaymentForm = ({
           name='upfrontAmount'
           value={payment.payment.upfrontAmount}
         />
-        <DateTimePicker
+        <DateInput
           name='partialPaymentDate'
-          dropdownType='modal'
-          valueFormat='DD MMM YYYY hh:mm A'
+          locale='es'
+          valueFormat='DD/MM/YYYY'
           placeholder='Fecha de pago inicial'
           onChange={(value) => handleDates(value, 'partialPaymentDate')}
         />

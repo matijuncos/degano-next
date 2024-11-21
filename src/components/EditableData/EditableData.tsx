@@ -12,8 +12,8 @@ import {
 import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
-import useLoadingCursor from '../../hooks/useLoadingCursor';
-import useNotification from '../../hooks/useNotification';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
+import useNotification from '@/hooks/useNotification';
 
 const EditableData = ({
   title,
@@ -42,7 +42,7 @@ const EditableData = ({
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
     setLoadingCursor(true);
-    notify('', '', '', true);
+    notify({loading: true});
     const timeStamp = new Date().toISOString();
     try {
       const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
@@ -56,7 +56,7 @@ const EditableData = ({
       await response.json();
       notify();
     } catch (error) {
-      notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoadingCursor(false);

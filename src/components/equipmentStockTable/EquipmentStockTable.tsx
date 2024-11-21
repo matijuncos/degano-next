@@ -13,6 +13,7 @@ import React, { useState } from 'react';
 import { columns } from './config';
 import { NewEquipment } from './types';
 import CustomRow from './CustomRow';
+import useNotification from '@/hooks/useNotification';
 
 const EquipmentStockTable = ({
   equipment,
@@ -33,6 +34,7 @@ const EquipmentStockTable = ({
   const [equipmentList, setEquipmentList] = useState<NewEquipment[]>(
     equipment || []
   );
+  const notify = useNotification();
 
   const handleChange = (
     field: keyof typeof newEquipment,
@@ -61,19 +63,27 @@ const EquipmentStockTable = ({
   };
 
   const makePutRequest = async (newEquipment: NewEquipment[]) => {
-    const payload = {
-      _id: id,
-      equipment: newEquipment
-    };
-    const response = await fetch('/api/updateEquipmentV2', {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.json();
+    notify({loading: true});
+    try {
+      const payload = {
+        _id: id,
+        equipment: newEquipment
+      };
+      const response = await fetch('/api/updateEquipmentV2', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      notify();
+      return await response.json();
+    } catch (error) {
+      notify({type: 'defaultError'});
+      console.error("Error en la solicitud PUT:", error);
+      throw error; // Puedes lanzar el error de nuevo si necesitas manejarlo en otro lugar
+    }
   };
 
   return (

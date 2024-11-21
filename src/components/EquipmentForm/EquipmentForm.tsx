@@ -86,8 +86,8 @@ const EquipmentForm = ({
           onClick={() => setUseEquipmentDataBase(!useEquipmentDataBase)}
         >
           {useEquipmentDataBase
-            ? 'Escribir equipos manualmente'
-            : 'Seleccionar de base de datos'}
+            ? 'Seleccionar de base de datos'
+            : 'Escribir equipos manualmente'}
         </Text>
         <Switch
           color='green'

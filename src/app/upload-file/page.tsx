@@ -12,6 +12,7 @@ import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { useRouter } from 'next/navigation';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 interface FileItem {
   id: string;
   [key: string]: any;
@@ -30,6 +31,7 @@ export default function FileUploader() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [folderId, setFolderId] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
+  const setLoadingCursor = useLoadingCursor();
   useEffect(() => {
     if (value) {
       setAllfiles((prev: File[]) => {
@@ -214,6 +216,7 @@ export default function FileUploader() {
             console.error('Error uploading file', error);
           });
       });
+      setLoadingCursor(true);
       router.push('/home');
     } catch (error) {
       console.log(error);
@@ -380,7 +383,7 @@ export default function FileUploader() {
             {loading ? 'Subiendo...' : 'Subir Archivos'}
           </Button>
           <Button
-            onClick={() => router.push('/home')}
+            onClick={() => {setLoadingCursor(true); router.push('/home')}}
             mt='18px'
             w='100%'
             disabled={loading}

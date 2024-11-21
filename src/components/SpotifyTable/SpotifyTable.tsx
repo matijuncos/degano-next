@@ -23,7 +23,7 @@ const SpotifyTable = () => {
 
   const updateEvent = async (event: any) => {
     setLoading(true);
-    notify('', '', '', true);
+    notify({loading: true});
 
     const timeStamp = new Date().toISOString();
     try {
@@ -39,7 +39,7 @@ const SpotifyTable = () => {
       notify();
       setSelectedEvent(data.event);
     } catch (error) {
-      notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoading(false);
@@ -77,11 +77,11 @@ const SpotifyTable = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(
       () => {
-        notify('Copiar', 'Copiado exitosamente', '', false);
+        notify({title: 'Copiar', message: 'Copiado exitosamente'});
       },
       (err) => {
         console.error('Error al copiar: ', err);
-        notify('Error', 'No se pudo copiar la URL', 'error');
+        notify({title: 'Error', message: 'No se pudo copiar la URL', color: 'red'});
       }
     );
   };

@@ -7,6 +7,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import NoAccessTile from '../NoAccessTile/NoAccessTile';
 import { Box } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 
 const HomeTile = ({
   label,
@@ -20,6 +21,7 @@ const HomeTile = ({
   const [isHovered, setIsHovered] = useState(false);
   const { user } = useUser();
   const router = useRouter();
+  const setLoadingCursor = useLoadingCursor();
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: {
@@ -37,6 +39,7 @@ const HomeTile = ({
     isHovered && user?.role !== 'admin' && restrictedPaths.includes(path);
 
   const navigate = (path: string) => {
+    setLoadingCursor(true);
     router.push(path);
   };
 
