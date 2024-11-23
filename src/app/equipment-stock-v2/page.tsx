@@ -6,9 +6,9 @@ import React from 'react';
 
 export default withPageAuthRequired(async function equipmentStock() {
   const session = await getSession();
-  const { collectionId, equipment } = (await getEquipmentAction(
+  const { equipment } = (await getEquipmentAction(
     session as Session
-  )) ?? { collectionId: null, equipment: null };
+  )) ?? { equipment: null };
   const formattedEquipment = equipment?.map(({ ...equip }) => ({
     _id: equip._id.toString(),
     name: equip.name,
@@ -22,7 +22,6 @@ export default withPageAuthRequired(async function equipmentStock() {
     <Box>
       <Text>Lista de equipos</Text>
       <EquipmentStockTable
-        id={collectionId?.toString() as string}
         equipment={formattedEquipment}
       />
     </Box>

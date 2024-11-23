@@ -75,26 +75,22 @@ const NewEventPage = () => {
   };
 
   useEffect(() => {
-    setFormState(EVENT_TABS.EQUIPMENT);
+    setFormState(EVENT_TABS.CLIENT);
   }, []);
-  console.log('newEvent', event)
+
   const saveEvent = async (newEvent: EventModel) => {
     setLoadingCursor(true);
     notify({loading: true});
     try {
       // agregar update del equipment
-      // const payload = {
-      //   _id: id,
-      //   equipment
-      // },
-      // const equipmentResponse = await fetch('/api/updateEquipmentV2', {
-      //   method: 'PUT',
-      //   body: JSON.stringify(payload),
-      //   cache: 'no-store',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
+      await fetch('/api/updateEquipmentV2', {
+        method: 'PUT',
+        body: JSON.stringify(newEvent.equipment),
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       // console.log('equipmentResposne ', equipmentResponse)
       const response = await fetch('/api/postEvent', {
         method: 'POST',

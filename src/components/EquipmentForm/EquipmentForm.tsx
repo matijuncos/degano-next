@@ -1,10 +1,10 @@
 import { EventModel } from '@/context/types';
 import { Box, Button, Flex, Input, Switch, Text } from '@mantine/core';
 import { ActionIcon } from '@mantine/core';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
-import ChoseComponentFromDBComponent from './ChooseComponentFromDB';
+import ChooseComponentFromDBComponent from './ChooseComponentFromDB';
 import { EVENT_TABS } from '@/context/config';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
@@ -21,38 +21,16 @@ const EquipmentForm = ({
   const [equipment, setEquipment] = useState<EventModel>(event);
   const [useEquipmentDataBase, setUseEquipmentDataBase] = useState(true);
   const [equipmentFromDB, setEquipmentFromDB] = useState<NewEquipment[]>([]);
-  const newDefaultEquipment: NewEquipment = {
-    name: '',
-    price: 0,
-    currentQuantity: 0,
-    totalQuantity: 0,
-    _id: new Date().toISOString()
-  };
-  const [newEquipment, setNewEquipment] = useState(newDefaultEquipment);
   const [price, setPrice] = useState<number>(0);
+  const [showInputsToAdd, setShowInputsToAdd] = useState(false);
 
-  const addEquipment = () => {
-    setEquipment({
-      ...equipment,
-      equipment: [...equipment.equipment, newEquipment]
-    });
-    setPrice(
-      price + newEquipment.price * Number(newEquipment.selectedQuantity)
-    );
-    setNewEquipment(newDefaultEquipment);
-  };
   const next = () => {
     onNextTab(4, equipment);
   };
   const back = () => {
     onBackTab(EVENT_TABS.MUSIC, equipment);
   };
-  const handleChange = (e: any) => {
-    setNewEquipment({
-      ...newEquipment,
-      [e.target.name]: e.target.value
-    });
-  };
+
   const handleRemoveEquipment = (idxToRemove: number) => {
     setEquipment((prevEquipment) => {
       const updatedEquipment = prevEquipment.equipment.filter(
@@ -72,7 +50,7 @@ const EquipmentForm = ({
     const getEquipmentFromDB = async () => {
       const response = await fetch('/api/getEquipmentV2');
       const data = await response.json();
-      setEquipmentFromDB(data.equipment[0]?.equipment as NewEquipment[]);
+      setEquipmentFromDB(data.equipment as NewEquipment[]);
     };
     getEquipmentFromDB();
   }, []);
@@ -80,66 +58,33 @@ const EquipmentForm = ({
   return (
     <div>
       <h2>Equipamiento necesario </h2>
-      <Flex gap='12px' align='center' my='18px'>
+      <Flex 
+        gap='12px' 
+        align='center' 
+        my='18px' 
+        justify='flex-end'
+        onClick={() => setShowInputsToAdd(!showInputsToAdd)} 
+        className='cursorPointer' >
         <Text
           size='20px'
-          onClick={() => setUseEquipmentDataBase(!useEquipmentDataBase)}
         >
-          {useEquipmentDataBase
-            ? 'Seleccionar de base de datos'
-            : 'Escribir equipos manualmente'}
+          Agregar nuevo equipo
         </Text>
-        <Switch
-          color='green'
-          checked={useEquipmentDataBase}
-          onChange={() => setUseEquipmentDataBase(!useEquipmentDataBase)}
-        />
+        <IconPlus />
       </Flex>
       <div>
-        {useEquipmentDataBase ? (
+        {useEquipmentDataBase && (
           <>
-            <ChoseComponentFromDBComponent
+            <ChooseComponentFromDBComponent
               equipment={equipment}
               setEquipment={setEquipment}
               equipmentFromDB={equipmentFromDB}
+              setEquipmentFromDB={setEquipmentFromDB}
+              showInputsToAdd={showInputsToAdd}
+              setShowInputsToAdd={setShowInputsToAdd}
             />
           </>
-        ) : (
-          <>
-            <div className='equipment-inputs'>
-              <Input
-                type='text'
-                placeholder='Equipamiento'
-                onChange={handleChange}
-                name='name'
-                value={newEquipment.name}
-              />
-              <Input
-                type='number'
-                placeholder='Precio'
-                onChange={handleChange}
-                name='price'
-                value={newEquipment.price ? newEquipment.price : ''}
-              />
-              <Input
-                type='number'
-                placeholder='Cantidad'
-                onChange={handleChange}
-                name='selectedQuantity'
-                min={1}
-                value={
-                  newEquipment.selectedQuantity
-                    ? newEquipment.selectedQuantity
-                    : ''
-                }
-              />
-            </div>
-            <Button onClick={addEquipment} mt='16px'>
-              Agregar equipo
-            </Button>
-          </>
         )}
-
         <Flex
           className='cantidad-precio-lista'
           direction='column'

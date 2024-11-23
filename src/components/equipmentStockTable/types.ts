@@ -1,5 +1,5 @@
 export type NewEquipment = {
-  _id: string;
+  _id?: string;
   name: string;
   price: number;
   totalQuantity: number;

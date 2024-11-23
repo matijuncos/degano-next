@@ -15,7 +15,8 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
     clientPromise as Promise<MongoClient>;
   const client = await typedClientPromise;
   const db = client.db('degano-app');
-
+  const { equipment } = body;
+  // falta revisar..
   if (body.cleanStock) {
     const updateResult = await db
       .collection('equipmentListV2')
@@ -39,42 +40,79 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
       }
     );
   }
+  if (Array.isArray(equipment)) {
+    const equipmentToUpdate = equipment.filter((eq) => eq._id);
+    const equipmentToInsert = equipment.filter((eq) => !eq._id);
+    if (equipmentToUpdate.length > 0) {
+      const operations = equipmentToUpdate.map(({ _id, equipmentData }) => {
+        const totalQuantity = +equipmentData.totalQuantity;
+        const currentQuantity = +equipmentData.currentQuantity;
+        const selectedQuantity = +equipmentData.selectedQuantity;
 
-  if (!body._id && body?.equipment?.length) {
-    const newEquimentColection = await db
+        const updatedEquipment = {
+          ...equipmentData,
+          totalQuantity: String(totalQuantity - selectedQuantity),
+          currentQuantity: String(currentQuantity - selectedQuantity)
+        };
+
+        return {
+          updateOne: {
+            filter: { _id: new ObjectId(_id as string) },
+            update: { $set: updatedEquipment }
+          }
+        };
+      });
+
+      const newEquipmentCollection = await db
+        .collection('equipmentListV2')
+        .bulkWrite(operations);
+      return NextResponse.json({
+        message: 'Equipment updated successfully',
+        newEquipmentCollection,
+        status: 201
+      });
+    }
+    if (equipmentToInsert.length > 0) {
+      const newEquipmentCollection = await db
+        .collection('equipmentListV2')
+        .insertMany(equipmentToInsert);
+      return NextResponse.json({
+        message: 'Equipment added successfully',
+        newEquipmentCollection,
+        status: 200
+      });
+    }
+  }
+
+  if (!equipment._id) {
+    const newEquipmentCollection = await db
       .collection('equipmentListV2')
-      .insertOne({ equipment: body.equipment });
+      .insertOne(equipment);
     return NextResponse.json(
       {
         message: 'Equipment added successfully',
-        newEquimentColection
-      },
-      {
+        newEquipmentCollection,
         status: 200
+      });
+  } else {
+    const { _id, ...equipmentData } = equipment;
+    console.log('equipment ', equipment)
+    const updatedResult = await db
+      .collection('equipmentListV2')
+      .updateOne(
+        { _id: new ObjectId(_id as string)},
+        { $set: equipmentData }
+      );
+
+    if (updatedResult.matchedCount === 0) {
+      throw new Error('Equipment not found');
+    }
+    return NextResponse.json(
+      {
+        message: 'Equipment updated successfully',
+        updatedResult,
+        status: 201
       }
     );
   }
-
-  const updatedResult = await db
-    .collection('equipmentListV2')
-    .updateOne(
-      { _id: new ObjectId(body._id as string) },
-      { $set: { equipment: body.equipment } }
-    );
-  if (updatedResult.matchedCount === 0) {
-    return NextResponse.json(
-      { message: 'Equipment not found' },
-      { status: 404 }
-    );
-  }
-
-  return NextResponse.json(
-    {
-      message: 'Equipment updated successfully',
-      updatedResult
-    },
-    {
-      status: 201
-    }
-  );
 };
