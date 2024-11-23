@@ -11,13 +11,14 @@ import CustomCell from '../CustomCell/CustomCell';
 import { cloneDeep } from 'lodash';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { NewEquipment } from './types';
+import useNotification from '@/hooks/useNotification';
 
 interface CustomRowProps {
   eq: NewEquipment;
   index: number;
   setEquipmentListToEdit: React.Dispatch<React.SetStateAction<NewEquipment[]>>;
   equipmentListToEdit: NewEquipment[];
-  makePutRequest: (arg: NewEquipment[]) => Promise<any>;
+  makePutRequest: (arg: NewEquipment) => Promise<any>;
 }
 
 const CustomRow: React.FC<CustomRowProps> = ({
@@ -30,6 +31,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmationOpen, setIsconfirmationOpen] = useState(false);
   const { setLoading } = useDeganoCtx();
+  const notify = useNotification();
   const handleChange = (field: keyof NewEquipment, value: string | number) => {
     setEquipmentListToEdit((prev) =>
       prev.map((item, idx) =>
@@ -42,24 +44,41 @@ const CustomRow: React.FC<CustomRowProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (equipmentItem: NewEquipment) => {
     setIsEditing(false);
     setLoading(true);
-    await makePutRequest(equipmentListToEdit);
+    await makePutRequest(equipmentItem);
   };
 
   const handleRemoveRow = () => {
     setIsconfirmationOpen(true);
   };
+
   const deleteRowHandler = async () => {
     const equipmentCopy = cloneDeep(equipmentListToEdit);
     const filteredEquipment = equipmentCopy.filter(
       (_item, idx) => idx !== index
     );
-    console.log(filteredEquipment);
-    await makePutRequest(filteredEquipment);
-    setEquipmentListToEdit(filteredEquipment);
-    setIsconfirmationOpen(false);
+    const equipmentToDelete = equipmentCopy.find((_item, idx) => idx === index);
+    notify({loading: true});
+    try {
+      const response = await fetch('/api/deleteEquipment', {
+        method: 'DELETE',
+        body: JSON.stringify({equipment: equipmentToDelete}),
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      notify({message: 'Se elimino con exito el equipo'});
+      setEquipmentListToEdit(filteredEquipment);
+      setIsconfirmationOpen(false);
+      return await response.json();
+    } catch (error) {
+      notify({type: 'defaultError'});
+      console.error("Error en la solicitud DELETE:", error);
+      throw error;
+    }
   };
   return (
     <>
@@ -88,42 +107,42 @@ const CustomRow: React.FC<CustomRowProps> = ({
         />
         <CustomCell
           field='totalQuantity'
-          value={eq.totalQuantity || '-'}
+          value={eq.totalQuantity || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <CustomCell
           field='currentQuantity'
-          value={eq.currentQuantity || '-'}
+          value={eq.currentQuantity || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <CustomCell
           field='price'
-          value={eq.price || '-'}
+          value={eq.price || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <CustomCell
           field='brand'
-          value={eq.brand || '-'}
+          value={eq.brand || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <CustomCell
           field='codeNumber'
-          value={eq.codeNumber || '-'}
+          value={eq.codeNumber || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
         <TableTd>
           <Flex align='center' gap='24px'>
             {isEditing ? (
-              <IconCheck onClick={handleSaveEdit} />
+              <IconCheck onClick={() => handleSaveEdit(eq)} className='cursorPointer'/>
             ) : (
               <>
-                <IconEdit onClick={handleClickEdit} />
-                <IconTrash color='red' onClick={handleRemoveRow} />
+                <IconEdit onClick={handleClickEdit} className='cursorPointer'/>
+                <IconTrash color='red' onClick={handleRemoveRow} className='cursorPointer'/>
               </>
             )}
           </Flex>
