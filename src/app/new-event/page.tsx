@@ -36,7 +36,7 @@ const NewEventPage = () => {
     eventAddress: '',
     eventCity: '',
     salon: '',
-    date: new Date(),
+    date: '',
     averageAge: '',
     churchDate: '',
     civil: new Date().toISOString(),
@@ -80,7 +80,7 @@ const NewEventPage = () => {
 
   const saveEvent = async (newEvent: EventModel) => {
     setLoadingCursor(true);
-    notify({loading: true});
+    notify({ loading: true });
     try {
       // agregar update del equipment
       await fetch('/api/updateEquipmentV2', {
@@ -103,13 +103,11 @@ const NewEventPage = () => {
       const data = await response.json();
       if (data) {
         setFolderName(
-          `${newEvent.fullName} - ${newEvent.salon} - ${new Date(
-            newEvent.date
-          ).toLocaleDateString('es-ES', {
+          `${new Date(newEvent.date).toLocaleDateString('es-ES', {
             day: '2-digit',
             month: '2-digit',
             year: '2-digit'
-          })}`
+          })} - ${newEvent.type} - ${newEvent.salon}`
         );
         if (data.event)
           setAllEvents((prev: EventModel[]) => [...prev, data.event]);
@@ -117,7 +115,7 @@ const NewEventPage = () => {
       }
       notify();
     } catch (err) {
-      notify({type: 'defaultError'});
+      notify({ type: 'defaultError' });
       console.error('failed to save the event ', err);
     } finally {
       setLoadingCursor(false);
