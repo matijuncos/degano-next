@@ -22,7 +22,6 @@ const EventForm = ({
   const requiredFields: (keyof EventModel)[] = [
     'date',
     'type',
-    'eventAddress',
     'eventCity',
     'salon'
   ];
@@ -34,10 +33,15 @@ const EventForm = ({
   };
   const validateRequiredFields = () => {
     setValidate(true);
-    const isValid: boolean = requiredFields.every(
-      (field: keyof EventModel) =>
-        eventData[field] && String(eventData[field]).trim() !== ''
-    );
+    const isValid: boolean = requiredFields.every((field: keyof EventModel) => {
+      const value = eventData[field];
+      if (field === 'date') {
+        const dateIsValid = 
+          value instanceof Date && value.toISOString();
+        return dateIsValid;
+      }
+      return value && String(value).trim() !== '';
+    });
     return isValid;
   };
   const next = () => {
@@ -66,7 +70,9 @@ const EventForm = ({
           name='date'
           locale='es'
           valueFormat='DD/MM/YYYY'
+          value={eventData.date ? new Date(eventData.date) : null}
           onChange={(value: DateValue) => onDateChange('date', value)}
+          error={validate && !eventData.date}
         />
         </InputLabel>
         <InputLabel>
@@ -76,6 +82,7 @@ const EventForm = ({
             name='endDate'
             locale='es'
             valueFormat='DD/MM/YYYY'
+            value={eventData.endDate ? new Date(eventData.endDate) : null}
             onChange={(value: DateValue) => onDateChange('endDate', value)}
           />
         </InputLabel>
@@ -98,12 +105,11 @@ const EventForm = ({
         />
         <Input
           type='text'
-          placeholder='Direccion *'
+          placeholder='Dirección'
           name='eventAddress'
           value={eventData.eventAddress}
           onChange={handleInputChange}
           autoComplete='off'
-          error={validate && !eventData.eventAddress}
         />
         <Input
           type='text'

@@ -32,7 +32,7 @@ export interface EventModel {
     totalPayed: boolean;
     subsequentPayments?: any[];
   };
-  date: Date;
+  date: Date | string;
   endDate?: Date;
   active: boolean;
   playlist: {
