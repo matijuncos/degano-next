@@ -54,8 +54,10 @@ const EventPage = () => {
 
   useEffect(() => {
     if (selectedEvent?.date) {
-      const date = new Date(selectedEvent.date).toLocaleString('en-US', {
-        timeZone: 'UTC'
+      const date = new Date(selectedEvent.date).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
       });
       setDateString(date);
     }
@@ -103,7 +105,7 @@ const EventPage = () => {
           ) : (
             <Box>
               <Title mb='16px'>
-                {`${selectedEvent.fullName} - ${dateString} - ${selectedEvent.salon}`}
+                {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.salon}`}
               </Title>
               <Flex direction='column' gap='8px'>
                 <AccordionSet value='Información Principal'>
