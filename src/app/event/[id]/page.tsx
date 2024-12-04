@@ -43,13 +43,11 @@ const EventPage = () => {
       )!;
       setSelectedEvent(selectedEvent);
       setFolderName(
-        `${selectedEvent.fullName} - ${selectedEvent.salon} - ${new Date(
-          selectedEvent.date
-        ).toLocaleDateString('es-ES', {
+        `${new Date(selectedEvent.date).toLocaleDateString('es-ES', {
           day: '2-digit',
           month: '2-digit',
           year: '2-digit'
-        })}`
+        })} - ${selectedEvent.type} - ${selectedEvent.salon}`
       );
     }
   }, [allEvents, id]);

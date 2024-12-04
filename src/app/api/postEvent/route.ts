@@ -16,9 +16,13 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
     const body = await req.json();
     const { _id, ...bodyWithoutId } = body;
     const db = client.db('degano-app');
-    const event = await db
-      .collection('events')
-      .insertOne(!_id ? bodyWithoutId : body);
+    const timestamp = new Date();
+    const document = {
+      ...(!_id ? bodyWithoutId : body),
+      createdAt: !_id ? timestamp : undefined,
+      updatedAt: timestamp
+    };
+    const event = await db.collection('events').insertOne(document);
     const newEvent = await db
       .collection('events')
       .findOne({ _id: event.insertedId });
