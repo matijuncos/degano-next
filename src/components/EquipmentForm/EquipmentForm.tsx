@@ -55,6 +55,15 @@ const EquipmentForm = ({
     getEquipmentFromDB();
   }, []);
 
+  useEffect(() => {
+    const equipmentFiltered = equipment?.equipment?.filter((eq) => Number(eq.selectedQuantity) > 0);
+    const totalPrice = equipmentFiltered.reduce((total, item) => {
+      const subtotal = item.selectedQuantity ? item.selectedQuantity * item.price : 0;
+      return total + subtotal;
+    }, 0)
+    setPrice(totalPrice);
+  },[equipment?.equipment])
+
   return (
     <div>
       <h2>Equipamiento necesario </h2>
@@ -113,7 +122,7 @@ const EquipmentForm = ({
                   </Text>
                   |
                   {user?.role === 'admin' && (
-                    <Text className='price'>Precio: ${item.price}</Text>
+                    <Text className='price'>Precio individual: ${item.price}</Text>
                   )}
                   -
                   <ActionIcon

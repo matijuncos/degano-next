@@ -10,11 +10,11 @@ import {
   TableTr,
   Text
 } from '@mantine/core';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment, NewEquipmentType } from '../equipmentStockTable/types';
 import { EventModel } from '@/context/types';
-import { columns } from '../equipmentStockTable/config';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import useNotification from '@/hooks/useNotification';
+import NewEquipmentTable from './NewEquipmentTable';
 
 const ChoseComponentFromDBComponent = ({
   equipment,
@@ -31,41 +31,68 @@ const ChoseComponentFromDBComponent = ({
   showInputsToAdd: Boolean,
   setShowInputsToAdd: Function
 }) => {
-  const [newEquipment, setNewEquipment] = useState({
+  const [newEquipment, setNewEquipment] = useState<NewEquipment>({
     name: '',
-    price: '',
-    totalQuantity: '',
-    currentQuantity: '',
+    price: 0,
+    totalQuantity: 0,
+    currentQuantity: 0,
     brand: '',
-    codeNumber: ''
+    codeNumber: '',
+    model: '',
+    realPrice: 0,
+    type: 'No Definido'
   });
   const notify = useNotification();
+
+  const placeholderMapping: { [key in keyof NewEquipment]: string } = {
+    name: 'Nombre',
+    price: 'Precio del equipo ($)',
+    totalQuantity: 'Stock total',
+    currentQuantity: 'Cantidad disponible',
+    brand: 'Marca',
+    codeNumber: 'Número de serie',
+    model: 'Modelo',
+    realPrice: 'Precio real ($)',
+    type: 'Clasificación',
+  };
 
   const hasValidId = (item: { _id?: string }): item is { _id: string } => {
     return Boolean(item._id);
   };  
 
-  const handleCheckEquipment = (value: NewEquipment) => {
-    if (
-      equipment.equipment.some(
-        (item) => hasValidId(item) && hasValidId(value) && item._id.toString() === value._id.toString()
-      )
-    ) {
+  const handleChange = (field: keyof NewEquipment, value: string | number) => {
+    setNewEquipment((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleCheckEquipment = (value: NewEquipment) => {  
+    const existsInEquipment = equipment.equipment.some(
+      (item) => hasValidId(item) && hasValidId(value) && item._id.toString() === value._id.toString()
+    );
+    if (existsInEquipment) {
+      const updatedEquipment = equipment.equipment.filter(
+        (item) => hasValidId(item) && hasValidId(value) && item._id.toString() !== value._id.toString()
+      );
+
       setEquipment({
         ...equipment,
-        equipment: equipment.equipment.filter(
-          (item) => hasValidId(item) && hasValidId(value) && item._id.toString() !== value._id.toString()
-        )
+        equipment: updatedEquipment,
       });
     } else {
+      const newItem = hasValidId(value)
+        ? value
+        : { ...value, _id: new Date().toISOString() };
+      const updatedEquipment = [...equipment.equipment, newItem];
       setEquipment({
         ...equipment,
-        equipment: [...equipment.equipment, value]
+        equipment: updatedEquipment,
       });
     }
   };
 
-  const handleQuantityChange = (id: string, quantity: number) => {
+  const handleQuantityChange = (id: string, quantity?: number) => {
     setEquipment((prev: EventModel) => {
       return {
         ...prev,
@@ -77,13 +104,6 @@ const ChoseComponentFromDBComponent = ({
         )
       };
     });
-  };
-
-  const handleChange = (
-    field: keyof typeof newEquipment,
-    value: string | number
-  ) => {
-    setNewEquipment({ ...newEquipment, [field]: value });
   };
 
   const makePutRequest = async (newEquipment: NewEquipment) => {
@@ -113,20 +133,26 @@ const ChoseComponentFromDBComponent = ({
       totalQuantity: Number(equipmentItem.totalQuantity),
       currentQuantity: Number(equipmentItem.currentQuantity),
       brand: equipmentItem.brand,
-      codeNumber: equipmentItem.codeNumber
+      codeNumber: equipmentItem.codeNumber,
+      model: equipmentItem.model,
+      realPrice: Number(equipmentItem.realPrice),
+      type: equipmentItem.type as NewEquipmentType,
     };
     const response = await makePutRequest(formattedEquipment);
     if(response.status === 200) {      
-      setEquipmentFromDB([...equipmentFromDB, newEquipment]);
+      setEquipmentFromDB([...equipmentFromDB, response.insertedDocument]);
       setShowInputsToAdd(false);
     }
     setNewEquipment({
       name: '',
-      price: '',
-      totalQuantity: '',
-      currentQuantity: '',
+      price: 0,
+      totalQuantity: 0,
+      currentQuantity: 0,
       brand: '',
-      codeNumber: ''
+      codeNumber: '',
+      model: '',
+      realPrice: 0,
+      type: 'No Definido'
     });
   };
 
@@ -147,7 +173,6 @@ const ChoseComponentFromDBComponent = ({
               const selectedItem = equipment.equipment.find(
                 (item) => hasValidId(item) && hasValidId(eq) && item._id.toString() === eq._id.toString()
               );
-
               return (
                 <TableTr key={eq._id || idx}>
                   <TableTd>
@@ -169,7 +194,7 @@ const ChoseComponentFromDBComponent = ({
                             hasValidId(eq) && 
                             handleQuantityChange(
                               eq._id.toString(),
-                              Number(e.target.value)
+                              e.target.value === '' ? undefined : Number(e.target.value)
                             )
                           }
                           min={1}
@@ -187,38 +212,30 @@ const ChoseComponentFromDBComponent = ({
                           : 'red'
                       }
                     >
-                      {Number(eq.currentQuantity) -
-                        Number(selectedItem?.selectedQuantity || 0)}
+                      {/* {Number(eq.currentQuantity) -
+                        Number(selectedItem?.selectedQuantity || 0)} */}
+                      {Number(eq.currentQuantity) || 0}
                     </Text>
                   </TableTd>
                   <TableTd></TableTd>
                 </TableTr>
               );
             })}
-            {showInputsToAdd && (
-              <TableTr>
-                {columns.map((col) => (
-                  <TableTd key={`new-${col.index}`}>
-                    <Input
-                      value={newEquipment[col.index as keyof typeof newEquipment]}
-                      placeholder={col.name}
-                      onChange={(e) =>
-                        handleChange(
-                          col.index as keyof typeof newEquipment,
-                          e.target.value
-                        )
-                      }
-                    />
-                  </TableTd>
-                ))}
-                <TableTd style={{verticalAlign: 'bottom'}}>
-                  <IconCheck color='green' onClick={() => handleAddEquipment(newEquipment)} className='cursorPointer' style={{marginRight: '5px'}}/>
-                  <IconX color='red' onClick={() => setShowInputsToAdd(false)} className='cursorPointer' />
-                </TableTd>
-              </TableTr>
-            )}
           </TableTbody>
         </Table>
+            {showInputsToAdd && (
+               <div style={{display: 'flex'}}>
+                <NewEquipmentTable 
+                  handleChange={handleChange}
+                  newEquipment={newEquipment}
+                  placeholderMapping={placeholderMapping}
+                />
+                 <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', alignItems: 'center', marginLeft: '10px'}}>
+                  <IconCheck color='green' onClick={() => handleAddEquipment(newEquipment)} className='cursorPointer'/>
+                  <IconX color='red' onClick={() => setShowInputsToAdd(false)} className='cursorPointer' />
+                </div> 
+              </div>
+            )}
       </Box>
     </>
   );
