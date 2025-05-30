@@ -1,12 +1,11 @@
 import { EventModel } from '@/context/types';
-import { Box, Button, Flex, Input, Switch, Text } from '@mantine/core';
-import { ActionIcon } from '@mantine/core';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
+import { Button, Flex, Text } from '@mantine/core';
+import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
-import ChooseComponentFromDBComponent from './ChooseComponentFromDB';
 import { EVENT_TABS } from '@/context/config';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import EquipmentSelector from './EquipmentSelector';
 
 const EquipmentForm = ({
   event,
@@ -82,7 +81,7 @@ const EquipmentForm = ({
         <IconPlus />
       </Flex>
       <div>
-        {useEquipmentDataBase && (
+        {/* {useEquipmentDataBase && (
           <>
             <ChooseComponentFromDBComponent
               equipment={equipment}
@@ -136,7 +135,13 @@ const EquipmentForm = ({
                 </Flex>
               );
             })}
-        </Flex>
+        </Flex> */}
+        <EquipmentSelector 
+          event={event}
+          showInputsToAdd={showInputsToAdd}
+          setShowInputsToAdd={setShowInputsToAdd}
+          setPrice={setPrice}
+        />
         <div
           style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}
         >

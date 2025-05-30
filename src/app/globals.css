@@ -166,3 +166,7 @@ body.loading {
 body.loading * {
   pointer-events: none;
 }
+
+.mantine-Checkbox-input {
+  cursor: pointer !important;
+}

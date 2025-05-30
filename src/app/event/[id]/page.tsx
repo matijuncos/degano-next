@@ -6,7 +6,7 @@ import Loader from '@/components/Loader/Loader';
 import PrintableEvent from '@/components/PrintableEvent/PrintableEvent';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { EventModel } from '@/context/types';
+import { Band, EventModel } from '@/context/types';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import {
   Accordion,
@@ -23,6 +23,8 @@ import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
+import BandList from '@/components/BandManager/BandList';
+import useNotification from '@/hooks/useNotification';
 
 const EventPage = () => {
   const { allEvents, setSelectedEvent, selectedEvent, loading, setFolderName } =
@@ -35,6 +37,7 @@ const EventPage = () => {
   const setLoadingCursor = useLoadingCursor();
   const [dateString, setDateString] = useState('');
   const [showPrintableComponent, setShowPrintableComponent] = useState(false);
+  const notify = useNotification();
 
   useEffect(() => {
     if (allEvents.length) {
@@ -92,6 +95,33 @@ const EventPage = () => {
 
   const printEventDetails = () => {
     setShowPrintableComponent((prev) => !prev);
+  };
+
+  const handleBandsChange = async (bands: Band[]) => {
+    setLoadingCursor(true);
+    notify({loading: true});  
+    const editedEvent = {
+      ...selectedEvent,
+      bands,
+    }
+    try {
+      const response = await fetch('/api/updateBands', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editedEvent)
+      });
+      const { event } = await response.json();
+      setSelectedEvent(event);
+      notify();
+    } catch (err) {
+      notify({type: 'defaultError'});
+      console.log(err);  
+    } finally {
+      setLoadingCursor(false);
+    }
   };
 
   return selectedEvent ? (
@@ -195,30 +225,19 @@ const EventPage = () => {
                       />
                       <EditableData
                         type='text'
-                        property='bandName'
-                        title='Banda'
-                        value={selectedEvent.bandName}
-                      />
-                      <EditableData
-                        type='text'
                         property='guests'
                         title='Invitados'
                         value={selectedEvent.guests}
                       />
-                      <EditableData
-                        type='text'
-                        property='manager'
-                        title='Manager'
-                        value={selectedEvent.manager}
-                      />
-                      <EditableData
-                        type='text'
-                        property='managerPhone'
-                        title='Teléfono Manager'
-                        value={selectedEvent.managerPhone}
-                      />
                     </Grid.Col>
                   </Grid>
+                </AccordionSet>
+                <AccordionSet value='Banda en vivo'>
+                  <BandList
+                    bands={selectedEvent?.bands || []}
+                    onBandsChange={handleBandsChange}
+                    editing={true}
+                  />
                 </AccordionSet>
                 <AccordionSet value='Música'>
                   <AccordionSet value='Prohibidos'>

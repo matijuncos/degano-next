@@ -112,7 +112,7 @@ const EquipmentStockTable = ({
               {columns.map((col) => (
                 <TableTh key={`new-${col.index}`}>{col.name}</TableTh>
               ))}
-              <TableTh>Actions</TableTh>
+              <TableTh>Acciones</TableTh>
             </TableTr>
           </TableThead>
 

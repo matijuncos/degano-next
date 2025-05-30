@@ -10,7 +10,7 @@ type inputProps = {
 const NewEquipmentTable = ({
   handleChange,
   newEquipment,
-  placeholderMapping
+  placeholderMapping,
 }: inputProps) => {
   return (
     <div
