@@ -50,8 +50,9 @@ export default function RootLayout({
                 <div
                   className='everything-container'
                   style={{
-                    width: '100%',
-                    padding: '16px'
+                    width: 'calc(100vw - 80px)',
+                    padding: '16px',
+                    marginLeft: 'auto'
                   }}
                 >
                   {children}

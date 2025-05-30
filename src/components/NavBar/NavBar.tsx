@@ -6,16 +6,16 @@ import {
   IconLogout,
   IconCalendar,
   IconPlus,
-  IconCalendarPlus,
   IconHome,
   IconListCheck
 } from '@tabler/icons-react';
 import degano from '../../assets/logo.png';
 import classes from './Navbar.module.css';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 
 interface NavbarLinkProps {
   icon: typeof IconHome2;
@@ -50,6 +50,15 @@ function Navbar() {
   const router = useRouter();
   const { user } = useUser();
   const { activeNavTab } = useDeganoCtx();
+  const setLoadingCursor = useLoadingCursor();
+  const pathname = usePathname();
+
+  const handleOnClick = (route: string) => {
+    if (pathname !== route) {
+      setLoadingCursor(true);
+      router.push(route);
+    }
+  };
 
   const links = user ? (
     linksList.map((link, index) => (
@@ -57,9 +66,7 @@ function Navbar() {
         {...link}
         key={link.label}
         active={index === activeNavTab}
-        onClick={() => {
-          router.push(link.path);
-        }}
+        onClick={() => handleOnClick(link.path)}
       />
     ))
   ) : (
@@ -76,7 +83,7 @@ function Navbar() {
           width={30}
           height={30}
           priority
-          onClick={() => router.push('/home')}
+          onClick={() => handleOnClick('/home')}
         />
       </Center>
 
@@ -90,7 +97,7 @@ function Navbar() {
           <NavbarLink
             icon={IconLogout}
             label='Cerrar sesión'
-            onClick={() => router.push('/api/auth/logout')}
+            onClick={() => handleOnClick('/api/auth/logout')}
           />
         </Stack>
       )}

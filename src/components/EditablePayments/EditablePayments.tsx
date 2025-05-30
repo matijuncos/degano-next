@@ -17,7 +17,7 @@ const EditablePayments = () => {
   const [subsequentPayments, setSubsequentPayments] = useState<any[]>([]);
   const updateEvent = async (event: any) => {
     setLoading(true);
-    notify('', '', '', true);
+    notify({loading: true});
 
     const timeStamp = new Date().toISOString();
     try {
@@ -33,7 +33,7 @@ const EditablePayments = () => {
       notify();
       setSelectedEvent(data.event);
     } catch (error) {
-      notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoading(false);
@@ -100,14 +100,14 @@ const EditablePayments = () => {
 
   return (
     <>
-      <Box mb='12px' pt='md'>
+      <Box mb='24px' pt='md'>
         <Flex justify='space-between'>
           <Flex
             gap='16px'
             p='10px'
             style={{
               borderRadius: '6px',
-              border: 'solid 2px white'
+              border: 'solid 1px white'
             }}
           >
             <Text fw={600}>Cotizaciòn total del evento</Text>
@@ -133,14 +133,14 @@ const EditablePayments = () => {
         p='10px'
         style={{
           borderRadius: '6px',
-          border: 'solid 2px white'
+          border: 'solid 1px white'
         }}
       >
         <Text fw={600} mb='8px'>
           Pagos parciales:
         </Text>
         <hr />
-        <Box my='12px'>
+        <Box my='24px'>
           <Flex gap='8px'>
             <Text fw={600}>Pago Inicial: </Text>
             <Text>
@@ -207,10 +207,10 @@ const EditablePayments = () => {
       ))}
       <Box
         p='10px'
-        my='16px'
+        my='24px'
         style={{
           borderRadius: '6px',
-          border: 'solid 2px white'
+          border: 'solid 1px white'
         }}
       >
         <Text fw={600} mb='8px'>

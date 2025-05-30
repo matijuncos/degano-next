@@ -41,10 +41,18 @@ export default withPageAuthRequired(function ClientsPage() {
   }, []);
 
   const handleRemoveClient = async (clientId: string) => {
-    await removeClient(clientId);
-    setClientsList((prevClients) =>
-      prevClients.filter((client) => client._id !== clientId)
-    );
+    notify({loading: true});
+    try {
+      await removeClient(clientId);
+      setClientsList((prevClients) =>
+        prevClients.filter((client) => client._id !== clientId)
+      );
+      notify({message: 'Se elimino el cliente correctamente'});
+    } catch (err) {
+      console.error('Error en la solicitud', err);
+      notify({type: 'defaultError'});
+      throw err;
+    }
   };
 
   return (
@@ -65,9 +73,10 @@ export default withPageAuthRequired(function ClientsPage() {
               <TableTd>{client.email}</TableTd>
               <TableTd>{client.phoneNumber}</TableTd>
               <TableTd>
-                <button onClick={() => handleRemoveClient(client._id)}>
-                  <IconTrash color='red' />
-                </button>
+                <IconTrash
+                  color='red'
+                  onClick={() => handleRemoveClient(client._id)}
+                />
               </TableTd>
             </TableTr>
           ))

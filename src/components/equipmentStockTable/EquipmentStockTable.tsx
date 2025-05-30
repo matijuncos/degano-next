@@ -13,13 +13,12 @@ import React, { useState } from 'react';
 import { columns } from './config';
 import { NewEquipment } from './types';
 import CustomRow from './CustomRow';
+import useNotification from '@/hooks/useNotification';
 
 const EquipmentStockTable = ({
   equipment,
-  id
 }: {
   equipment: NewEquipment[] | undefined;
-  id: string;
 }) => {
   const [showInputsToAdd, setShowInputsToAdd] = useState(false);
   const [newEquipment, setNewEquipment] = useState({
@@ -33,6 +32,7 @@ const EquipmentStockTable = ({
   const [equipmentList, setEquipmentList] = useState<NewEquipment[]>(
     equipment || []
   );
+  const notify = useNotification();
 
   const handleChange = (
     field: keyof typeof newEquipment,
@@ -41,15 +41,10 @@ const EquipmentStockTable = ({
     setNewEquipment({ ...newEquipment, [field]: value });
   };
 
-  const handleAddEquipment = async () => {
-    const payload = [
-      ...equipmentList,
-      { ...newEquipment, _id: new Date().toISOString() }
-    ];
+  const handleAddEquipment = async (equipmentItem: NewEquipment) => {
     setShowInputsToAdd(false);
-    await makePutRequest(payload);
-
-    setEquipmentList(payload);
+    const response = await makePutRequest(equipmentItem);
+    if (response.status === 200) setEquipmentList([...equipmentList, newEquipment]);
     setNewEquipment({
       name: '',
       price: 0,
@@ -60,20 +55,24 @@ const EquipmentStockTable = ({
     });
   };
 
-  const makePutRequest = async (newEquipment: NewEquipment[]) => {
-    const payload = {
-      _id: id,
-      equipment: newEquipment
-    };
-    const response = await fetch('/api/updateEquipmentV2', {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.json();
+  const makePutRequest = async (newEquipment: NewEquipment) => {
+    notify({loading: true});
+    try {
+      const response = await fetch('/api/updateEquipmentV2', {
+        method: 'PUT',
+        body: JSON.stringify({equipment: newEquipment}),
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      notify();
+      return await response.json();
+    } catch (error) {
+      notify({type: 'defaultError'});
+      console.error("Error en la solicitud PUT:", error);
+      throw error; // Puedes lanzar el error de nuevo si necesitas manejarlo en otro lugar
+    }
   };
 
   return (
@@ -85,7 +84,7 @@ const EquipmentStockTable = ({
           ))}
           <TableTh>Actions</TableTh>
           <TableTh>
-            <IconPlus onClick={() => setShowInputsToAdd(!showInputsToAdd)} />
+            <IconPlus onClick={() => setShowInputsToAdd(!showInputsToAdd)} className='cursorPointer'/>
           </TableTh>
         </TableTr>
       </TableThead>
@@ -107,7 +106,7 @@ const EquipmentStockTable = ({
               </TableTd>
             ))}
             <TableTd>
-              <IconCheck color='green' onClick={handleAddEquipment} />
+              <IconCheck color='green' onClick={() => handleAddEquipment(newEquipment)} className='cursorPointer'/>
             </TableTd>
           </TableTr>
         )}
@@ -116,7 +115,7 @@ const EquipmentStockTable = ({
             makePutRequest={makePutRequest}
             equipmentListToEdit={equipmentList}
             setEquipmentListToEdit={setEquipmentList}
-            key={row._id}
+            key={row._id || idx}
             eq={row}
             index={idx}
           />

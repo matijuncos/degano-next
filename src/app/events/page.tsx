@@ -10,7 +10,8 @@ import {
   Flex,
   Group,
   Modal,
-  Text
+  Text,
+  Select
 } from '@mantine/core';
 import { IconAlertTriangle, IconEye, IconTrash } from '@tabler/icons-react';
 import { EventModel } from '@/context/types';
@@ -18,6 +19,8 @@ import { useRouter } from 'next/navigation';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import Loader from '@/components/Loader/Loader';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import useNotification from '@/hooks/useNotification';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 
 export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
@@ -29,6 +32,27 @@ export default withPageAuthRequired(function EventPage() {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const router = useRouter();
   const [eventId, setEventId] = useState('');
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [salonFilter, setSalonFilter] = useState<string | null>(null);
+  const [filteredRecords, setFilteredRecords] = useState(records);
+  const notify = useNotification();
+  const setLoadingCursor = useLoadingCursor();
+
+  useEffect(() => {
+    const filtered = records.filter(
+      (event) =>
+        (clientFilter === null || event.fullName === clientFilter) &&
+        (salonFilter === null || event.salon === salonFilter)
+    );
+    setFilteredRecords(filtered);
+  }, [records, clientFilter, salonFilter]);
+
+  const uniqueClients = Array.from(new Set(records.map((r) => r.fullName)));
+  const uniqueSalons = Array.from(new Set(records.map((r) => r.salon)));
+
+  const sortedClients = [...uniqueClients].sort((a, b) => a.localeCompare(b));
+  const sortedSalons = [...uniqueSalons].sort((a, b) => a.localeCompare(b));
+
   useEffect(() => {
     const data = sortBy(allEvents, sortStatus.columnAccessor) as any;
     setRecords(sortStatus.direction === 'desc' ? data.reverse() : data);
@@ -42,6 +66,8 @@ export default withPageAuthRequired(function EventPage() {
   const removeEvent = async () => {
     setShowConfirmationModal(false);
     setLoading(true);
+    setLoadingCursor(true);
+    notify({loading: true});
     try {
       const response = await fetch(`/api/deleteEvent/${eventId}`, {
         method: 'DELETE',
@@ -51,10 +77,13 @@ export default withPageAuthRequired(function EventPage() {
       if (data.success) {
         fetchEvents();
       }
+      notify({message: 'Se elimino el evento correctamente'});
     } catch (error) {
+      notify({type: 'defaultError'});
       console.error(error);
     } finally {
       setLoading(false);
+      setLoadingCursor(true);
     }
   };
 
@@ -70,6 +99,7 @@ export default withPageAuthRequired(function EventPage() {
       setEventId(event._id);
     }
     if (action === actions.see) {
+      setLoadingCursor(true);
       router.push(`/event/${event._id}`);
     } else if (action === actions.edit) {
       // Agregar cuando se defina la nueva pantalla
@@ -102,23 +132,63 @@ export default withPageAuthRequired(function EventPage() {
         <Loader />
       ) : (
         <>
-          <Text size='lg'>Eventos</Text>
-          <Flex direction='column' align='flex-end' mb='18px'>
-            <Flex align='center' gap='6px'>
-              Futuros{'  '}{' '}
-              <Box
-                w='18px'
-                h='5px'
-                bg='green'
-                style={{ borderRadius: '6px' }}
+          <Text size='xl' fw={700}>
+            Eventos
+          </Text>
+          <Flex justify='space-between' mb='md'>
+            <Flex gap='md' mb='md'>
+              <Select
+                placeholder='Filtrar por cliente'
+                value={clientFilter}
+                onChange={setClientFilter}
+                data={[
+                  { value: '', label: 'Todos los clientes' },
+                  ...sortedClients.map((client) => ({
+                    value: client,
+                    label: client
+                  }))
+                ]}
+                clearable
+                searchable
+              />
+              <Select
+                placeholder='Filtrar por salón'
+                value={salonFilter}
+                onChange={setSalonFilter}
+                data={[
+                  { value: '', label: 'Todos los salones' },
+                  ...sortedSalons.map((salon) => ({
+                    value: salon,
+                    label: salon
+                  }))
+                ]}
+                clearable
+                searchable
               />
             </Flex>
-            <Flex align='center' gap='6px'>
-              Pasados{'  '}{' '}
-              <Box w='18px' h='5px' bg='grey' style={{ borderRadius: '6px' }} />
+            <Flex align='flex-end' mb='18px' gap='12px'>
+              <Flex align='center' gap='6px'>
+                Futuros{'  '}{' '}
+                <Box
+                  w='18px'
+                  h='5px'
+                  bg='green'
+                  style={{ borderRadius: '6px' }}
+                />
+              </Flex>
+              <Flex align='center' gap='6px'>
+                Pasados{'  '}{' '}
+                <Box
+                  w='18px'
+                  h='5px'
+                  bg='grey'
+                  style={{ borderRadius: '6px' }}
+                />
+              </Flex>
             </Flex>
           </Flex>
           <DataTable
+            style={{height: 'auto'}}
             highlightOnHover
             rowColor={({ date }) => {
               const now = new Date();
@@ -170,7 +240,7 @@ export default withPageAuthRequired(function EventPage() {
                 )
               }
             ]}
-            records={records}
+            records={filteredRecords}
             sortStatus={sortStatus}
             onSortStatusChange={setSortStatus}
           />

@@ -12,8 +12,8 @@ import {
 import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
-import useLoadingCursor from '../../hooks/useLoadingCursor';
-import useNotification from '../../hooks/useNotification';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
+import useNotification from '@/hooks/useNotification';
 
 const EditableData = ({
   title,
@@ -39,10 +39,10 @@ const EditableData = ({
   const notify = useNotification();
 
   const updateEvent = async (event: any) => {
-    setLoadingCursor(true);
-    notify('', '', '', true);
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
+    setLoadingCursor(true);
+    notify({loading: true});
     const timeStamp = new Date().toISOString();
     try {
       const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
@@ -53,10 +53,10 @@ const EditableData = ({
         },
         body: JSON.stringify(event)
       });
-      const data = await response.json();
+      await response.json();
       notify();
     } catch (error) {
-      notify('Operación errónea', 'Algo salio mal, vuelve a intentarlo', 'red');
+      notify({type: 'defaultError'});
       console.log(error);
     } finally {
       setLoadingCursor(false);
@@ -242,49 +242,51 @@ const EditableData = ({
           />
           <Box>
             {Array.isArray(editState.inputValue) &&
-              editState.inputValue.map((genre, i) => (
-                <div
-                  key={`i${i}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 0',
-                    borderBottom: 'solid 1px grey'
-                  }}
-                >
-                  <div style={{ minWidth: '80px' }}>
-                    <p
-                      style={{
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {genre.genre}
-                    </p>
-                  </div>
+              editState.inputValue
+                .filter((item) => item.value !== 0)
+                .map((genre, i) => (
                   <div
+                    key={`i${i}`}
                     style={{
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px 0',
+                      borderBottom: 'solid 1px grey'
                     }}
                   >
-                    {Array.from({ length: genre.value }, (_, idx) => (
-                      <IconStarFilled
-                        color='gold'
-                        key={`filled-${genre.genre}-${idx}`}
-                      />
-                    ))}
-                    {Array.from({ length: 5 - genre.value }, (_, idx) => (
-                      <IconStar
-                        color='gold'
-                        key={`empty-${genre.genre}-${idx}`}
-                      />
-                    ))}
+                    <div style={{ minWidth: '80px' }}>
+                      <p
+                        style={{
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {genre.genre}
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {Array.from({ length: genre.value }, (_, idx) => (
+                        <IconStarFilled
+                          color='gold'
+                          key={`filled-${genre.genre}-${idx}`}
+                        />
+                      ))}
+                      {Array.from({ length: 5 - genre.value }, (_, idx) => (
+                        <IconStar
+                          color='gold'
+                          key={`empty-${genre.genre}-${idx}`}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
           </Box>
         </>
       )}
@@ -330,6 +332,8 @@ const EditableData = ({
       </Flex>
     );
   };
+
+  // if (!value) return null;
 
   return (
     <>

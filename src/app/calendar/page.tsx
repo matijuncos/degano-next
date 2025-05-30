@@ -11,7 +11,6 @@ import { Drawer } from '@mantine/core';
 import { useCallback, useMemo, useState } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
-import { mockedEvents } from '@/mockedData/event';
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
 import startOfWeek from 'date-fns/startOfWeek';

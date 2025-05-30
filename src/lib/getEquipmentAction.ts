@@ -11,21 +11,19 @@ export async function getEquipmentAction(session: Session) {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const db = client.db('degano-app');
-    const equipment = await db.collection('equipmentListV2').find().toArray();
-    console.log(equipment);
-    const returnedEquipment = equipment?.[0]?.equipment;
-    const collectionId = equipment?.[0]?._id;
+    const equipmentList = await db.collection('equipmentListV2').find().toArray();
+
     const response = {
-      collectionId,
       equipment: isAdmin
-        ? returnedEquipment
-        : returnedEquipment.map((eq: any) => {
+        ? equipmentList
+        : equipmentList.map((eq: any) => {
             return {
               ...eq,
               price: '****'
             };
           })
     };
+
     return response;
   } catch (error) {
     console.log(error);

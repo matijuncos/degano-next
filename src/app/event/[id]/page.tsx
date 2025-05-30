@@ -8,7 +8,16 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EventModel } from '@/context/types';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
-import { Accordion, Box, Button, Container, Title } from '@mantine/core';
+import {
+  Accordion,
+  Box,
+  Button,
+  Container,
+  Grid,
+  Title,
+  Divider,
+  Flex
+} from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -34,21 +43,21 @@ const EventPage = () => {
       )!;
       setSelectedEvent(selectedEvent);
       setFolderName(
-        `${selectedEvent.fullName} - ${selectedEvent.salon} - ${new Date(
-          selectedEvent.date
-        ).toLocaleDateString('es-ES', {
+        `${new Date(selectedEvent.date).toLocaleDateString('es-ES', {
           day: '2-digit',
           month: '2-digit',
           year: '2-digit'
-        })}`
+        })} - ${selectedEvent.type} - ${selectedEvent.salon}`
       );
     }
   }, [allEvents, id]);
 
   useEffect(() => {
     if (selectedEvent?.date) {
-      const date = new Date(selectedEvent.date).toLocaleString('en-US', {
-        timeZone: 'UTC'
+      const date = new Date(selectedEvent.date).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
       });
       setDateString(date);
     }
@@ -69,7 +78,11 @@ const EventPage = () => {
       <Accordion>
         <Accordion.Item value={value}>
           <Accordion.Control>{value}</Accordion.Control>
-          <Accordion.Panel>
+          <Accordion.Panel
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.02)'
+            }}
+          >
             <>{children}</>
           </Accordion.Panel>
         </Accordion.Item>
@@ -90,166 +103,177 @@ const EventPage = () => {
           {showPrintableComponent ? (
             <PrintableEvent />
           ) : (
-            <>
+            <Box>
               <Title mb='16px'>
-                {`${selectedEvent.fullName} - ${dateString} - ${selectedEvent.salon}`}
+                {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.salon}`}
               </Title>
-              <AccordionSet value='Información Principal'>
-                <Box>
-                  <EditableData
-                    type='text'
-                    property='phoneNumber'
-                    title='Teléfono'
-                    value={selectedEvent.phoneNumber}
-                  />
-                  <EditableData
-                    type='text'
-                    property='type'
-                    title='Tipo de evento'
-                    value={selectedEvent.type}
-                  />
-                  <EditableData
-                    type='text'
-                    property='type'
-                    title='Fecha'
-                    value={new Date(selectedEvent.date).toLocaleDateString()}
-                  />
-                  {selectedEvent.endDate ? (
+              <Flex direction='column' gap='8px'>
+                <AccordionSet value='Información Principal'>
+                  <Grid gutter='xl'>
+                    <Grid.Col span={5.5}>
+                      <EditableData
+                        type='text'
+                        property='phoneNumber'
+                        title='Teléfono'
+                        value={selectedEvent.phoneNumber}
+                      />
+                      <EditableData
+                        type='text'
+                        property='type'
+                        title='Tipo de evento'
+                        value={selectedEvent.type}
+                      />
+                      <EditableData
+                        type='text'
+                        property='type'
+                        title='Fecha'
+                        value={new Date(
+                          selectedEvent.date
+                        ).toLocaleDateString()}
+                      />
+                      {selectedEvent.endDate ? (
+                        <EditableData
+                          type='text'
+                          property='type'
+                          title='Fecha Finalizacion'
+                          value={new Date(
+                            selectedEvent.endDate
+                          ).toLocaleDateString()}
+                        />
+                      ) : (
+                        <></>
+                      )}
+                      <EditableData
+                        type='text'
+                        property='salon'
+                        title='Salon'
+                        value={selectedEvent.salon}
+                      />
+                      <EditableData
+                        type='text'
+                        property='eventAddress'
+                        title='Dirección'
+                        value={selectedEvent.eventAddress}
+                      />
+                      <EditableData
+                        type='text'
+                        property='eventCity'
+                        title='Localidad'
+                        value={selectedEvent.eventCity}
+                      />
+                      <EditableData
+                        type='text'
+                        property='guests'
+                        title='Cantidad de invitados'
+                        value={selectedEvent.guests}
+                      />
+                    </Grid.Col>
+                    <Grid.Col
+                      span='auto'
+                      style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
+                    >
+                      <Divider orientation='vertical' />
+                    </Grid.Col>
+                    <Grid.Col span={5.5}>
+                      <EditableData
+                        type='text'
+                        property='age'
+                        title='Edad'
+                        value={selectedEvent.age}
+                      />
+                      <EditableData
+                        type='text'
+                        property='averageAge'
+                        title='Edad Promedio'
+                        value={selectedEvent.averageAge}
+                      />
+                      <EditableData
+                        type='text'
+                        property='email'
+                        title='Email'
+                        value={selectedEvent.email}
+                      />
+                      <EditableData
+                        type='text'
+                        property='bandName'
+                        title='Banda'
+                        value={selectedEvent.bandName}
+                      />
+                      <EditableData
+                        type='text'
+                        property='guests'
+                        title='Invitados'
+                        value={selectedEvent.guests}
+                      />
+                      <EditableData
+                        type='text'
+                        property='manager'
+                        title='Manager'
+                        value={selectedEvent.manager}
+                      />
+                      <EditableData
+                        type='text'
+                        property='managerPhone'
+                        title='Teléfono Manager'
+                        value={selectedEvent.managerPhone}
+                      />
+                    </Grid.Col>
+                  </Grid>
+                </AccordionSet>
+                <AccordionSet value='Música'>
+                  <AccordionSet value='Prohibidos'>
                     <EditableData
-                      type='text'
-                      property='type'
-                      title='Fecha Finalizacion'
-                      value={new Date(
-                        selectedEvent.endDate
-                      ).toLocaleDateString()}
+                      type='chips'
+                      value={selectedEvent.music.forbidden}
+                      property='forbidden'
                     />
-                  ) : (
-                    <></>
-                  )}
-
-                  <EditableData
-                    type='text'
-                    property='salon'
-                    title='Salon'
-                    value={selectedEvent.salon}
-                  />
-                  <EditableData
-                    type='text'
-                    property='eventAddress'
-                    title='Dirección'
-                    value={selectedEvent.eventAddress}
-                  />
-                  <EditableData
-                    type='text'
-                    property='eventCity'
-                    title='Localidad'
-                    value={selectedEvent.eventCity}
-                  />
-                  <EditableData
-                    type='text'
-                    property='guests'
-                    title='Cantidad de invitados'
-                    value={selectedEvent.guests}
-                  />
-                  <EditableData
-                    type='text'
-                    property='age'
-                    title='Edad'
-                    value={selectedEvent.age}
-                  />
-                  <EditableData
-                    type='text'
-                    property='averageAge'
-                    title='Edad Promedio'
-                    value={selectedEvent.averageAge}
-                  />
-                  <EditableData
-                    type='text'
-                    property='email'
-                    title='Email'
-                    value={selectedEvent.email}
-                  />
-
-                  <EditableData
-                    type='text'
-                    property='bandName'
-                    title='Banda'
-                    value={selectedEvent.bandName}
-                  />
-
-                  <EditableData
-                    type='text'
-                    property='guests'
-                    title='Invitados'
-                    value={selectedEvent.guests}
-                  />
-                  <EditableData
-                    type='text'
-                    property='manager'
-                    title='Manager'
-                    value={selectedEvent.manager}
-                  />
-                  <EditableData
-                    type='text'
-                    property='managerPhone'
-                    title='Teléfono Manager'
-                    value={selectedEvent.managerPhone}
-                  />
-                </Box>
-              </AccordionSet>
-              <AccordionSet value='Música'>
-                <AccordionSet value='Prohibidos'>
-                  <EditableData
-                    type='chips'
-                    value={selectedEvent.music.forbidden}
-                    property='forbidden'
-                  />
-                </AccordionSet>
-                <AccordionSet value='Requeridos'>
-                  <EditableData
-                    type='chips'
-                    value={selectedEvent.music.required}
-                    property='required'
-                  />
-                </AccordionSet>
-                <AccordionSet value='Géneros'>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px'
-                    }}
-                  >
+                  </AccordionSet>
+                  <AccordionSet value='Requeridos'>
                     <EditableData
-                      type='rate'
-                      property='genres'
-                      value={selectedEvent.music.genres}
+                      type='chips'
+                      value={selectedEvent.music.required}
+                      property='required'
                     />
-                  </div>
+                  </AccordionSet>
+                  <AccordionSet value='Géneros'>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}
+                    >
+                      <EditableData
+                        type='rate'
+                        property='genres'
+                        value={selectedEvent.music.genres}
+                      />
+                    </div>
+                  </AccordionSet>
+                  <AccordionSet value='Playlist'>
+                    <SpotifyTable />
+                  </AccordionSet>
                 </AccordionSet>
-                <AccordionSet value='Playlist'>
-                  <SpotifyTable />
+                <AccordionSet value='Más Información'>
+                  <EditableData
+                    type='textarea'
+                    property='moreData'
+                    value={selectedEvent.moreData}
+                  />
                 </AccordionSet>
-              </AccordionSet>
-              <AccordionSet value='Más Información'>
-                <EditableData
-                  type='textarea'
-                  property='moreData'
-                  value={selectedEvent.moreData}
-                />
-              </AccordionSet>
-              <AccordionSet value='Equipos'>
-                <EquipmentTable />
-              </AccordionSet>
-              <AccordionSet value='Archivos'>
-                <FilesHandlerComponent />
-              </AccordionSet>
-              {isAdmin && (
-                <AccordionSet value='Historial de pagos'>
-                  <EditablePayments />
+                <AccordionSet value='Equipos'>
+                  <EquipmentTable />
                 </AccordionSet>
-              )}
-            </>
+                <AccordionSet value='Archivos'>
+                  <FilesHandlerComponent />
+                </AccordionSet>
+                {isAdmin && (
+                  <AccordionSet value='Historial de pagos'>
+                    <EditablePayments />
+                  </AccordionSet>
+                )}
+              </Flex>
+            </Box>
           )}
         </>
       )}

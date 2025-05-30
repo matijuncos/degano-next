@@ -11,6 +11,9 @@ import { EventModel } from '@/context/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
+import useNotification from '@/hooks/useNotification';
+
 const NewEventPage = () => {
   const {
     formState,
@@ -33,7 +36,7 @@ const NewEventPage = () => {
     eventAddress: '',
     eventCity: '',
     salon: '',
-    date: new Date(),
+    date: '',
     averageAge: '',
     churchDate: '',
     civil: new Date().toISOString(),
@@ -59,6 +62,9 @@ const NewEventPage = () => {
     playlist: []
   });
 
+  const setLoadingCursor = useLoadingCursor();
+  const notify = useNotification();
+
   const onNextTab = (tab: number, data: EventModel) => {
     setFormState(tab);
     setEvent(data);
@@ -73,7 +79,19 @@ const NewEventPage = () => {
   }, []);
 
   const saveEvent = async (newEvent: EventModel) => {
+    setLoadingCursor(true);
+    notify({ loading: true });
     try {
+      // agregar update del equipment
+      await fetch('/api/updateEquipmentV2', {
+        method: 'PUT',
+        body: JSON.stringify(newEvent.equipment),
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      // console.log('equipmentResposne ', equipmentResponse)
       const response = await fetch('/api/postEvent', {
         method: 'POST',
         cache: 'no-store',
@@ -85,20 +103,22 @@ const NewEventPage = () => {
       const data = await response.json();
       if (data) {
         setFolderName(
-          `${newEvent.fullName} - ${newEvent.salon} - ${new Date(
-            newEvent.date
-          ).toLocaleDateString('es-ES', {
+          `${new Date(newEvent.date).toLocaleDateString('es-ES', {
             day: '2-digit',
             month: '2-digit',
             year: '2-digit'
-          })}`
+          })} - ${newEvent.type} - ${newEvent.salon}`
         );
         if (data.event)
           setAllEvents((prev: EventModel[]) => [...prev, data.event]);
         router.push('/upload-file');
       }
+      notify();
     } catch (err) {
+      notify({ type: 'defaultError' });
       console.error('failed to save the event ', err);
+    } finally {
+      setLoadingCursor(false);
     }
   };
 
