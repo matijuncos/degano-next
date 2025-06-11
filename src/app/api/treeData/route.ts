@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'; // ⬅️ esto fuerza el comportamiento dinámico
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 
@@ -24,10 +25,5 @@ export async function GET() {
     ...equipmentNodes,
   ];
 
-  return new NextResponse(JSON.stringify(merged), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store' // ⛔️ Desactiva la caché completamente
-    }
-  });
+  return NextResponse.json(merged);
 }
