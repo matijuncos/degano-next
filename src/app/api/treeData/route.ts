@@ -1,4 +1,3 @@
-// src/app/api/treeData/route.ts
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 
@@ -6,19 +5,16 @@ export async function GET() {
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  // ⛳️ Usamos tus colecciones reales
   const categories = await db.collection('categories').find().toArray();
   const equipment = await db.collection('equipment').find().toArray();
 
-  // Adaptamos equipos para integrarlos al árbol
   const equipmentNodes = equipment.map(eq => ({
     _id: eq._id.toString(),
     name: eq.name,
-    parentId: eq.categoryId || 'equipment', // usamos categoryId como parentId real
+    parentId: eq.categoryId || 'equipment',
     categoryId: eq.categoryId,
   }));
 
-  // Fusionamos categorías y equipamiento
   const merged = [
     ...categories.map(c => ({
       _id: c._id.toString(),
@@ -27,6 +23,11 @@ export async function GET() {
     })),
     ...equipmentNodes,
   ];
-  console.log('merged ? ', merged)
-  return NextResponse.json(merged);
+
+  return new NextResponse(JSON.stringify(merged), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store' // ⛔️ Desactiva la caché completamente
+    }
+  });
 }

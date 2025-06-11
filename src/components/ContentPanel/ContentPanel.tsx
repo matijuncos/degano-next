@@ -21,22 +21,16 @@ export default function ContentPanel({
   setDisableCreateEquipment: (val: boolean) => void;
   onEdit?: (item: any) => void;
 }) {
-  const fetcher = (url: string) => fetch(url).then((res) => res.json());
+  const fetcher = (url: string) => fetch(url).then(res => res.json());
   const { data: categories = [] } = useSWR('/api/categories', fetcher);
   const { data: equipment = [] } = useSWR('/api/equipment', fetcher);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const children = categories.filter(
-    (cat: any) => cat.parentId === selectedCategory?._id
-  );
-  const items = equipment.filter(
-    (eq: any) => eq.categoryId === selectedCategory?._id
-  );
+  const children = categories.filter((cat: any) => cat.parentId === selectedCategory?._id);
+  const items = equipment.filter((eq: any) => eq.categoryId === selectedCategory?._id);
 
-  const isCategory = categories.some(
-    (cat: any) => cat._id === selectedCategory?._id
-  );
+  const isCategory = categories.some((cat: any) => cat._id === selectedCategory?._id);
   const isItem = equipment.some((eq: any) => eq._id === selectedCategory?._id);
 
   if (selectedCategory) {
@@ -86,22 +80,12 @@ export default function ContentPanel({
     if (!selectedCategory) return null;
     if (children.length > 0) {
       return children.map((child: any, index: number) => {
-        const itemsInChild = equipment.filter(
-          (eq: any) => eq.categoryId === child._id
-        );
+        const itemsInChild = equipment.filter((eq: any) => eq.categoryId === child._id);
         const stockTotal = itemsInChild.length;
-        const availableCount = itemsInChild.filter(
-          (eq: any) => !eq.outOfService?.isOut
-        ).length;
+        const availableCount = itemsInChild.filter((eq: any) => !eq.outOfService?.isOut).length;
 
         return (
-          <tr
-            key={child._id}
-            style={{
-              backgroundColor:
-                index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent'
-            }}
-          >
+          <tr key={child._id} style={{ backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent' }}>
             <td>{child.name}</td>
             <td>{stockTotal}</td>
             <td>{availableCount}</td>
@@ -111,18 +95,10 @@ export default function ContentPanel({
     } else if (isCategory) {
       return items.map((item: any, index: number) => {
         const stockTotal = items.length;
-        const availableCount = items.filter(
-          (eq: any) => !eq.outOfService?.isOut
-        ).length;
+        const availableCount = items.filter((eq: any) => !eq.outOfService?.isOut).length;
 
         return (
-          <tr
-            key={item._id}
-            style={{
-              backgroundColor:
-                index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent'
-            }}
-          >
+          <tr key={item._id} style={{ backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent' }}>
             <td>{item.name}</td>
             <td>{stockTotal}</td>
             <td>{availableCount}</td>
@@ -131,11 +107,7 @@ export default function ContentPanel({
             <td>{item.serialNumber}</td>
             <td>${item.rentalPrice}</td>
             <td>${item.investmentPrice}</td>
-            <td>
-              {item.outOfService?.isOut
-                ? `Fuera (${item.outOfService.reason})`
-                : 'OK'}
-            </td>
+            <td>{item.outOfService?.isOut ? `Fuera (${item.outOfService.reason})` : 'OK'}</td>
           </tr>
         );
       });
@@ -151,11 +123,7 @@ export default function ContentPanel({
           <td>{item.serialNumber}</td>
           <td>${item.rentalPrice}</td>
           <td>${item.investmentPrice}</td>
-          <td>
-            {item.outOfService?.isOut
-              ? `Fuera (${item.outOfService.reason})`
-              : 'OK'}
-          </td>
+          <td>{item.outOfService?.isOut ? `Fuera (${item.outOfService.reason})` : 'OK'}</td>
         </tr>
       );
     }
@@ -168,9 +136,7 @@ export default function ContentPanel({
   const confirmDelete = async () => {
     if (!selectedCategory) return;
 
-    const isCategoryToDelete = categories.some(
-      (cat: any) => cat._id === selectedCategory._id
-    );
+    const isCategoryToDelete = categories.some((cat: any) => cat._id === selectedCategory._id);
     const endpoint = isCategoryToDelete ? '/api/categories' : '/api/equipment';
 
     await fetch(`${endpoint}?id=${selectedCategory._id}`, {
@@ -178,30 +144,25 @@ export default function ContentPanel({
     });
 
     setShowDeleteModal(false);
-    mutate('/api/categories', undefined, { revalidate: true });
-    mutate('/api/equipment', undefined, { revalidate: true });
-    mutate('/api/treeData', undefined, { revalidate: true });
+    mutate('/api/categories');
+    mutate('/api/equipment');
+    mutate('/api/treeData');
   };
 
   const renderTitle = () => {
     if (!selectedCategory) return 'Selecciona una categoría';
 
     return (
-      <Group justify='space-between' style={{ marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-          {selectedCategory.name}
-        </h2>
-        <Group gap='xs'>
-          <Tooltip label='Editar'>
-            <ActionIcon
-              variant='light'
-              onClick={() => onEdit?.(selectedCategory)}
-            >
+      <Group justify="space-between" style={{ marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{selectedCategory.name}</h2>
+        <Group gap="xs">
+          <Tooltip label="Editar">
+            <ActionIcon variant="light" onClick={() => onEdit?.(selectedCategory)}>
               <IconPencil size={16} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label='Eliminar'>
-            <ActionIcon color='red' variant='light' onClick={handleDeleteClick}>
+          <Tooltip label="Eliminar">
+            <ActionIcon color="red" variant="light" onClick={handleDeleteClick}>
               <IconTrash size={16} />
             </ActionIcon>
           </Tooltip>
@@ -215,9 +176,7 @@ export default function ContentPanel({
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
         <Table striped highlightOnHover withColumnBorders withRowBorders>
-          <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-            {renderHeader()}
-          </thead>
+          <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>{renderHeader()}</thead>
           <tbody>{renderRows()}</tbody>
         </Table>
       )}
@@ -225,9 +184,7 @@ export default function ContentPanel({
       <Modal
         opened={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title={`¿Seguro que querés eliminar este ${
-          isItem ? 'equipamiento' : 'carpeta'
-        }?`}
+        title={`¿Seguro que querés eliminar este ${isItem ? 'equipamiento' : 'carpeta'}?`}
         centered
       >
         <p>
@@ -235,11 +192,11 @@ export default function ContentPanel({
             ? 'Esta acción eliminará el equipamiento permanentemente.'
             : 'Esto eliminará la carpeta y todo su contenido.'}
         </p>
-        <Group justify='flex-end' mt='md'>
-          <Button variant='default' onClick={() => setShowDeleteModal(false)}>
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={() => setShowDeleteModal(false)}>
             Cancelar
           </Button>
-          <Button color='red' onClick={confirmDelete}>
+          <Button color="red" onClick={confirmDelete}>
             Eliminar
           </Button>
         </Group>
