@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'; // ⬅️ esto fuerza el comportamiento dinámico
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
