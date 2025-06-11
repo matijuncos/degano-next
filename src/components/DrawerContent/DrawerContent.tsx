@@ -217,8 +217,8 @@ const DrawerContent = () => {
             </u>
           </h4>
           {selectedEvent &&
-            selectedEvent?.bands.map((band) => (
-              <div className={styles.sectionContainer}>
+            selectedEvent?.bands.map((band, i) => (
+              <div className={styles.sectionContainer} key={i}>
                 <p>+ {band?.bandName}</p>
                 <p>{band?.bandInfo}</p>
                 <p>
@@ -287,10 +287,10 @@ const DrawerContent = () => {
             })}
           </div>
           {selectedEvent &&
-            selectedEvent?.bands.map((band) => (
-              <div>
+            selectedEvent?.bands.map((band,i) => (
+              <div key={i}>
                 <h4 className={styles.subtitle}>
-                  <p>Anexo Banda en Vivo "{band.bandName}"</p>
+                  <p>{`Anexo Banda en Vivo "${band.bandName}"`}</p>
                 </h4>
                 <p>DEFINIR EQUIPAMIENTOS POR BANDA?</p>
               </div>
