@@ -28,10 +28,8 @@ export default function CreationPanel({
   const isCreatingEquipment =
     selectedCategory?._id === '' && !!selectedCategory?.parentIdOriginal;
 
-  const isEditingCategory =
-    editItem && !editItem.categoryId && editItem.parentId !== undefined;
-  const isEditingEquipment =
-    editItem && !!editItem.categoryId;
+  const isEditingEquipment = !!editItem?.categoryId;
+  const isEditingCategory = !!editItem && !isEditingEquipment;
 
   useEffect(() => {
     if (editItem) {
