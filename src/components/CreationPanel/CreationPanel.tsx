@@ -88,9 +88,9 @@ export default function CreationPanel({
     });
 
     setFormData({});
-    mutate('/api/categories');
-    mutate('/api/equipment');
-    mutate('/api/treeData');
+    mutate('/api/categories', undefined, { revalidate: true });
+    mutate('/api/equipment', undefined, { revalidate: true });
+    mutate('/api/treeData', undefined, { revalidate: true });
     onCancel?.();
   };
 

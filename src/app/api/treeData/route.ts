@@ -27,6 +27,6 @@ export async function GET() {
     })),
     ...equipmentNodes,
   ];
-
+  console.log('merged ? ', merged)
   return NextResponse.json(merged);
 }
