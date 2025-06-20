@@ -15,11 +15,13 @@ import { useState } from 'react';
 export default function ContentPanel({
   selectedCategory,
   setDisableCreateEquipment,
-  onEdit
+  onEdit,
+  onCancel
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
   onEdit?: (item: any) => void;
+  onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
 }) {
   const fetcher = (url: string) => fetch(url).then(res => res.json());
   const { data: categories = [] } = useSWR('/api/categories', fetcher);
@@ -53,6 +55,7 @@ export default function ContentPanel({
           <th>Nombre</th>
           <th>Stock total</th>
           <th>Disponible</th>
+          <th>Código</th>
           <th>Marca</th>
           <th>Modelo</th>
           <th>N° Serie</th>
@@ -65,6 +68,7 @@ export default function ContentPanel({
       return (
         <tr>
           <th>Nombre</th>
+          <th>Código</th>
           <th>Marca</th>
           <th>Modelo</th>
           <th>N° Serie</th>
@@ -98,10 +102,11 @@ export default function ContentPanel({
         const availableCount = items.filter((eq: any) => !eq.outOfService?.isOut).length;
 
         return (
-          <tr key={item._id} style={{ backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent' }}>
+          <tr key={item._id} style={{ backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent', textAlign: 'center' }}>
             <td>{item.name}</td>
             <td>{stockTotal}</td>
             <td>{availableCount}</td>
+            <td>{item.code}</td>
             <td>{item.brand}</td>
             <td>{item.model}</td>
             <td>{item.serialNumber}</td>
@@ -116,8 +121,9 @@ export default function ContentPanel({
       if (!item) return null;
 
       return (
-        <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
+        <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center' }}>
           <td>{item.name}</td>
+          <td>{item.code}</td>
           <td>{item.brand}</td>
           <td>{item.model}</td>
           <td>{item.serialNumber}</td>
@@ -147,6 +153,7 @@ export default function ContentPanel({
     mutate('/api/categories');
     mutate('/api/equipment');
     mutate('/api/treeData');
+    onCancel?.(true);
   };
 
   const renderTitle = () => {

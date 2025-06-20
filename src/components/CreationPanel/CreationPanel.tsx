@@ -19,7 +19,7 @@ export default function CreationPanel({
 }: {
   selectedCategory: any;
   editItem: any;
-  onCancel?: () => void;
+  onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
 }) {
   const [formData, setFormData] = useState<any>({ isOut: false });
 
@@ -38,6 +38,7 @@ export default function CreationPanel({
           ? { name: editItem.name }
           : {
               name: editItem.name,
+              code: editItem.code,
               brand: editItem.brand,
               model: editItem.model,
               serialNumber: editItem.serialNumber,
@@ -57,7 +58,9 @@ export default function CreationPanel({
   const handleSubmit = async () => {
     const isEdit = !!editItem;
     const endpoint =
-      isCreatingCategory || isEditingCategory ? '/api/categories' : '/api/equipment';
+      isCreatingCategory || isEditingCategory
+        ? '/api/categories'
+        : '/api/equipment';
     const method = isEdit ? 'PUT' : 'POST';
     const id = editItem?._id;
 
@@ -69,7 +72,9 @@ export default function CreationPanel({
           }
         : {
             name: formData.name,
-            categoryId: editItem?.categoryId || selectedCategory.parentIdOriginal,
+            code: formData.code,
+            categoryId:
+              editItem?.categoryId || selectedCategory.parentIdOriginal,
             outOfService: {
               isOut: formData.isOut,
               reason: formData.reason || ''
@@ -81,22 +86,23 @@ export default function CreationPanel({
             investmentPrice: formData.investmentPrice
           };
 
-    await fetch(`${endpoint}${isEdit ? '' : ''}`, {
+    const res = await fetch(`${endpoint}${isEdit ? '' : ''}`, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, _id: id })
     });
 
     setFormData({});
+    const updatedItem = await res.json();
     mutate('/api/categories');
     mutate('/api/equipment');
     mutate('/api/treeData');
-    onCancel?.();
+    onCancel?.(false, updatedItem);
   };
 
   const handleCancel = () => {
     setFormData({});
-    onCancel?.();
+    onCancel?.(true);
   };
 
   if (!isCreatingCategory && !isCreatingEquipment && !editItem) return null;
@@ -121,11 +127,18 @@ export default function CreationPanel({
           onChange={(e) => handleInput('name', e.currentTarget.value)}
         />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+        >
           <TextInput
             label='Nombre del equipo'
             value={formData.name || ''}
             onChange={(e) => handleInput('name', e.currentTarget.value)}
+          />
+          <TextInput
+            label='Código interno'
+            value={formData.code || ''}
+            onChange={(e) => handleInput('code', e.currentTarget.value)}
           />
           <TextInput
             label='Marca'
@@ -156,7 +169,9 @@ export default function CreationPanel({
             label='Estado'
             data={['Disponible', 'Fuera de servicio']}
             value={formData.isOut ? 'Fuera de servicio' : 'Disponible'}
-            onChange={(val) => handleInput('isOut', val === 'Fuera de servicio')}
+            onChange={(val) =>
+              handleInput('isOut', val === 'Fuera de servicio')
+            }
           />
           {formData.isOut && (
             <Textarea
@@ -170,7 +185,9 @@ export default function CreationPanel({
 
       <Group mt='md'>
         <Button onClick={handleSubmit}>
-          {isCreatingCategory || isCreatingEquipment ? 'Finalizar carga' : 'Actualizar'}
+          {isCreatingCategory || isCreatingEquipment
+            ? 'Finalizar carga'
+            : 'Actualizar'}
         </Button>
         <Button variant='default' color='gray' onClick={handleCancel}>
           Cancelar

@@ -15,9 +15,14 @@ export default function EquipmentPage() {
     setEditItem(item);
   };
 
-  const handleCancel = () => {
-    setEditItem(null);
-    setSelectedCategory(null);
+  const handleCancel = (wasCancelled: boolean, updatedItem?: any) => {
+    if (!wasCancelled && updatedItem) {
+      setSelectedCategory(updatedItem); // mantiene selección
+      setEditItem(null);
+    } else {
+      setSelectedCategory(null); // se deselecciona
+      setEditItem(null);
+    }
   };
 
   return (
@@ -57,6 +62,7 @@ export default function EquipmentPage() {
           selectedCategory={selectedCategory}
           setDisableCreateEquipment={setDisableCreateEquipment}
           onEdit={handleEdit}
+          onCancel={handleCancel}
         />
       </Box>
 
@@ -67,7 +73,9 @@ export default function EquipmentPage() {
           paddingRight: '0.5rem',
           height: '100vh',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          overflow: 'hidden',
+          overflowY: 'auto'
         }}
       >
         <CreationPanel

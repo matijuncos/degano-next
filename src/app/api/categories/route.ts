@@ -25,11 +25,11 @@ export async function PUT(req: Request) {
 
   const { _id, ...rest } = body;
   await db.collection('categories').updateOne(
-    { _id: new ObjectId(_id) },
+    { _id: new ObjectId(String(_id)) },
     { $set: rest }
   );
-
-  return NextResponse.json({ ok: true });
+  const updatedItem = await db.collection('categories').findOne({ _id: new ObjectId(String(_id)) });
+  return NextResponse.json(updatedItem);
 }
 
 export async function DELETE(req: Request) {

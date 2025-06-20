@@ -1,6 +1,7 @@
+// TreeView.tsx
 'use client';
 import useSWR from 'swr';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button, Divider } from '@mantine/core';
 import {
   IconFolder,
@@ -23,11 +24,13 @@ function TreeNode({
   node,
   onSelect,
   selectedId,
+  equipmentData,
   level = 0
 }: {
   node: CategoryNode;
   onSelect: (node: CategoryNode | null) => void;
   selectedId?: string;
+  equipmentData: any[];
   level?: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -42,7 +45,12 @@ function TreeNode({
     if (isSelected) {
       onSelect(null);
     } else {
-      onSelect(node);
+      if (node.categoryId) {
+        const fullItem = equipmentData.find((eq: any) => eq._id === node._id);
+        onSelect(fullItem || node);
+      } else {
+        onSelect(node);
+      }
       if (!open && node.children && node.children.length > 0) {
         setOpen(true);
       }
@@ -130,6 +138,7 @@ function TreeNode({
                       node={child}
                       onSelect={onSelect}
                       selectedId={selectedId}
+                      equipmentData={equipmentData}
                       level={level + 1}
                     />
                   </div>
@@ -151,7 +160,8 @@ export default function TreeView({
   selectedCategory?: CategoryNode | null;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
-  const { data: items = [] } = useSWR<CategoryNode[]>('/api/treeData', fetcher);
+  const { data: treeNodes = [] } = useSWR<CategoryNode[]>('/api/treeData', fetcher);
+  const { data: equipmentFullData = [] } = useSWR('/api/equipment', fetcher);
 
   const buildTree = (
     nodes: CategoryNode[],
@@ -165,7 +175,7 @@ export default function TreeView({
       }));
   };
 
-  const tree = buildTree(items);
+  const tree = buildTree(treeNodes);
 
   const handleCreateCategory = () => {
     const isValidSelection =
@@ -236,6 +246,7 @@ export default function TreeView({
             node={node}
             onSelect={(n) => onSelect?.(n)}
             selectedId={selectedCategory?._id}
+            equipmentData={equipmentFullData}
           />
         ))}
       </div>
