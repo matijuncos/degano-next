@@ -72,7 +72,6 @@ export default function EquipmentPage() {
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
           overflowY: 'auto'
         }}
       >

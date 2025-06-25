@@ -9,7 +9,7 @@ import {
   Modal,
   Button
 } from '@mantine/core';
-import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 
 export default function ContentPanel({
@@ -202,7 +202,7 @@ export default function ContentPanel({
         <Table striped highlightOnHover withColumnBorders withRowBorders style={{
       width: '100%',
       borderCollapse: 'collapse',
-      minWidth: '900px'
+      minWidth: '600px'
     }}>
           <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
             {renderHeader()}

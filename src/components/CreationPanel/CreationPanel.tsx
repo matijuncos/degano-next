@@ -58,7 +58,9 @@ export default function CreationPanel({
           weight: editItem.weight,
           location: editItem.location || '',
           isOut: editItem.outOfService?.isOut || false,
-          reason: editItem.outOfService?.reason || ''
+          reason: editItem.outOfService?.reason || '',
+          imageBase64: editItem.imageBase64 || null,
+          pdfBase64: editItem.pdfBase64 || null
         });
       }
     } else {
@@ -113,6 +115,27 @@ export default function CreationPanel({
             weight: formData.weight,
             location: locationValue
           };
+
+    const convertFileToBase64 = (file: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+      });
+
+    if (!isCreatingCategory && !isEditingCategory) {
+      if (formData.imageFile instanceof File) {
+        (payload as any).imageBase64 = await convertFileToBase64(
+          formData.imageFile
+        );
+      }
+      if (formData.pdfFile instanceof File) {
+        (payload as any).pdfBase64 = await convertFileToBase64(
+          formData.pdfFile
+        );
+      }
+    }
 
     const res = await fetch(endpoint, {
       method,
@@ -229,6 +252,21 @@ export default function CreationPanel({
             step={0.1}
           />
           <Select
+            label='Estado'
+            data={['Disponible', 'Fuera de servicio']}
+            value={formData.isOut ? 'Fuera de servicio' : 'Disponible'}
+            onChange={(val) =>
+              handleInput('isOut', val === 'Fuera de servicio')
+            }
+          />
+          {formData.isOut && (
+            <Textarea
+              label='Motivo de fuera de servicio'
+              value={formData.reason || ''}
+              onChange={(e) => handleInput('reason', e.currentTarget.value)}
+            />
+          )}
+          <Select
             label='Localización'
             data={[...locations, 'Otra...']}
             value={String(formData.location || '')}
@@ -248,21 +286,98 @@ export default function CreationPanel({
               onChange={(e) => setCustomLocation(e.currentTarget.value)}
             />
           )}
-          <Select
-            label='Estado'
-            data={['Disponible', 'Fuera de servicio']}
-            value={formData.isOut ? 'Fuera de servicio' : 'Disponible'}
-            onChange={(val) =>
-              handleInput('isOut', val === 'Fuera de servicio')
-            }
-          />
-          {formData.isOut && (
-            <Textarea
-              label='Motivo de fuera de servicio'
-              value={formData.reason || ''}
-              onChange={(e) => handleInput('reason', e.currentTarget.value)}
+          <div>
+            <label>Imagen del equipo (máx. 10MB)</label>
+            <input
+              type='file'
+              accept='image/*'
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && file.size > 10 * 1024 * 1024) {
+                  alert('La imagen debe ser menor a 10MB');
+                  return;
+                }
+                handleInput('imageFile', file);
+              }}
             />
-          )}
+          </div>
+          {/* Previsualización de imagen */}
+          {formData.imageFile || formData.imageBase64 ? (
+            <div>
+              <label>Vista previa de imagen</label>
+              <div style={{ marginTop: 8 }}>
+                <img
+                  src={
+                    formData.imageFile
+                      ? URL.createObjectURL(formData.imageFile)
+                      : formData.imageBase64
+                  }
+                  alt='Preview'
+                  style={{
+                    maxWidth: 100,
+                    maxHeight: 100,
+                    objectFit: 'contain'
+                  }}
+                />
+              </div>
+              <Button
+                variant='light'
+                color='red'
+                onClick={() => {
+                  handleInput('imageFile', null);
+                  handleInput('imageBase64', null);
+                }}
+              >
+                Quitar imagen
+              </Button>
+            </div>
+          ) : null}
+          <div>
+            <label>Ficha técnica (PDF, máx. 12MB)</label>
+            <input
+              type='file'
+              accept='application/pdf'
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && file.size > 12 * 1024 * 1024) {
+                  alert('El archivo PDF debe ser menor a 12MB');
+                  return;
+                }
+                handleInput('pdfFile', file);
+              }}
+            />
+          </div>
+          {/* Link al PDF */}
+          {formData.pdfFile || formData.pdfBase64 ? (
+            <div style={{ marginTop: 16 }}>
+              <div>
+                <Button
+                  component='a'
+                  href={
+                    formData.pdfFile
+                      ? URL.createObjectURL(formData.pdfFile)
+                      : formData.pdfBase64
+                  }
+                  download={`Manual ${formData.name}`}
+                  variant='light'
+                  size='xs'
+                  style={{ marginBottom: 5 }}
+                >
+                  Descargar Manual {formData.name}.pdf
+                </Button>
+              </div>
+              <Button
+                variant='light'
+                color='red'
+                onClick={() => {
+                  handleInput('pdfFile', null);
+                  handleInput('pdfBase64', null);
+                }}
+              >
+                Quitar PDF
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -272,7 +387,7 @@ export default function CreationPanel({
             ? 'Finalizar carga'
             : 'Actualizar'}
         </Button>
-        <Button variant='default' color='gray' onClick={handleCancel}>
+        <Button variant='default' color='gray' onClick={handleCancel} style={{marginBottom: '10px'}}>
           Cancelar
         </Button>
       </Group>
