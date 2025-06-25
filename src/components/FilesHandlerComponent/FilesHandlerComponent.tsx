@@ -277,11 +277,11 @@ export default function FilesHandlerComponent() {
           <Button
             onClick={() => setShowUploadSection((prev) => !prev)}
             w='100%'
-            mb='18px'
+            my='18px'
           >
             {showUploadSection
-              ? 'Ocultar sección de carga'
-              : 'Mostrar sección de carga'}
+              ? 'Ocultar sección de carga de archivos'
+              : 'Mostrar sección de carga de archivos'}
           </Button>
 
           {loading.findingFolder && <Loader size='sm' />}

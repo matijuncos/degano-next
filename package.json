@@ -29,7 +29,9 @@
     "framer-motion": "^11.0.25",
     "gapi-script": "^1.2.0",
     "googleapis": "^134.0.0",
+    "html2canvas": "^1.4.1",
     "install": "^0.13.0",
+    "jspdf": "^3.0.1",
     "lodash": "^4.17.21",
     "mantine-datatable": "^7.7.0",
     "moment": "^2.30.1",
@@ -45,6 +47,8 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/html2canvas": "^1.0.0",
+    "@types/jspdf": "^2.0.0",
     "@types/lodash": "^4.17.0",
     "@types/node": "^20",
     "@types/react": "^18",

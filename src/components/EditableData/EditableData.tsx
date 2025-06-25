@@ -42,7 +42,7 @@ const EditableData = ({
     const areOjectsEqual = isEqual(selectedEvent, event);
     if (areOjectsEqual) return;
     setLoadingCursor(true);
-    notify({loading: true});
+    notify({ loading: true });
     const timeStamp = new Date().toISOString();
     try {
       const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
@@ -56,7 +56,7 @@ const EditableData = ({
       await response.json();
       notify();
     } catch (error) {
-      notify({type: 'defaultError'});
+      notify({ type: 'defaultError' });
       console.log(error);
     } finally {
       setLoadingCursor(false);
@@ -164,6 +164,7 @@ const EditableData = ({
       <Flex justify='space-between'>
         <Flex gap='8px'>
           {Array.isArray(editState.inputValue) &&
+          editState.inputValue.length > 0 ? (
             editState.inputValue.map((genre, i) => (
               <Flex
                 key={genre + i}
@@ -184,7 +185,14 @@ const EditableData = ({
                   />
                 )}
               </Flex>
-            ))}
+            ))
+          ) : (
+            <Text c='dimmed' fs='italic'>
+              {property === 'required'
+                ? 'No hay géneros requeridos'
+                : 'No hay géneros prohibidos'}
+            </Text>
+          )}
         </Flex>
         {editState.showEditableChips ? (
           <CheckIcon
@@ -226,7 +234,9 @@ const EditableData = ({
                   borderBottom: 'solid 1px white'
                 }}
               >
-                <Text miw='80px'>{genre.genre}</Text>
+                <div style={{ width: '190px', flexShrink: 0 }}>
+                  <Text style={{ margin: 0 }}>{genre.genre}</Text>
+                </div>
                 <Rating
                   value={genre.value}
                   onChange={(e) => rateGenre(e as any, i)}
@@ -236,10 +246,13 @@ const EditableData = ({
         </>
       ) : (
         <>
-          <IconEdit
-            size='22'
-            onClick={() => toggleEdit('showEditableRating', 'open')}
-          />
+          <Flex mt='2rem' gap='8px' align='center'>
+            <Text fw='600'>Editar Géneros</Text>
+            <IconEdit
+              size='22'
+              onClick={() => toggleEdit('showEditableRating', 'open')}
+            />
+          </Flex>
           <Box>
             {Array.isArray(editState.inputValue) &&
               editState.inputValue
@@ -255,12 +268,13 @@ const EditableData = ({
                       borderBottom: 'solid 1px grey'
                     }}
                   >
-                    <div style={{ minWidth: '80px' }}>
+                    <div style={{ width: '190px', flexShrink: 0 }}>
                       <p
                         style={{
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          textOverflow: 'ellipsis',
+                          margin: 0
                         }}
                       >
                         {genre.genre}
@@ -269,7 +283,8 @@ const EditableData = ({
                     <div
                       style={{
                         display: 'flex',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        flexShrink: 0
                       }}
                     >
                       {Array.from({ length: genre.value }, (_, idx) => (

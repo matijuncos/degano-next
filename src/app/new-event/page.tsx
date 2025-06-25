@@ -6,13 +6,15 @@ import EventForm from '@/components/EventForm/EventForm';
 import MusicForm from '@/components/MusicForm/MusicForm';
 import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { EVENT_TABS, genres } from '@/context/config';
+import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
+import { INITIAL_EVENT_STATE } from './config';
+import { Tabs } from '@mantine/core';
 
 const NewEventPage = () => {
   const {
@@ -24,44 +26,7 @@ const NewEventPage = () => {
     setAllEvents
   } = useDeganoCtx();
   const router = useRouter();
-  const [event, setEvent] = useState<EventModel>({
-    _id: '', // Use empty string instead of null
-    fullName: '',
-    phoneNumber: '',
-    email: '',
-    age: '',
-    address: '',
-    type: '',
-    guests: '',
-    eventAddress: '',
-    eventCity: '',
-    salon: '',
-    date: '',
-    averageAge: '',
-    churchDate: '',
-    civil: new Date().toISOString(),
-    bandName: '',
-    manager: '',
-    managerPhone: '',
-    moreData: '',
-    showtime: new Date().getTime().toString(),
-    music: {
-      genres: genres,
-      required: [],
-      forbidden: []
-    },
-    equipment: [],
-    payment: {
-      upfrontAmount: '',
-      totalToPay: '',
-      partialPaymentDate: new Date(),
-      partialPayed: false,
-      totalPayed: false
-    },
-    active: true,
-    playlist: []
-  });
-
+  const [event, setEvent] = useState<EventModel>(INITIAL_EVENT_STATE);
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
 
@@ -173,7 +138,29 @@ const NewEventPage = () => {
     }
   };
 
-  return <div>{getTabContent()}</div>;
+  return (
+    <div>
+      {/*  TABS TO NAVIGATE BETWEEN SECTIONS */}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <Tabs
+          value={formState.toString()}
+          onChange={(value) => setFormState(Number(value))}
+          style={{ marginBottom: '2rem' }}
+        >
+          <Tabs.List>
+            <Tabs.Tab value={EVENT_TABS.CLIENT.toString()}>Cliente</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.EVENT.toString()}>Evento</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.MUSIC.toString()}>Musica</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.EQUIPMENT.toString()}>
+              Equipamiento
+            </Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Pagos</Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+      </div>
+      {getTabContent()}
+    </div>
+  );
 };
 
 export default withPageAuthRequired(NewEventPage);
