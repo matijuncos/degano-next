@@ -21,6 +21,8 @@ export async function GET() {
       _id: c._id.toString(),
       name: c.name,
       parentId: c.parentId,
+      totalStock: c?.totalStock,
+      availableStock: c?.availableStock
     })),
     ...equipmentNodes,
   ];

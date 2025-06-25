@@ -4,7 +4,6 @@ import useSWR, { mutate } from 'swr';
 import { useState, useEffect } from 'react';
 import {
   Button,
-  Divider,
   TextInput,
   NumberInput,
   Select,
@@ -22,6 +21,10 @@ export default function CreationPanel({
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
 }) {
   const [formData, setFormData] = useState<any>({ isOut: false });
+  const [customLocation, setCustomLocation] = useState<string>('');
+  const { data: locations = [] } = useSWR('/api/equipmentLocation', (url) =>
+    fetch(url).then((res) => res.json())
+  );
 
   const isCreatingCategory =
     selectedCategory?._id === '' && !selectedCategory?.parentIdOriginal;
@@ -33,21 +36,33 @@ export default function CreationPanel({
 
   useEffect(() => {
     if (editItem) {
-      setFormData(
-        isEditingCategory
-          ? { name: editItem.name }
-          : {
-              name: editItem.name,
-              code: editItem.code,
-              brand: editItem.brand,
-              model: editItem.model,
-              serialNumber: editItem.serialNumber,
-              rentalPrice: editItem.rentalPrice,
-              investmentPrice: editItem.investmentPrice,
-              isOut: editItem.outOfService?.isOut || false,
-              reason: editItem.outOfService?.reason || ''
-            }
-      );
+      if (isEditingCategory) {
+        setFormData({ name: editItem.name });
+      } else {
+        const rawRental = Number(editItem.rentalPrice || 0);
+        const rawInvestment = Number(editItem.investmentPrice || 0);
+        setFormData({
+          name: editItem.name,
+          code: editItem.code,
+          brand: editItem.brand,
+          model: editItem.model,
+          serialNumber: editItem.serialNumber,
+          rentalPrice: editItem.rentalPrice,
+          rentalPriceFormatted: `$ ${new Intl.NumberFormat('es-AR').format(
+            rawRental
+          )}`,
+          investmentPrice: editItem.investmentPrice,
+          investmentPriceFormatted: `$ ${new Intl.NumberFormat('en-US').format(
+            rawInvestment
+          )}`,
+          weight: editItem.weight,
+          location: editItem.location || '',
+          isOut: editItem.outOfService?.isOut || false,
+          reason: editItem.outOfService?.reason || ''
+        });
+      }
+    } else {
+      setFormData({ isOut: false });
     }
   }, [editItem]);
 
@@ -63,6 +78,17 @@ export default function CreationPanel({
         : '/api/equipment';
     const method = isEdit ? 'PUT' : 'POST';
     const id = editItem?._id;
+
+    let locationValue = formData.location;
+    if (customLocation && !locations.includes(customLocation)) {
+      const res = await fetch('/api/equipmentLocation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: customLocation })
+      });
+      const result = await res.json();
+      locationValue = result.name;
+    }
 
     const payload =
       isCreatingCategory || isEditingCategory
@@ -83,25 +109,30 @@ export default function CreationPanel({
             model: formData.model,
             serialNumber: formData.serialNumber,
             rentalPrice: formData.rentalPrice,
-            investmentPrice: formData.investmentPrice
+            investmentPrice: formData.investmentPrice,
+            weight: formData.weight,
+            location: locationValue
           };
 
-    const res = await fetch(`${endpoint}${isEdit ? '' : ''}`, {
+    const res = await fetch(endpoint, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, _id: id })
     });
 
     setFormData({});
+    setCustomLocation('');
     const updatedItem = await res.json();
     mutate('/api/categories');
     mutate('/api/equipment');
     mutate('/api/treeData');
+    mutate('/api/equipmentLocation');
     onCancel?.(false, updatedItem);
   };
 
   const handleCancel = () => {
     setFormData({});
+    setCustomLocation('');
     onCancel?.(true);
   };
 
@@ -155,16 +186,68 @@ export default function CreationPanel({
             value={formData.serialNumber || ''}
             onChange={(e) => handleInput('serialNumber', e.currentTarget.value)}
           />
-          <NumberInput
-            label='Precio de renta'
-            value={formData.rentalPrice || 0}
-            onChange={(val) => handleInput('rentalPrice', val)}
+          <TextInput
+            label='Precio de renta (ARS)'
+            value={formData.rentalPriceFormatted || ''}
+            onChange={(e) => {
+              const rawValue = e.currentTarget.value.replace(/\D/g, '');
+              const formattedValue = rawValue
+                ? `$ ${new Intl.NumberFormat('es-AR').format(Number(rawValue))}`
+                : '';
+              setFormData((prev: any) => ({
+                ...prev,
+                rentalPrice: rawValue ? Number(rawValue) : 0,
+                rentalPriceFormatted: formattedValue
+              }));
+            }}
+            placeholder='$ 0'
           />
-          <NumberInput
-            label='Precio de inversión'
-            value={formData.investmentPrice || 0}
-            onChange={(val) => handleInput('investmentPrice', val)}
+
+          <TextInput
+            label='Precio de inversión (USD)'
+            value={formData.investmentPriceFormatted || ''}
+            onChange={(e) => {
+              const rawValue = e.currentTarget.value.replace(/\D/g, '');
+              const formattedValue = rawValue
+                ? `$ ${new Intl.NumberFormat('en-US').format(Number(rawValue))}`
+                : '';
+              setFormData((prev: any) => ({
+                ...prev,
+                investmentPrice: rawValue ? Number(rawValue) : 0,
+                investmentPriceFormatted: formattedValue
+              }));
+            }}
+            placeholder='$ 0'
           />
+
+          <NumberInput
+            label='Peso (kg)'
+            value={formData.weight || 0}
+            onChange={(val) =>
+              handleInput('weight', Number(Number(val).toFixed(2)))
+            }
+            step={0.1}
+          />
+          <Select
+            label='Localización'
+            data={[...locations, 'Otra...']}
+            value={String(formData.location || '')}
+            onChange={(val) => {
+              if (val === 'Otra...') {
+                setFormData({ ...formData, location: '' });
+              } else {
+                setFormData({ ...formData, location: val });
+              }
+            }}
+          />
+          {formData.location === '' && (
+            <TextInput
+              label='Nueva localización'
+              placeholder='Ej: Depósito 2'
+              value={customLocation}
+              onChange={(e) => setCustomLocation(e.currentTarget.value)}
+            />
+          )}
           <Select
             label='Estado'
             data={['Disponible', 'Fuera de servicio']}

@@ -17,6 +17,8 @@ export type CategoryNode = {
   parentId: string | null;
   parentIdOriginal?: string | null;
   categoryId?: string;
+  totalStock?: number;
+  availableStock?: number;
   children?: CategoryNode[];
 };
 
@@ -25,13 +27,15 @@ function TreeNode({
   onSelect,
   selectedId,
   equipmentData,
-  level = 0
+  level = 0,
+  onEdit
 }: {
   node: CategoryNode;
   onSelect: (node: CategoryNode | null) => void;
   selectedId?: string;
   equipmentData: any[];
   level?: number;
+  onEdit?: (item: any) => void;
 }) {
   const [open, setOpen] = useState(false);
   const isSelected = selectedId === node._id;
@@ -48,8 +52,10 @@ function TreeNode({
       if (node.categoryId) {
         const fullItem = equipmentData.find((eq: any) => eq._id === node._id);
         onSelect(fullItem || node);
+        onEdit?.(fullItem || node);
       } else {
         onSelect(node);
+        onEdit?.(node);
       }
       if (!open && node.children && node.children.length > 0) {
         setOpen(true);
@@ -67,7 +73,12 @@ function TreeNode({
           fontWeight: isSelected ? 'bold' : 'normal',
           gap: '0.35rem',
           position: 'relative',
-          paddingLeft: 4 * level
+          paddingLeft: 4 * level,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          minHeight: '24px',
+          maxWidth: '100%'
         }}
       >
         {node.children?.length ? (
@@ -77,7 +88,8 @@ function TreeNode({
               display: 'flex',
               zIndex: 1,
               transition: 'transform 0.25s ease',
-              transform: open ? 'rotate(90deg)' : 'rotate(0deg)'
+              transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+              minWidth: 14
             }}
           >
             <IconChevronRight size={14} />
@@ -90,7 +102,17 @@ function TreeNode({
         ) : (
           <IconFolder size={16} />
         )}
-        <span onClick={handleSelect}>{node.name}</span>
+        <span
+          onClick={handleSelect}
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            paddingRight: '10px'
+          }}
+        >
+          {node.name}
+        </span>
       </div>
 
       <div
@@ -133,13 +155,14 @@ function TreeNode({
                       }}
                     />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ display: 'block', width: '100%' }}>
                     <TreeNode
                       node={child}
                       onSelect={onSelect}
                       selectedId={selectedId}
                       equipmentData={equipmentData}
                       level={level + 1}
+                      onEdit={onEdit}
                     />
                   </div>
                 </div>
@@ -154,13 +177,18 @@ function TreeNode({
 
 export default function TreeView({
   onSelect,
-  selectedCategory
+  selectedCategory,
+  onEdit
 }: {
   onSelect?: (n: CategoryNode | null) => void;
   selectedCategory?: CategoryNode | null;
+  onEdit?: (item: any) => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
-  const { data: treeNodes = [] } = useSWR<CategoryNode[]>('/api/treeData', fetcher);
+  const { data: treeNodes = [] } = useSWR<CategoryNode[]>(
+    '/api/treeData',
+    fetcher
+  );
   const { data: equipmentFullData = [] } = useSWR('/api/equipment', fetcher);
 
   const buildTree = (
@@ -184,6 +212,7 @@ export default function TreeView({
       selectedCategory.parentId !== 'equipment';
     const parentId = isValidSelection ? selectedCategory._id : null;
     onSelect?.({ _id: '', name: '', parentId });
+    onEdit?.(null);
   };
 
   const handleCreateEquipment = () => {
@@ -193,16 +222,17 @@ export default function TreeView({
       !selectedCategory.categoryId; // No debe ser un item
 
     const parentId = isValidSelection ? selectedCategory._id : null;
-
     onSelect?.({
       _id: '',
       name: '',
       parentId,
       parentIdOriginal: parentId
     });
+    onEdit?.(null);
   };
 
-  const disableCreateEquipment = !selectedCategory || !!selectedCategory?.categoryId;
+  const disableCreateEquipment =
+    !selectedCategory || !!selectedCategory?.categoryId;
 
   return (
     <div
@@ -239,16 +269,25 @@ export default function TreeView({
         </Button>
       </div>
       <Divider my='sm' />
-      <div style={{ overflowY: 'auto' }}>
-        {tree.map((node) => (
-          <TreeNode
-            key={node._id}
-            node={node}
-            onSelect={(n) => onSelect?.(n)}
-            selectedId={selectedCategory?._id}
-            equipmentData={equipmentFullData}
-          />
-        ))}
+      <div
+        style={{
+          overflowY: 'auto',
+          overflowX: 'auto',
+          paddingBottom: '10px'
+        }}
+      >
+        <div style={{ minWidth: 'max-content' }}>
+          {tree.map((node) => (
+            <TreeNode
+              key={node._id}
+              node={node}
+              onSelect={(n) => onSelect?.(n)}
+              selectedId={selectedCategory?._id}
+              equipmentData={equipmentFullData}
+              onEdit={onEdit}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

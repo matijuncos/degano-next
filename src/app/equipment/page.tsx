@@ -33,9 +33,8 @@ export default function EquipmentPage() {
       {/* Sidebar - 20% */}
       <Box
         style={{
-          width: '20%',
+          width: '25%',
           borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-          paddingRight: '0.5rem',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column'
@@ -44,15 +43,15 @@ export default function EquipmentPage() {
         <Sidebar
           onSelect={setSelectedCategory}
           selectedCategory={selectedCategory}
+          onEdit={handleEdit}
         />
       </Box>
 
       {/* ContentPanel - 60% */}
       <Box
         style={{
-          width: '60%',
+          width: '55%',
           borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-          paddingRight: '0.5rem',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column'
@@ -70,7 +69,6 @@ export default function EquipmentPage() {
       <Box
         style={{
           width: '20%',
-          paddingRight: '0.5rem',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
