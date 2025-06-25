@@ -17,11 +17,8 @@ export const INITIAL_EVENT_STATE: EventModel = {
   averageAge: '',
   churchDate: '',
   civil: new Date().toISOString(),
-  bandName: '',
-  manager: '',
-  managerPhone: '',
+  bands: [],
   moreData: '',
-  showtime: new Date().getTime().toString(),
   music: {
     genres: genres,
     required: [],

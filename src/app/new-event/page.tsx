@@ -40,6 +40,7 @@ const NewEventPage = () => {
   };
 
   useEffect(() => {
+    // setFormState(EVENT_TABS.EVENT);
     setFormState(EVENT_TABS.CLIENT);
   }, []);
 
@@ -48,14 +49,15 @@ const NewEventPage = () => {
     notify({ loading: true });
     try {
       // agregar update del equipment
-      await fetch('/api/updateEquipmentV2', {
-        method: 'PUT',
-        body: JSON.stringify(newEvent.equipment),
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      // await fetch('/api/updateEquipmentV2', {
+      //   method: 'PUT',
+      //   body: JSON.stringify(newEvent.equipment),
+      //   cache: 'no-store',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   }
+      // });
+      // Se comenta porque actualmente no es necesario descontar cantidades y no hace falta el update
       // console.log('equipmentResposne ', equipmentResponse)
       const response = await fetch('/api/postEvent', {
         method: 'POST',

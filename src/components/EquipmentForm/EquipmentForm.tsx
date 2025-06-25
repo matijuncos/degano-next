@@ -1,12 +1,11 @@
 import { EventModel } from '@/context/types';
-import { Box, Button, Flex, Input, Switch, Text } from '@mantine/core';
-import { ActionIcon } from '@mantine/core';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
+import { Button, Flex, Text } from '@mantine/core';
+import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
-import ChooseComponentFromDBComponent from './ChooseComponentFromDB';
 import { EVENT_TABS } from '@/context/config';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import EquipmentSelector from './EquipmentSelector';
 
 const EquipmentForm = ({
   event,
@@ -55,6 +54,15 @@ const EquipmentForm = ({
     getEquipmentFromDB();
   }, []);
 
+  useEffect(() => {
+    const equipmentFiltered = equipment?.equipment?.filter((eq) => Number(eq.selectedQuantity) > 0);
+    const totalPrice = equipmentFiltered.reduce((total, item) => {
+      const subtotal = item.selectedQuantity ? item.selectedQuantity * item.price : 0;
+      return total + subtotal;
+    }, 0)
+    setPrice(totalPrice);
+  },[equipment?.equipment])
+
   return (
     <div>
       <h2>Equipamiento necesario </h2>
@@ -73,7 +81,7 @@ const EquipmentForm = ({
         <IconPlus />
       </Flex>
       <div>
-        {useEquipmentDataBase && (
+        {/* {useEquipmentDataBase && (
           <>
             <ChooseComponentFromDBComponent
               equipment={equipment}
@@ -113,7 +121,7 @@ const EquipmentForm = ({
                   </Text>
                   |
                   {user?.role === 'admin' && (
-                    <Text className='price'>Precio: ${item.price}</Text>
+                    <Text className='price'>Precio individual: ${item.price}</Text>
                   )}
                   -
                   <ActionIcon
@@ -127,7 +135,13 @@ const EquipmentForm = ({
                 </Flex>
               );
             })}
-        </Flex>
+        </Flex> */}
+        <EquipmentSelector 
+          event={event}
+          showInputsToAdd={showInputsToAdd}
+          setShowInputsToAdd={setShowInputsToAdd}
+          setPrice={setPrice}
+        />
         <div
           style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}
         >

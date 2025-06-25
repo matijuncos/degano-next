@@ -11,6 +11,7 @@ import {
 import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
+import { initializeGapiClientAndGetToken } from '@/lib/gapi';
 interface FileItem {
   id: string;
   [key: string]: any;
@@ -23,16 +24,21 @@ interface LoadingState {
   deletingFile: string | null;
 }
 
-const baseUrl = 'https://www.googleapis.com';
+const baseUrl = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL;
+const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_DISCOVERY_DOCS];
 
-const DISCOVERY_DOCS = [baseUrl + '/discovery/v1/apis/drive/v3/rest'];
-const SCOPES = baseUrl + '/auth/drive.file';
+const gapiConfig = {
+  apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
+  clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
+  discoveryDocs: DISCOVERY_DOCS,
+  scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES
+};
 
 export default function FilesHandlerComponent() {
-  const { folderName } = useDeganoCtx();
+  const { folderName, authToken, setAuthToken } = useDeganoCtx();
   const [value, setValue] = useState<File | null>(null);
   const [allFiles, setAllfiles] = useState<File[]>([]);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  // const [authToken, setAuthToken] = useState<string | null>(null);
   const [folderId, setFolderId] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [showUploadSection, setShowUploadSection] = useState(false);
@@ -55,50 +61,44 @@ export default function FilesHandlerComponent() {
     setValue(null);
   }, [value]);
 
-  function updateSigninStatus(isSignedIn: boolean) {
-    if (isSignedIn) {
-      const currentAuth = gapiRef.current.auth2
-        .getAuthInstance()
-        .currentUser.get()
-        .getAuthResponse().access_token;
-      setAuthToken(currentAuth);
-    } else {
-      console.log('User not signed in.');
-    }
-  }
+  // function updateSigninStatus(isSignedIn: boolean) {
+  //   if (isSignedIn) {
+  //     const currentAuth = gapiRef.current.auth2
+  //       .getAuthInstance()
+  //       .currentUser.get()
+  //       .getAuthResponse().access_token;
+  //     setAuthToken(currentAuth);
+  //   } else {
+  //     console.log('User not signed in.');
+  //   }
+  // }
 
-  const gapiConfig = {
-    apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
-    clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-    discoveryDocs: DISCOVERY_DOCS,
-    scope: SCOPES
-  };
   const gapiRef = useRef<any>(null);
-  useEffect(() => {
-    async function start() {
-      const gapiModule = await import('gapi-script');
-      gapiRef.current = gapiModule.gapi || gapiModule.default.gapi; // Adjust based on actual module structure
-      if (gapiRef.current) {
-        gapiRef.current.load('client:auth2', () => {
-          gapiRef.current.client
-            .init(gapiConfig)
-            .then(() => {
-              gapiRef.current.auth2.getAuthInstance().signIn();
-              gapiRef.current.auth2
-                .getAuthInstance()
-                .isSignedIn.listen(updateSigninStatus);
-              updateSigninStatus(
-                gapiRef.current.auth2.getAuthInstance().isSignedIn.get()
-              );
-            })
-            .catch((e: any) => console.log(e));
-        });
-      } else {
-        console.error('Failed to load gapi from gapi-script');
-      }
-    }
-    start();
-  }, []);
+  // useEffect(() => {
+  //   async function start() {
+  //     const gapiModule = await import('gapi-script');
+  //     gapiRef.current = gapiModule.gapi || gapiModule.default.gapi; // Adjust based on actual module structure
+  //     if (gapiRef.current) {
+  //       gapiRef.current.load('client:auth2', () => {
+  //         gapiRef.current.client
+  //           .init(gapiConfig)
+  //           .then(() => {
+  //             gapiRef.current.auth2.getAuthInstance().signIn();
+  //             gapiRef.current.auth2
+  //               .getAuthInstance()
+  //               .isSignedIn.listen(updateSigninStatus);
+  //             updateSigninStatus(
+  //               gapiRef.current.auth2.getAuthInstance().isSignedIn.get()
+  //             );
+  //           })
+  //           .catch((e: any) => console.log(e));
+  //       });
+  //     } else {
+  //       console.error('Failed to load gapi from gapi-script');
+  //     }
+  //   }
+  //   start();
+  // }, []);
 
   const findOrCreateFolder = useCallback(
     async (folderName: string) => {
@@ -180,18 +180,25 @@ export default function FilesHandlerComponent() {
   }, [findOrCreateFolder]);
 
   useEffect(() => {
-    if (authToken && folderId) {
-      console.log('token and folderId ready');
-      fetchFilesFromFolder(folderId)
-        .then((res) => {
-          setFiles(res);
-        })
-        .catch((e) => console.log(e))
-        .finally(() =>
-          setLoading((prev) => ({ ...prev, fetchingFiles: false }))
-        );
+    const fetchFiles = async () => {
+      if (authToken && folderId) {
+        fetchFilesFromFolder(folderId)
+          .then((res) => {
+            setFiles(res);
+          })
+          .catch((e) => console.log(e));
+      } else if (!authToken) {
+          const token = await getToken();
+          if (token) setAuthToken(token);
+      }
     }
+    fetchFiles();
   }, [authToken, folderId, fetchFilesFromFolder]);
+
+    const getToken = async () => {
+      const token = await initializeGapiClientAndGetToken(gapiConfig);
+      return token;
+    }
 
   const handleUploadClick = async () => {
     setLoading((prev) => ({ ...prev, uploading: true }));

@@ -16,7 +16,10 @@ export default withPageAuthRequired(async function equipmentStock() {
     totalQuantity: equip.totalQuantity,
     currentQuantity: equip.currentQuantity,
     brand: equip.brand,
-    codeNumber: equip.codeNumber
+    codeNumber: equip.codeNumber,
+    model: equip.model,
+    realPrice: equip.realPrice,
+    type: equip.type
   }));
   return (
     <Box>

@@ -13,7 +13,15 @@ import {
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
+import { useDeganoCtx } from '@/context/DeganoContext';
+import { initializeGapiClientAndGetToken } from '@/lib/gapi';
+
+const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_BASE_URL + '/discovery/v1/apis/drive/v3/rest'];
+const SCOPES = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL + '/auth/drive.file';
+
 const Home = () => {
+  const { authToken, setAuthToken } = useDeganoCtx();
   const tiles = [
     {
       label: 'Calendario',
@@ -33,7 +41,7 @@ const Home = () => {
     },
     {
       label: 'Administrar Stock',
-      path: '/equipment-stock-v2',
+      path: '/equipment',
       Icon: IconCheckupList
     }
   ];
@@ -57,6 +65,20 @@ const Home = () => {
       }
     }
   };
+
+  const gapiConfig = {
+    apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
+    clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
+    discoveryDocs: DISCOVERY_DOCS,
+    scope: SCOPES
+  };
+  useEffect(() => {
+    async function start() {
+      const token = await initializeGapiClientAndGetToken(gapiConfig);
+      if (token) setAuthToken(token);
+    }
+    if(!authToken)  start();
+  }, []);
 
   return (
     <>

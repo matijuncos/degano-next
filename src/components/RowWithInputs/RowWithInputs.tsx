@@ -22,6 +22,9 @@ const RowWithInputs = ({ hideRow }: { hideRow: Function }) => {
     price: 0,
     currentQuantity: 0,
     totalQuantity: 0,
+    model: '',
+    realPrice: 0,
+    type: 'No Definido',
     _id: new Date().toISOString()
   });
   const onChangeHandler = (e: any) => {
