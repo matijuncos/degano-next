@@ -11,11 +11,11 @@ import { Drawer } from '@mantine/core';
 import { useCallback, useMemo, useState } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
-import startOfWeek from 'date-fns/startOfWeek';
-import getDay from 'date-fns/getDay';
-import es from 'date-fns/locale/es';
+import { format } from 'date-fns/format';
+import { parse } from 'date-fns/parse';
+import { startOfWeek } from 'date-fns/startOfWeek';
+import { getDay } from 'date-fns/getDay';
+import { es } from 'date-fns/locale/es';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 export default withPageAuthRequired(function CalendarPage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +49,10 @@ export default withPageAuthRequired(function CalendarPage() {
   const events = allEvents.map((evnt) => {
     return {
       ...evnt,
-      title: evnt.fullName,
+      title:
+        evnt?.type && evnt?.salon
+          ? `${evnt.type} - ${evnt.salon}`
+          : evnt.fullName,
       start: new Date(evnt.date),
       end: evnt.endDate ? new Date(evnt.endDate) : new Date(evnt.date),
       allDay: false,

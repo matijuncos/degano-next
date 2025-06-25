@@ -18,8 +18,7 @@ interface FileItem {
   [key: string]: any;
 }
 
-const baseUrl = 'https://www.googleapis.com';
-
+const baseUrl = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL;
 const DISCOVERY_DOCS = [baseUrl + '/discovery/v1/apis/drive/v3/rest'];
 const SCOPES = baseUrl + '/auth/drive.file';
 

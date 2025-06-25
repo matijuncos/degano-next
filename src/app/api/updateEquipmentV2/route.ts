@@ -41,44 +41,19 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
     );
   }
   if (Array.isArray(equipment)) {
-    const equipmentToUpdate = equipment.filter((eq) => eq._id);
     const equipmentToInsert = equipment.filter((eq) => !eq._id);
-    if (equipmentToUpdate.length > 0) {
-      const operations = equipmentToUpdate.map(({ _id, equipmentData }) => {
-        const totalQuantity = +equipmentData.totalQuantity;
-        const currentQuantity = +equipmentData.currentQuantity;
-        const selectedQuantity = +equipmentData.selectedQuantity;
-
-        const updatedEquipment = {
-          ...equipmentData,
-          totalQuantity: String(totalQuantity - selectedQuantity),
-          currentQuantity: String(currentQuantity - selectedQuantity)
-        };
-
-        return {
-          updateOne: {
-            filter: { _id: new ObjectId(_id as string) },
-            update: { $set: updatedEquipment }
-          }
-        };
-      });
-
-      const newEquipmentCollection = await db
-        .collection('equipmentListV2')
-        .bulkWrite(operations);
-      return NextResponse.json({
-        message: 'Equipment updated successfully',
-        newEquipmentCollection,
-        status: 201
-      });
-    }
     if (equipmentToInsert.length > 0) {
       const newEquipmentCollection = await db
         .collection('equipmentListV2')
         .insertMany(equipmentToInsert);
+        const insertedIds = Object.values(newEquipmentCollection.insertedIds);
+        const insertedEquipments = await db
+          .collection('equipmentListV2')
+          .find({ _id: { $in: insertedIds } })
+          .toArray();
       return NextResponse.json({
         message: 'Equipment added successfully',
-        newEquipmentCollection,
+        insertedEquipments,
         status: 200
       });
     }
@@ -88,10 +63,13 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
     const newEquipmentCollection = await db
       .collection('equipmentListV2')
       .insertOne(equipment);
+      const insertedDocument = await db
+      .collection('equipmentListV2')
+      .findOne({ _id: newEquipmentCollection.insertedId });    
     return NextResponse.json(
       {
         message: 'Equipment added successfully',
-        newEquipmentCollection,
+        insertedDocument,
         status: 200
       });
   } else {

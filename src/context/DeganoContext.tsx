@@ -66,6 +66,7 @@ export const DeganoProvider: ({
   }, [pathname]);
 
   const [folderName, setFolderName] = useState('untitled');
+  const [authToken, setAuthToken] = useState('');
 
   const contextValue = {
     selectedEvent,
@@ -84,7 +85,9 @@ export const DeganoProvider: ({
     loading,
     setLoading,
     folderName,
-    setFolderName
+    setFolderName,
+    authToken,
+    setAuthToken
   };
   return (
     <DeganoContext.Provider value={contextValue}>

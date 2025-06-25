@@ -70,7 +70,7 @@ const NextEvents = () => {
                 gap: '4px'
               }}
             >
-              <p>{event.salon} - </p>
+              <p>{event?.type} - {event?.salon} - </p>
               <p>{new Date(event.date).toLocaleDateString()}</p>
             </div>
             <IconArrowRight />
