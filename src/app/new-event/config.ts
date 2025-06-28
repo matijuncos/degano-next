@@ -15,7 +15,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   date: '',
   averageAge: '',
   churchDate: '',
-  civil: new Date().toISOString(),
+  civil: '',
   bands: [],
   moreData: '',
   music: {

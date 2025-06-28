@@ -9,7 +9,14 @@ import {
   Text,
   Textarea
 } from '@mantine/core';
-import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
+import { DateTimePicker } from '@mantine/dates';
+import {
+  IconEdit,
+  IconStar,
+  IconStarFilled,
+  IconPlus,
+  IconX
+} from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
@@ -22,7 +29,7 @@ const EditableData = ({
   type
 }: {
   title?: string;
-  value: string | any[];
+  value: string | any[] | Date;
   property: string;
   type: string;
 }) => {
@@ -32,8 +39,11 @@ const EditableData = ({
     showInput: false,
     showEditableChips: false,
     showEditableRating: false,
-    inputValue: value,
-    newChip: ''
+    showEditableStringArray: false,
+    showEditableDate: false,
+    inputValue: value as string | any[] | Date | null,
+    newChip: '',
+    newStringItem: ''
   });
   const [textHover, setTextHover] = useState(false);
   //  const [textareaHover, setTextareaHover] = useState(false);
@@ -121,6 +131,36 @@ const EditableData = ({
     }));
   };
 
+  const handleStringArrayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditState((prev) => ({ ...prev, newStringItem: e.target.value }));
+  };
+
+  const handleStringArrayKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && editState.newStringItem.trim()) {
+      setEditState((prev) => ({
+        ...prev,
+        inputValue: [
+          ...(Array.isArray(prev.inputValue) ? prev.inputValue : []),
+          prev.newStringItem.trim()
+        ],
+        newStringItem: ''
+      }));
+    }
+  };
+
+  const removeStringItem = (itemToRemove: string) => {
+    setEditState((prev) => ({
+      ...prev,
+      inputValue: Array.isArray(prev.inputValue)
+        ? prev.inputValue.filter((item) => item !== itemToRemove)
+        : prev.inputValue
+    }));
+  };
+
+  const handleDateChange = (date: Date | null) => {
+    setEditState((prev) => ({ ...prev, inputValue: date }));
+  };
+
   const typeTextData = () => (
     <Box
       p='12px'
@@ -153,12 +193,18 @@ const EditableData = ({
           <Input
             flex={1}
             onChange={handleInputChange}
-            value={editState.inputValue}
+            value={
+              typeof editState.inputValue === 'string'
+                ? editState.inputValue
+                : ''
+            }
             size='sm'
           />
         ) : (
           <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
-            {editState.inputValue}
+            {typeof editState.inputValue === 'string'
+              ? editState.inputValue
+              : ''}
           </Text>
         )}
         {editState.showInput && (
@@ -383,20 +429,31 @@ const EditableData = ({
             </Text>
           )}
           {editState.showInput ? (
-            <Textarea
-              onChange={handleInputChange}
-              value={editState.inputValue}
-              size='sm'
-              autosize
-              minRows={2}
-            />
+            <>
+              <Textarea
+                value={
+                  typeof editState.inputValue === 'string'
+                    ? editState.inputValue
+                    : ''
+                }
+                onChange={handleInputChange}
+                minRows={4}
+                size='sm'
+                style={{ marginBottom: '8px' }}
+              />
+            </>
           ) : (
             <>
-              {editState.inputValue && (
-                <Text size='sm' c='white' style={{ whiteSpace: 'pre-wrap' }}>
-                  {editState.inputValue}
+              {title && (
+                <Text fw={600} size='sm' c='white' mb='8px'>
+                  {title}:
                 </Text>
               )}
+              <Text size='sm' c='white' style={{ whiteSpace: 'pre-wrap' }}>
+                {typeof editState.inputValue === 'string'
+                  ? editState.inputValue
+                  : ''}
+              </Text>
             </>
           )}
         </Flex>
@@ -441,6 +498,223 @@ const EditableData = ({
     );
   };
 
+  const typeDateData = () => (
+    <Box
+      p='12px'
+      mb='12px'
+      style={{
+        position: 'relative',
+        borderRadius: '8px',
+        backgroundColor:
+          textHover && !editState.showEditableDate ? '#f8f9fa' : 'transparent',
+        border: '1px solid #e9ecef',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer'
+      }}
+      c='white'
+      onMouseEnter={() => setTextHover(true)}
+      onMouseLeave={() => setTextHover(false)}
+    >
+      <Flex align='center' gap='12px' style={{ paddingRight: '32px' }}>
+        {title && (
+          <Text
+            fw={600}
+            size='sm'
+            c={textHover && !editState.showEditableDate ? 'black' : 'white'}
+            style={{ minWidth: 'fit-content' }}
+          >
+            {title}:
+          </Text>
+        )}
+        {editState.showEditableDate ? (
+          <DateTimePicker
+            value={
+              editState.inputValue instanceof Date ? editState.inputValue : null
+            }
+            onChange={handleDateChange}
+            size='sm'
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
+            {editState.inputValue instanceof Date
+              ? `${editState.inputValue.toLocaleDateString()} - ${editState.inputValue.toLocaleTimeString()}`
+              : typeof editState.inputValue === 'string'
+              ? editState.inputValue
+              : ''}
+          </Text>
+        )}
+        {editState.showEditableDate && (
+          <CheckIcon
+            cursor='pointer'
+            size={18}
+            color='green'
+            onClick={() => toggleEdit('showEditableDate', 'save')}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}
+          />
+        )}
+      </Flex>
+      {!editState.showEditableDate && (
+        <div
+          style={{
+            display: textHover ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={14}
+            color='black'
+            onClick={() => toggleEdit('showEditableDate', 'open')}
+          />
+        </div>
+      )}
+    </Box>
+  );
+
+  const typeStringArrayData = () => (
+    <Box
+      p='12px'
+      mb='12px'
+      style={{
+        position: 'relative',
+        borderRadius: '8px',
+        backgroundColor: 'transparent',
+        border: '1px solid #e9ecef',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      <Flex direction='column' gap='8px'>
+        {title && (
+          <Text fw={600} size='sm' c='dimmed'>
+            {title}:
+          </Text>
+        )}
+
+        {editState.showEditableStringArray && (
+          <Flex gap='8px' mb='12px'>
+            <Input
+              flex={1}
+              value={editState.newStringItem}
+              onChange={handleStringArrayChange}
+              onKeyDown={handleStringArrayKeyDown}
+              placeholder={`Agregar ${title?.toLowerCase() || 'elemento'}`}
+              size='sm'
+            />
+            <IconPlus
+              cursor='pointer'
+              size={20}
+              color='green'
+              onClick={() => {
+                if (editState.newStringItem.trim()) {
+                  setEditState((prev) => ({
+                    ...prev,
+                    inputValue: [
+                      ...(Array.isArray(prev.inputValue)
+                        ? prev.inputValue
+                        : []),
+                      prev.newStringItem.trim()
+                    ],
+                    newStringItem: ''
+                  }));
+                }
+              }}
+            />
+          </Flex>
+        )}
+
+        <Box>
+          {Array.isArray(editState.inputValue) &&
+          editState.inputValue.length > 0 ? (
+            editState.inputValue.map((item, index) => (
+              <Flex
+                key={`${item}-${index}`}
+                align='center'
+                justify='space-between'
+                p='8px'
+                mb='4px'
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <Text
+                  size='sm'
+                  c='white'
+                  style={{ flex: 1, paddingRight: '8px' }}
+                >
+                  {item}
+                </Text>
+                {editState.showEditableStringArray && (
+                  <IconX
+                    cursor='pointer'
+                    size={16}
+                    color='red'
+                    onClick={() => removeStringItem(item)}
+                  />
+                )}
+              </Flex>
+            ))
+          ) : (
+            <Text c='dimmed' fs='italic' size='sm'>
+              No hay elementos agregados
+            </Text>
+          )}
+        </Box>
+      </Flex>
+
+      {editState.showEditableStringArray ? (
+        <CheckIcon
+          cursor='pointer'
+          size={18}
+          color='green'
+          onClick={() => toggleEdit('showEditableStringArray', 'save')}
+          style={{
+            position: 'absolute',
+            right: '12px',
+            top: '12px'
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            borderRadius: '4px',
+            backgroundColor: '#495057',
+            transition: 'opacity 0.2s ease',
+            position: 'absolute',
+            right: '12px',
+            top: '12px'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={14}
+            color='white'
+            onClick={() => toggleEdit('showEditableStringArray', 'open')}
+          />
+        </div>
+      )}
+    </Box>
+  );
+
   return (
     <>
       {type === 'text' ? (
@@ -451,6 +725,10 @@ const EditableData = ({
         typeRatingData()
       ) : type === 'textarea' ? (
         typeTextArea()
+      ) : type === 'date' ? (
+        typeDateData()
+      ) : type === 'stringArray' ? (
+        typeStringArrayData()
       ) : (
         <></>
       )}

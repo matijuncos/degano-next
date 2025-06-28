@@ -74,17 +74,17 @@ const MainInformation = ({
           value={selectedEvent.type}
         />
         <EditableData
-          type='text'
-          property='type'
+          type='date'
+          property='date'
           title='Fecha'
-          value={new Date(selectedEvent.date).toLocaleDateString()}
+          value={new Date(selectedEvent.date)}
         />
         {selectedEvent.endDate ? (
           <EditableData
-            type='text'
-            property='type'
+            type='date'
+            property='endDate'
             title='Fecha Finalizacion'
-            value={new Date(selectedEvent.endDate).toLocaleDateString()}
+            value={new Date(selectedEvent.endDate)}
           />
         ) : (
           <></>
@@ -175,6 +175,30 @@ const MusicInformation = ({
   if (!selectedEvent) return null;
   return (
     <Flex direction='column' gap='16px' mt='16px'>
+      <EditableData
+        type='stringArray'
+        title='Canciones de ingreso'
+        value={selectedEvent.welcomeSongs || []}
+        property='welcomeSongs'
+      />
+      <EditableData
+        type='stringArray'
+        title='Camino de rosas'
+        value={selectedEvent.walkIn || []}
+        property='walkIn'
+      />
+      <EditableData
+        type='stringArray'
+        title='Vals'
+        value={selectedEvent.vals || []}
+        property='vals'
+      />
+      <EditableData
+        type='stringArray'
+        title='Música para ambientar'
+        value={selectedEvent.ambienceMusic || []}
+        property='ambienceMusic'
+      />
       <EditableData
         type='chips'
         value={selectedEvent.music.forbidden}
@@ -402,17 +426,17 @@ const EventPage = () => {
                   value={selectedEvent.type}
                 />
                 <EditableData
-                  type='text'
-                  property='type'
+                  type='date'
+                  property='date'
                   title='Fecha'
-                  value={new Date(selectedEvent.date).toLocaleDateString()}
+                  value={new Date(selectedEvent.date)}
                 />
                 {selectedEvent.endDate ? (
                   <EditableData
-                    type='text'
-                    property='type'
+                    type='date'
+                    property='endDate'
                     title='Fecha Finalizacion'
-                    value={new Date(selectedEvent.endDate).toLocaleDateString()}
+                    value={new Date(selectedEvent.endDate)}
                   />
                 ) : (
                   <></>
