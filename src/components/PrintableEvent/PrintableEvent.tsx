@@ -26,9 +26,10 @@ import Link from 'next/link';
 import logo from '../../assets/logo.png';
 import Image from 'next/image';
 
-const eventDetailsLabels = {
+// Constants
+const EVENT_DETAILS_LABELS = {
   _id: 'ID',
-  fullName: 'Nombre Completp',
+  fullName: 'Nombre Completo',
   phoneNumber: 'Número de teléfono',
   email: 'Email',
   age: 'Edad',
@@ -40,6 +41,7 @@ const eventDetailsLabels = {
   salon: 'Salón',
   date: 'Fecha',
   averageAge: 'Edad promedio',
+  churchDate: 'Fecha de la iglesia',
   civil: 'Civil',
   bandName: 'Nombre de banda',
   manager: 'Manager',
@@ -51,15 +53,22 @@ const eventDetailsLabels = {
   payment: 'Pago',
   active: 'Activo',
   playlist: 'Playlists'
-};
+} as const;
 
-const PrintableEvent = () => {
-  const { selectedEvent } = useDeganoCtx();
-  const componentRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current || null
-  });
-  const styles = StyleSheet.create({
+const EXCLUDED_FIELDS: (keyof typeof EVENT_DETAILS_LABELS)[] = [];
+
+// Types
+type EventDetailsKey = keyof typeof EVENT_DETAILS_LABELS;
+type EventValue = string | number;
+
+interface PropertyFieldProps {
+  title: EventDetailsKey;
+  value?: EventValue;
+}
+
+// PDF Styles
+const createPDFStyles = () =>
+  StyleSheet.create({
     page: {
       padding: 18,
       flexDirection: 'column',
@@ -140,14 +149,41 @@ const PrintableEvent = () => {
     }
   });
 
-  const EachPropertyField = ({
-    title,
-    value
-  }: {
-    title: keyof typeof eventDetailsLabels;
-    value?: string | number;
-  }) => {
-    if (typeof value !== 'string' && typeof value !== 'number') return;
+// Utility functions
+const isValidEventValue = (value: unknown): value is EventValue => {
+  return typeof value === 'string' || typeof value === 'number';
+};
+
+const shouldRenderField = (title: EventDetailsKey, value: unknown): boolean => {
+  return (
+    !EXCLUDED_FIELDS.includes(title) &&
+    value != null &&
+    value !== '' &&
+    EVENT_DETAILS_LABELS[title] &&
+    isValidEventValue(value)
+  );
+};
+
+const formatEventTitle = (event: any): string => {
+  const name = event?.fullName || '';
+  const date = event?.date ? new Date(event.date).toLocaleDateString() : '';
+  const salon = event?.salon || '';
+
+  return [name, date, salon].filter(Boolean).join(' - ');
+};
+
+const PrintableEvent = () => {
+  const { selectedEvent } = useDeganoCtx();
+  const componentRef = useRef<HTMLDivElement>(null);
+  const pdfStyles = createPDFStyles();
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current || null
+  });
+
+  const PropertyField = ({ title, value }: PropertyFieldProps) => {
+    if (!shouldRenderField(title, value)) return null;
+
     return (
       <Box>
         <Text
@@ -157,83 +193,142 @@ const PrintableEvent = () => {
             marginRight: '4px'
           }}
         >
-          {eventDetailsLabels[title]}:
+          {EVENT_DETAILS_LABELS[title]}:
         </Text>
         <Text>{value}</Text>
       </Box>
     );
   };
 
-  const eventToArray = Object.keys(selectedEvent || {});
+  const renderEventFields = () => {
+    if (!selectedEvent) return null;
+
+    return Object.keys(selectedEvent).map((key) => {
+      const eventKey = key as EventDetailsKey;
+      const value = (selectedEvent as Record<string, any>)[key];
+
+      return <PropertyField title={eventKey} key={key} value={value} />;
+    });
+  };
+
+  const renderPlaylists = () => {
+    if (!selectedEvent?.playlist?.length) return null;
+
+    return selectedEvent.playlist.map((playlist) => (
+      <Link href={playlist.url} target='_blank' key={playlist.url}>
+        {playlist.label}
+      </Link>
+    ));
+  };
+
+  const renderEquipmentTable = () => {
+    if (!selectedEvent?.equipment?.length) return null;
+
+    return (
+      <Box my='20px'>
+        <Text
+          style={{
+            fontWeight: 700,
+            fontSize: '26px',
+            marginBottom: '28px'
+          }}
+        >
+          Equipamiento
+        </Text>
+        <Table>
+          <TableThead>
+            <TableTh>Equipo</TableTh>
+            <TableTh>Cantidad</TableTh>
+          </TableThead>
+          <TableTbody>
+            {selectedEvent.equipment.map((equipment) => (
+              <TableTr key={equipment.name}>
+                <TableTd>{equipment.name}</TableTd>
+                <TableTd>{equipment.selectedQuantity}</TableTd>
+              </TableTr>
+            ))}
+          </TableTbody>
+        </Table>
+      </Box>
+    );
+  };
+
+  const renderPDFEquipment = () => {
+    if (!selectedEvent?.equipment?.length) return null;
+
+    return (
+      <View style={pdfStyles.equipment} wrap={false}>
+        <Text style={pdfStyles.equipmentTitle}>Equipamiento</Text>
+        <View style={pdfStyles.table}>
+          <View style={pdfStyles.tableHeader}>
+            <Text style={pdfStyles.tableCell}>Equipo</Text>
+            <Text style={pdfStyles.tableCell}>Cantidad</Text>
+          </View>
+          {selectedEvent.equipment.map((equipment) => (
+            <View style={pdfStyles.tableRow} key={equipment.name}>
+              <Text style={pdfStyles.tableCell}>{equipment.name}</Text>
+              <Text style={pdfStyles.tableCell}>
+                {equipment.selectedQuantity}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderPDFPlaylists = () => {
+    if (!selectedEvent?.playlist?.length) return null;
+
+    return (
+      <View style={pdfStyles.playlist}>
+        {selectedEvent.playlist.map((playlist) => (
+          <Link href={playlist.url} key={playlist.url}>
+            {playlist.label}
+          </Link>
+        ))}
+      </View>
+    );
+  };
+
+  const renderPDFEventFields = () => {
+    if (!selectedEvent) return null;
+
+    return Object.keys(selectedEvent).map((key) => {
+      const eventKey = key as EventDetailsKey;
+      const value = (selectedEvent as Record<string, any>)[key];
+
+      if (!shouldRenderField(eventKey, value)) return null;
+
+      return (
+        <View style={pdfStyles.section} key={key}>
+          <Text style={pdfStyles.keyName}>
+            {`${EVENT_DETAILS_LABELS[eventKey]}:`}
+          </Text>
+          <Text style={pdfStyles.keyValue}>{value as EventValue}</Text>
+        </View>
+      );
+    });
+  };
+
+  const eventTitle = formatEventTitle(selectedEvent);
 
   const MyDocument = (
     <Document>
-      <Page size='A4' style={styles.page}>
-        <View style={styles.logo}>
+      <Page size='A4' style={pdfStyles.page}>
+        <View style={pdfStyles.logo}>
           <PDFImage src='/logo.png' />
         </View>
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {`${selectedEvent?.fullName || ''} - ${new Date(
-              selectedEvent?.date || ''
-            ).toLocaleDateString()} - ${selectedEvent?.salon || ''}`}
-          </Text>
+        <View style={pdfStyles.header}>
+          <Text style={pdfStyles.title}>{eventTitle}</Text>
         </View>
-        <View>
-          {eventToArray.map((key) => {
-            if (
-              typeof selectedEvent?.[key as keyof typeof selectedEvent] !==
-                'string' &&
-              typeof selectedEvent?.[key as keyof typeof selectedEvent] !==
-                'number'
-            ) {
-              return <></>;
-            }
-            return (
-              <View style={styles.section} key={key}>
-                <Text style={styles.keyName}>{`${
-                  eventDetailsLabels[key as keyof typeof eventDetailsLabels]
-                }:`}</Text>
-                <Text style={styles.keyValue}>
-                  {(selectedEvent as { [key: string]: any })[
-                    key as keyof typeof eventDetailsLabels
-                  ] || ''}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-        {selectedEvent?.playlist?.length ? (
-          <View style={styles.playlist}>
-            {selectedEvent.playlist.map((playlist) => (
-              <Link href={playlist.url} key={playlist.url}>
-                {playlist.label}
-              </Link>
-            ))}
-          </View>
-        ) : null}
-        {!!selectedEvent?.equipment.length && (
-          <View style={styles.equipment} wrap={false}>
-            <Text style={styles.equipmentTitle}>Equipamiento</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.tableCell}>Equipo</Text>
-                <Text style={styles.tableCell}>Cantidad</Text>
-              </View>
-              {selectedEvent?.equipment.map((equipment) => (
-                <View style={styles.tableRow} key={equipment.name}>
-                  <Text style={styles.tableCell}>{equipment.name}</Text>
-                  <Text style={styles.tableCell}>
-                    {equipment.selectedQuantity}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+        <View>{renderPDFEventFields()}</View>
+        {renderPDFPlaylists()}
+        {renderPDFEquipment()}
       </Page>
     </Document>
   );
+
   return (
     <>
       <Flex p='18px' direction='column' ref={componentRef}>
@@ -260,69 +355,20 @@ const PrintableEvent = () => {
           <Text
             style={{ fontWeight: 700, fontSize: '26px', marginBottom: '12px' }}
           >
-            {`${selectedEvent?.fullName || ''} - ${new Date(
-              selectedEvent?.date || ''
-            ).toLocaleDateString()} - ${selectedEvent?.salon || ''}`}
+            {eventTitle}
           </Text>
         </Flex>
-        <Flex direction='column' gap='10px'>
-          {eventToArray.map((key) => {
-            return (
-              <EachPropertyField
-                title={key as keyof typeof eventDetailsLabels}
-                key={key}
-                value={(selectedEvent as { [key: string]: any })[key] || ''}
-              />
-            );
-          })}
-        </Flex>
-        {selectedEvent?.playlist?.length ? (
-          selectedEvent.playlist.map((playlist) => {
-            return (
-              <Link href={playlist.url} target='_black' key={playlist.url}>
-                {playlist.label}
-              </Link>
-            );
-          })
-        ) : (
-          <></>
-        )}
-        {!!selectedEvent?.equipment.length && (
-          <Box my='20px'>
-            <Text
-              style={{
-                fontWeight: 700,
-                fontSize: '26px',
-                marginBottom: '28px'
-              }}
-            >
-              Equipamiento
-            </Text>
 
-            <Table>
-              <TableThead>
-                <TableTh>Equipo</TableTh>
-                <TableTh>Cantidad</TableTh>
-              </TableThead>
-              <TableTbody>
-                {selectedEvent?.equipment.map((equipment) => (
-                  <TableTr key={equipment.name}>
-                    <TableTd>{equipment.name}</TableTd>
-                    <TableTd>{equipment.selectedQuantity}</TableTd>
-                  </TableTr>
-                ))}
-              </TableTbody>
-            </Table>
-          </Box>
-        )}
+        <Flex direction='column' gap='10px'>
+          {renderEventFields()}
+        </Flex>
+
+        {renderPlaylists()}
+        {renderEquipmentTable()}
       </Flex>
+
       <Flex align='center' justify='flex-end' gap='24px'>
-        <PDFDownloadLink
-          document={MyDocument}
-          fileName={`${selectedEvent?.fullName || ''} - ${new Date(
-            selectedEvent?.date || ''
-          ).toLocaleDateString()} - ${selectedEvent?.salon || ''}.pdf`}
-        >
+        <PDFDownloadLink document={MyDocument} fileName={`${eventTitle}.pdf`}>
           {({ loading }) => (loading ? 'Cargando...' : 'Descargar PDF')}
         </PDFDownloadLink>
         <Button onClick={handlePrint}>Imprimir</Button>

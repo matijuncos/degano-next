@@ -7,17 +7,20 @@ import {
   IconCalendar,
   IconCheckupList,
   IconListCheck,
+  IconMusic,
   IconPlus,
   IconUser
 } from '@tabler/icons-react';
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { initializeGapiClientAndGetToken } from '@/lib/gapi';
 
-const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_BASE_URL + '/discovery/v1/apis/drive/v3/rest'];
+const DISCOVERY_DOCS = [
+  process.env.NEXT_PUBLIC_GOOGLE_BASE_URL + '/discovery/v1/apis/drive/v3/rest'
+];
 const SCOPES = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL + '/auth/drive.file';
 
 const Home = () => {
@@ -43,6 +46,11 @@ const Home = () => {
       label: 'Administrar Stock',
       path: '/equipment',
       Icon: IconCheckupList
+    },
+    {
+      label: 'Géneros de música',
+      path: '/genres',
+      Icon: IconMusic
     }
   ];
   const itemVariants = {
@@ -77,7 +85,7 @@ const Home = () => {
       const token = await initializeGapiClientAndGetToken(gapiConfig);
       if (token) setAuthToken(token);
     }
-    if(!authToken)  start();
+    if (!authToken) start();
   }, []);
 
   return (
