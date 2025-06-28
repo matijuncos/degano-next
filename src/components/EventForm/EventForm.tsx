@@ -2,7 +2,12 @@ import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
 import { Band, EventModel } from '@/context/types';
 import { Button, Input, InputLabel } from '@mantine/core';
-import { DateInput, DateValue } from '@mantine/dates';
+import {
+  DateInput,
+  DatePicker,
+  DateValue,
+  DateTimePicker
+} from '@mantine/dates';
 import { useState } from 'react';
 import BandList from '../BandManager/BandList';
 const EventForm = ({
@@ -70,11 +75,11 @@ const EventForm = ({
       <div className='inputs-grid'>
         <InputLabel>
           Fecha del evento
-          <DateInput
-            placeholder='Fecha del evento *'
+          <DateTimePicker
+            placeholder='Fecha y hora del evento *'
             name='date'
             locale='es'
-            valueFormat='DD/MM/YYYY'
+            valueFormat='DD/MM/YYYY HH:mm'
             value={eventData.date ? new Date(eventData.date) : null}
             onChange={(value: DateValue) => onDateChange('date', value)}
             error={validate && !eventData.date}
@@ -82,11 +87,11 @@ const EventForm = ({
         </InputLabel>
         <InputLabel>
           Fecha de finalización del evento (opcional)
-          <DateInput
-            placeholder='Fecha de finalizaciòn del evento'
+          <DateTimePicker
+            placeholder='Fecha y hora de finalizaciòn del evento'
             name='endDate'
             locale='es'
-            valueFormat='DD/MM/YYYY'
+            valueFormat='DD/MM/YYYY HH:mm'
             value={eventData.endDate ? new Date(eventData.endDate) : null}
             onChange={(value: DateValue) => onDateChange('endDate', value)}
           />
@@ -141,6 +146,23 @@ const EventForm = ({
           value={eventData.averageAge}
           onChange={handleInputChange}
           autoComplete='off'
+        />
+        <DateInput
+          locale='es'
+          valueFormat='DD/MM/YYYY HH:mm'
+          placeholder='Fecha y hora de iglesia'
+          name='churchDate'
+          value={eventData.churchDate ? new Date(eventData.churchDate) : null}
+          onChange={(value: DateValue) => onDateChange('churchDate', value)}
+          autoComplete='off'
+        />
+        <DateTimePicker
+          locale='es'
+          valueFormat='DD/MM/YYYY HH:mm'
+          placeholder='Fecha y hora de civil'
+          name='civil'
+          value={eventData.civil ? new Date(eventData.civil) : null}
+          onChange={(value: DateValue) => onDateChange('civil', value)}
         />
       </div>
       <BandList

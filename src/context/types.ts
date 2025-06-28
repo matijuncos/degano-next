@@ -38,6 +38,11 @@ export interface EventModel {
   }[];
   // status: string;
   _id: string;
+  welcomeSongs?: string[];
+  walkIn?: string[];
+  vals?: string[];
+  openingPartySong?: string;
+  ambienceMusic?: string[];
 }
 export interface SelectedEventType extends EventModel {
   title?: string;
