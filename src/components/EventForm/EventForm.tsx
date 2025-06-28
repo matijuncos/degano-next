@@ -147,14 +147,13 @@ const EventForm = ({
           onChange={handleInputChange}
           autoComplete='off'
         />
-        <DateInput
+        <DateTimePicker
           locale='es'
           valueFormat='DD/MM/YYYY HH:mm'
           placeholder='Fecha y hora de iglesia'
           name='churchDate'
           value={eventData.churchDate ? new Date(eventData.churchDate) : null}
           onChange={(value: DateValue) => onDateChange('churchDate', value)}
-          autoComplete='off'
         />
         <DateTimePicker
           locale='es'

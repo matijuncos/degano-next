@@ -9,6 +9,7 @@ import {
   Text,
   Textarea
 } from '@mantine/core';
+import { DateTimePicker } from '@mantine/dates';
 import {
   IconEdit,
   IconStar,
@@ -28,7 +29,7 @@ const EditableData = ({
   type
 }: {
   title?: string;
-  value: string | any[];
+  value: string | any[] | Date;
   property: string;
   type: string;
 }) => {
@@ -39,7 +40,8 @@ const EditableData = ({
     showEditableChips: false,
     showEditableRating: false,
     showEditableStringArray: false,
-    inputValue: value,
+    showEditableDate: false,
+    inputValue: value as string | any[] | Date | null,
     newChip: '',
     newStringItem: ''
   });
@@ -155,6 +157,10 @@ const EditableData = ({
     }));
   };
 
+  const handleDateChange = (date: Date | null) => {
+    setEditState((prev) => ({ ...prev, inputValue: date }));
+  };
+
   const typeTextData = () => (
     <Box
       p='12px'
@@ -187,12 +193,18 @@ const EditableData = ({
           <Input
             flex={1}
             onChange={handleInputChange}
-            value={editState.inputValue}
+            value={
+              typeof editState.inputValue === 'string'
+                ? editState.inputValue
+                : ''
+            }
             size='sm'
           />
         ) : (
           <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
-            {editState.inputValue}
+            {typeof editState.inputValue === 'string'
+              ? editState.inputValue
+              : ''}
           </Text>
         )}
         {editState.showInput && (
@@ -417,20 +429,31 @@ const EditableData = ({
             </Text>
           )}
           {editState.showInput ? (
-            <Textarea
-              onChange={handleInputChange}
-              value={editState.inputValue}
-              size='sm'
-              autosize
-              minRows={2}
-            />
+            <>
+              <Textarea
+                value={
+                  typeof editState.inputValue === 'string'
+                    ? editState.inputValue
+                    : ''
+                }
+                onChange={handleInputChange}
+                minRows={4}
+                size='sm'
+                style={{ marginBottom: '8px' }}
+              />
+            </>
           ) : (
             <>
-              {editState.inputValue && (
-                <Text size='sm' c='white' style={{ whiteSpace: 'pre-wrap' }}>
-                  {editState.inputValue}
+              {title && (
+                <Text fw={600} size='sm' c='white' mb='8px'>
+                  {title}:
                 </Text>
               )}
+              <Text size='sm' c='white' style={{ whiteSpace: 'pre-wrap' }}>
+                {typeof editState.inputValue === 'string'
+                  ? editState.inputValue
+                  : ''}
+              </Text>
             </>
           )}
         </Flex>
@@ -474,6 +497,92 @@ const EditableData = ({
       </Box>
     );
   };
+
+  const typeDateData = () => (
+    <Box
+      p='12px'
+      mb='12px'
+      style={{
+        position: 'relative',
+        borderRadius: '8px',
+        backgroundColor:
+          textHover && !editState.showEditableDate ? '#f8f9fa' : 'transparent',
+        border: '1px solid #e9ecef',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer'
+      }}
+      c='white'
+      onMouseEnter={() => setTextHover(true)}
+      onMouseLeave={() => setTextHover(false)}
+    >
+      <Flex align='center' gap='12px' style={{ paddingRight: '32px' }}>
+        {title && (
+          <Text
+            fw={600}
+            size='sm'
+            c={textHover && !editState.showEditableDate ? 'black' : 'white'}
+            style={{ minWidth: 'fit-content' }}
+          >
+            {title}:
+          </Text>
+        )}
+        {editState.showEditableDate ? (
+          <DateTimePicker
+            value={
+              editState.inputValue instanceof Date ? editState.inputValue : null
+            }
+            onChange={handleDateChange}
+            size='sm'
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
+            {editState.inputValue instanceof Date
+              ? `${editState.inputValue.toLocaleDateString()} - ${editState.inputValue.toLocaleTimeString()}`
+              : typeof editState.inputValue === 'string'
+              ? editState.inputValue
+              : ''}
+          </Text>
+        )}
+        {editState.showEditableDate && (
+          <CheckIcon
+            cursor='pointer'
+            size={18}
+            color='green'
+            onClick={() => toggleEdit('showEditableDate', 'save')}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}
+          />
+        )}
+      </Flex>
+      {!editState.showEditableDate && (
+        <div
+          style={{
+            display: textHover ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={14}
+            color='black'
+            onClick={() => toggleEdit('showEditableDate', 'open')}
+          />
+        </div>
+      )}
+    </Box>
+  );
 
   const typeStringArrayData = () => (
     <Box
@@ -616,6 +725,8 @@ const EditableData = ({
         typeRatingData()
       ) : type === 'textarea' ? (
         typeTextArea()
+      ) : type === 'date' ? (
+        typeDateData()
       ) : type === 'stringArray' ? (
         typeStringArrayData()
       ) : (

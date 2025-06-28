@@ -74,17 +74,17 @@ const MainInformation = ({
           value={selectedEvent.type}
         />
         <EditableData
-          type='text'
-          property='type'
+          type='date'
+          property='date'
           title='Fecha'
-          value={new Date(selectedEvent.date).toLocaleDateString()}
+          value={new Date(selectedEvent.date)}
         />
         {selectedEvent.endDate ? (
           <EditableData
-            type='text'
-            property='type'
+            type='date'
+            property='endDate'
             title='Fecha Finalizacion'
-            value={new Date(selectedEvent.endDate).toLocaleDateString()}
+            value={new Date(selectedEvent.endDate)}
           />
         ) : (
           <></>
@@ -426,17 +426,17 @@ const EventPage = () => {
                   value={selectedEvent.type}
                 />
                 <EditableData
-                  type='text'
-                  property='type'
+                  type='date'
+                  property='date'
                   title='Fecha'
-                  value={new Date(selectedEvent.date).toLocaleDateString()}
+                  value={new Date(selectedEvent.date)}
                 />
                 {selectedEvent.endDate ? (
                   <EditableData
-                    type='text'
-                    property='type'
+                    type='date'
+                    property='endDate'
                     title='Fecha Finalizacion'
-                    value={new Date(selectedEvent.endDate).toLocaleDateString()}
+                    value={new Date(selectedEvent.endDate)}
                   />
                 ) : (
                   <></>
