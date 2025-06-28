@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { EventModel } from '@/context/types';
-import { IconX, IconAlertCircle } from '@tabler/icons-react';
+import { IconX, IconAlertCircle, IconPlus } from '@tabler/icons-react';
 import styles from './MusicForm.module.css';
 import { EVENT_TABS } from '@/context/config';
 import { useGenres, transformGenresForMusic } from '@/hooks/useGenres';
@@ -41,10 +41,40 @@ const MusicForm = ({
     loading: genresLoading,
     error: genresError
   } = useGenres();
-  const [musicData, setMusicData] = useState(event);
+  const [musicData, setMusicData] = useState(() => {
+    // Ensure array fields are always arrays
+    const normalizedEvent = {
+      ...event,
+      welcomeSongs: Array.isArray(event.welcomeSongs)
+        ? event.welcomeSongs
+        : event.welcomeSongs
+        ? [event.welcomeSongs as string]
+        : [],
+      walkIn: Array.isArray(event.walkIn)
+        ? event.walkIn
+        : event.walkIn
+        ? [event.walkIn as string]
+        : [],
+      vals: Array.isArray(event.vals)
+        ? event.vals
+        : event.vals
+        ? [event.vals as string]
+        : [],
+      ambienceMusic: Array.isArray(event.ambienceMusic)
+        ? event.ambienceMusic
+        : event.ambienceMusic
+        ? [event.ambienceMusic as string]
+        : []
+    };
+    return normalizedEvent;
+  });
   const [spotifyLinks, setSpotifyLinks] = useState<SpotifyLink[]>([]);
   const [spotifyLinkInputValue, setSpotifyLinkInputValue] = useState('');
   const [spotifyLabelInputValue, setSpotifyLabelInputValue] = useState('');
+  const [welcomeSongInputValue, setWelcomeSongInputValue] = useState('');
+  const [walkInInputValue, setWalkInInputValue] = useState('');
+  const [valsInputValue, setValsInputValue] = useState('');
+  const [ambienceMusicInputValue, setAmbienceMusicInputValue] = useState('');
 
   // Update musicData with database genres when they load
   useEffect(() => {
@@ -167,8 +197,284 @@ const MusicForm = ({
     }
   };
 
+  const handleWelcomeSong = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      addWelcomeSong();
+    }
+  };
+
+  const addWelcomeSong = () => {
+    if (welcomeSongInputValue.trim()) {
+      setMusicData((prevData) => ({
+        ...prevData,
+        welcomeSongs: [
+          ...(prevData.welcomeSongs || []),
+          welcomeSongInputValue.trim()
+        ]
+      }));
+      setWelcomeSongInputValue('');
+    }
+  };
+
+  const deleteWelcomeSong = (songToDelete: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      welcomeSongs: (prevData.welcomeSongs || []).filter(
+        (song) => song !== songToDelete
+      )
+    }));
+  };
+
+  const handleWalkIn = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      addWalkIn();
+    }
+  };
+
+  const addWalkIn = () => {
+    if (walkInInputValue.trim()) {
+      setMusicData((prevData) => ({
+        ...prevData,
+        walkIn: [...(prevData.walkIn || []), walkInInputValue.trim()]
+      }));
+      setWalkInInputValue('');
+    }
+  };
+
+  const deleteWalkIn = (songToDelete: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      walkIn: (prevData.walkIn || []).filter((song) => song !== songToDelete)
+    }));
+  };
+
+  const handleVals = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      addVals();
+    }
+  };
+
+  const addVals = () => {
+    if (valsInputValue.trim()) {
+      setMusicData((prevData) => ({
+        ...prevData,
+        vals: [...(prevData.vals || []), valsInputValue.trim()]
+      }));
+      setValsInputValue('');
+    }
+  };
+
+  const deleteVals = (songToDelete: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      vals: (prevData.vals || []).filter((song) => song !== songToDelete)
+    }));
+  };
+
+  const handleAmbienceMusic = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      addAmbienceMusic();
+    }
+  };
+
+  const addAmbienceMusic = () => {
+    if (ambienceMusicInputValue.trim()) {
+      setMusicData((prevData) => ({
+        ...prevData,
+        ambienceMusic: [
+          ...(prevData.ambienceMusic || []),
+          ambienceMusicInputValue.trim()
+        ]
+      }));
+      setAmbienceMusicInputValue('');
+    }
+  };
+
+  const deleteAmbienceMusic = (songToDelete: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      ambienceMusic: (prevData.ambienceMusic || []).filter(
+        (song) => song !== songToDelete
+      )
+    }));
+  };
+
   return (
     <div>
+      <h2>Canciones de ingreso</h2>
+      <Flex mb='md' gap='8px'>
+        <Input
+          placeholder='Agregar canción de ingreso'
+          value={welcomeSongInputValue}
+          onChange={(e) => setWelcomeSongInputValue(e.target.value)}
+          onKeyDown={handleWelcomeSong}
+          style={{ flexGrow: 1 }}
+        />
+        <Button onClick={addWelcomeSong} leftSection={<IconPlus size={16} />}>
+          Agregar
+        </Button>
+      </Flex>
+
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.welcomeSongs || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+              {song}
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteWelcomeSong(song)}
+            />
+          </div>
+        ))}
+      </div>
+      <h2>Camino de Rosas</h2>
+      <Flex mb='md' gap='8px'>
+        <Input
+          placeholder='Agregar canción de camino de rosas'
+          value={walkInInputValue}
+          onChange={(e) => setWalkInInputValue(e.target.value)}
+          onKeyDown={handleWalkIn}
+          style={{ flexGrow: 1 }}
+        />
+        <Button onClick={addWalkIn} leftSection={<IconPlus size={16} />}>
+          Agregar
+        </Button>
+      </Flex>
+
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.walkIn || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+              {song}
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteWalkIn(song)}
+            />
+          </div>
+        ))}
+      </div>
+
+      <h2>Vals</h2>
+      <Flex mb='md' gap='8px'>
+        <Input
+          placeholder='Agregar vals'
+          value={valsInputValue}
+          onChange={(e) => setValsInputValue(e.target.value)}
+          onKeyDown={handleVals}
+          style={{ flexGrow: 1 }}
+        />
+        <Button onClick={addVals} leftSection={<IconPlus size={16} />}>
+          Agregar
+        </Button>
+      </Flex>
+
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.vals || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+              {song}
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteVals(song)}
+            />
+          </div>
+        ))}
+      </div>
+      <h2>Inicio de fiesta - Cancion apertura de fiesta</h2>
+      <Input
+        placeholder='Inicio de fiesta - Cancion apertura de fiesta'
+        value={musicData.openingPartySong}
+        onChange={(e) =>
+          setMusicData({ ...musicData, openingPartySong: e.target.value })
+        }
+        mb='md'
+      />
+      <h2>Música para ambientar</h2>
+      <Flex mb='md' gap='8px'>
+        <Input
+          placeholder='Agregar música para ambientar'
+          value={ambienceMusicInputValue}
+          onChange={(e) => setAmbienceMusicInputValue(e.target.value)}
+          onKeyDown={handleAmbienceMusic}
+          style={{ flexGrow: 1 }}
+        />
+        <Button onClick={addAmbienceMusic} leftSection={<IconPlus size={16} />}>
+          Agregar
+        </Button>
+      </Flex>
+
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.ambienceMusic || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+              {song}
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteAmbienceMusic(song)}
+            />
+          </div>
+        ))}
+      </div>
       <h2>Musica de preferencia</h2>
 
       {/* Genres Loading/Error States */}

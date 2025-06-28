@@ -9,7 +9,13 @@ import {
   Text,
   Textarea
 } from '@mantine/core';
-import { IconEdit, IconStar, IconStarFilled } from '@tabler/icons-react';
+import {
+  IconEdit,
+  IconStar,
+  IconStarFilled,
+  IconPlus,
+  IconX
+} from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
@@ -32,8 +38,10 @@ const EditableData = ({
     showInput: false,
     showEditableChips: false,
     showEditableRating: false,
+    showEditableStringArray: false,
     inputValue: value,
-    newChip: ''
+    newChip: '',
+    newStringItem: ''
   });
   const [textHover, setTextHover] = useState(false);
   //  const [textareaHover, setTextareaHover] = useState(false);
@@ -118,6 +126,32 @@ const EditableData = ({
       inputValue: (prev.inputValue as any[]).map((genre, idx) =>
         idx === index ? { ...genre, value: value } : genre
       )
+    }));
+  };
+
+  const handleStringArrayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditState((prev) => ({ ...prev, newStringItem: e.target.value }));
+  };
+
+  const handleStringArrayKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && editState.newStringItem.trim()) {
+      setEditState((prev) => ({
+        ...prev,
+        inputValue: [
+          ...(Array.isArray(prev.inputValue) ? prev.inputValue : []),
+          prev.newStringItem.trim()
+        ],
+        newStringItem: ''
+      }));
+    }
+  };
+
+  const removeStringItem = (itemToRemove: string) => {
+    setEditState((prev) => ({
+      ...prev,
+      inputValue: Array.isArray(prev.inputValue)
+        ? prev.inputValue.filter((item) => item !== itemToRemove)
+        : prev.inputValue
     }));
   };
 
@@ -441,6 +475,137 @@ const EditableData = ({
     );
   };
 
+  const typeStringArrayData = () => (
+    <Box
+      p='12px'
+      mb='12px'
+      style={{
+        position: 'relative',
+        borderRadius: '8px',
+        backgroundColor: 'transparent',
+        border: '1px solid #e9ecef',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      <Flex direction='column' gap='8px'>
+        {title && (
+          <Text fw={600} size='sm' c='dimmed'>
+            {title}:
+          </Text>
+        )}
+
+        {editState.showEditableStringArray && (
+          <Flex gap='8px' mb='12px'>
+            <Input
+              flex={1}
+              value={editState.newStringItem}
+              onChange={handleStringArrayChange}
+              onKeyDown={handleStringArrayKeyDown}
+              placeholder={`Agregar ${title?.toLowerCase() || 'elemento'}`}
+              size='sm'
+            />
+            <IconPlus
+              cursor='pointer'
+              size={20}
+              color='green'
+              onClick={() => {
+                if (editState.newStringItem.trim()) {
+                  setEditState((prev) => ({
+                    ...prev,
+                    inputValue: [
+                      ...(Array.isArray(prev.inputValue)
+                        ? prev.inputValue
+                        : []),
+                      prev.newStringItem.trim()
+                    ],
+                    newStringItem: ''
+                  }));
+                }
+              }}
+            />
+          </Flex>
+        )}
+
+        <Box>
+          {Array.isArray(editState.inputValue) &&
+          editState.inputValue.length > 0 ? (
+            editState.inputValue.map((item, index) => (
+              <Flex
+                key={`${item}-${index}`}
+                align='center'
+                justify='space-between'
+                p='8px'
+                mb='4px'
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <Text
+                  size='sm'
+                  c='white'
+                  style={{ flex: 1, paddingRight: '8px' }}
+                >
+                  {item}
+                </Text>
+                {editState.showEditableStringArray && (
+                  <IconX
+                    cursor='pointer'
+                    size={16}
+                    color='red'
+                    onClick={() => removeStringItem(item)}
+                  />
+                )}
+              </Flex>
+            ))
+          ) : (
+            <Text c='dimmed' fs='italic' size='sm'>
+              No hay elementos agregados
+            </Text>
+          )}
+        </Box>
+      </Flex>
+
+      {editState.showEditableStringArray ? (
+        <CheckIcon
+          cursor='pointer'
+          size={18}
+          color='green'
+          onClick={() => toggleEdit('showEditableStringArray', 'save')}
+          style={{
+            position: 'absolute',
+            right: '12px',
+            top: '12px'
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            borderRadius: '4px',
+            backgroundColor: '#495057',
+            transition: 'opacity 0.2s ease',
+            position: 'absolute',
+            right: '12px',
+            top: '12px'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={14}
+            color='white'
+            onClick={() => toggleEdit('showEditableStringArray', 'open')}
+          />
+        </div>
+      )}
+    </Box>
+  );
+
   return (
     <>
       {type === 'text' ? (
@@ -451,6 +616,8 @@ const EditableData = ({
         typeRatingData()
       ) : type === 'textarea' ? (
         typeTextArea()
+      ) : type === 'stringArray' ? (
+        typeStringArrayData()
       ) : (
         <></>
       )}

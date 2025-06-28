@@ -176,6 +176,30 @@ const MusicInformation = ({
   return (
     <Flex direction='column' gap='16px' mt='16px'>
       <EditableData
+        type='stringArray'
+        title='Canciones de ingreso'
+        value={selectedEvent.welcomeSongs || []}
+        property='welcomeSongs'
+      />
+      <EditableData
+        type='stringArray'
+        title='Camino de rosas'
+        value={selectedEvent.walkIn || []}
+        property='walkIn'
+      />
+      <EditableData
+        type='stringArray'
+        title='Vals'
+        value={selectedEvent.vals || []}
+        property='vals'
+      />
+      <EditableData
+        type='stringArray'
+        title='Música para ambientar'
+        value={selectedEvent.ambienceMusic || []}
+        property='ambienceMusic'
+      />
+      <EditableData
         type='chips'
         value={selectedEvent.music.forbidden}
         property='forbidden'
