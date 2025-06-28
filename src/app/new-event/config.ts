@@ -1,4 +1,3 @@
-import { genres } from '@/context/config';
 import { EventModel } from '@/context/types';
 
 export const INITIAL_EVENT_STATE: EventModel = {
@@ -20,7 +19,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   bands: [],
   moreData: '',
   music: {
-    genres: genres,
+    genres: [], // Will be populated from database
     required: [],
     forbidden: []
   },
@@ -30,7 +29,8 @@ export const INITIAL_EVENT_STATE: EventModel = {
     totalToPay: '',
     partialPaymentDate: new Date(),
     partialPayed: false,
-    totalPayed: false
+    totalPayed: false,
+    subsequentPayments: []
   },
   active: true,
   playlist: []

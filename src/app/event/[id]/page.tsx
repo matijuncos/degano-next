@@ -167,7 +167,7 @@ const MainInformation = ({
     </Grid>
   );
 };
-const ClientInformation = ({
+const MusicInformation = ({
   selectedEvent
 }: {
   selectedEvent: EventModel | null;
@@ -198,7 +198,7 @@ const ClientInformation = ({
 const EquipmentInformation = () => {
   return <EquipmentTable />;
 };
-const TimingInformation = () => <>Timing</>;
+const TimingInformation = () => <>Building...</>;
 const MoreInfoInformation = ({
   selectedEvent
 }: {
@@ -325,7 +325,12 @@ const EventPage = () => {
             : undefined
         }
       >
-        <ClientInformation selectedEvent={selectedEvent} />
+        <MusicInformation selectedEvent={selectedEvent} />
+      </PDFActions>
+    ),
+    timing: (
+      <PDFActions sectionKey='timing'>
+        <TimingInformation />
       </PDFActions>
     ),
     moreInfo: (
@@ -549,6 +554,7 @@ const EventPage = () => {
           <Tabs.Tab value='main'>Información Principal</Tabs.Tab>
           <Tabs.Tab value='bands'>Banda en vivo</Tabs.Tab>
           <Tabs.Tab value='music'>Música</Tabs.Tab>
+          <Tabs.Tab value='timing'>Timing</Tabs.Tab>
           <Tabs.Tab value='moreInfo'>Más Información</Tabs.Tab>
           <Tabs.Tab value='equipment'>Equipos</Tabs.Tab>
           <Tabs.Tab value='files'>Archivos</Tabs.Tab>

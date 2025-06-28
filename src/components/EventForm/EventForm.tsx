@@ -5,7 +5,6 @@ import { Button, Input, InputLabel } from '@mantine/core';
 import { DateInput, DateValue } from '@mantine/dates';
 import { useState } from 'react';
 import BandList from '../BandManager/BandList';
-
 const EventForm = ({
   event,
   onNextTab,
@@ -148,7 +147,14 @@ const EventForm = ({
         bands={eventData.bands || []}
         onBandsChange={handleBandsChange}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          marginTop: '10px'
+        }}
+      >
         <Button onClick={back}>Atrás</Button>
         <Button onClick={next}>Siguiente</Button>
       </div>

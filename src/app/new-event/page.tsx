@@ -40,7 +40,6 @@ const NewEventPage = () => {
   };
 
   useEffect(() => {
-    // setFormState(EVENT_TABS.EVENT);
     setFormState(EVENT_TABS.CLIENT);
   }, []);
 

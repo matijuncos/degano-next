@@ -20,7 +20,7 @@ const BandList = ({
   onBandsChange: (bands: Band[]) => void;
   editing?: boolean;
 }) => {
-  const [opened, setOpened] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>('Banda en vivo');
   const [selectedBand, setSelectedBand] = useState<Band | null>(null);
   const [showEditableBand, setShowEditableBand] = useState<boolean>(false);
   const setLoadingCursor = useLoadingCursor();
@@ -52,14 +52,14 @@ const BandList = ({
   };
   console.log('bands ', bands);
   return (
-    <>
+    <div style={{ marginTop: '10px' }}>
       {!editing && (
         <Accordion
           value={opened}
           onChange={setOpened} /*style={{ margin: '5px 0 10px' }}*/
         >
-          <Accordion.Item key='Banda en vivo' value='Banda en vivo'>
-            <Accordion.Control style={{ padding: 0 }}>
+          <Accordion.Item key='Bandas en vivo' value='Banda en vivo'>
+            <Accordion.Control mb='12px'>
               <h3>{`Banda${bands.length > 0 ? 's' : ''} en vivo`}</h3>
             </Accordion.Control>
             <Accordion.Panel>
@@ -95,12 +95,16 @@ const BandList = ({
       )}
       {bands.length > 0 && (
         <div>
-          <h4>Bandas agregadas:</h4>
+          <h4 style={{ marginBottom: '12px' }}>Bandas agregadas:</h4>
           <ul style={{ padding: '0px 20px 20px' }}>
             {bands.map((b, index) => (
               <li
                 key={index}
-                style={{ display: 'flex', justifyContent: 'space-between' }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px'
+                }}
               >
                 <span>
                   <strong>{b.bandName}</strong> - {b.manager} ({b.managerPhone}){' '}
@@ -127,7 +131,7 @@ const BandList = ({
       )}
 
       {/* <Button onClick={() => setOpened('Banda en vivo')}>Agregar Banda</Button> */}
-    </>
+    </div>
   );
 };
 

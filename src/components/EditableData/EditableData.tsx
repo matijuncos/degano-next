@@ -35,6 +35,8 @@ const EditableData = ({
     inputValue: value,
     newChip: ''
   });
+  const [textHover, setTextHover] = useState(false);
+  //  const [textareaHover, setTextareaHover] = useState(false);
 
   const notify = useNotification();
 
@@ -120,34 +122,83 @@ const EditableData = ({
   };
 
   const typeTextData = () => (
-    <Flex gap='8px' align='center' py='10px' justify='space-between'>
-      <Box w='100%'>
-        {title && <strong>{title}:</strong>}
+    <Box
+      p='12px'
+      mb='12px'
+      style={{
+        position: 'relative',
+        borderRadius: '8px',
+        backgroundColor:
+          textHover && !editState.showInput ? '#f8f9fa' : 'transparent',
+        border: '1px solid #e9ecef',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer'
+      }}
+      c='white'
+      onMouseEnter={() => setTextHover(true)}
+      onMouseLeave={() => setTextHover(false)}
+    >
+      <Flex align='center' gap='12px' style={{ paddingRight: '32px' }}>
+        {title && (
+          <Text
+            fw={600}
+            size='sm'
+            c={textHover && !editState.showInput ? 'black' : 'white'}
+            style={{ minWidth: 'fit-content' }}
+          >
+            {title}:
+          </Text>
+        )}
         {editState.showInput ? (
           <Input
-            width='100%'
+            flex={1}
             onChange={handleInputChange}
             value={editState.inputValue}
+            size='sm'
           />
         ) : (
-          <p style={{ paddingLeft: '12px' }}>{editState.inputValue}</p>
+          <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
+            {editState.inputValue}
+          </Text>
         )}
-      </Box>
-      {editState.showInput ? (
-        <CheckIcon
-          cursor='pointer'
-          size={22}
-          color='green'
-          onClick={() => toggleEdit('showInput', 'save')}
-        />
-      ) : (
-        <IconEdit
-          cursor='pointer'
-          size={22}
-          onClick={() => toggleEdit('showInput', 'open')}
-        />
+        {editState.showInput && (
+          <CheckIcon
+            cursor='pointer'
+            size={18}
+            color='green'
+            onClick={() => toggleEdit('showInput', 'save')}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}
+          />
+        )}
+      </Flex>
+      {!editState.showInput && (
+        <div
+          style={{
+            display: textHover ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={14}
+            color='black'
+            onClick={() => toggleEdit('showInput', 'open')}
+          />
+        </div>
       )}
-    </Flex>
+    </Box>
   );
 
   const typeChipsData = () => (
@@ -310,45 +361,85 @@ const EditableData = ({
 
   const typeTextArea = () => {
     return (
-      <Flex
-        gap='8px'
-        align='center'
-        py='10px'
-        justify='space-between'
+      <Box
+        p='12px'
+        mb='12px'
         style={{
-          borderBottom: '1px solid white'
+          position: 'relative',
+          borderRadius: '8px',
+          backgroundColor: 'transparent',
+          border: '1px solid #e9ecef',
+          transition: 'all 0.2s ease',
+          cursor: 'pointer',
+          minHeight: '48px'
         }}
+        //  onMouseEnter={() => setTextareaHover(true)}
+        //onMouseLeave={() => setTextareaHover(false)}
       >
-        <Box w='100%'>
-          {title && <strong>{title}:</strong>}
+        <Flex direction='column' gap='8px' style={{ paddingRight: '32px' }}>
+          {title && (
+            <Text fw={600} size='sm' c='dimmed'>
+              {title}:
+            </Text>
+          )}
           {editState.showInput ? (
             <Textarea
               onChange={handleInputChange}
               value={editState.inputValue}
+              size='sm'
+              autosize
+              minRows={2}
             />
           ) : (
-            <p style={{ paddingLeft: '12px' }}>{editState.inputValue}</p>
+            <>
+              {editState.inputValue && (
+                <Text size='sm' c='white' style={{ whiteSpace: 'pre-wrap' }}>
+                  {editState.inputValue}
+                </Text>
+              )}
+            </>
           )}
-        </Box>
-        {editState.showInput ? (
+        </Flex>
+        {editState.showInput && (
           <CheckIcon
             cursor='pointer'
-            size={22}
+            size={18}
             color='green'
             onClick={() => toggleEdit('showInput', 'save')}
-          />
-        ) : (
-          <IconEdit
-            cursor='pointer'
-            size={22}
-            onClick={() => toggleEdit('showInput', 'open')}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '12px'
+            }}
           />
         )}
-      </Flex>
+        {!editState.showInput && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              borderRadius: '4px',
+              backgroundColor: '#495057',
+              transition: 'opacity 0.2s ease',
+              position: 'absolute',
+              right: '12px',
+              top: '12px'
+            }}
+          >
+            <IconEdit
+              cursor='pointer'
+              size={14}
+              color='white'
+              onClick={() => toggleEdit('showInput', 'open')}
+            />
+          </div>
+        )}
+      </Box>
     );
   };
-
-  // if (!value) return null;
 
   return (
     <>
