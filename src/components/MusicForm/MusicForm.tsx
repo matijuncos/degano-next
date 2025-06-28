@@ -315,17 +315,30 @@ const MusicForm = ({
         </Button>
       </Flex>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '16px' }}>
-        {((musicData.welcomeSongs as string[]) || []).map((song, index) => (
-          <div key={song + index} style={{ margin: '4px' }}>
-            <Chip
-              icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-              color='blue'
-              defaultChecked
-              onClick={() => deleteWelcomeSong(song)}
-            >
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.welcomeSongs || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
-            </Chip>
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteWelcomeSong(song)}
+            />
           </div>
         ))}
       </div>
@@ -343,17 +356,30 @@ const MusicForm = ({
         </Button>
       </Flex>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '16px' }}>
-        {((musicData.walkIn as string[]) || []).map((song, index) => (
-          <div key={song + index} style={{ margin: '4px' }}>
-            <Chip
-              icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-              color='green'
-              defaultChecked
-              onClick={() => deleteWalkIn(song)}
-            >
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.walkIn || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
-            </Chip>
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteWalkIn(song)}
+            />
           </div>
         ))}
       </div>
@@ -372,17 +398,30 @@ const MusicForm = ({
         </Button>
       </Flex>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '16px' }}>
-        {((musicData.vals as string[]) || []).map((song, index) => (
-          <div key={song + index} style={{ margin: '4px' }}>
-            <Chip
-              icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-              color='pink'
-              defaultChecked
-              onClick={() => deleteVals(song)}
-            >
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.vals || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
-            </Chip>
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteVals(song)}
+            />
           </div>
         ))}
       </div>
@@ -409,17 +448,30 @@ const MusicForm = ({
         </Button>
       </Flex>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '16px' }}>
-        {((musicData.ambienceMusic as string[]) || []).map((song, index) => (
-          <div key={song + index} style={{ margin: '4px' }}>
-            <Chip
-              icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-              color='orange'
-              defaultChecked
-              onClick={() => deleteAmbienceMusic(song)}
-            >
+      <div style={{ marginBottom: '16px' }}>
+        {(musicData.ambienceMusic || []).map((song, index) => (
+          <div
+            key={song + index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              marginBottom: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
-            </Chip>
+            </Text>
+            <IconX
+              cursor='pointer'
+              size={16}
+              color='red'
+              onClick={() => deleteAmbienceMusic(song)}
+            />
           </div>
         ))}
       </div>
