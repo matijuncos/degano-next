@@ -14,10 +14,12 @@ const EditablePayments = () => {
   const [editedTotalToPay, setEditedTotalToPay] = useState(
     selectedEvent?.payment.totalToPay || ''
   );
-  const [subsequentPayments, setSubsequentPayments] = useState<any[]>([]);
+  const [subsequentPayments, setSubsequentPayments] = useState<any[]>(
+    selectedEvent?.payment.subsequentPayments || []
+  );
   const updateEvent = async (event: any) => {
     setLoading(true);
-    notify({loading: true});
+    notify({ loading: true });
 
     const timeStamp = new Date().toISOString();
     try {
@@ -33,7 +35,7 @@ const EditablePayments = () => {
       notify();
       setSelectedEvent(data.event);
     } catch (error) {
-      notify({type: 'defaultError'});
+      notify({ type: 'defaultError' });
       console.log(error);
     } finally {
       setLoading(false);
@@ -62,7 +64,7 @@ const EditablePayments = () => {
   };
 
   const updatePayment = (id: string, field: 'amount' | 'date', value: any) => {
-    const updatedPayments = subsequentPayments.map((payment) =>
+    const updatedPayments = subsequentPayments?.map((payment) =>
       payment.id === id ? { ...payment, [field]: value } : payment
     );
     setSubsequentPayments(updatedPayments);
@@ -97,7 +99,7 @@ const EditablePayments = () => {
     Number(selectedEvent?.payment.totalToPay) - sumOfPayments;
 
   if (!selectedEvent) return null;
-
+  console.log(selectedEvent.payment);
   return (
     <>
       <Box mb='24px' pt='md'>

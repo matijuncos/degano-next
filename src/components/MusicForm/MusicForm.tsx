@@ -1,4 +1,3 @@
-import { useDeganoCtx } from '@/context/DeganoContext';
 import {
   Box,
   Button,
@@ -7,13 +6,16 @@ import {
   Input,
   Rating,
   rem,
-  Text
+  Text,
+  Loader,
+  Alert
 } from '@mantine/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EventModel } from '@/context/types';
-import { IconX } from '@tabler/icons-react';
+import { IconX, IconAlertCircle } from '@tabler/icons-react';
 import styles from './MusicForm.module.css';
 import { EVENT_TABS } from '@/context/config';
+import { useGenres, transformGenresForMusic } from '@/hooks/useGenres';
 
 type GenreType = {
   genre: string;
@@ -34,10 +36,32 @@ const MusicForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
+  const {
+    genres: dbGenres,
+    loading: genresLoading,
+    error: genresError
+  } = useGenres();
   const [musicData, setMusicData] = useState(event);
   const [spotifyLinks, setSpotifyLinks] = useState<SpotifyLink[]>([]);
   const [spotifyLinkInputValue, setSpotifyLinkInputValue] = useState('');
   const [spotifyLabelInputValue, setSpotifyLabelInputValue] = useState('');
+
+  // Update musicData with database genres when they load
+  useEffect(() => {
+    if (
+      dbGenres.length > 0 &&
+      (!event.music.genres || event.music.genres.length === 0)
+    ) {
+      const transformedGenres = transformGenresForMusic(dbGenres);
+      setMusicData((prevData) => ({
+        ...prevData,
+        music: {
+          ...prevData.music,
+          genres: transformedGenres
+        }
+      }));
+    }
+  }, [dbGenres, event.music.genres]);
 
   const handleForbidden = (e: any) => {
     const target = e.target as HTMLInputElement;
@@ -146,19 +170,33 @@ const MusicForm = ({
   return (
     <div>
       <h2>Musica de preferencia</h2>
-      <div className={styles.ratingContainer}>
-        {musicData?.music.genres.map((genre: GenreType, index: number) => {
-          return (
-            <div className='eachRating' key={genre.genre}>
-              <p>{genre.genre}</p>
-              <Rating
-                value={genre.value}
-                onChange={(e) => rateGenre(e as any, index)}
-              />
-            </div>
-          );
-        })}
-      </div>
+
+      {/* Genres Loading/Error States */}
+      {genresLoading ? (
+        <Flex align='center' gap='sm' mb='md'>
+          <Loader size='sm' />
+          <Text>Cargando géneros...</Text>
+        </Flex>
+      ) : genresError ? (
+        <Alert icon={<IconAlertCircle size='1rem' />} color='red' mb='md'>
+          Error cargando géneros: {genresError}
+        </Alert>
+      ) : (
+        <div className={styles.ratingContainer}>
+          {musicData?.music.genres.map((genre: GenreType, index: number) => {
+            return (
+              <div className='eachRating' key={genre.genre}>
+                <p>{genre.genre}</p>
+                <Rating
+                  value={genre.value}
+                  onChange={(e) => rateGenre(e as any, index)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className={styles.inputPair}>
         <Input
           className={styles.input}
@@ -269,7 +307,9 @@ const MusicForm = ({
       </Box>
       <Flex direction='column' gap='12px'>
         <Button onClick={back}>Anterior</Button>
-        <Button onClick={next}>Siguiente</Button>
+        <Button onClick={next} disabled={genresLoading}>
+          Siguiente
+        </Button>
       </Flex>
     </div>
   );

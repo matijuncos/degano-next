@@ -1,10 +1,10 @@
 import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
-import { EventModel } from '@/context/types';
-import { Button, Input, InputLabel, Textarea } from '@mantine/core';
-import { DateInput, DatesProvider, DateValue, MonthPickerInput, DatePickerInput } from '@mantine/dates';
+import { Band, EventModel } from '@/context/types';
+import { Button, Input, InputLabel } from '@mantine/core';
+import { DateInput, DateValue } from '@mantine/dates';
 import { useState } from 'react';
-
+import BandList from '../BandManager/BandList';
 const EventForm = ({
   event,
   onNextTab,
@@ -19,6 +19,7 @@ const EventForm = ({
   setValidate: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
+
   const requiredFields: (keyof EventModel)[] = [
     'date',
     'type',
@@ -36,8 +37,7 @@ const EventForm = ({
     const isValid: boolean = requiredFields.every((field: keyof EventModel) => {
       const value = eventData[field];
       if (field === 'date') {
-        const dateIsValid = 
-          value instanceof Date && value.toISOString();
+        const dateIsValid = value instanceof Date && value.toISOString();
         return dateIsValid;
       }
       return value && String(value).trim() !== '';
@@ -59,21 +59,26 @@ const EventForm = ({
       [name]: value
     });
   };
+
+  const handleBandsChange = (bands: Band[]) => {
+    setEventData((prev) => ({ ...prev, bands: bands }));
+  };
+
   return (
     <>
       <h3>Datos del evento</h3>
       <div className='inputs-grid'>
         <InputLabel>
           Fecha del evento
-        <DateInput
-          placeholder='Fecha del evento *'
-          name='date'
-          locale='es'
-          valueFormat='DD/MM/YYYY'
-          value={eventData.date ? new Date(eventData.date) : null}
-          onChange={(value: DateValue) => onDateChange('date', value)}
-          error={validate && !eventData.date}
-        />
+          <DateInput
+            placeholder='Fecha del evento *'
+            name='date'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={eventData.date ? new Date(eventData.date) : null}
+            onChange={(value: DateValue) => onDateChange('date', value)}
+            error={validate && !eventData.date}
+          />
         </InputLabel>
         <InputLabel>
           Fecha de finalización del evento (opcional)
@@ -138,43 +143,18 @@ const EventForm = ({
           autoComplete='off'
         />
       </div>
-
-      <h3>Banda en vivo</h3>
-      <div className='inputs-grid'>
-        <Input
-          type='text'
-          name='bandName'
-          onChange={handleInputChange}
-          placeholder='Banda'
-          value={eventData.bandName}
-          autoComplete='off'
-        />
-        <Input
-          type='text'
-          placeholder='Manager'
-          value={eventData.manager}
-          name='manager'
-          onChange={handleInputChange}
-          autoComplete='off'
-        />
-        <Input
-          type='text'
-          name='managerPhone'
-          onChange={handleInputChange}
-          placeholder='Telefono del mánager'
-          value={eventData.managerPhone}
-          autoComplete='off'
-        />
-      </div>
-      <Textarea
-        my='16px'
-        value={eventData.moreData}
-        name='moreData'
-        style={{ width: '100%' }}
-        onChange={handleInputChange}
-        placeholder='Otros datos'
+      <BandList
+        bands={eventData.bands || []}
+        onBandsChange={handleBandsChange}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          marginTop: '10px'
+        }}
+      >
         <Button onClick={back}>Atrás</Button>
         <Button onClick={next}>Siguiente</Button>
       </div>

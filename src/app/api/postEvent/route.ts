@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'; // Import ObjectId
+import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
@@ -14,11 +14,16 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const { _id, ...bodyWithoutId } = body;
+    const { _id, bands, ...bodyWithoutId } = body;
     const db = client.db('degano-app');
     const timestamp = new Date();
+    const bandsWithIds = (bands || []).map((b: any) => ({
+      ...b,
+      _id: new ObjectId(),
+    }));
     const document = {
       ...(!_id ? bodyWithoutId : body),
+      bands: bandsWithIds,
       createdAt: !_id ? timestamp : undefined,
       updatedAt: timestamp
     };

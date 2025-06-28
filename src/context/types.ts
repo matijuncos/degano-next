@@ -16,11 +16,7 @@ export interface EventModel {
   averageAge: string;
   churchDate?: string;
   civil: string;
-  bandName: string;
-  manager: string;
-  managerPhone: string;
-  showtime: string;
-  moreData: string;
+  bands: Array<Band>;
   music: Music;
   equipment: NewEquipment[];
   payment: {
@@ -32,6 +28,7 @@ export interface EventModel {
     totalPayed: boolean;
     subsequentPayments?: any[];
   };
+  moreData: string;
   date: Date | string;
   endDate?: Date;
   active: boolean;
@@ -39,6 +36,7 @@ export interface EventModel {
     label: string;
     url: string;
   }[];
+  // status: string;
   _id: string;
 }
 export interface SelectedEventType extends EventModel {
@@ -68,6 +66,8 @@ export interface DeganoContextProps {
   setLoading: Function;
   folderName: string;
   setFolderName: Function;
+  authToken: string;
+  setAuthToken: Function;
 }
 export interface DataverseProviderProps {
   children: ReactNode;
@@ -86,6 +86,14 @@ export interface Music {
   }[];
   forbidden: string[];
   required: string[];
+}
+
+export interface Band {
+  bandName: string;
+  manager: string;
+  managerPhone: string;
+  bandInfo: string;
+  showtime?: string;
 }
 
 export type EventsList = EventModel[];

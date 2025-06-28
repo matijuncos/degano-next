@@ -7,7 +7,8 @@ import {
   IconCalendar,
   IconPlus,
   IconHome,
-  IconListCheck
+  IconListCheck,
+  IconMusic
 } from '@tabler/icons-react';
 import degano from '../../assets/logo.png';
 import classes from './Navbar.module.css';
@@ -43,7 +44,8 @@ const linksList = [
   { icon: IconCalendar, label: 'Calendario', path: '/calendar' },
   { icon: IconListCheck, label: 'Eventos', path: '/events' },
   { icon: IconUser, label: 'Clientes', path: '/clients' },
-  { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' }
+  { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' },
+  { icon: IconMusic, label: 'Géneros de música', path: '/genres' }
 ];
 
 function Navbar() {
