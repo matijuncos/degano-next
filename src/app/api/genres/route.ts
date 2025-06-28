@@ -13,7 +13,11 @@ export const GET = async function handler(
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const db = client.db('degano-app');
-    const genres = await db.collection('genres').find().toArray();
+    const genres = await db
+      .collection('genres')
+      .find()
+      .toArray()
+      .then((genres) => genres.sort((a, b) => a.name.localeCompare(b.name)));
 
     // Invalidate cache for the specific path after fetching new data
     revalidatePath(req.nextUrl.pathname);

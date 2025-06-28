@@ -3,6 +3,7 @@ import {
   IconCalendar,
   IconHome,
   IconListCheck,
+  IconMusic,
   IconPlus,
   IconUser
 } from '@tabler/icons-react';
@@ -37,6 +38,11 @@ const BottomNavBar = () => {
       label: 'Crear Evento',
       path: '/new-event',
       Icon: <IconPlus color='white' />
+    },
+    {
+      label: 'Géneros de música',
+      path: '/genres',
+      Icon: <IconMusic color='white' />
     }
   ];
 

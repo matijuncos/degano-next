@@ -7,6 +7,7 @@ import {
   IconCalendar,
   IconCheckupList,
   IconListCheck,
+  IconMusic,
   IconPlus,
   IconUser
 } from '@tabler/icons-react';
@@ -45,6 +46,11 @@ const Home = () => {
       label: 'Administrar Stock',
       path: '/equipment',
       Icon: IconCheckupList
+    },
+    {
+      label: 'Géneros de música',
+      path: '/genres',
+      Icon: IconMusic
     }
   ];
   const itemVariants = {
