@@ -33,5 +33,6 @@ export const INITIAL_EVENT_STATE: EventModel = {
     subsequentPayments: []
   },
   active: true,
-  playlist: []
+  playlist: [],
+  timing: []
 };

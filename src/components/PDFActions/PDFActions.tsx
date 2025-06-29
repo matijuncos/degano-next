@@ -10,7 +10,8 @@ import {
   PrintableMoreInfoSection,
   PrintableEquipmentSection,
   PrintableFilesSection,
-  PrintablePaymentsSection
+  PrintablePaymentsSection,
+  PrintableTimingSection
 } from '../PrintableSections';
 
 interface PDFActionsProps {
@@ -36,7 +37,8 @@ const PDFActions: React.FC<PDFActionsProps> = ({
       moreInfo: <PrintableMoreInfoSection event={selectedEvent} />,
       equipment: <PrintableEquipmentSection event={selectedEvent} />,
       files: <PrintableFilesSection event={selectedEvent} />,
-      payments: <PrintablePaymentsSection event={selectedEvent} />
+      payments: <PrintablePaymentsSection event={selectedEvent} />,
+      timing: <PrintableTimingSection event={selectedEvent} />
     };
 
     return components[sectionKey as keyof typeof components] || null;
@@ -50,7 +52,8 @@ const PDFActions: React.FC<PDFActionsProps> = ({
       moreInfo: 'Más Información',
       equipment: 'Equipos',
       files: 'Archivos',
-      payments: 'Historial de Pagos'
+      payments: 'Historial de Pagos',
+      timing: 'Cronograma'
     };
 
     return titles[sectionKey] || sectionKey;

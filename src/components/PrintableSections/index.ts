@@ -5,3 +5,4 @@ export { default as PrintableMoreInfoSection } from './PrintableMoreInfoSection'
 export { default as PrintableEquipmentSection } from './PrintableEquipmentSection';
 export { default as PrintableFilesSection } from './PrintableFilesSection';
 export { default as PrintablePaymentsSection } from './PrintablePaymentsSection';
+export { default as PrintableTimingSection } from './PrintableTimingSection';

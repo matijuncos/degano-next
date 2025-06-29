@@ -5,6 +5,7 @@ import EquipmentForm from '@/components/EquipmentForm/EquipmentForm';
 import EventForm from '@/components/EventForm/EventForm';
 import MusicForm from '@/components/MusicForm/MusicForm';
 import PaymentForm from '@/components/PaymentForm/PaymentForm';
+import TimingForm from '@/components/TimingForm/TimingForm';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
@@ -134,6 +135,14 @@ const NewEventPage = () => {
             onFinish={saveEvent}
           />
         );
+      case EVENT_TABS.TIMING:
+        return (
+          <TimingForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+          />
+        );
       default:
         break;
     }
@@ -152,6 +161,7 @@ const NewEventPage = () => {
             <Tabs.Tab value={EVENT_TABS.CLIENT.toString()}>Cliente</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EVENT.toString()}>Evento</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.MUSIC.toString()}>Musica</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.TIMING.toString()}>Timing</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EQUIPMENT.toString()}>
               Equipamiento
             </Tabs.Tab>
