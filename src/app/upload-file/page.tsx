@@ -59,7 +59,7 @@ export default function FileUploader() {
   const gapiConfig = {
     apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
     clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-    discoveryDocs: DISCOVERY_DOCS,
+    discoveryDocs: [DISCOVERY_DOCS],
     scope: SCOPES
   };
   const gapiRef = useRef<any>(null);
@@ -382,7 +382,10 @@ export default function FileUploader() {
             {loading ? 'Subiendo...' : 'Subir Archivos'}
           </Button>
           <Button
-            onClick={() => {setLoadingCursor(true); router.push('/home')}}
+            onClick={() => {
+              setLoadingCursor(true);
+              router.push('/home');
+            }}
             mt='18px'
             w='100%'
             disabled={loading}

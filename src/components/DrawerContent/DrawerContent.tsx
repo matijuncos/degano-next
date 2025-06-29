@@ -28,7 +28,7 @@ const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_DISCOVERY_DOCS];
 const gapiConfig = {
   apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
   clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-  discoveryDocs: DISCOVERY_DOCS,
+  discoveryDocs: [DISCOVERY_DOCS],
   scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES
 };
 
@@ -287,7 +287,7 @@ const DrawerContent = () => {
             })}
           </div>
           {selectedEvent &&
-            selectedEvent?.bands.map((band,i) => (
+            selectedEvent?.bands.map((band, i) => (
               <div key={i}>
                 <h4 className={styles.subtitle}>
                   <p>{`Anexo Banda en Vivo "${band.bandName}"`}</p>

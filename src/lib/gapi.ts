@@ -1,9 +1,10 @@
-export const initializeGapiClientAndGetToken = async (gapiConfig: any): Promise<string | null> => {
+export const initializeGapiClientAndGetToken = async (
+  gapiConfig: any
+): Promise<string | null> => {
   try {
     // Carga y configuración de GAPI
     const gapiModule = await import('gapi-script');
     const gapi = gapiModule.gapi || gapiModule.default.gapi;
-
     await new Promise<void>((resolve, reject) => {
       gapi.load('client:auth2', () => {
         gapi.client

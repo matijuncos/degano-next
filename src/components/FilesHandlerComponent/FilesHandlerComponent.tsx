@@ -30,7 +30,7 @@ const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_DISCOVERY_DOCS];
 const gapiConfig = {
   apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
   clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-  discoveryDocs: DISCOVERY_DOCS,
+  discoveryDocs: [DISCOVERY_DOCS],
   scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES
 };
 
@@ -188,17 +188,17 @@ export default function FilesHandlerComponent() {
           })
           .catch((e) => console.log(e));
       } else if (!authToken) {
-          const token = await getToken();
-          if (token) setAuthToken(token);
+        const token = await getToken();
+        if (token) setAuthToken(token);
       }
-    }
+    };
     fetchFiles();
   }, [authToken, folderId, fetchFilesFromFolder]);
 
-    const getToken = async () => {
-      const token = await initializeGapiClientAndGetToken(gapiConfig);
-      return token;
-    }
+  const getToken = async () => {
+    const token = await initializeGapiClientAndGetToken(gapiConfig);
+    return token;
+  };
 
   const handleUploadClick = async () => {
     setLoading((prev) => ({ ...prev, uploading: true }));
