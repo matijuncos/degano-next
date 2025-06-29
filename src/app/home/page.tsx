@@ -77,7 +77,7 @@ const Home = () => {
   const gapiConfig = {
     apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
     clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-    discoveryDocs: DISCOVERY_DOCS,
+    discoveryDocs: [DISCOVERY_DOCS],
     scope: SCOPES
   };
   useEffect(() => {
