@@ -26,12 +26,14 @@ const EditableData = ({
   title,
   value,
   property,
-  type
+  type,
+  style
 }: {
   title?: string;
   value: string | any[] | Date;
   property: string;
   type: string;
+  style?: React.CSSProperties;
 }) => {
   const { selectedEvent } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
@@ -172,7 +174,8 @@ const EditableData = ({
           textHover && !editState.showInput ? '#f8f9fa' : 'transparent',
         border: '1px solid #e9ecef',
         transition: 'all 0.2s ease',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        ...style
       }}
       c='white'
       onMouseEnter={() => setTextHover(true)}
@@ -444,11 +447,6 @@ const EditableData = ({
             </>
           ) : (
             <>
-              {title && (
-                <Text fw={600} size='sm' c='white' mb='8px'>
-                  {title}:
-                </Text>
-              )}
               <Text size='sm' c='white' style={{ whiteSpace: 'pre-wrap' }}>
                 {typeof editState.inputValue === 'string'
                   ? editState.inputValue

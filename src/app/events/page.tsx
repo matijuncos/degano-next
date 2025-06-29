@@ -32,8 +32,8 @@ export default withPageAuthRequired(function EventPage() {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const router = useRouter();
   const [eventId, setEventId] = useState('');
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
-  const [salonFilter, setSalonFilter] = useState<string | null>(null);
+  const [clientFilter, setClientFilter] = useState<string>('');
+  const [salonFilter, setSalonFilter] = useState<string>('');
   const [filteredRecords, setFilteredRecords] = useState(records);
   const notify = useNotification();
   const setLoadingCursor = useLoadingCursor();
@@ -41,14 +41,29 @@ export default withPageAuthRequired(function EventPage() {
   useEffect(() => {
     const filtered = records.filter(
       (event) =>
-        (clientFilter === null || event.fullName === clientFilter) &&
-        (salonFilter === null || event.salon === salonFilter)
+        (!clientFilter ||
+          clientFilter === '' ||
+          event.fullName === clientFilter) &&
+        (!salonFilter || salonFilter === '' || event.salon === salonFilter)
     );
     setFilteredRecords(filtered);
   }, [records, clientFilter, salonFilter]);
 
-  const uniqueClients = Array.from(new Set(records.map((r) => r.fullName)));
-  const uniqueSalons = Array.from(new Set(records.map((r) => r.salon)));
+  const uniqueClients = Array.from(
+    new Set(
+      records
+        .map((r) => r.fullName)
+        .filter((name) => name && name.trim() !== '')
+    )
+  );
+
+  const uniqueSalons = Array.from(
+    new Set(
+      records
+        .map((r) => r.salon)
+        .filter((salon) => salon && salon.trim() !== '')
+    )
+  );
 
   const sortedClients = [...uniqueClients].sort((a, b) => a.localeCompare(b));
   const sortedSalons = [...uniqueSalons].sort((a, b) => a.localeCompare(b));
@@ -67,7 +82,7 @@ export default withPageAuthRequired(function EventPage() {
     setShowConfirmationModal(false);
     setLoading(true);
     setLoadingCursor(true);
-    notify({loading: true});
+    notify({ loading: true });
     try {
       const response = await fetch(`/api/deleteEvent/${eventId}`, {
         method: 'DELETE',
@@ -77,9 +92,9 @@ export default withPageAuthRequired(function EventPage() {
       if (data.success) {
         fetchEvents();
       }
-      notify({message: 'Se elimino el evento correctamente'});
+      notify({ message: 'Se elimino el evento correctamente' });
     } catch (error) {
-      notify({type: 'defaultError'});
+      notify({ type: 'defaultError' });
       console.error(error);
     } finally {
       setLoading(false);
@@ -140,7 +155,7 @@ export default withPageAuthRequired(function EventPage() {
               <Select
                 placeholder='Filtrar por cliente'
                 value={clientFilter}
-                onChange={setClientFilter}
+                onChange={(value) => setClientFilter(value || '')}
                 data={[
                   { value: '', label: 'Todos los clientes' },
                   ...sortedClients.map((client) => ({
@@ -154,7 +169,7 @@ export default withPageAuthRequired(function EventPage() {
               <Select
                 placeholder='Filtrar por salón'
                 value={salonFilter}
-                onChange={setSalonFilter}
+                onChange={(value) => setSalonFilter(value || '')}
                 data={[
                   { value: '', label: 'Todos los salones' },
                   ...sortedSalons.map((salon) => ({
@@ -188,7 +203,7 @@ export default withPageAuthRequired(function EventPage() {
             </Flex>
           </Flex>
           <DataTable
-            style={{height: 'auto'}}
+            style={{ height: 'auto' }}
             highlightOnHover
             rowColor={({ date }) => {
               const now = new Date();

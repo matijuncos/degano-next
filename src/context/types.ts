@@ -43,6 +43,11 @@ export interface EventModel {
   vals?: string[];
   openingPartySong?: string;
   ambienceMusic?: string[];
+  timing?: {
+    time: string;
+    title: string;
+    details: string;
+  }[];
 }
 export interface SelectedEventType extends EventModel {
   title?: string;

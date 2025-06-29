@@ -19,7 +19,8 @@ import {
   Divider,
   Flex,
   Switch,
-  Tabs
+  Tabs,
+  Text
 } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
@@ -222,7 +223,56 @@ const MusicInformation = ({
 const EquipmentInformation = () => {
   return <EquipmentTable />;
 };
-const TimingInformation = () => <>Building...</>;
+const TimingInformation = ({
+  selectedEvent
+}: {
+  selectedEvent: EventModel | null;
+}) => {
+  if (!selectedEvent) return null;
+  return (
+    <Flex direction='column' gap='16px' mt='16px'>
+      {selectedEvent.timing && selectedEvent.timing.length > 0 ? (
+        selectedEvent.timing.map((item, index) => (
+          <Box
+            key={index}
+            p='md'
+            // style={{ border: '1px solid #e9ecef', borderRadius: '8px' }}
+          >
+            <Text fw={600} size='sm' mb='xs'>
+              #{index + 1}
+            </Text>
+            <Flex gap='sm'>
+              <EditableData
+                type='text'
+                property={`timing[${index}].time`}
+                title='Hora'
+                value={item.time + 'hs' || ''}
+                style={{ flexGrow: 1 }}
+              />
+              <EditableData
+                type='text'
+                property={`timing[${index}].title`}
+                title='Título'
+                value={item.title || ''}
+                style={{ flexGrow: 1 }}
+              />
+            </Flex>
+            <EditableData
+              type='textarea'
+              property={`timing[${index}].details`}
+              title='Detalles'
+              value={item.details || ''}
+            />
+          </Box>
+        ))
+      ) : (
+        <Text c='dimmed' fs='italic'>
+          No hay cronograma definido
+        </Text>
+      )}
+    </Flex>
+  );
+};
 const MoreInfoInformation = ({
   selectedEvent
 }: {
@@ -354,7 +404,7 @@ const EventPage = () => {
     ),
     timing: (
       <PDFActions sectionKey='timing'>
-        <TimingInformation />
+        <TimingInformation selectedEvent={selectedEvent} />
       </PDFActions>
     ),
     moreInfo: (
@@ -601,161 +651,6 @@ const EventPage = () => {
               <Title mb='16px'>
                 {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.salon}`}
               </Title>
-              {/*  <Flex direction='column' gap='8px'>
-                <AccordionSet value='Información Principal'>
-                  <Grid gutter='xl'>
-                    <Grid.Col span={5.5}>
-                      <EditableData
-                        type='text'
-                        property='phoneNumber'
-                        title='Teléfono'
-                        value={selectedEvent.phoneNumber}
-                      />
-                      <EditableData
-                        type='text'
-                        property='type'
-                        title='Tipo de evento'
-                        value={selectedEvent.type}
-                      />
-                      <EditableData
-                        type='text'
-                        property='type'
-                        title='Fecha'
-                        value={new Date(
-                          selectedEvent.date
-                        ).toLocaleDateString()}
-                      />
-                      {selectedEvent.endDate ? (
-                        <EditableData
-                          type='text'
-                          property='type'
-                          title='Fecha Finalizacion'
-                          value={new Date(
-                            selectedEvent.endDate
-                          ).toLocaleDateString()}
-                        />
-                      ) : (
-                        <></>
-                      )}
-                      <EditableData
-                        type='text'
-                        property='salon'
-                        title='Salon'
-                        value={selectedEvent.salon}
-                      />
-                      <EditableData
-                        type='text'
-                        property='eventAddress'
-                        title='Dirección'
-                        value={selectedEvent.eventAddress}
-                      />
-                      <EditableData
-                        type='text'
-                        property='eventCity'
-                        title='Localidad'
-                        value={selectedEvent.eventCity}
-                      />
-                      <EditableData
-                        type='text'
-                        property='guests'
-                        title='Cantidad de invitados'
-                        value={selectedEvent.guests}
-                      />
-                    </Grid.Col>
-                    <Grid.Col
-                      span='auto'
-                      style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
-                    >
-                      <Divider orientation='vertical' />
-                    </Grid.Col>
-                    <Grid.Col span={5.5}>
-                      <EditableData
-                        type='text'
-                        property='age'
-                        title='Edad'
-                        value={selectedEvent.age}
-                      />
-                      <EditableData
-                        type='text'
-                        property='averageAge'
-                        title='Edad Promedio'
-                        value={selectedEvent.averageAge}
-                      />
-                      <EditableData
-                        type='text'
-                        property='email'
-                        title='Email'
-                        value={selectedEvent.email}
-                      />
-                      <EditableData
-                        type='text'
-                        property='guests'
-                        title='Invitados'
-                        value={selectedEvent.guests}
-                      />
-                    </Grid.Col>
-                  </Grid>
-                </AccordionSet>
-                <AccordionSet value='Banda en vivo'>
-                  <BandList
-                    bands={selectedEvent?.bands || []}
-                    onBandsChange={handleBandsChange}
-                    editing={true}
-                  />
-                </AccordionSet>
-                <AccordionSet value='Música'>
-                  <AccordionSet value='Prohibidos'>
-                    <EditableData
-                      type='chips'
-                      value={selectedEvent.music.forbidden}
-                      property='forbidden'
-                    />
-                  </AccordionSet>
-                  <AccordionSet value='Requeridos'>
-                    <EditableData
-                      type='chips'
-                      value={selectedEvent.music.required}
-                      property='required'
-                    />
-                  </AccordionSet>
-                  <AccordionSet value='Géneros'>
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px'
-                      }}
-                    >
-                      <EditableData
-                        type='rate'
-                        property='genres'
-                        value={selectedEvent.music.genres}
-                      />
-                    </div>
-                  </AccordionSet>
-                  <AccordionSet value='Playlist'>
-                    <SpotifyTable />
-                  </AccordionSet>
-                </AccordionSet>
-                <AccordionSet value='Más Información'>
-                  <EditableData
-                    type='textarea'
-                    property='moreData'
-                    value={selectedEvent.moreData}
-                  />
-                </AccordionSet>
-                <AccordionSet value='Equipos'>
-                  <EquipmentTable />
-                </AccordionSet>
-                <AccordionSet value='Archivos'>
-                  <FilesHandlerComponent />
-                </AccordionSet>
-                {isAdmin && (
-                  <AccordionSet value='Historial de pagos'>
-                    <EditablePayments />
-                  </AccordionSet>
-                )}
-              </Flex> */}
               {showTabsVersion ? <TabsVersion /> : <AllAccordions />}
             </Box>
           )}
