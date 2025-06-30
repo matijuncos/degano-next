@@ -58,7 +58,8 @@ export default function CreationPanel({
           weight: editItem.weight,
           location: editItem.location || '',
           isOut: editItem.outOfService?.isOut || false,
-          reason: editItem.outOfService?.reason || '',
+          // reason: editItem.outOfService?.reason || '',
+          history: editItem.history || '',
           imageBase64: editItem.imageBase64 || null,
           pdfBase64: editItem.pdfBase64 || null
         });
@@ -104,9 +105,10 @@ export default function CreationPanel({
             categoryId:
               editItem?.categoryId || selectedCategory.parentIdOriginal,
             outOfService: {
-              isOut: formData.isOut,
-              reason: formData.reason || ''
+              isOut: formData.isOut
+              // reason: formData.reason || ''
             },
+            history: formData.history || '',
             brand: formData.brand,
             model: formData.model,
             serialNumber: formData.serialNumber,
@@ -259,13 +261,13 @@ export default function CreationPanel({
               handleInput('isOut', val === 'Fuera de servicio')
             }
           />
-          {formData.isOut && (
+          {/* {formData.isOut && (
             <Textarea
               label='Motivo de fuera de servicio'
               value={formData.reason || ''}
               onChange={(e) => handleInput('reason', e.currentTarget.value)}
             />
-          )}
+          )} */}
           <Select
             label='Localización'
             data={[...locations, 'Otra...']}
@@ -286,6 +288,14 @@ export default function CreationPanel({
               onChange={(e) => setCustomLocation(e.currentTarget.value)}
             />
           )}
+          <Textarea
+            label='Historial'
+            placeholder='Escribí cambios, reparaciones, observaciones...'
+            minRows={4}
+            autosize
+            value={formData.history || ''}
+            onChange={(e) => handleInput('history', e.currentTarget.value)}
+          />
           <div>
             <label>Imagen del equipo (máx. 10MB)</label>
             <input
@@ -387,7 +397,12 @@ export default function CreationPanel({
             ? 'Finalizar carga'
             : 'Actualizar'}
         </Button>
-        <Button variant='default' color='gray' onClick={handleCancel} style={{marginBottom: '10px'}}>
+        <Button
+          variant='default'
+          color='gray'
+          onClick={handleCancel}
+          style={{ marginBottom: '10px' }}
+        >
           Cancelar
         </Button>
       </Group>
