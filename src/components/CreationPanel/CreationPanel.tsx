@@ -58,7 +58,7 @@ export default function CreationPanel({
           weight: editItem.weight,
           location: editItem.location || '',
           isOut: editItem.outOfService?.isOut || false,
-          // reason: editItem.outOfService?.reason || '',
+          reason: editItem.outOfService?.reason || '',
           history: editItem.history || '',
           imageBase64: editItem.imageBase64 || null,
           pdfBase64: editItem.pdfBase64 || null
@@ -105,8 +105,8 @@ export default function CreationPanel({
             categoryId:
               editItem?.categoryId || selectedCategory.parentIdOriginal,
             outOfService: {
-              isOut: formData.isOut
-              // reason: formData.reason || ''
+              isOut: formData.isOut,
+              reason: formData.reason || ''
             },
             history: formData.history || '',
             brand: formData.brand,
@@ -244,7 +244,6 @@ export default function CreationPanel({
             }}
             placeholder='$ 0'
           />
-
           <NumberInput
             label='Peso (kg)'
             value={formData.weight || 0}
@@ -253,21 +252,6 @@ export default function CreationPanel({
             }
             step={0.1}
           />
-          <Select
-            label='Estado'
-            data={['Disponible', 'Fuera de servicio']}
-            value={formData.isOut ? 'Fuera de servicio' : 'Disponible'}
-            onChange={(val) =>
-              handleInput('isOut', val === 'Fuera de servicio')
-            }
-          />
-          {/* {formData.isOut && (
-            <Textarea
-              label='Motivo de fuera de servicio'
-              value={formData.reason || ''}
-              onChange={(e) => handleInput('reason', e.currentTarget.value)}
-            />
-          )} */}
           <Select
             label='Localización'
             data={[...locations, 'Otra...']}
@@ -286,6 +270,21 @@ export default function CreationPanel({
               placeholder='Ej: Depósito 2'
               value={customLocation}
               onChange={(e) => setCustomLocation(e.currentTarget.value)}
+            />
+          )}
+          <Select
+            label='Estado'
+            data={['Disponible', 'Fuera de servicio']}
+            value={formData.isOut ? 'Fuera de servicio' : 'Disponible'}
+            onChange={(val) =>
+              handleInput('isOut', val === 'Fuera de servicio')
+            }
+          />
+          {formData.isOut && (
+            <Textarea
+              label='Motivo de fuera de servicio'
+              value={formData.reason || ''}
+              onChange={(e) => handleInput('reason', e.currentTarget.value)}
             />
           )}
           <Textarea

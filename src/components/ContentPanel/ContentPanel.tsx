@@ -77,7 +77,7 @@ export default function ContentPanel({
           <th>Modelo</th>
           <th>N° Serie</th>
           <th>Estado</th>
-          <th>Motivo</th>
+          <th>Locación</th>
         </tr>
       );
     }
@@ -147,7 +147,7 @@ export default function ContentPanel({
           <td style={{ color: item.outOfService?.isOut ? 'red' : 'green' }}>
             {item.outOfService?.isOut ? 'No disponible' : 'OK'}
           </td>
-          <td>{item.outOfService?.isOut ? item.outOfService?.reason : '-'}</td>
+          <td>{item.location}</td>
         </tr>
       );
     }
