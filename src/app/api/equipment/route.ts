@@ -7,7 +7,7 @@ import { ObjectId } from 'mongodb';
 export async function GET() {
   const client = await clientPromise;
   const db = client.db('degano-app');
-  const equipments = await db.collection('equipment').find().toArray();
+  const equipments = await db.collection('equipment').find().sort({name: 1}).toArray();
   return NextResponse.json(equipments);
 }
 
