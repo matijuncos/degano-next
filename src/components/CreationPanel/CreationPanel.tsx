@@ -73,6 +73,16 @@ export default function CreationPanel({
     setFormData({ ...formData, [field]: value });
   };
 
+  const afterSubmit = (updatedItem: any) => {
+    setFormData({});
+    setCustomLocation('');
+    mutate('/api/categories');
+    mutate('/api/equipment');
+    mutate('/api/treeData');
+    mutate('/api/equipmentLocation');
+    onCancel?.(false, updatedItem);
+  };
+
   const handleSubmit = async () => {
     const isEdit = !!editItem;
     const endpoint =
@@ -93,66 +103,60 @@ export default function CreationPanel({
       locationValue = result.name;
     }
 
-    const payload =
-      isCreatingCategory || isEditingCategory
-        ? {
-            name: formData.name,
-            parentId: editItem?.parentId || selectedCategory.parentId
-          }
-        : {
-            name: formData.name,
-            code: formData.code,
-            categoryId:
-              editItem?.categoryId || selectedCategory.parentIdOriginal,
-            outOfService: {
-              isOut: formData.isOut,
-              reason: formData.reason || ''
-            },
-            history: formData.history || '',
-            brand: formData.brand,
-            model: formData.model,
-            serialNumber: formData.serialNumber,
-            rentalPrice: formData.rentalPrice,
-            investmentPrice: formData.investmentPrice,
-            weight: formData.weight,
-            location: locationValue
-          };
+    if (isCreatingCategory || isEditingCategory) {
+      // Enviar como JSON normal
+      const payload = {
+        name: formData.name,
+        parentId: editItem?.parentId || selectedCategory.parentId,
+        _id: id
+      };
 
-    const convertFileToBase64 = (file: File): Promise<string> =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-    if (!isCreatingCategory && !isEditingCategory) {
-      if (formData.imageFile instanceof File) {
-        (payload as any).imageBase64 = await convertFileToBase64(
-          formData.imageFile
-        );
-      }
-      if (formData.pdfFile instanceof File) {
-        (payload as any).pdfBase64 = await convertFileToBase64(
-          formData.pdfFile
-        );
-      }
+      const updatedItem = await res.json();
+      afterSubmit(updatedItem);
+      return;
+    }
+
+    // Si es equipamiento, usá FormData
+    const formDataToSend = new FormData();
+
+    formDataToSend.append('name', formData.name);
+    formDataToSend.append('code', formData.code);
+    formDataToSend.append(
+      'categoryId',
+      editItem?.categoryId || selectedCategory.parentIdOriginal
+    );
+    formDataToSend.append('brand', formData.brand);
+    formDataToSend.append('model', formData.model);
+    formDataToSend.append('serialNumber', formData.serialNumber);
+    formDataToSend.append('rentalPrice', String(formData.rentalPrice));
+    formDataToSend.append('investmentPrice', String(formData.investmentPrice));
+    formDataToSend.append('weight', String(formData.weight));
+    formDataToSend.append('location', locationValue);
+    formDataToSend.append('history', formData.history || '');
+    formDataToSend.append('isOut', String(formData.isOut));
+    formDataToSend.append('reason', formData.reason || '');
+    if (id) formDataToSend.append('_id', id);
+
+    if (formData.imageFile) {
+      formDataToSend.append('imageFile', formData.imageFile);
+    }
+    if (formData.pdfFile) {
+      formDataToSend.append('pdfFile', formData.pdfFile);
     }
 
     const res = await fetch(endpoint, {
       method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, _id: id })
+      body: formDataToSend
     });
 
-    setFormData({});
-    setCustomLocation('');
     const updatedItem = await res.json();
-    mutate('/api/categories');
-    mutate('/api/equipment');
-    mutate('/api/treeData');
-    mutate('/api/equipmentLocation');
-    onCancel?.(false, updatedItem);
+    afterSubmit(updatedItem);
   };
 
   const handleCancel = () => {
@@ -367,12 +371,12 @@ export default function CreationPanel({
                       ? URL.createObjectURL(formData.pdfFile)
                       : formData.pdfBase64
                   }
-                  download={`Manual ${formData.name}`}
+                  download={`Manual ${formData.name} ${formData.model}.pdf`}
                   variant='light'
                   size='xs'
                   style={{ marginBottom: 5 }}
                 >
-                  Descargar Manual {formData.name}.pdf
+                  Descargar Manual {formData.name} {formData.model}.pdf
                 </Button>
               </div>
               <Button
