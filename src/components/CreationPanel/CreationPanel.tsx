@@ -52,7 +52,7 @@ export default function CreationPanel({
             rawRental
           )}`,
           investmentPrice: editItem.investmentPrice,
-          investmentPriceFormatted: `$ ${new Intl.NumberFormat('en-US').format(
+          investmentPriceFormatted: `$ ${new Intl.NumberFormat('es-AR').format(
             rawInvestment
           )}`,
           weight: editItem.weight,
@@ -390,7 +390,17 @@ export default function CreationPanel({
             />
           </div>
           {/* Link al PDF */}
-          {formData.pdfFile || formData.pdfUrl || formData.pdfBase64 ? (
+          {formData.pdfFile && (
+            <Button
+              variant='light'
+              size='xs'
+              style={{ marginBottom: 5 }}
+              onClick={() => {}}
+            >
+              {formData.pdfFileName}
+            </Button>
+          )}
+          {formData.pdfUrl || formData.pdfBase64 ? (
             <div style={{ marginTop: 16 }}>
               <div>
                 <Button
@@ -398,23 +408,36 @@ export default function CreationPanel({
                   size='xs'
                   style={{ marginBottom: 5 }}
                   onClick={async () => {
-                    const response = await fetch(formData.pdfUrl);
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
+                    if (formData.pdfUrl) {
+                      // Caso nuevo con URL firmada de S3
+                      window.open(formData.pdfUrl, '_blank');
+                    } else if (formData.pdfBase64) {
+                      try {
+                        // Eliminar el prefijo si existe
+                        const base64String = formData.pdfBase64.includes(',')
+                          ? formData.pdfBase64.split(',')[1]
+                          : formData.pdfBase64;
 
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.setAttribute(
-                      'download',
-                      formData.pdfFileName || 'manual.pdf'
-                    );
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                    window.URL.revokeObjectURL(url);
+                        const binary = atob(base64String);
+                        const bytes = Uint8Array.from(binary, (char) =>
+                          char.charCodeAt(0)
+                        );
+                        const blob = new Blob([bytes], {
+                          type: 'application/pdf'
+                        });
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                        setTimeout(() => URL.revokeObjectURL(url), 10000);
+                      } catch (err) {
+                        console.error('Error abriendo PDF base64:', err);
+                        alert(
+                          'No se pudo abrir el PDF. El archivo puede estar corrupto.'
+                        );
+                      }
+                    }
                   }}
                 >
-                  Descargar {formData.pdfFileName}
+                  Ver {formData.pdfFileName || 'archivo'}
                 </Button>
               </div>
               <Button
