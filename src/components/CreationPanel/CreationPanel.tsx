@@ -61,7 +61,10 @@ export default function CreationPanel({
           reason: editItem.outOfService?.reason || '',
           history: editItem.history || '',
           imageBase64: editItem.imageBase64 || null,
-          pdfBase64: editItem.pdfBase64 || null
+          pdfBase64: editItem.pdfBase64 || null,
+          imageUrl: editItem.imageUrl || '',
+          pdfUrl: editItem.pdfUrl || '',
+          pdfFileName: editItem.pdfFileName || null
         });
       }
     } else {
@@ -70,17 +73,28 @@ export default function CreationPanel({
   }, [editItem]);
 
   const handleInput = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  const afterSubmit = (updatedItem: any) => {
-    setFormData({});
-    setCustomLocation('');
-    mutate('/api/categories');
-    mutate('/api/equipment');
-    mutate('/api/treeData');
-    mutate('/api/equipmentLocation');
-    onCancel?.(false, updatedItem);
+  const deleteFromS3 = async (url: string) => {
+    if (!url) return;
+    await fetch('/api/deleteFromS3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+  };
+
+  const uploadToS3 = async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+
+    const res = await fetch('/api/uploadToS3', {
+      method: 'POST',
+      body: form
+    });
+    const data = await res.json();
+    return data.url;
   };
 
   const handleSubmit = async () => {
@@ -103,60 +117,59 @@ export default function CreationPanel({
       locationValue = result.name;
     }
 
-    if (isCreatingCategory || isEditingCategory) {
-      // Enviar como JSON normal
-      const payload = {
-        name: formData.name,
-        parentId: editItem?.parentId || selectedCategory.parentId,
-        _id: id
-      };
-
-      const res = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const updatedItem = await res.json();
-      afterSubmit(updatedItem);
-      return;
+    let imageUrl = formData.imageUrl;
+    if (formData.imageFile instanceof File) {
+      imageUrl = await uploadToS3(formData.imageFile);
     }
 
-    // Si es equipamiento, usá FormData
-    const formDataToSend = new FormData();
-
-    formDataToSend.append('name', formData.name);
-    formDataToSend.append('code', formData.code);
-    formDataToSend.append(
-      'categoryId',
-      editItem?.categoryId || selectedCategory.parentIdOriginal
-    );
-    formDataToSend.append('brand', formData.brand);
-    formDataToSend.append('model', formData.model);
-    formDataToSend.append('serialNumber', formData.serialNumber);
-    formDataToSend.append('rentalPrice', String(formData.rentalPrice));
-    formDataToSend.append('investmentPrice', String(formData.investmentPrice));
-    formDataToSend.append('weight', String(formData.weight));
-    formDataToSend.append('location', locationValue);
-    formDataToSend.append('history', formData.history || '');
-    formDataToSend.append('isOut', String(formData.isOut));
-    formDataToSend.append('reason', formData.reason || '');
-    if (id) formDataToSend.append('_id', id);
-
-    if (formData.imageFile) {
-      formDataToSend.append('imageFile', formData.imageFile);
+    let pdfUrl = formData.pdfUrl;
+    if (formData.pdfFile instanceof File) {
+      pdfUrl = await uploadToS3(formData.pdfFile);
     }
-    if (formData.pdfFile) {
-      formDataToSend.append('pdfFile', formData.pdfFile);
-    }
+
+    const payload =
+      isCreatingCategory || isEditingCategory
+        ? {
+            name: formData.name,
+            parentId: editItem?.parentId || selectedCategory.parentId
+          }
+        : {
+            name: formData.name,
+            code: formData.code,
+            categoryId:
+              editItem?.categoryId || selectedCategory.parentIdOriginal,
+            outOfService: {
+              isOut: formData.isOut,
+              reason: formData.reason || ''
+            },
+            history: formData.history || '',
+            brand: formData.brand,
+            model: formData.model,
+            serialNumber: formData.serialNumber,
+            rentalPrice: formData.rentalPrice,
+            investmentPrice: formData.investmentPrice,
+            weight: formData.weight,
+            location: locationValue,
+            imageUrl,
+            pdfUrl,
+            pdfFileName:
+              formData.pdfFile?.name || `${formData.name} ${formData.model}.pdf`
+          };
 
     const res = await fetch(endpoint, {
       method,
-      body: formDataToSend
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, _id: id })
     });
 
+    setFormData({});
+    setCustomLocation('');
     const updatedItem = await res.json();
-    afterSubmit(updatedItem);
+    mutate('/api/categories');
+    mutate('/api/equipment');
+    mutate('/api/treeData');
+    mutate('/api/equipmentLocation');
+    onCancel?.(false, updatedItem);
   };
 
   const handleCancel = () => {
@@ -323,7 +336,7 @@ export default function CreationPanel({
                   src={
                     formData.imageFile
                       ? URL.createObjectURL(formData.imageFile)
-                      : formData.imageBase64
+                      : formData.imageUrl || formData.imageBase64 || ''
                   }
                   alt='Preview'
                   style={{
@@ -336,9 +349,14 @@ export default function CreationPanel({
               <Button
                 variant='light'
                 color='red'
-                onClick={() => {
-                  handleInput('imageFile', null);
-                  handleInput('imageBase64', null);
+                onClick={async () => {
+                  if (formData.imageUrl) await deleteFromS3(formData.imageUrl);
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    imageFile: null,
+                    imageBase64: null,
+                    imageUrl: ''
+                  }));
                 }}
               >
                 Quitar imagen
@@ -357,34 +375,50 @@ export default function CreationPanel({
                   return;
                 }
                 handleInput('pdfFile', file);
+                handleInput('pdfFileName', file?.name);
               }}
             />
           </div>
           {/* Link al PDF */}
-          {formData.pdfFile || formData.pdfBase64 ? (
+          {formData.pdfFile || formData.pdfUrl || formData.pdfBase64 ? (
             <div style={{ marginTop: 16 }}>
               <div>
                 <Button
-                  component='a'
-                  href={
-                    formData.pdfFile
-                      ? URL.createObjectURL(formData.pdfFile)
-                      : formData.pdfBase64
-                  }
-                  download={`Manual ${formData.name} ${formData.model}.pdf`}
                   variant='light'
                   size='xs'
                   style={{ marginBottom: 5 }}
+                  onClick={async () => {
+                    const response = await fetch(formData.pdfUrl);
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute(
+                      'download',
+                      formData.pdfFileName || 'manual.pdf'
+                    );
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                  }}
                 >
-                  Descargar Manual {formData.name} {formData.model}.pdf
+                  Descargar {formData.pdfFileName}
                 </Button>
               </div>
               <Button
                 variant='light'
                 color='red'
-                onClick={() => {
-                  handleInput('pdfFile', null);
-                  handleInput('pdfBase64', null);
+                onClick={async () => {
+                  if (formData.pdfUrl) await deleteFromS3(formData.pdfUrl);
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    pdfFile: null,
+                    pdfBase64: null,
+                    pdfUrl: '',
+                    pdfFileName: ''
+                  }));
                 }}
               >
                 Quitar PDF
