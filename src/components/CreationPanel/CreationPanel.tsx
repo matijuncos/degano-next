@@ -85,16 +85,26 @@ export default function CreationPanel({
     });
   };
 
-  const uploadToS3 = async (file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-
+  const uploadToS3 = async (file: File): Promise<string> => {
     const res = await fetch('/api/uploadToS3', {
       method: 'POST',
-      body: form
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type
+      })
     });
-    const data = await res.json();
-    return data.url;
+    const { signedUrl, url } = await res.json();
+
+    await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type
+      },
+      body: file
+    });
+
+    return url; // URL pública para guardar en Mongo
   };
 
   const handleSubmit = async () => {

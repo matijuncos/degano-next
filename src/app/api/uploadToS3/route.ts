@@ -1,5 +1,7 @@
+// route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { nanoid } from 'nanoid';
 
 const s3 = new S3Client({
@@ -11,25 +13,23 @@ const s3 = new S3Client({
 });
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const file = formData.get('file') as File;
+  const { fileName, fileType } = await req.json();
 
-  if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+  if (!fileName || !fileType) {
+    return NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 });
+  }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const fileName = `${nanoid()}-${file.name}`;
-  const contentType = file.type;
+  const uniqueFileName = `${nanoid()}-${fileName}`;
 
-  const uploadParams = {
+  const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET_NAME!,
-    Key: fileName,
-    Body: buffer,
-    ContentType: contentType
-  };
+    Key: uniqueFileName,
+    ContentType: fileType
+  });
 
-  await s3.send(new PutObjectCommand(uploadParams));
+  const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 });
 
-  const fileUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+  const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFileName}`;
 
-  return NextResponse.json({ url: fileUrl });
+  return NextResponse.json({ signedUrl, url: publicUrl });
 }
