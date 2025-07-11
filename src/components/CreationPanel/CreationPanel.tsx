@@ -10,6 +10,7 @@ import {
   Textarea,
   Group
 } from '@mantine/core';
+import { IconUpload, IconFile } from '@tabler/icons-react';
 
 export default function CreationPanel({
   selectedCategory,
@@ -60,8 +61,6 @@ export default function CreationPanel({
           isOut: editItem.outOfService?.isOut || false,
           reason: editItem.outOfService?.reason || '',
           history: editItem.history || '',
-          imageBase64: editItem.imageBase64 || null,
-          pdfBase64: editItem.pdfBase64 || null,
           imageUrl: editItem.imageUrl || '',
           pdfUrl: editItem.pdfUrl || '',
           pdfFileName: editItem.pdfFileName || null
@@ -324,21 +323,42 @@ export default function CreationPanel({
           />
           <div>
             <label>Imagen del equipo (máx. 10MB)</label>
-            <input
-              type='file'
-              accept='image/*'
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file && file.size > 10 * 1024 * 1024) {
-                  alert('La imagen debe ser menor a 10MB');
-                  return;
-                }
-                handleInput('imageFile', file);
+            <div
+              style={{
+                marginTop: 6,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
               }}
-            />
+            >
+              <Button
+                variant='outline'
+                leftSection={<IconUpload size={16} />}
+                onClick={() => document.getElementById('imageInput')?.click()}
+              >
+                Seleccionar imagen
+              </Button>
+              <span style={{ fontSize: 12, color: '#666' }}>
+                {formData.imageFile?.name}
+              </span>
+              <input
+                id='imageInput'
+                type='file'
+                accept='image/*'
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.size > 10 * 1024 * 1024) {
+                    alert('La imagen debe ser menor a 10MB');
+                    return;
+                  }
+                  handleInput('imageFile', file);
+                }}
+              />
+            </div>
           </div>
           {/* Previsualización de imagen */}
-          {formData.imageFile || formData.imageBase64 ? (
+          {formData.imageFile || formData.imageUrl ? (
             <div>
               <label>Vista previa de imagen</label>
               <div style={{ marginTop: 8 }}>
@@ -346,7 +366,7 @@ export default function CreationPanel({
                   src={
                     formData.imageFile
                       ? URL.createObjectURL(formData.imageFile)
-                      : formData.imageUrl || formData.imageBase64 || ''
+                      : formData.imageUrl || ''
                   }
                   alt='Preview'
                   style={{
@@ -364,7 +384,6 @@ export default function CreationPanel({
                   setFormData((prev: any) => ({
                     ...prev,
                     imageFile: null,
-                    imageBase64: null,
                     imageUrl: ''
                   }));
                 }}
@@ -375,19 +394,40 @@ export default function CreationPanel({
           ) : null}
           <div>
             <label>Ficha técnica (PDF, máx. 12MB)</label>
-            <input
-              type='file'
-              accept='application/pdf'
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file && file.size > 12 * 1024 * 1024) {
-                  alert('El archivo PDF debe ser menor a 12MB');
-                  return;
-                }
-                handleInput('pdfFile', file);
-                handleInput('pdfFileName', file?.name);
+            <div
+              style={{
+                marginTop: 6,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
               }}
-            />
+            >
+              <Button
+                variant='outline'
+                leftSection={<IconFile size={16} />}
+                onClick={() => document.getElementById('pdfInput')?.click()}
+              >
+                Seleccionar PDF
+              </Button>
+              <span style={{ fontSize: 12, color: '#666' }}>
+                {formData.pdfFile?.name}
+              </span>
+              <input
+                id='pdfInput'
+                type='file'
+                accept='application/pdf'
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.size > 12 * 1024 * 1024) {
+                    alert('El archivo PDF debe ser menor a 12MB');
+                    return;
+                  }
+                  handleInput('pdfFile', file);
+                  handleInput('pdfFileName', file?.name);
+                }}
+              />
+            </div>
           </div>
           {/* Link al PDF */}
           {formData.pdfFile && (
@@ -400,44 +440,18 @@ export default function CreationPanel({
               {formData.pdfFileName}
             </Button>
           )}
-          {formData.pdfUrl || formData.pdfBase64 ? (
+          {formData.pdfUrl ? (
             <div style={{ marginTop: 16 }}>
               <div>
                 <Button
                   variant='light'
                   size='xs'
                   style={{ marginBottom: 5 }}
-                  onClick={async () => {
-                    if (formData.pdfUrl) {
-                      // Caso nuevo con URL firmada de S3
-                      window.open(formData.pdfUrl, '_blank');
-                    } else if (formData.pdfBase64) {
-                      try {
-                        // Eliminar el prefijo si existe
-                        const base64String = formData.pdfBase64.includes(',')
-                          ? formData.pdfBase64.split(',')[1]
-                          : formData.pdfBase64;
-
-                        const binary = atob(base64String);
-                        const bytes = Uint8Array.from(binary, (char) =>
-                          char.charCodeAt(0)
-                        );
-                        const blob = new Blob([bytes], {
-                          type: 'application/pdf'
-                        });
-                        const url = URL.createObjectURL(blob);
-                        window.open(url, '_blank');
-                        setTimeout(() => URL.revokeObjectURL(url), 10000);
-                      } catch (err) {
-                        console.error('Error abriendo PDF base64:', err);
-                        alert(
-                          'No se pudo abrir el PDF. El archivo puede estar corrupto.'
-                        );
-                      }
-                    }
+                  onClick={() => {
+                    window.open(formData.pdfUrl, '_blank');
                   }}
                 >
-                  Ver {formData.pdfFileName || 'archivo'}
+                  Ver {formData.pdfFileName || 'manual'}
                 </Button>
               </div>
               <Button
@@ -448,7 +462,6 @@ export default function CreationPanel({
                   setFormData((prev: any) => ({
                     ...prev,
                     pdfFile: null,
-                    pdfBase64: null,
                     pdfUrl: '',
                     pdfFileName: ''
                   }));
@@ -461,7 +474,7 @@ export default function CreationPanel({
         </div>
       )}
 
-      <Group mt='md'>
+      <Group mt='md' style={{paddingBottom: 10}}>
         <Button onClick={handleSubmit}>
           {isCreatingCategory || isCreatingEquipment
             ? 'Finalizar carga'
@@ -471,7 +484,6 @@ export default function CreationPanel({
           variant='default'
           color='gray'
           onClick={handleCancel}
-          style={{ marginBottom: '10px' }}
         >
           Cancelar
         </Button>
