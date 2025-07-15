@@ -7,7 +7,11 @@ import { ObjectId } from 'mongodb';
 export async function GET() {
   const client = await clientPromise;
   const db = client.db('degano-app');
-  const equipments = await db.collection('equipment').find().toArray();
+  const equipments = await db
+    .collection('equipment')
+    .find()
+    .sort({ name: 1 })
+    .toArray();
   return NextResponse.json(equipments);
 }
 
@@ -43,10 +47,7 @@ export async function PUT(req: Request) {
   const wasOut = oldItem?.outOfService?.isOut;
   const isOut = rest?.outOfService?.isOut;
 
-  await db.collection('equipment').updateOne(
-    { _id: objectId },
-    { $set: rest }
-  );
+  await db.collection('equipment').updateOne({ _id: objectId }, { $set: rest });
 
   let deltaAvailable = 0;
   if (wasOut !== isOut) {
@@ -62,7 +63,9 @@ export async function PUT(req: Request) {
     );
   }
 
-  const updatedItem = await db.collection('equipment').findOne({ _id: objectId });
+  const updatedItem = await db
+    .collection('equipment')
+    .findOne({ _id: objectId });
   return NextResponse.json(updatedItem);
 }
 
@@ -74,7 +77,9 @@ export async function DELETE(req: Request) {
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  const equipment = await db.collection('equipment').findOne({ _id: new ObjectId(id) });
+  const equipment = await db
+    .collection('equipment')
+    .findOne({ _id: new ObjectId(id) });
   if (equipment) {
     const deltaAvailable = equipment.outOfService?.isOut ? 0 : -1;
     await db.collection('categories').updateOne(

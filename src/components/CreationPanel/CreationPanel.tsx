@@ -10,6 +10,7 @@ import {
   Textarea,
   Group
 } from '@mantine/core';
+import { IconUpload, IconFile } from '@tabler/icons-react';
 
 export default function CreationPanel({
   selectedCategory,
@@ -52,7 +53,7 @@ export default function CreationPanel({
             rawRental
           )}`,
           investmentPrice: editItem.investmentPrice,
-          investmentPriceFormatted: `$ ${new Intl.NumberFormat('en-US').format(
+          investmentPriceFormatted: `$ ${new Intl.NumberFormat('es-AR').format(
             rawInvestment
           )}`,
           weight: editItem.weight,
@@ -60,8 +61,9 @@ export default function CreationPanel({
           isOut: editItem.outOfService?.isOut || false,
           reason: editItem.outOfService?.reason || '',
           history: editItem.history || '',
-          imageBase64: editItem.imageBase64 || null,
-          pdfBase64: editItem.pdfBase64 || null
+          imageUrl: editItem.imageUrl || '',
+          pdfUrl: editItem.pdfUrl || '',
+          pdfFileName: editItem.pdfFileName || null
         });
       }
     } else {
@@ -70,7 +72,38 @@ export default function CreationPanel({
   }, [editItem]);
 
   const handleInput = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const deleteFromS3 = async (url: string) => {
+    if (!url) return;
+    await fetch('/api/deleteFromS3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+  };
+
+  const uploadToS3 = async (file: File): Promise<string> => {
+    const res = await fetch('/api/uploadToS3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type
+      })
+    });
+    const { signedUrl, url } = await res.json();
+
+    await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type
+      },
+      body: file
+    });
+
+    return url; // URL pública para guardar en Mongo
   };
 
   const handleSubmit = async () => {
@@ -91,6 +124,16 @@ export default function CreationPanel({
       });
       const result = await res.json();
       locationValue = result.name;
+    }
+
+    let imageUrl = formData.imageUrl;
+    if (formData.imageFile instanceof File) {
+      imageUrl = await uploadToS3(formData.imageFile);
+    }
+
+    let pdfUrl = formData.pdfUrl;
+    if (formData.pdfFile instanceof File) {
+      pdfUrl = await uploadToS3(formData.pdfFile);
     }
 
     const payload =
@@ -115,29 +158,12 @@ export default function CreationPanel({
             rentalPrice: formData.rentalPrice,
             investmentPrice: formData.investmentPrice,
             weight: formData.weight,
-            location: locationValue
+            location: locationValue,
+            imageUrl,
+            pdfUrl,
+            pdfFileName:
+              formData.pdfFile?.name || `${formData.name} ${formData.model}.pdf`
           };
-
-    const convertFileToBase64 = (file: File): Promise<string> =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-      });
-
-    if (!isCreatingCategory && !isEditingCategory) {
-      if (formData.imageFile instanceof File) {
-        (payload as any).imageBase64 = await convertFileToBase64(
-          formData.imageFile
-        );
-      }
-      if (formData.pdfFile instanceof File) {
-        (payload as any).pdfBase64 = await convertFileToBase64(
-          formData.pdfFile
-        );
-      }
-    }
 
     const res = await fetch(endpoint, {
       method,
@@ -297,21 +323,42 @@ export default function CreationPanel({
           />
           <div>
             <label>Imagen del equipo (máx. 10MB)</label>
-            <input
-              type='file'
-              accept='image/*'
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file && file.size > 10 * 1024 * 1024) {
-                  alert('La imagen debe ser menor a 10MB');
-                  return;
-                }
-                handleInput('imageFile', file);
+            <div
+              style={{
+                marginTop: 6,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
               }}
-            />
+            >
+              <Button
+                variant='outline'
+                leftSection={<IconUpload size={16} />}
+                onClick={() => document.getElementById('imageInput')?.click()}
+              >
+                Seleccionar imagen
+              </Button>
+              <span style={{ fontSize: 12, color: '#666' }}>
+                {formData.imageFile?.name}
+              </span>
+              <input
+                id='imageInput'
+                type='file'
+                accept='image/*'
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.size > 10 * 1024 * 1024) {
+                    alert('La imagen debe ser menor a 10MB');
+                    return;
+                  }
+                  handleInput('imageFile', file);
+                }}
+              />
+            </div>
           </div>
           {/* Previsualización de imagen */}
-          {formData.imageFile || formData.imageBase64 ? (
+          {formData.imageFile || formData.imageUrl ? (
             <div>
               <label>Vista previa de imagen</label>
               <div style={{ marginTop: 8 }}>
@@ -319,7 +366,7 @@ export default function CreationPanel({
                   src={
                     formData.imageFile
                       ? URL.createObjectURL(formData.imageFile)
-                      : formData.imageBase64
+                      : formData.imageUrl || ''
                   }
                   alt='Preview'
                   style={{
@@ -332,9 +379,13 @@ export default function CreationPanel({
               <Button
                 variant='light'
                 color='red'
-                onClick={() => {
-                  handleInput('imageFile', null);
-                  handleInput('imageBase64', null);
+                onClick={async () => {
+                  if (formData.imageUrl) await deleteFromS3(formData.imageUrl);
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    imageFile: null,
+                    imageUrl: ''
+                  }));
                 }}
               >
                 Quitar imagen
@@ -343,44 +394,77 @@ export default function CreationPanel({
           ) : null}
           <div>
             <label>Ficha técnica (PDF, máx. 12MB)</label>
-            <input
-              type='file'
-              accept='application/pdf'
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file && file.size > 12 * 1024 * 1024) {
-                  alert('El archivo PDF debe ser menor a 12MB');
-                  return;
-                }
-                handleInput('pdfFile', file);
+            <div
+              style={{
+                marginTop: 6,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
               }}
-            />
+            >
+              <Button
+                variant='outline'
+                leftSection={<IconFile size={16} />}
+                onClick={() => document.getElementById('pdfInput')?.click()}
+              >
+                Seleccionar PDF
+              </Button>
+              <span style={{ fontSize: 12, color: '#666' }}>
+                {formData.pdfFile?.name}
+              </span>
+              <input
+                id='pdfInput'
+                type='file'
+                accept='application/pdf'
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.size > 12 * 1024 * 1024) {
+                    alert('El archivo PDF debe ser menor a 12MB');
+                    return;
+                  }
+                  handleInput('pdfFile', file);
+                  handleInput('pdfFileName', file?.name);
+                }}
+              />
+            </div>
           </div>
           {/* Link al PDF */}
-          {formData.pdfFile || formData.pdfBase64 ? (
+          {formData.pdfFile && (
+            <Button
+              variant='light'
+              size='xs'
+              style={{ marginBottom: 5 }}
+              onClick={() => {}}
+            >
+              {formData.pdfFileName}
+            </Button>
+          )}
+          {formData.pdfUrl ? (
             <div style={{ marginTop: 16 }}>
               <div>
                 <Button
-                  component='a'
-                  href={
-                    formData.pdfFile
-                      ? URL.createObjectURL(formData.pdfFile)
-                      : formData.pdfBase64
-                  }
-                  download={`Manual ${formData.name}`}
                   variant='light'
                   size='xs'
                   style={{ marginBottom: 5 }}
+                  onClick={() => {
+                    window.open(formData.pdfUrl, '_blank');
+                  }}
                 >
-                  Descargar Manual {formData.name}.pdf
+                  Ver {formData.pdfFileName || 'manual'}
                 </Button>
               </div>
               <Button
                 variant='light'
                 color='red'
-                onClick={() => {
-                  handleInput('pdfFile', null);
-                  handleInput('pdfBase64', null);
+                onClick={async () => {
+                  if (formData.pdfUrl) await deleteFromS3(formData.pdfUrl);
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    pdfFile: null,
+                    pdfUrl: '',
+                    pdfFileName: ''
+                  }));
                 }}
               >
                 Quitar PDF
@@ -390,7 +474,7 @@ export default function CreationPanel({
         </div>
       )}
 
-      <Group mt='md'>
+      <Group mt='md' style={{paddingBottom: 10}}>
         <Button onClick={handleSubmit}>
           {isCreatingCategory || isCreatingEquipment
             ? 'Finalizar carga'
@@ -400,7 +484,6 @@ export default function CreationPanel({
           variant='default'
           color='gray'
           onClick={handleCancel}
-          style={{ marginBottom: '10px' }}
         >
           Cancelar
         </Button>
