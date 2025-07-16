@@ -106,4 +106,13 @@ export interface Band {
   showtime?: string;
 }
 
+export interface EmployeeModel {
+  _id?: string;
+  fullName: string;
+  cardId: string;
+  rol: string;
+  license: string;
+  licenseType?: string;
+}
+
 export type EventsList = EventModel[];
