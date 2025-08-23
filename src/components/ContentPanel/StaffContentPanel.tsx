@@ -85,7 +85,7 @@ export default function StaffContentPanel({
       });
       if (!res.ok) throw new Error('Error en la operación');
       const updated = await res.json();
-      await mutate('api/employees', updated, { revalidate: false });
+      await mutate('/api/employees', updated, { revalidate: false });
       notify({ message: 'Se elimino el empleado correctamente' });
       setShowDeleteModal(false);
     } catch (error) {
