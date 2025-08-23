@@ -58,9 +58,9 @@ const BandList = ({
           value={opened}
           onChange={setOpened} /*style={{ margin: '5px 0 10px' }}*/
         >
-          <Accordion.Item key='Bandas en vivo' value='Banda en vivo'>
+          <Accordion.Item key='Shows en vivo' value='Shows en vivo'>
             <Accordion.Control mb='12px'>
-              <h3>{`Banda${bands.length > 0 ? 's' : ''} en vivo`}</h3>
+              <h3>{`Show${bands.length > 0 ? 's' : ''} en vivo`}</h3>
             </Accordion.Control>
             <Accordion.Panel>
               <EditableBand
