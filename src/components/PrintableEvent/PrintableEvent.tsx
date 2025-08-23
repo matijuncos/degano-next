@@ -2,13 +2,13 @@
 import React, { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import {
-  PDFDownloadLink,
   Page,
   Text,
   View,
   Document,
   Image as PDFImage,
-  StyleSheet
+  StyleSheet,
+  BlobProvider
 } from '@react-pdf/renderer';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import {
@@ -367,9 +367,23 @@ const PrintableEvent = () => {
       </Flex>
 
       <Flex align='center' justify='flex-end' gap='24px'>
-        <PDFDownloadLink document={MyDocument} fileName={`${eventTitle}.pdf`}>
-          {({ loading }) => (loading ? 'Cargando...' : 'Descargar PDF')}
-        </PDFDownloadLink>
+        <BlobProvider document={MyDocument}>
+          {({ url, loading }) =>
+            loading ? (
+              <Button variant='outline' size='xs' disabled>
+                Cargando...
+              </Button>
+            ) : (
+              url && (
+                <a href={url} download={`${eventTitle}.pdf`}>
+                  <Button variant='outline' size='xs'>
+                    Descargar PDF
+                  </Button>
+                </a>
+              )
+            )
+          }
+        </BlobProvider>
         <Button onClick={handlePrint}>Imprimir</Button>
       </Flex>
     </>

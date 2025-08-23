@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Button, Group } from '@mantine/core';
 import { IconPrinter, IconDownload } from '@tabler/icons-react';
-import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
+import { pdf, BlobProvider } from '@react-pdf/renderer';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import {
   PrintableMainSection,
@@ -97,21 +97,30 @@ const PDFActions: React.FC<PDFActionsProps> = ({
           Imprimir
         </Button>
         {printableComponent && (
-          <PDFDownloadLink
-            document={printableComponent}
-            fileName={getFilename()}
-          >
-            {({ loading }) => (
-              <Button
-                variant='outline'
-                size='xs'
-                leftSection={<IconDownload size={16} />}
-                disabled={loading}
-              >
-                {loading ? 'Cargando...' : 'Guardar PDF'}
-              </Button>
-            )}
-          </PDFDownloadLink>
+          <BlobProvider document={printableComponent}>
+            {({ url, loading }) =>
+              loading ? (
+                <Button
+                  variant='outline'
+                  size='xs'
+                  leftSection={<IconDownload size={16} />}
+                  disabled
+                >
+                  Cargando...
+                </Button>
+              ) : (
+                <a href={url!} download={getFilename()}>
+                  <Button
+                    variant='outline'
+                    size='xs'
+                    leftSection={<IconDownload size={16} />}
+                  >
+                    Guardar PDF
+                  </Button>
+                </a>
+              )
+            }
+          </BlobProvider>
         )}
       </Group>
       <div>{children}</div>
