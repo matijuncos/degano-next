@@ -116,18 +116,19 @@ export default function ContentPanel({
                 index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
               textAlign: 'center',
               cursor: 'pointer',
-              fontWeight: 500
+              fontWeight: 500,
+              whiteSpace: 'nowrap'
             }}
             onClick={() => onEdit?.(item)}
           >
-            <td>{item.name}</td>
-            <td>{selectedCategory?.totalStock}</td>
-            <td>{selectedCategory?.availableStock}</td>
-            <td>{item.code}</td>
-            <td>{item.brand}</td>
-            <td>{item.model}</td>
-            <td>{item.serialNumber}</td>
-            <td style={{ color: item.outOfService?.isOut ? 'red' : 'green' }}>
+            <td style={{padding: '0 5px'}}>{item.name}</td>
+            <td style={{padding: '0 5px'}}>{selectedCategory?.totalStock}</td>
+            <td style={{padding: '0 5px'}}>{selectedCategory?.availableStock}</td>
+            <td style={{padding: '0 5px'}}>{item.code}</td>
+            <td style={{padding: '0 5px'}}>{item.brand}</td>
+            <td style={{padding: '0 5px'}}>{item.model}</td>
+            <td style={{padding: '0 5px'}}>{item.serialNumber}</td>
+            <td style={{ color: item.outOfService?.isOut ? 'red' : 'green', padding: '0 5px'}}>
               {item.outOfService?.isOut ? 'No disponible' : 'OK'}
             </td>
           </tr>
@@ -138,16 +139,16 @@ export default function ContentPanel({
       if (!item) return null;
 
       return (
-        <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center' }}>
-          <td>{item.name}</td>
-          <td>{item.code}</td>
-          <td>{item.brand}</td>
-          <td>{item.model}</td>
-          <td>{item.serialNumber}</td>
-          <td style={{ color: item.outOfService?.isOut ? 'red' : 'green' }}>
+        <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <td style={{padding: '0 5px'}}>{item.name}</td>
+          <td style={{padding: '0 5px'}}>{item.code}</td>
+          <td style={{padding: '0 5px'}}>{item.brand}</td>
+          <td style={{padding: '0 5px'}}>{item.model}</td>
+          <td style={{padding: '0 5px'}}>{item.serialNumber}</td>
+          <td style={{ color: item.outOfService?.isOut ? 'red' : 'green', padding: '0 5px' }}>
             {item.outOfService?.isOut ? 'No disponible' : 'OK'}
           </td>
-          <td>{item.location}</td>
+          <td style={{padding: '0 5px'}}>{item.location}</td>
         </tr>
       );
     }

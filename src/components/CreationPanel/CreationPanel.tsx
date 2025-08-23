@@ -362,19 +362,27 @@ export default function CreationPanel({
             <div>
               <label>Vista previa de imagen</label>
               <div style={{ marginTop: 8 }}>
-                <img
-                  src={
-                    formData.imageFile
-                      ? URL.createObjectURL(formData.imageFile)
-                      : formData.imageUrl || ''
-                  }
-                  alt='Preview'
-                  style={{
-                    maxWidth: 100,
-                    maxHeight: 100,
-                    objectFit: 'contain'
-                  }}
-                />
+                <a
+                  href={formData.imageUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  title='Abrir imagen en pestaña nueva'
+                  style={{ cursor: 'pointer' }}
+                >
+                  <img
+                    src={
+                      formData.imageFile
+                        ? URL.createObjectURL(formData.imageFile)
+                        : formData.imageUrl || ''
+                    }
+                    alt='Preview'
+                    style={{
+                      maxWidth: 100,
+                      maxHeight: 100,
+                      objectFit: 'contain'
+                    }}
+                  />
+                </a>
               </div>
               <Button
                 variant='light'
@@ -474,17 +482,13 @@ export default function CreationPanel({
         </div>
       )}
 
-      <Group mt='md' style={{paddingBottom: 10}}>
+      <Group mt='md' style={{ paddingBottom: 10 }}>
         <Button onClick={handleSubmit}>
           {isCreatingCategory || isCreatingEquipment
             ? 'Finalizar carga'
             : 'Actualizar'}
         </Button>
-        <Button
-          variant='default'
-          color='gray'
-          onClick={handleCancel}
-        >
+        <Button variant='default' color='gray' onClick={handleCancel}>
           Cancelar
         </Button>
       </Group>
