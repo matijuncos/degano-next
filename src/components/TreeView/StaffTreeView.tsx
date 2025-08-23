@@ -1,4 +1,4 @@
-// TreeView.tsx
+// StaffTreeView.tsx
 'use client';
 import useSWR from 'swr';
 import { useState } from 'react';
@@ -11,29 +11,27 @@ import {
   IconDeviceFloppy
 } from '@tabler/icons-react';
 
-export type CategoryNode = {
+export type StaffNode = {
   _id: string;
-  name: string;
-  parentId: string | null;
-  parentIdOriginal?: string | null;
-  categoryId?: string;
-  totalStock?: number;
-  availableStock?: number;
-  children?: CategoryNode[];
+  fullName: string;
+  cardId: string | null;
+  rol?: string | null;
+  license?: string;
+  licenseType?: string;
 };
 
 function TreeNode({
   node,
   onSelect,
   selectedId,
-  equipmentData,
+  staffData,
   level = 0,
   onEdit
 }: {
-  node: CategoryNode;
-  onSelect: (node: CategoryNode | null) => void;
+  node: StaffNode;
+  onSelect: (node: StaffNode | null) => void;
   selectedId?: string;
-  equipmentData: any[];
+  staffData: any[];
   level?: number;
   onEdit?: (item: any) => void;
 }) {
@@ -44,22 +42,22 @@ function TreeNode({
     e.stopPropagation();
     setOpen(!open);
   };
-
+  console.log(staffData);
   const handleSelect = () => {
     if (isSelected) {
       onSelect(null);
     } else {
-      if (node.categoryId) {
-        const fullItem = equipmentData.find((eq: any) => eq._id === node._id);
+      if (node._id) {
+        const fullItem = staffData.find((eq: any) => eq._id === node._id);
         onSelect(fullItem || node);
         onEdit?.(fullItem || node);
       } else {
         onSelect(node);
         onEdit?.(node);
       }
-      if (!open && node.children && node.children.length > 0) {
-        setOpen(true);
-      }
+      // if (!open && node.children && node.children.length > 0) {
+      //   setOpen(true);
+      // }
     }
   };
 
@@ -81,7 +79,7 @@ function TreeNode({
           maxWidth: '100%'
         }}
       >
-        {node.children?.length ? (
+        {node && (
           <span
             onClick={toggleExpand}
             style={{
@@ -94,13 +92,6 @@ function TreeNode({
           >
             <IconChevronRight size={14} />
           </span>
-        ) : (
-          <span style={{ width: 14 }} />
-        )}
-        {node.categoryId ? (
-          <IconDeviceFloppy size={16} />
-        ) : (
-          <IconFolder size={16} />
         )}
         <span
           onClick={handleSelect}
@@ -111,7 +102,7 @@ function TreeNode({
             paddingRight: '10px'
           }}
         >
-          {node.name}
+          {node.fullName}
         </span>
       </div>
 
@@ -123,10 +114,10 @@ function TreeNode({
           overflow: 'hidden'
         }}
       >
-        <div style={{ overflow: 'hidden' }}>
-          {Array.isArray(node.children) && node.children.length > 0 && (
+        {/* <div style={{ overflow: 'hidden' }}>
+          {Array.isArray(node) && node.length > 0 && (
             <div style={{ position: 'relative' }}>
-              {node.children.map((child) => (
+              {node.map((child) => (
                 <div key={child._id} style={{ display: 'flex' }}>
                   <div
                     style={{
@@ -169,70 +160,54 @@ function TreeNode({
               ))}
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   );
 }
 
-export default function TreeView({
+export default function StaffTreeView({
   onSelect,
-  selectedCategory,
+  selectedEmployee,
   onEdit
 }: {
-  onSelect?: (n: CategoryNode | null) => void;
-  selectedCategory?: CategoryNode | null;
+  onSelect?: (n: StaffNode | null) => void;
+  selectedEmployee?: StaffNode | null;
   onEdit?: (item: any) => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
-  const { data: treeNodes = [] } = useSWR<CategoryNode[]>(
-    '/api/categoryTreeData',
-    fetcher
-  );
-  const { data: equipmentFullData = [] } = useSWR('/api/equipment', fetcher);
 
-  const buildTree = (
-    nodes: CategoryNode[],
-    parentId: string | null = null
-  ): CategoryNode[] => {
-    return nodes
-      .filter((n) => n.parentId === parentId)
-      .map((n) => ({
-        ...n,
-        children: buildTree(nodes, n._id)
-      }));
-  };
-
-  const tree = buildTree(treeNodes);
+  const { data: staffData = [] } = useSWR('/api/employees', fetcher);
 
   const handleCreateCategory = () => {
-    const isValidSelection =
-      selectedCategory &&
-      selectedCategory._id !== '' &&
-      selectedCategory.parentId !== 'equipment';
-    const parentId = isValidSelection ? selectedCategory._id : null;
-    onSelect?.({ _id: '', name: '', parentId });
-    onEdit?.(null);
-  };
-
-  const handleCreateEquipment = () => {
-    const isValidSelection =
-      selectedCategory &&
-      selectedCategory._id !== '' &&
-      !selectedCategory.categoryId; // No debe ser un item
-
-    const parentId = isValidSelection ? selectedCategory._id : null;
     onSelect?.({
       _id: '',
-      name: '',
-      parentId,
-      parentIdOriginal: parentId
+      fullName: '',
+      cardId: '',
+      rol: '',
+      license: '',
+      licenseType: ''
     });
-    onEdit?.(null);
   };
 
-  const disableCreateEquipment =
-    !selectedCategory || !!selectedCategory?.categoryId;
+  // const handleCreateEquipment = () => {
+  //   const isValidSelection =
+  //     selectedEmployee &&
+  //     selectedEmployee._id !== '' &&
+  //     !selectedEmployee.categoryId; // No debe ser un item
+
+  //   const parentId = isValidSelection ? selectedEmployee._id : null;
+  //   onSelect?.({
+  //     _id: '',
+  //     name: '',
+  //     parentId,
+  //     parentIdOriginal: parentId
+  //   });
+  //   onEdit?.(null);
+  // };
+
+  // const disableCreateEquipment =
+  //   !selectedEmployee || !!selectedEmployee?.categoryId;
 
   return (
     <div
@@ -256,16 +231,7 @@ export default function TreeView({
           leftSection={<IconFolderPlus size={16} />}
           onClick={handleCreateCategory}
         >
-          Crear categoría
-        </Button>
-        <Button
-          variant='light'
-          size='xs'
-          leftSection={<IconPlus size={16} />}
-          onClick={handleCreateEquipment}
-          disabled={disableCreateEquipment}
-        >
-          Cargar equipamiento
+          Cargar empleado
         </Button>
       </div>
       <Divider my='sm' />
@@ -277,13 +243,13 @@ export default function TreeView({
         }}
       >
         <div style={{ minWidth: 'max-content' }}>
-          {tree.map((node) => (
+          {staffData.map((node: StaffNode) => (
             <TreeNode
               key={node._id}
               node={node}
               onSelect={(n) => onSelect?.(n)}
-              selectedId={selectedCategory?._id}
-              equipmentData={equipmentFullData}
+              selectedId={selectedEmployee?._id}
+              staffData={staffData}
               onEdit={onEdit}
             />
           ))}
