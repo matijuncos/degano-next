@@ -74,7 +74,7 @@ const NewEventPage = () => {
             day: '2-digit',
             month: '2-digit',
             year: '2-digit'
-          })} - ${newEvent.type} - ${newEvent.salon}`
+          })} - ${newEvent.type} - ${newEvent.lugar}`
         );
         if (data.event)
           setAllEvents((prev: EventModel[]) => [...prev, data.event]);

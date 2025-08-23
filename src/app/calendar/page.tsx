@@ -50,8 +50,8 @@ export default withPageAuthRequired(function CalendarPage() {
     return {
       ...evnt,
       title:
-        evnt?.type && evnt?.salon
-          ? `${evnt.type} - ${evnt.salon}`
+        evnt?.type && evnt?.lugar
+          ? `${evnt.type} - ${evnt.lugar}`
           : evnt.fullName,
       start: new Date(evnt.date),
       end: evnt.endDate ? new Date(evnt.endDate) : new Date(evnt.date),

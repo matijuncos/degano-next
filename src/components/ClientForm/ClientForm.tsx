@@ -46,8 +46,7 @@ const ClientForm = ({
 
   const requiredFields: (keyof EventModel)[] = [
     'fullName',
-    'phoneNumber',
-    'email'
+    'phoneNumber'
   ];
 
   // Fetch clients on component mount
@@ -325,7 +324,7 @@ const ClientForm = ({
             disabled={!isNewClient && !selectedClientId}
           />
           <Input
-            placeholder='Dirección de email *'
+            placeholder='Dirección de email'
             name='email'
             onChange={handleInputChange}
             autoComplete='off'

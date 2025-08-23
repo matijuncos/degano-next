@@ -1,15 +1,29 @@
 import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
+import { useEffect } from 'react';
 import { Band, EventModel } from '@/context/types';
 import { Button, Input, InputLabel } from '@mantine/core';
 import {
-  DateInput,
-  DatePicker,
+  DatePickerInput,
   DateValue,
-  DateTimePicker
+  TimePicker
 } from '@mantine/dates';
 import { useState } from 'react';
 import BandList from '../BandManager/BandList';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const toTimeString = (d: Date | null): string =>
+  d ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : '';
+
+function combineDateAndTime(dateOnly: string | null, timeHHmm: string | null) {
+  if (!dateOnly || !timeHHmm) return null;
+  const [h, m] = timeHHmm.split(':').map(Number);
+  const d = new Date(dateOnly);
+  console.log('d??? ', d)
+  d.setHours(h || 0, m || 0, 0, 0);
+  return d;
+}
+
 const EventForm = ({
   event,
   onNextTab,
@@ -23,13 +37,39 @@ const EventForm = ({
   validate: boolean;
   setValidate: Function;
 }) => {
-  const [eventData, setEventData] = useState<EventModel>(event);
+  const initialEvent: EventModel = {
+    ...event,
+    churchDate: typeof event.churchDate === 'string' ? event.churchDate : '',
+    civil: typeof event.civil === 'string' ? event.civil : ''
+  };
+  const [eventData, setEventData] = useState<EventModel>(initialEvent);
+  const [dateOnly, setDateOnly] = useState<string | null>(null);
+  const [timeOnly, setTimeOnly] = useState<string>(
+    event.date ? toTimeString(new Date(event.date)) : ''
+  );
+  const [endDateOnly, setEndDateOnly] = useState<string | null>(null);
+  const [endTimeOnly, setEndTimeOnly] = useState<string>(
+    event.endDate ? toTimeString(new Date(event.endDate)) : ''
+  );
+
+  useEffect(() => {
+    const combined = combineDateAndTime(dateOnly, timeOnly);
+    setEventData((prev) => ({ ...prev, date: combined ?? prev.date ?? '' }));
+  }, [dateOnly, timeOnly]);
+
+  useEffect(() => {
+    const combined = combineDateAndTime(endDateOnly, endTimeOnly);
+    setEventData((prev) => ({
+      ...prev,
+      endDate: combined ?? prev.endDate ?? ''
+    }));
+  }, [endDateOnly, endTimeOnly]);
 
   const requiredFields: (keyof EventModel)[] = [
     'date',
     'type',
     'eventCity',
-    'salon'
+    'lugar'
   ];
   const handleInputChange = (e: any) => {
     setEventData({
@@ -50,6 +90,8 @@ const EventForm = ({
     return isValid;
   };
   const next = () => {
+    const combined = combineDateAndTime(dateOnly, timeOnly);
+    if (combined) setEventData((prev) => ({ ...prev, date: combined }));
     if (validateRequiredFields()) {
       setValidate(false);
       onNextTab(EVENT_TABS.MUSIC, eventData);
@@ -73,29 +115,24 @@ const EventForm = ({
     <>
       <h3>Datos del evento</h3>
       <div className='inputs-grid'>
-        <InputLabel>
-          Fecha del evento
-          <DateTimePicker
-            placeholder='Fecha y hora del evento *'
-            name='date'
+          <DatePickerInput<"default">
+            type='default'
+            placeholder='Fecha de evento *'
+            name='dateOnly'
             locale='es'
-            valueFormat='DD/MM/YYYY HH:mm'
-            value={eventData.date ? new Date(eventData.date) : null}
-            onChange={(value: DateValue) => onDateChange('date', value)}
-            error={validate && !eventData.date}
+            valueFormat='DD/MM/YYYY'
+            value={dateOnly}
+            onChange={setDateOnly} 
+            error={validate && !dateOnly}
           />
-        </InputLabel>
-        <InputLabel>
-          Fecha de finalización del evento (opcional)
-          <DateTimePicker
-            placeholder='Fecha y hora de finalizaciòn del evento'
-            name='endDate'
+          <DatePickerInput
+            placeholder='Fecha finalización del evento'
+            name='endDateOnly'
             locale='es'
-            valueFormat='DD/MM/YYYY HH:mm'
-            value={eventData.endDate ? new Date(eventData.endDate) : null}
-            onChange={(value: DateValue) => onDateChange('endDate', value)}
+            valueFormat='DD/MM/YYYY'
+            value={endDateOnly}
+            onChange={setEndDateOnly}
           />
-        </InputLabel>
         <Input
           type='text'
           placeholder='Tipo de evento *'
@@ -106,20 +143,13 @@ const EventForm = ({
           error={validate && !eventData.type}
         />
         <Input
-          placeholder='Invitados'
           type='text'
-          name='guests'
+          name='lugar'
+          value={eventData.lugar}
           onChange={handleInputChange}
+          placeholder='Lugar *'
           autoComplete='off'
-          value={eventData.guests}
-        />
-        <Input
-          type='text'
-          placeholder='Dirección'
-          name='eventAddress'
-          value={eventData.eventAddress}
-          onChange={handleInputChange}
-          autoComplete='off'
+          error={validate && !eventData.lugar}
         />
         <Input
           type='text'
@@ -132,36 +162,56 @@ const EventForm = ({
         />
         <Input
           type='text'
-          name='salon'
-          value={eventData.salon}
-          onChange={handleInputChange}
-          placeholder='Salón *'
-          autoComplete='off'
-          error={validate && !eventData.salon}
-        />
-        <Input
-          type='text'
-          placeholder='Edad de invitados'
-          name='averageAge'
-          value={eventData.averageAge}
+          placeholder='Dirección'
+          name='eventAddress'
+          value={eventData.eventAddress}
           onChange={handleInputChange}
           autoComplete='off'
         />
-        <DateTimePicker
-          locale='es'
-          valueFormat='DD/MM/YYYY HH:mm'
-          placeholder='Fecha y hora de iglesia'
+
+          <TimePicker
+            label='Hora de inicio HH:mm *'
+            name='timeOnly'
+            value={timeOnly}
+            onChange={(value: string) => setTimeOnly(value)}
+            error={validate && !timeOnly}
+          />
+
+          <TimePicker
+            label='Hora de Finalización HH:mm *'
+            name='endTimeOnly'
+            value={endTimeOnly}
+            onChange={(value: string) => setEndTimeOnly(value)}
+            error={validate && !endTimeOnly}
+          />
+
+
+        <TimePicker
+          label='Hora de iglesia'
           name='churchDate'
-          value={eventData.churchDate ? new Date(eventData.churchDate) : null}
-          onChange={(value: DateValue) => onDateChange('churchDate', value)}
+          value={eventData.churchDate || ''}
+          onChange={(value: string) =>
+            setEventData((prev) => ({
+              ...prev,
+              churchDate: value
+            }))
+          }
         />
-        <DateTimePicker
-          locale='es'
-          valueFormat='DD/MM/YYYY HH:mm'
-          placeholder='Fecha y hora de civil'
+        <TimePicker
+          label='Hora del civil'
           name='civil'
-          value={eventData.civil ? new Date(eventData.civil) : null}
-          onChange={(value: DateValue) => onDateChange('civil', value)}
+          value={eventData.civil || ''}
+          onChange={(value: string) =>
+            setEventData((prev) => ({ ...prev, civil: value }))
+          }
+        />
+                <Input
+          placeholder='Cantidad de Invitados'
+          type='text'
+          name='guests'
+          onChange={handleInputChange}
+          autoComplete='off'
+          value={eventData.guests}
         />
       </div>
       <BandList

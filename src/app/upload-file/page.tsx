@@ -177,7 +177,7 @@ export default function FileUploader() {
   const handleUploadClick = async () => {
     setLoading(true);
     try {
-      const newfolderId = await findOrCreateFolder(folderName); // Use client name, salon and date to build the name
+      const newfolderId = await findOrCreateFolder(folderName); // Use client name, lugar and date to build the name
       if (!newfolderId) return;
 
       allFiles.forEach((file) => {

@@ -103,7 +103,7 @@ const DrawerContent = () => {
           month: '2-digit',
           year: '2-digit'
         }
-      )} - ${selectedEvent?.type} - ${selectedEvent?.salon}`;
+      )} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`;
       findFolder(folderName);
     }
   }, [findFolder]);
@@ -140,7 +140,7 @@ const DrawerContent = () => {
         }}
       >
         <h3>
-          {selectedEvent?.type} - {selectedEvent?.salon}
+          {selectedEvent?.type} - {selectedEvent?.lugar}
         </h3>
         <p style={{ padding: '8px 0px' }}>
           {selectedEvent?.start
@@ -169,7 +169,7 @@ const DrawerContent = () => {
       >
         <div>
           <h4 className={styles.subtitle}>
-            <u>{`${selectedEvent?.type} - ${selectedEvent?.salon} - ${selectedEvent?.address}`}</u>
+            <u>{`${selectedEvent?.type} - ${selectedEvent?.lugar} - ${selectedEvent?.address}`}</u>
           </h4>
           <div className={styles.sectionContainer}>
             <p>

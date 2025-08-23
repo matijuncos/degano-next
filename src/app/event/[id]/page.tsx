@@ -92,9 +92,9 @@ const MainInformation = ({
         )}
         <EditableData
           type='text'
-          property='salon'
-          title='Salon'
-          value={selectedEvent.salon}
+          property='lugar'
+          title='Lugar'
+          value={selectedEvent.lugar}
         />
         <EditableData
           type='text'
@@ -127,12 +127,6 @@ const MainInformation = ({
           property='age'
           title='Edad'
           value={selectedEvent.age}
-        />
-        <EditableData
-          type='text'
-          property='averageAge'
-          title='Edad Promedio'
-          value={selectedEvent.averageAge}
         />
         <EditableData
           type='text'
@@ -314,7 +308,7 @@ const EventPage = () => {
           day: '2-digit',
           month: '2-digit',
           year: '2-digit'
-        })} - ${selectedEvent.type} - ${selectedEvent.salon}`
+        })} - ${selectedEvent.type} - ${selectedEvent.lugar}`
       );
     }
   }, [allEvents, id]);
@@ -367,7 +361,7 @@ const EventPage = () => {
         sectionKey='main'
         eventTitle={
           dateString
-            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.salon}`
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
       >
@@ -379,7 +373,7 @@ const EventPage = () => {
         sectionKey='bands'
         eventTitle={
           dateString
-            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.salon}`
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
       >
@@ -395,7 +389,7 @@ const EventPage = () => {
         sectionKey='music'
         eventTitle={
           dateString
-            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.salon}`
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
       >
@@ -412,7 +406,7 @@ const EventPage = () => {
         sectionKey='moreInfo'
         eventTitle={
           dateString
-            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.salon}`
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
       >
@@ -424,7 +418,7 @@ const EventPage = () => {
         sectionKey='equipment'
         eventTitle={
           dateString
-            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.salon}`
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
       >
@@ -437,7 +431,7 @@ const EventPage = () => {
         sectionKey='payments'
         eventTitle={
           dateString
-            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.salon}`
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
       >
@@ -493,9 +487,9 @@ const EventPage = () => {
                 )}
                 <EditableData
                   type='text'
-                  property='salon'
-                  title='Salon'
-                  value={selectedEvent.salon}
+                  property='lugar'
+                  title='Lugar'
+                  value={selectedEvent.lugar}
                 />
                 <EditableData
                   type='text'
@@ -528,12 +522,6 @@ const EventPage = () => {
                   property='age'
                   title='Edad'
                   value={selectedEvent.age}
-                />
-                <EditableData
-                  type='text'
-                  property='averageAge'
-                  title='Edad Promedio'
-                  value={selectedEvent.averageAge}
                 />
                 <EditableData
                   type='text'
@@ -649,7 +637,7 @@ const EventPage = () => {
           ) : (
             <Box>
               <Title mb='16px'>
-                {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.salon}`}
+                {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
               </Title>
               {showTabsVersion ? <TabsVersion /> : <AllAccordions />}
             </Box>
