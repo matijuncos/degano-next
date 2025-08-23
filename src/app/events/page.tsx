@@ -44,7 +44,7 @@ export default withPageAuthRequired(function EventPage() {
         (!clientFilter ||
           clientFilter === '' ||
           event.fullName === clientFilter) &&
-        (!salonFilter || salonFilter === '' || event.salon === salonFilter)
+        (!salonFilter || salonFilter === '' || event.lugar === salonFilter)
     );
     setFilteredRecords(filtered);
   }, [records, clientFilter, salonFilter]);
@@ -60,8 +60,8 @@ export default withPageAuthRequired(function EventPage() {
   const uniqueSalons = Array.from(
     new Set(
       records
-        .map((r) => r.salon)
-        .filter((salon) => salon && salon.trim() !== '')
+        .map((r) => r.lugar)
+        .filter((lugar) => lugar && lugar.trim() !== '')
     )
   );
 
@@ -167,14 +167,14 @@ export default withPageAuthRequired(function EventPage() {
                 searchable
               />
               <Select
-                placeholder='Filtrar por salón'
+                placeholder='Filtrar por Lugar'
                 value={salonFilter}
                 onChange={(value) => setSalonFilter(value || '')}
                 data={[
                   { value: '', label: 'Todos los salones' },
-                  ...sortedSalons.map((salon) => ({
-                    value: salon,
-                    label: salon
+                  ...sortedSalons.map((lugar) => ({
+                    value: lugar,
+                    label: lugar
                   }))
                 ]}
                 clearable
@@ -223,7 +223,7 @@ export default withPageAuthRequired(function EventPage() {
                 title: 'Hora',
                 render: ({ date }) => new Date(date).toLocaleTimeString()
               },
-              { accessor: 'salon', title: 'Salón' },
+              { accessor: 'lugar', title: 'Lugar' },
               { accessor: 'type', title: 'Tipo de evento' },
               {
                 accessor: 'actions',

@@ -41,8 +41,8 @@ const PrintableMainSection: React.FC<PrintableMainSectionProps> = ({
           </View>
         )}
         <View style={styles.row}>
-          <Text style={styles.label}>Salón:</Text>
-          <Text>{event.salon}</Text>
+          <Text style={styles.label}>Lugar:</Text>
+          <Text>{event.lugar}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Dirección:</Text>
@@ -59,10 +59,6 @@ const PrintableMainSection: React.FC<PrintableMainSectionProps> = ({
         <View style={styles.row}>
           <Text style={styles.label}>Edad:</Text>
           <Text>{event.age}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Edad Promedio:</Text>
-          <Text>{event.averageAge}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Email:</Text>
