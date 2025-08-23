@@ -159,8 +159,8 @@ const EditableData = ({
     }));
   };
 
-  const handleDateChange = (date: Date | null) => {
-    setEditState((prev) => ({ ...prev, inputValue: date }));
+  const handleDateChange = (val: string | null) => {
+    setEditState((prev) => ({ ...prev, inputValue: val ? new Date(val) : null }));
   };
 
   const typeTextData = () => (
@@ -527,7 +527,7 @@ const EditableData = ({
         {editState.showEditableDate ? (
           <DateTimePicker
             value={
-              editState.inputValue instanceof Date ? editState.inputValue : null
+              editState.inputValue instanceof Date ? editState.inputValue.toISOString() : null
             }
             onChange={handleDateChange}
             size='sm'
