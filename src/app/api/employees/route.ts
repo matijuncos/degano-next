@@ -5,11 +5,15 @@ import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
+async function listAllEmployees() {
+  const client = await clientPromise;
+  const db = client.db('degano-app');
+  return db.collection('employees').find().toArray();
+}
+
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db('degano-app');
-    const employees = await db.collection('employees').find().toArray();
+    const employees = await listAllEmployees();
     return NextResponse.json(employees);
   } catch (error) {
     return NextResponse.json(
@@ -20,30 +24,53 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const client = await clientPromise;
-  const db = client.db('degano-app');
-  const body = await req.json();
+  try {
+    const client = await clientPromise;
+    const db = client.db('degano-app');
+    const body = await req.json();
 
-  const result = await db.collection('employees').insertOne(body);
-  return NextResponse.json({ ...body, _id: result.insertedId });
+    await db.collection('employees').insertOne(body);
+    const employees = await listAllEmployees();
+    return NextResponse.json(employees, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Error al crear empleado' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function PUT(req: Request) {
-  const client = await clientPromise;
-  const db = client.db('degano-app');
-  const body = await req.json();
-  const { _id, ...rest } = body;
-  const updateQuery: any = { $set: rest };
+  try {
+    const client = await clientPromise;
+    const db = client.db('degano-app');
+    const body = await req.json();
+    const { _id, ...rest } = body;
+    const updateQuery: any = { $set: rest };
 
-  if (!rest.licenseType) {
-    updateQuery.$unset = { licenseType: '' };
+    if (!rest.licenseType) {
+      updateQuery.$unset = { licenseType: '' };
+    }
+
+    const result = await db
+      .collection('employees')
+      .updateOne({ _id: new ObjectId(String(_id)) }, updateQuery);
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { error: 'Empleado no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    const employees = await listAllEmployees();
+    return NextResponse.json(employees);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Error al actualizar empleado' },
+      { status: 500 }
+    );
   }
-
-  await db
-    .collection('employees')
-    .updateOne({ _id: new ObjectId(_id) }, updateQuery);
-
-  return NextResponse.json(body);
 }
 
 export async function DELETE(req: Request) {
@@ -71,7 +98,8 @@ export async function DELETE(req: Request) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    const employees = await listAllEmployees();
+    return NextResponse.json(employees);
   } catch (error) {
     return NextResponse.json(
       { error: 'Error al eliminar empleado' },
