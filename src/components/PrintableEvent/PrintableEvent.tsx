@@ -38,11 +38,10 @@ const EVENT_DETAILS_LABELS = {
   guests: 'Invitados',
   eventAddress: 'Dirección de evento',
   eventCity: 'Ciudad',
-  salon: 'Salón',
+  lugar: 'Lugar',
   date: 'Fecha',
-  averageAge: 'Edad promedio',
-  churchDate: 'Fecha de la iglesia',
-  civil: 'Civil',
+  churchDate: 'Hora de la iglesia',
+  civil: 'Hora del civil',
   bandName: 'Nombre de banda',
   manager: 'Manager',
   managerPhone: 'Contacto del manager',
@@ -167,9 +166,9 @@ const shouldRenderField = (title: EventDetailsKey, value: unknown): boolean => {
 const formatEventTitle = (event: any): string => {
   const name = event?.fullName || '';
   const date = event?.date ? new Date(event.date).toLocaleDateString() : '';
-  const salon = event?.salon || '';
+  const lugar = event?.lugar || '';
 
-  return [name, date, salon].filter(Boolean).join(' - ');
+  return [name, date, lugar].filter(Boolean).join(' - ');
 };
 
 const PrintableEvent = () => {

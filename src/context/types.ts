@@ -12,8 +12,7 @@ export interface EventModel {
   guests: string;
   eventAddress: string;
   eventCity: string;
-  salon: string;
-  averageAge: string;
+  lugar: string;
   churchDate?: string;
   civil: string;
   bands: Array<Band>;
@@ -30,7 +29,7 @@ export interface EventModel {
   };
   moreData: string;
   date: Date | string;
-  endDate?: Date;
+  endDate?: Date | string;
   active: boolean;
   playlist: {
     label: string;
