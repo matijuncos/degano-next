@@ -98,7 +98,6 @@ const EditableBand = ({
     isManager: boolean
   ) => {
     const isNew = !contact?._id;
-    console.log('isNew ', isNew);
     if (isNew) delete (contact as Partial<ExtraContact>)._id;
     try {
       const res = await fetch('/api/contacts', {
@@ -129,7 +128,7 @@ const EditableBand = ({
       console.error('handleSaveOrEditContact error', error);
     }
   };
-  console.log('banddata', bandData);
+
   const handleSaveContact = (contact: ExtraContact) => {
     setBandData((prev) => ({
       ...prev,
