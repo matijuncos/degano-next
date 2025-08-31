@@ -119,6 +119,19 @@ a {
   gap: 16px;
 }
 
+.band-inputs {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+  margin-top: -15px;
+}
+
+.inputs-cointainer {
+  display: flex;
+  width: 100%;
+  gap: 1rem;
+}
+
 .equipment-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr ;

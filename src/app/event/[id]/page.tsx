@@ -620,7 +620,7 @@ const EventPage = () => {
           <Tabs.Tab value='moreInfo'>Más Información</Tabs.Tab>
           <Tabs.Tab value='equipment'>Equipos</Tabs.Tab>
           <Tabs.Tab value='files'>Archivos</Tabs.Tab>
-          {isAdmin && <Tabs.Tab value='payments'>Pagos</Tabs.Tab>}
+          {isAdmin && <Tabs.Tab value='payments'>Presupuesto</Tabs.Tab>}
         </Tabs.List>
       </Tabs>
     );

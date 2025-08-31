@@ -165,7 +165,7 @@ const NewEventPage = () => {
             <Tabs.Tab value={EVENT_TABS.EQUIPMENT.toString()}>
               Equipamiento
             </Tabs.Tab>
-            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Pagos</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Presupuesto</Tabs.Tab>
           </Tabs.List>
         </Tabs>
       </div>

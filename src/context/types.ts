@@ -1,6 +1,12 @@
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { ReactNode } from 'react';
 
+export interface ExtraContact {
+  _id: string;
+  name: string;
+  phone: string;
+}
+
 export interface EventModel {
   // All event properties
   fullName: string;
@@ -99,10 +105,14 @@ export interface Music {
 
 export interface Band {
   bandName: string;
+  showTime?: string;
+  testTime?: string;
+  managerId?: string;
   manager: string;
   managerPhone: string;
   bandInfo: string;
-  showtime?: string;
+  contacts: ExtraContact[];
+  fileUrl: string;
 }
 
 export interface EmployeeModel {
