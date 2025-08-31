@@ -187,7 +187,7 @@ const MusicForm = ({
   };
 
   const addSpotifyLinkButton = () => {
-    if (spotifyLinkInputValue && spotifyLabelInputValue) {
+    if (spotifyLinkInputValue) {
       setSpotifyLinks((prev) => [
         ...prev,
         { label: spotifyLabelInputValue, url: spotifyLinkInputValue }
@@ -330,7 +330,7 @@ const MusicForm = ({
               border: '1px solid rgba(255, 255, 255, 0.1)'
             }}
           >
-            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
             </Text>
             <IconX
@@ -371,7 +371,7 @@ const MusicForm = ({
               border: '1px solid rgba(255, 255, 255, 0.1)'
             }}
           >
-            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
             </Text>
             <IconX
@@ -413,7 +413,7 @@ const MusicForm = ({
               border: '1px solid rgba(255, 255, 255, 0.1)'
             }}
           >
-            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
             </Text>
             <IconX
@@ -463,7 +463,7 @@ const MusicForm = ({
               border: '1px solid rgba(255, 255, 255, 0.1)'
             }}
           >
-            <Text size='sm' c='white' style={{ flex: 1, paddingRight: '8px' }}>
+            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
               {song}
             </Text>
             <IconX
