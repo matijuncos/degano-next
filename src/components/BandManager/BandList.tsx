@@ -7,9 +7,7 @@ import {
 } from '@tabler/icons-react';
 import { Band } from '@/context/types';
 import EditableBand from '../BandManager/EditableBand';
-import useLoadingCursor from '@/hooks/useLoadingCursor';
-import useNotification from '@/hooks/useNotification';
-import { useParams } from 'next/navigation';
+import useSWR from 'swr';
 
 const BandList = ({
   bands,
@@ -20,16 +18,18 @@ const BandList = ({
   onBandsChange: (bands: Band[]) => void;
   editing?: boolean;
 }) => {
-  const [opened, setOpened] = useState<string | null>('Banda en vivo');
+  const [opened, setOpened] = useState<string | null>(null);
   const [selectedBand, setSelectedBand] = useState<Band | null>(null);
   const [showEditableBand, setShowEditableBand] = useState<boolean>(false);
-  const setLoadingCursor = useLoadingCursor();
-  const notify = useNotification();
-  const params = useParams();
+  const fetcher = (url: string) => fetch(url).then((res) => res.json());
+  const { data: allBands, mutate: refetchBands } = useSWR<Band[]>(
+    '/api/bands',
+    fetcher
+  );
 
   const handleEditBand = (band: Band) => {
     setSelectedBand(band);
-    setOpened('Banda en vivo');
+    setOpened('Shows en vivo');
     if (editing) setShowEditableBand(true);
   };
 
@@ -39,6 +39,7 @@ const BandList = ({
         ? bands.map((b) => (b.bandName === selectedBand.bandName ? band : b))
         : [...bands, band]
     );
+    await refetchBands();
   };
 
   const handleCancelBand = () => {
@@ -50,7 +51,7 @@ const BandList = ({
   const handleDeleteBand = (indexToRemove: number) => {
     onBandsChange(bands.filter((_, index) => index !== indexToRemove));
   };
-  console.log('bands ', bands);
+
   return (
     <div style={{ marginTop: '10px' }}>
       {!editing && (
@@ -65,6 +66,7 @@ const BandList = ({
             <Accordion.Panel>
               <EditableBand
                 band={selectedBand || undefined}
+                allBands={allBands || []}
                 onSave={handleSaveBand}
                 onCancel={handleCancelBand}
               />
@@ -87,6 +89,7 @@ const BandList = ({
           {showEditableBand && (
             <EditableBand
               band={selectedBand || undefined}
+              allBands={allBands || []}
               onSave={handleSaveBand}
               onCancel={handleCancelBand}
             />
@@ -95,7 +98,7 @@ const BandList = ({
       )}
       {bands.length > 0 && (
         <div>
-          <h4 style={{ marginBottom: '12px' }}>Bandas agregadas:</h4>
+          <h4 style={{ marginBottom: '12px' }}>Shows agregados:</h4>
           <ul style={{ padding: '0px 20px 20px' }}>
             {bands.map((b, index) => (
               <li

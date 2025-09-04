@@ -80,7 +80,7 @@ export default function CreationPanel({
     await fetch('/api/deleteFromS3', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, bucket: 'equipment' })
     });
   };
 
@@ -90,7 +90,8 @@ export default function CreationPanel({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fileName: file.name,
-        fileType: file.type
+        fileType: file.type,
+        bucket: 'equipment'
       })
     });
     const { signedUrl, url } = await res.json();

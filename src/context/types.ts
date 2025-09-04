@@ -104,6 +104,7 @@ export interface Music {
 }
 
 export interface Band {
+  _id: string;
   bandName: string;
   showTime?: string;
   testTime?: string;
