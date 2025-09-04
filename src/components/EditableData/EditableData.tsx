@@ -529,7 +529,7 @@ const EditableData = ({
             value={
               editState.inputValue instanceof Date ? editState.inputValue : null
             }
-            onChange={handleDateChange}
+            onChange={(value) => handleDateChange(value ? new Date(value) : null)}
             size='sm'
             style={{ flex: 1 }}
           />
