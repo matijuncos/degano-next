@@ -17,6 +17,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    if (!body._id) {
+      delete body._id;
+    }
     const client = await clientPromise;
     const db = client.db('degano-app');
     const res = await db.collection('contacts').insertOne(body);

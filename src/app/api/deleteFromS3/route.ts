@@ -9,19 +9,25 @@ const s3 = new S3Client({
   }
 });
 
+const bucketMap: Record<string, string> = {
+  equipment: process.env.AWS_S3_EQUIPMENT_BUCKET_NAME!,
+  bands: process.env.AWS_S3_BANDS_BUCKET_NAME!,
+};
+
 export async function POST(req: NextRequest) {
-  const { url } = await req.json();
-  if (!url) {
-    return NextResponse.json({ error: 'Missing URL' }, { status: 400 });
+  const { url, bucket } = await req.json();
+  if (!url || !bucket) {
+    return NextResponse.json({ error: 'Missing URL or bucket' }, { status: 400 });
   }
 
   try {
     // Extrae la ruta completa después del dominio del bucket
-    const bucketUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`;
+    const bucketName = bucketMap[bucket];
+    const bucketUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/`;
     const key = decodeURIComponent(url.replace(bucketUrl, ''));
 
     const command = new DeleteObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME!,
+      Bucket: bucketName,
       Key: key
     });
 

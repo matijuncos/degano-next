@@ -8,22 +8,21 @@ import {
   IconEdit,
   IconTrash,
   IconSquareRoundedPlus,
-  IconFile
+  IconEye
 } from '@tabler/icons-react';
 import EditableContact from './EditableContact';
 
 const EditableBand = ({
   band,
+  allBands,
   onSave,
   onCancel
 }: {
   band?: Band;
+  allBands: Band[];
   onSave: (band: Band) => void;
   onCancel: () => void;
 }) => {
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(
-    null
-  );
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data: allContacts, mutate: refetchContacts } = useSWR<ExtraContact[]>(
     '/api/contacts',
@@ -35,6 +34,7 @@ const EditableBand = ({
       setBandData(band);
     } else {
       setBandData({
+        _id: '',
         bandName: '',
         showTime: '',
         testTime: '',
@@ -49,6 +49,7 @@ const EditableBand = ({
 
   const [bandData, setBandData] = useState<Band>(
     band || {
+      _id: '',
       bandName: '',
       showTime: '',
       testTime: '',
@@ -63,45 +64,77 @@ const EditableBand = ({
   const [selectedContact, setSelectedContact] = useState<ExtraContact | null>(
     null
   );
-  const [uploading, setUploading] = useState(false);
+  const [waitingAws, setWaitingAws] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBandData({ ...bandData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
-    onSave(bandData);
-    await handleSaveOrEditContact(
-      {
-        _id: bandData?.managerId || '',
-        name: bandData.manager,
-        phone: bandData.managerPhone
-      },
-      true
-    );
+  const cancelEdit = () => {
     setBandData({
+      _id: '',
       bandName: '',
       showTime: '',
       testTime: '',
-      managerId: '',
       manager: '',
       managerPhone: '',
       bandInfo: '',
       contacts: [],
       fileUrl: ''
     });
-    setSelectedContactId(null);
+    onCancel();
+  };
+
+  const handleSave = async () => {
+    try {
+      const method = bandData._id ? 'PUT' : 'POST';
+
+      const res = await fetch('/api/bands', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bandData)
+      });
+
+      if (!res.ok) throw new Error('Error saving band');
+
+      const savedBand: Band = await res.json();
+
+      // Guardamos también el contacto manager si aplica
+      await handleSaveOrEditContact(
+        {
+          _id: savedBand?.managerId || '',
+          name: savedBand.manager,
+          phone: savedBand.managerPhone
+        },
+        true
+      );
+
+      onSave(savedBand); // ahora se pasa ya con el _id
+      setBandData({
+        _id: '',
+        bandName: '',
+        showTime: '',
+        testTime: '',
+        managerId: '',
+        manager: '',
+        managerPhone: '',
+        bandInfo: '',
+        contacts: [],
+        fileUrl: ''
+      });
+    } catch (error) {
+      console.error('handleSave error', error);
+    }
   };
 
   const handleSaveOrEditContact = async (
     contact: ExtraContact,
     isManager: boolean
   ) => {
-    const isNew = !contact?._id;
-    if (isNew) delete (contact as Partial<ExtraContact>)._id;
+    const method = contact._id ? 'PUT' : 'POST';
     try {
       const res = await fetch('/api/contacts', {
-        method: isNew ? 'POST' : 'PUT',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contact)
       });
@@ -109,13 +142,9 @@ const EditableBand = ({
       const saved = await res.json();
       await refetchContacts();
       setBandData((prev) => {
-        if (isNew) {
-          // si es nuevo y no es manager lo agregamos
-          return isManager
-            ? prev
-            : { ...prev, contacts: [...prev.contacts, saved] };
-        } else {
-          // si es edición reemplazamos
+        if (isManager) return prev;
+        const exists = prev.contacts.some((c) => c._id === saved._id);
+        if (exists) {
           return {
             ...prev,
             contacts: prev.contacts.map((c) =>
@@ -123,6 +152,7 @@ const EditableBand = ({
             )
           };
         }
+        return { ...prev, contacts: [...prev.contacts, saved] };
       });
     } catch (error) {
       console.error('handleSaveOrEditContact error', error);
@@ -156,12 +186,16 @@ const EditableBand = ({
 
   const handleUpload = async (file: File | null) => {
     if (!file) return;
-    setUploading(true);
+    setWaitingAws(true);
     try {
       const res = await fetch('/api/uploadToS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, fileType: file.type })
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          bucket: 'bands'
+        })
       });
       const { signedUrl, url } = await res.json();
 
@@ -175,21 +209,24 @@ const EditableBand = ({
     } catch (error) {
       console.error('Upload error:', error);
     } finally {
-      setUploading(false);
+      setWaitingAws(false);
     }
   };
 
   const handleDeleteFile = async () => {
     if (!bandData.fileUrl) return;
+    setWaitingAws(true);
     try {
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: bandData.fileUrl })
+        body: JSON.stringify({ url: bandData.fileUrl, bucket: 'bands' })
       });
       setBandData((prev) => ({ ...prev, fileUrl: '' }));
     } catch (error) {
       console.error('Delete error:', error);
+    } finally {
+      setWaitingAws(false);
     }
   };
 
@@ -197,15 +234,57 @@ const EditableBand = ({
     <>
       <div className='band-inputs'>
         <div className='inputs-cointainer' style={{ alignItems: 'flex-end' }}>
-          <Input
-            type='text'
-            name='bandName'
-            onChange={handleChange}
-            placeholder='Banda'
-            value={bandData.bandName}
-            autoComplete='off'
-            style={{ flex: 1 }}
-          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              flex: 1
+            }}
+          >
+            <Select
+              label='Seleccionar banda existente'
+              placeholder='Buscar...'
+              searchable
+              clearable
+              data={
+                allBands
+                  ?.filter((b) => b._id !== bandData._id)
+                  .map((b) => ({
+                    value: b._id,
+                    label: b.bandName
+                  })) || []
+              }
+              value={bandData._id || ''}
+              onChange={(val) => {
+                const selected = allBands?.find((c) => c._id === val);
+                if (selected) {
+                  setBandData((prev) => ({
+                    ...prev,
+                    _id: selected._id,
+                    bandName: selected.bandName,
+                    showTime: selected.showTime,
+                    testTime: selected.testTime,
+                    managerId: selected.managerId ? selected.managerId : '',
+                    manager: selected.manager,
+                    managerPhone: selected.managerPhone,
+                    bandInfo: selected.bandInfo,
+                    contacts: selected.contacts,
+                    fileUrl: selected.fileUrl
+                  }));
+                }
+              }}
+            />
+            <Input
+              type='text'
+              name='bandName'
+              onChange={handleChange}
+              placeholder='Banda'
+              value={bandData.bandName}
+              autoComplete='off'
+              style={{ width: '60%' }}
+            />
+          </div>
           <div
             style={{
               display: 'flex',
@@ -249,12 +328,14 @@ const EditableBand = ({
               searchable
               clearable
               data={
-                allContacts?.map((c) => ({
-                  value: c._id,
-                  label: c.name
-                })) || []
+                allContacts
+                  ?.filter((c) => c._id !== bandData.managerId)
+                  .map((c) => ({
+                    value: c._id,
+                    label: c.name
+                  })) || []
               }
-              value={selectedContactId}
+              value={bandData.managerId || ''}
               onChange={(val) => {
                 const selected = allContacts?.find((c) => c._id === val);
                 if (selected) {
@@ -300,7 +381,7 @@ const EditableBand = ({
               placeholder='Otros datos'
               value={bandData.bandInfo}
               autoComplete='off'
-              style={{ width: '70%'}}
+              style={{ width: '70%' }}
             />
             <div style={{ marginTop: '16px' }}>
               {!bandData.fileUrl ? (
@@ -309,7 +390,7 @@ const EditableBand = ({
                   accept='image/*,.pdf,.doc,.docx'
                 >
                   {(props) => (
-                    <Button {...props} loading={uploading} variant='outline'>
+                    <Button {...props} loading={waitingAws} variant='outline'>
                       Subir archivo
                     </Button>
                   )}
@@ -323,20 +404,17 @@ const EditableBand = ({
                     target='_blank'
                     rel='noopener noreferrer'
                   >
-                    <Button
-                      variant='light'
-                      leftSection={<IconFile size={16} />}
-                    >
-                      Ver archivo
+                    <Button variant='light'>
+                      <IconEye size={16} />
                     </Button>
                   </a>
                   <Button
                     color='red'
                     variant='light'
+                    loading={waitingAws}
                     onClick={handleDeleteFile}
-                    leftSection={<IconTrash size={16} />}
                   >
-                    Eliminar
+                    <IconTrash size={16} />
                   </Button>
                 </div>
               )}
@@ -352,7 +430,7 @@ const EditableBand = ({
           marginTop: '16px'
         }}
       >
-        <Button style={{ width: '20%' }} onClick={onCancel} color='red'>
+        <Button style={{ width: '20%' }} onClick={cancelEdit} color='red'>
           Cancelar
         </Button>
         <Button style={{ width: '20%' }} onClick={handleSave} color='green'>
