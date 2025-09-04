@@ -159,8 +159,8 @@ const EditableData = ({
     }));
   };
 
-  const handleDateChange = (val: string | null) => {
-    setEditState((prev) => ({ ...prev, inputValue: val ? new Date(val) : null }));
+  const handleDateChange = (val: Date | null) => {
+    setEditState((prev) => ({ ...prev, inputValue: val }));
   };
 
   const typeTextData = () => (
