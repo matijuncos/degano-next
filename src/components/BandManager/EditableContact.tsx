@@ -7,18 +7,18 @@ const EditableContact = ({
   onSave,
   onCancel,
   allContacts,
-  handleSaveOrEditContact
 }: {
   contact?: ExtraContact;
   onSave: (contact: ExtraContact) => void;
   onCancel: () => void;
   allContacts: ExtraContact[];
-  handleSaveOrEditContact: (contact: ExtraContact, isManager: boolean) => Promise<void>;
 }) => {
   const [contactData, setContactData] = useState<ExtraContact>({
     _id: '',
     name: '',
-    phone: ''
+    phone: '',
+    rol: '',
+    type: 'contact',
   });
 
   useEffect(() => {
@@ -32,8 +32,7 @@ const EditableContact = ({
   const handleSave = () => {
     if (!contactData.name || !contactData.phone) return; // validar
     onSave(contactData);
-    handleSaveOrEditContact(contactData, false);
-    setContactData({ _id: '', name: '', phone: '' });
+    setContactData({ _id: '', name: '', phone: '', rol: '', type: 'contact' });
   };
 
   return (
@@ -70,13 +69,22 @@ const EditableContact = ({
         value={contactData.name}
         onChange={handleChange}
         autoComplete='off'
-        style={{ marginBottom: '8px' }}
+        style={{ marginTop: '8px', marginBottom: '8px' }}
       />
       <Input
         type='text'
         name='phone'
         placeholder='Teléfono'
         value={contactData.phone}
+        onChange={handleChange}
+        autoComplete='off'
+        style={{ marginBottom: '8px' }}
+      />
+        <Input
+        type='text'
+        name='rol'
+        placeholder='Rol'
+        value={contactData.rol}
         onChange={handleChange}
         autoComplete='off'
         style={{ marginBottom: '12px' }}

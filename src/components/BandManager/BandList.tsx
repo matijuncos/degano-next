@@ -40,6 +40,7 @@ const BandList = ({
         : [...bands, band]
     );
     await refetchBands();
+    setOpened(null);
   };
 
   const handleCancelBand = () => {
