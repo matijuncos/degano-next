@@ -145,18 +145,6 @@ const MainInformation = ({
           property='guests'
           title='Invitados'
           value={selectedEvent.guests}
-        />
-        <EditableData
-          type='text'
-          property='manager'
-          title='Manager'
-          value={selectedEvent.manager}
-        />
-        <EditableData
-          type='text'
-          property='managerPhone'
-          title='Teléfono Manager'
-          value={selectedEvent.managerPhone}
         /> */}
       </Grid.Col>
     </Grid>

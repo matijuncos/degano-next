@@ -9,7 +9,6 @@ import BandsCreationPanel from '@/components/CreationPanel/BandsCreationPanel';
 export default withPageAuthRequired(function BandsPage() {
   const [selectedBand, setselectedBand] = useState(null);
   const [editItem, setEditItem] = useState(null);
-  const [allData, setAllData] = useState([]);
 
   const handleEdit = (item: any) => {
     setEditItem(item);
@@ -18,7 +17,7 @@ export default withPageAuthRequired(function BandsPage() {
   const handleCancel = (wasCancelled: boolean, updatedItem?: any) => {
     if (!wasCancelled && updatedItem) {
       setselectedBand(updatedItem);
-      setEditItem(null);
+      setEditItem(updatedItem);
     } else {
       setselectedBand(null);
       setEditItem(null);
@@ -48,7 +47,6 @@ export default withPageAuthRequired(function BandsPage() {
             onSelect={setselectedBand}
             selectedBand={selectedBand}
             onEdit={handleEdit}
-            setAllData={setAllData}
           />
         </Box>
 
@@ -82,7 +80,6 @@ export default withPageAuthRequired(function BandsPage() {
             selectedBand={selectedBand}
             editItem={editItem}
             onCancel={handleCancel}
-            allData={allData}
           />
         </Box>
       </div>

@@ -110,9 +110,6 @@ export interface Band {
   bandName: string;
   showTime?: string;
   testTime?: string;
-  managerId?: string;
-  manager: string;
-  managerPhone: string;
   bandInfo: string;
   contacts: ExtraContact[];
   fileUrl: string;

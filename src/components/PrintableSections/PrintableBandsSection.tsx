@@ -32,7 +32,7 @@ const PrintableBandsSection: React.FC<PrintableBandsSectionProps> = ({
               <View style={styles.bandInfo}>
                 <Text>Nombre: {band.bandName}</Text>
               </View>
-              {band.manager && (
+              {/* {band.manager && (
                 <View style={styles.bandInfo}>
                   <Text>Manager: {band.manager}</Text>
                 </View>
@@ -41,7 +41,7 @@ const PrintableBandsSection: React.FC<PrintableBandsSectionProps> = ({
                 <View style={styles.bandInfo}>
                   <Text>Teléfono Manager: {band.managerPhone}</Text>
                 </View>
-              )}
+              )} */}
               {band.showTime && (
                 <View style={styles.bandInfo}>
                   <Text>Hora del show: {band.showTime}</Text>

@@ -6,7 +6,7 @@ const EditableContact = ({
   contact,
   onSave,
   onCancel,
-  allContacts,
+  allContacts
 }: {
   contact?: ExtraContact;
   onSave: (contact: ExtraContact) => void;
@@ -18,7 +18,7 @@ const EditableContact = ({
     name: '',
     phone: '',
     rol: '',
-    type: 'contact',
+    type: 'contact'
   });
 
   useEffect(() => {
@@ -57,10 +57,20 @@ const EditableContact = ({
               ...prev,
               _id: selected._id,
               name: selected.name,
-              phone: selected.phone
+              phone: selected.phone,
+              rol: selected.rol
             }));
           }
         }}
+      />
+      <Input
+        type='text'
+        name='rol'
+        placeholder='Rol'
+        value={contactData.rol}
+        onChange={handleChange}
+        autoComplete='off'
+        style={{ marginBottom: '12px' }}
       />
       <Input
         type='text'
@@ -79,15 +89,6 @@ const EditableContact = ({
         onChange={handleChange}
         autoComplete='off'
         style={{ marginBottom: '8px' }}
-      />
-        <Input
-        type='text'
-        name='rol'
-        placeholder='Rol'
-        value={contactData.rol}
-        onChange={handleChange}
-        autoComplete='off'
-        style={{ marginBottom: '12px' }}
       />
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
         <Button color='red' onClick={onCancel}>

@@ -43,8 +43,6 @@ const EVENT_DETAILS_LABELS = {
   churchDate: 'Hora de la iglesia',
   civil: 'Hora del civil',
   bandName: 'Nombre de banda',
-  manager: 'Manager',
-  managerPhone: 'Contacto del manager',
   moreData: 'Mas Información',
   showtime: 'Hora del show',
   music: 'Musica',

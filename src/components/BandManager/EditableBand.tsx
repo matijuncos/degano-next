@@ -40,8 +40,6 @@ const EditableBand = ({
         bandName: '',
         showTime: '',
         testTime: '',
-        manager: '',
-        managerPhone: '',
         bandInfo: '',
         contacts: [],
         fileUrl: '',
@@ -56,8 +54,6 @@ const EditableBand = ({
       bandName: '',
       showTime: '',
       testTime: '',
-      manager: '',
-      managerPhone: '',
       bandInfo: '',
       contacts: [],
       fileUrl: '',
@@ -80,8 +76,6 @@ const EditableBand = ({
       bandName: '',
       showTime: '',
       testTime: '',
-      manager: '',
-      managerPhone: '',
       bandInfo: '',
       contacts: [],
       fileUrl: '',
@@ -118,17 +112,13 @@ const EditableBand = ({
         body: JSON.stringify(bandPayload)
       });
       if (!res.ok) throw new Error('Error saving band');
-
-      const savedBand: Band = await res.json();
-
-      onSave(savedBand);
+      // Guardamos la banda con los horarios en el evento pero no usamos el de la db porque le quitamos los horarios.
+      onSave(bandPayload);
       setBandData({
         _id: '',
         bandName: '',
         showTime: '',
         testTime: '',
-        manager: '',
-        managerPhone: '',
         bandInfo: '',
         contacts: [],
         fileUrl: '',
@@ -140,7 +130,6 @@ const EditableBand = ({
       setLoadingCursor(false);
     }
   };
-
 
   const handleSaveContact = (contact: ExtraContact) => {
     setBandData((prev) => ({
@@ -248,9 +237,6 @@ const EditableBand = ({
                     bandName: selected.bandName,
                     showTime: selected.showTime,
                     testTime: selected.testTime,
-                    managerId: selected.managerId ? selected.managerId : '',
-                    manager: selected.manager,
-                    managerPhone: selected.managerPhone,
                     bandInfo: selected.bandInfo,
                     contacts: selected.contacts,
                     fileUrl: selected.fileUrl
@@ -296,64 +282,11 @@ const EditableBand = ({
             />
           </div>
         </div>
-        <div className='inputs-cointainer' style={{ alignItems: 'flex-end' }}>
+        <div className='inputs-cointainer'>
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-end',
-              flex: 1
-            }}
-          >
-            <Select
-              label='Seleccionar contacto existente'
-              placeholder='Buscar...'
-              searchable
-              clearable
-              data={
-                allContacts
-                  ?.filter((c) => c._id !== bandData.managerId)
-                  .map((c) => ({
-                    value: c._id,
-                    label: c.name
-                  })) || []
-              }
-              value={bandData.managerId || ''}
-              onChange={(val) => {
-                const selected = allContacts?.find((c) => c._id === val);
-                if (selected) {
-                  setBandData((prev) => ({
-                    ...prev,
-                    managerId: selected._id,
-                    manager: selected.name,
-                    managerPhone: selected.phone
-                  }));
-                }
-              }}
-            />
-
-            <Input
-              type='text'
-              name='manager'
-              onChange={handleChange}
-              placeholder='Manager'
-              value={bandData.manager}
-              autoComplete='off'
-            />
-            <Input
-              type='text'
-              name='managerPhone'
-              onChange={handleChange}
-              placeholder='Contacto del manager'
-              value={bandData.managerPhone}
-              autoComplete='off'
-            />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-end',
+              justifyContent: 'space-around',
               flex: 1
             }}
           >
@@ -410,7 +343,6 @@ const EditableBand = ({
           display: 'flex',
           justifyContent: 'center',
           gap: '16px',
-          marginTop: '16px'
         }}
       >
         <Button style={{ width: '20%' }} onClick={cancelEdit} color='red'>

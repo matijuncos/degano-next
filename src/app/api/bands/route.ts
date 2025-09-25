@@ -25,13 +25,12 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    if (!body._id) {
-      delete body._id;
-    }
+    const { _id, showTime, testTime, ...rest } = body;
+    const cleanBody = { ...rest };
     const client = await clientPromise;
     const db = client.db('degano-app');
-    const result = await db.collection('bands').insertOne(body);
-    return NextResponse.json({ ...body, _id: result.insertedId });
+    const result = await db.collection('bands').insertOne(cleanBody);
+    return NextResponse.json({ ...cleanBody, _id: result.insertedId });
   } catch (error) {
     console.error('Error POST band:', error);
     return NextResponse.json({ error: 'Error creating band' }, { status: 500 });

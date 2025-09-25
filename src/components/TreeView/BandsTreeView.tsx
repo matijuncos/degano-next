@@ -84,7 +84,7 @@ function TreeNode({
             onClick={handleSelect}
             style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
-            <IconUser size={14} /> {node.name}
+            <IconUser size={14} /> {node.rol && `${node.rol} -`} {node.name} 
           </span>
         )}
       </div>
@@ -121,18 +121,13 @@ export default function BandsTreeView({
   onSelect,
   selectedBand,
   onEdit,
-  setAllData
 }: {
   onSelect?: (n: BandNode | null) => void;
   selectedBand?: Band | null;
   onEdit?: (item: BandNode | null) => void;
-  setAllData: (data: Band[]) => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const { data: bandsData = [] } = useSWR<Band[]>('/api/bands', fetcher);
-  useEffect(() => {
-    setAllData(bandsData);
-  }, [bandsData]);
 
   const handleCreateBand = () => {
     onSelect?.({
@@ -140,9 +135,6 @@ export default function BandsTreeView({
       bandName: '',
       showTime: '',
       testTime: '',
-      managerId: '',
-      manager: '',
-      managerPhone: '',
       bandInfo: '',
       contacts: [] as ExtraContact[],
       fileUrl: '',

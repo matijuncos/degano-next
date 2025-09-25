@@ -2,14 +2,15 @@
 import useSWR from 'swr';
 import { mutate } from 'swr';
 import { useState, useEffect } from 'react';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconEye } from '@tabler/icons-react';
 import {
   Button,
   TextInput,
   Group,
   Textarea,
   Select,
-  Modal
+  Modal,
+  FileButton
 } from '@mantine/core';
 import useNotification from '@/hooks/useNotification';
 import { Band, ExtraContact } from '@/context/types';
@@ -19,13 +20,11 @@ type BandNode = Band | ExtraContact;
 export default function BandsCreationPanel({
   selectedBand,
   editItem,
-  onCancel,
-  allData
+  onCancel
 }: {
   selectedBand: BandNode | null;
   editItem: BandNode | null;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
-  allData: Band[];
 }) {
   const notify = useNotification();
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -37,11 +36,10 @@ export default function BandsCreationPanel({
   const [contactToDelete, setContactToDelete] = useState<ExtraContact | null>(
     null
   );
-
-  const newEntity = selectedBand?._id === '';
-  const editingEntity = selectedBand && selectedBand?._id !== '';
+  const [waitingAws, setWaitingAws] = useState(false);
 
   const [formData, setFormData] = useState<any>({});
+  const newEntity = formData?._id === '';
 
   useEffect(() => {
     if (editItem) {
@@ -53,10 +51,6 @@ export default function BandsCreationPanel({
           _id: '',
           type: 'band',
           bandName: '',
-          showTime: '',
-          testTime: '',
-          manager: '',
-          managerPhone: '',
           bandInfo: '',
           contacts: [],
           fileUrl: ''
@@ -152,11 +146,9 @@ export default function BandsCreationPanel({
       if (!patchRes.ok) throw new Error('Error updating band contacts');
 
       const updatedBand = await patchRes.json();
-      console.log('updatedBand ', updatedBand);
       await mutate('/api/bands');
 
       notify({ message: 'Contacto eliminado' });
-
       setFormData(updatedBand);
     } catch (error) {
       console.error(error);
@@ -164,16 +156,61 @@ export default function BandsCreationPanel({
     }
   };
 
-  if (!newEntity && !editItem) return null;
+  const handleUpload = async (file: File | null) => {
+    if (!file) return;
+    setWaitingAws(true);
+    try {
+      const res = await fetch('/api/uploadToS3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          bucket: 'bands'
+        })
+      });
+      const { signedUrl, url } = await res.json();
 
+      await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      });
+
+      setFormData((prev: Band) => ({ ...prev, fileUrl: url }));
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      setWaitingAws(false);
+    }
+  };
+
+  const handleDeleteFile = async () => {
+    if (!formData.fileUrl) return;
+    setWaitingAws(true);
+    try {
+      await fetch('/api/deleteFromS3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: formData.fileUrl, bucket: 'bands' })
+      });
+      setFormData((prev: Band) => ({ ...prev, fileUrl: '' }));
+    } catch (error) {
+      console.error('Delete error:', error);
+    } finally {
+      setWaitingAws(false);
+    }
+  };
+
+  if (!newEntity && !editItem) return null;
   return (
     <div style={{ padding: '1rem', height: '100vh' }}>
       <h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>
-        {newEntity
-          ? selectedBand?.type === 'band'
+        {!formData?._id
+          ? formData?.type === 'band'
             ? 'Crear nueva banda'
             : 'Crear nuevo contacto'
-          : editingEntity && selectedBand?.type === 'band'
+          : formData?._id && formData?.type === 'band'
           ? 'Editar banda'
           : 'Editar contacto'}
       </h3>
@@ -181,65 +218,54 @@ export default function BandsCreationPanel({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {formData.type === 'band' && (
           <>
-            {newEntity && formData.type === 'band' && (
-              <Select
-                label='Seleccionar banda existente'
-                placeholder='Buscar...'
-                searchable
-                clearable
-                data={
-                  allData
-                    ?.filter((b) => b._id !== formData._id)
-                    .map((b) => ({
-                      value: b._id,
-                      label: b.bandName
-                    })) || []
-                }
-                value={formData._id || ''}
-                onChange={(val) => {
-                  const selected = allData?.find((b) => b._id === val);
-                  if (selected) {
-                    setFormData({
-                      ...selected
-                    });
-                  }
-                }}
-              />
-            )}
             <TextInput
               label='Nombre de la banda'
               value={formData.bandName || ''}
               onChange={(e) => handleInput('bandName', e.currentTarget.value)}
-            />
-            <TextInput
-              label='Horario show'
-              value={formData.showTime || ''}
-              onChange={(e) => handleInput('showTime', e.currentTarget.value)}
-            />
-            <TextInput
-              label='Horario prueba'
-              value={formData.testTime || ''}
-              onChange={(e) => handleInput('testTime', e.currentTarget.value)}
-            />
-            <TextInput
-              label='Manager'
-              value={formData.manager || ''}
-              onChange={(e) => handleInput('manager', e.currentTarget.value)}
-            />
-            <TextInput
-              label='Teléfono manager'
-              value={formData.managerPhone || ''}
-              onChange={(e) =>
-                handleInput('managerPhone', e.currentTarget.value)
-              }
             />
             <Textarea
               label='Info de la banda'
               value={formData.bandInfo || ''}
               onChange={(e) => handleInput('bandInfo', e.currentTarget.value)}
             />
+            <div style={{ margin: 'auto' }}>
+              {!formData.fileUrl ? (
+                <FileButton
+                  onChange={handleUpload}
+                  accept='image/*,.pdf,.doc,.docx'
+                >
+                  {(props) => (
+                    <Button {...props} loading={waitingAws} variant='outline'>
+                      Subir archivo
+                    </Button>
+                  )}
+                </FileButton>
+              ) : (
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
+                >
+                  <a
+                    href={formData.fileUrl}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  >
+                    <Button variant='light'>
+                      <IconEye size={16} />
+                    </Button>
+                  </a>
+                  <Button
+                    color='red'
+                    variant='light'
+                    loading={waitingAws}
+                    onClick={handleDeleteFile}
+                  >
+                    <IconTrash size={16} />
+                  </Button>
+                </div>
+              )}
+            </div>
             {formData.contacts && formData.contacts.length > 0 && (
-              <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
                 <h4>Contactos</h4>
                 {formData.contacts.map((c: ExtraContact) => (
                   <div
@@ -264,21 +290,23 @@ export default function BandsCreationPanel({
                 ))}
               </div>
             )}
-            <Button
-              variant='light'
-              onClick={() => {
-                setFormData((prev: Band) => ({
-                  _id: '',
-                  bandId: prev._id,
-                  type: 'contact',
-                  name: '',
-                  phone: '',
-                  rol: ''
-                }));
-              }}
-            >
-              Agregar contacto
-            </Button>
+            {formData._id && (
+              <Button
+                variant='light'
+                onClick={() => {
+                  setFormData((prev: Band) => ({
+                    _id: '',
+                    bandId: prev._id,
+                    type: 'contact',
+                    name: '',
+                    phone: '',
+                    rol: ''
+                  }));
+                }}
+              >
+                Agregar contacto
+              </Button>
+            )}
           </>
         )}
 
@@ -311,7 +339,11 @@ export default function BandsCreationPanel({
                 }
               }}
             />
-
+            <TextInput
+              label='Rol'
+              value={formData.rol || ''}
+              onChange={(e) => handleInput('rol', e.currentTarget.value)}
+            />
             <TextInput
               label='Nombre del contacto'
               value={formData.name || ''}
@@ -322,16 +354,14 @@ export default function BandsCreationPanel({
               value={formData.phone || ''}
               onChange={(e) => handleInput('phone', e.currentTarget.value)}
             />
-            <TextInput
-              label='Rol'
-              value={formData.rol || ''}
-              onChange={(e) => handleInput('rol', e.currentTarget.value)}
-            />
           </>
         )}
       </div>
 
-      <Group mt='md' style={{ paddingBottom: 10 }}>
+      <Group
+        mt='md'
+        style={{ paddingBottom: 10, justifyContent: 'space-around' }}
+      >
         <Button onClick={handleSubmit}>
           {newEntity ? 'Finalizar carga' : 'Actualizar'}
         </Button>
@@ -356,7 +386,8 @@ export default function BandsCreationPanel({
         centered
       >
         <p>
-          ¿Seguro que querés eliminar <b>{contactToDelete?.name}</b> de la banda?
+          ¿Seguro que querés eliminar <b>{contactToDelete?.name}</b> de la
+          banda?
         </p>
         <Group justify='flex-end' mt='md'>
           <Button variant='default' onClick={() => setDeleteModalOpen(false)}>
