@@ -14,7 +14,10 @@ export async function GET() {
     return NextResponse.json(bands);
   } catch (error) {
     console.error('Error GET bands:', error);
-    return NextResponse.json({ error: 'Error fetching bands' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error fetching bands' },
+      { status: 500 }
+    );
   }
 }
 
@@ -22,13 +25,12 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    if (!body._id) {
-      delete body._id;
-    }
+    const { _id, showTime, testTime, ...rest } = body;
+    const cleanBody = { ...rest };
     const client = await clientPromise;
     const db = client.db('degano-app');
-    const result = await db.collection('bands').insertOne(body);
-    return NextResponse.json({ ...body, _id: result.insertedId });
+    const result = await db.collection('bands').insertOne(cleanBody);
+    return NextResponse.json({ ...cleanBody, _id: result.insertedId });
   } catch (error) {
     console.error('Error POST band:', error);
     return NextResponse.json({ error: 'Error creating band' }, { status: 500 });
@@ -48,15 +50,63 @@ export async function PUT(req: Request) {
 
     const { _id, ...rest } = body;
 
-    await db.collection('bands').updateOne(
-      { _id: new ObjectId(_id) },
-      { $set: rest }
-    );
+    await db
+      .collection('bands')
+      .updateOne({ _id: new ObjectId(_id) }, { $set: rest });
 
     return NextResponse.json(body);
   } catch (error) {
     console.error('Error PUT band:', error);
     return NextResponse.json({ error: 'Error updating band' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    const { bandId, contact, removeContactId } = body;
+
+    if (!bandId) {
+      return NextResponse.json({ error: 'Missing bandId' }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db('degano-app');
+
+    if (removeContactId) {
+      // eliminar un contacto
+      await db
+        .collection('bands')
+        .updateOne(
+          { _id: new ObjectId(String(bandId)) },
+          { $pull: { contacts: { _id: removeContactId } } as any }
+        );
+    } else if (contact?._id) {
+      // actualizar o insertar contacto
+      await db
+        .collection('bands')
+        .updateOne(
+          { _id: new ObjectId(bandId), 'contacts._id': contact._id },
+          { $set: { 'contacts.$': contact } }
+        );
+      await db
+        .collection('bands')
+        .updateOne(
+          { _id: new ObjectId(bandId), 'contacts._id': { $ne: contact._id } },
+          { $push: { contacts: contact } }
+        );
+    }
+
+    const updatedBand = await db
+      .collection('bands')
+      .findOne({ _id: new ObjectId(String(bandId)) });
+    return NextResponse.json(updatedBand);
+  } catch (error) {
+    console.error('Error PATCH contact in band:', error);
+    return NextResponse.json(
+      { error: 'Error updating contact in band' },
+      { status: 500 }
+    );
   }
 }
 

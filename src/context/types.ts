@@ -5,6 +5,8 @@ export interface ExtraContact {
   _id: string;
   name: string;
   phone: string;
+  rol: string;
+  type: 'contact';
 }
 
 export interface EventModel {
@@ -108,12 +110,10 @@ export interface Band {
   bandName: string;
   showTime?: string;
   testTime?: string;
-  managerId?: string;
-  manager: string;
-  managerPhone: string;
   bandInfo: string;
   contacts: ExtraContact[];
   fileUrl: string;
+  type: 'band'
 }
 
 export interface EmployeeModel {

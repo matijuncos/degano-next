@@ -40,6 +40,7 @@ const BandList = ({
         : [...bands, band]
     );
     await refetchBands();
+    setOpened(null);
   };
 
   const handleCancelBand = () => {
@@ -110,7 +111,15 @@ const BandList = ({
                 }}
               >
                 <span>
-                  <strong>{b.bandName}</strong> - {b.manager} ({b.managerPhone}){' '}
+                  <strong>{b.bandName}</strong>{' '}
+                  {b.contacts.length > 0 &&
+                    `${
+                      b.contacts[0].name
+                        ? `- Contacto: ${b.contacts[0].name}`
+                        : ''
+                    } ${
+                      b.contacts[0].rol ? `- Rol: ${b.contacts[0].rol}` : ''
+                    }`}
                   {b.bandInfo ? `- ${b.bandInfo}` : ''}
                 </span>
                 <div style={{ display: 'flex', gap: '10px' }}>

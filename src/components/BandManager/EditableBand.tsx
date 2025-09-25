@@ -11,6 +11,7 @@ import {
   IconEye
 } from '@tabler/icons-react';
 import EditableContact from './EditableContact';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 
 const EditableBand = ({
   band,
@@ -23,6 +24,7 @@ const EditableBand = ({
   onSave: (band: Band) => void;
   onCancel: () => void;
 }) => {
+  const setLoadingCursor = useLoadingCursor();
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data: allContacts, mutate: refetchContacts } = useSWR<ExtraContact[]>(
     '/api/contacts',
@@ -38,11 +40,10 @@ const EditableBand = ({
         bandName: '',
         showTime: '',
         testTime: '',
-        manager: '',
-        managerPhone: '',
         bandInfo: '',
         contacts: [],
-        fileUrl: ''
+        fileUrl: '',
+        type: 'band'
       });
     }
   }, [band]);
@@ -53,11 +54,10 @@ const EditableBand = ({
       bandName: '',
       showTime: '',
       testTime: '',
-      manager: '',
-      managerPhone: '',
       bandInfo: '',
       contacts: [],
-      fileUrl: ''
+      fileUrl: '',
+      type: 'band'
     }
   );
   const [showEditableContact, setShowEditableContact] = useState(false);
@@ -76,86 +76,58 @@ const EditableBand = ({
       bandName: '',
       showTime: '',
       testTime: '',
-      manager: '',
-      managerPhone: '',
       bandInfo: '',
       contacts: [],
-      fileUrl: ''
+      fileUrl: '',
+      type: 'band'
     });
     onCancel();
   };
 
   const handleSave = async () => {
     try {
-      const method = bandData._id ? 'PUT' : 'POST';
+      setLoadingCursor(true);
+      const savedContacts: ExtraContact[] = [];
+      for (const contact of bandData.contacts) {
+        const method = contact._id ? 'PUT' : 'POST';
+        const res = await fetch('/api/contacts', {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(contact)
+        });
+        if (!res.ok) throw new Error('Error saving contact');
+        const savedContact = await res.json();
+        savedContacts.push(savedContact);
+      }
 
+      const bandPayload = {
+        ...bandData,
+        contacts: savedContacts
+      };
+
+      const method = bandData._id ? 'PUT' : 'POST';
       const res = await fetch('/api/bands', {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bandData)
+        body: JSON.stringify(bandPayload)
       });
-
       if (!res.ok) throw new Error('Error saving band');
-
-      const savedBand: Band = await res.json();
-
-      // Guardamos también el contacto manager si aplica
-      await handleSaveOrEditContact(
-        {
-          _id: savedBand?.managerId || '',
-          name: savedBand.manager,
-          phone: savedBand.managerPhone
-        },
-        true
-      );
-
-      onSave(savedBand); // ahora se pasa ya con el _id
+      // Guardamos la banda con los horarios en el evento pero no usamos el de la db porque le quitamos los horarios.
+      onSave(bandPayload);
       setBandData({
         _id: '',
         bandName: '',
         showTime: '',
         testTime: '',
-        managerId: '',
-        manager: '',
-        managerPhone: '',
         bandInfo: '',
         contacts: [],
-        fileUrl: ''
+        fileUrl: '',
+        type: 'band'
       });
     } catch (error) {
       console.error('handleSave error', error);
-    }
-  };
-
-  const handleSaveOrEditContact = async (
-    contact: ExtraContact,
-    isManager: boolean
-  ) => {
-    const method = contact._id ? 'PUT' : 'POST';
-    try {
-      const res = await fetch('/api/contacts', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contact)
-      });
-      if (!res.ok) throw new Error('Error saving contact');
-      const saved = await res.json();
-      await refetchContacts();
-      setBandData((prev) => {
-        if (isManager) return prev;
-        const exists = prev.contacts.some((c) => c._id === saved._id);
-        if (exists) {
-          return {
-            ...prev,
-            contacts: prev.contacts.map((c) =>
-              c._id === saved._id ? saved : c
-            )
-          };
-        }
-        return { ...prev, contacts: [...prev.contacts, saved] };
-      });
-    } catch (error) {
-      console.error('handleSaveOrEditContact error', error);
+    } finally {
+      setLoadingCursor(false);
     }
   };
 
@@ -265,9 +237,6 @@ const EditableBand = ({
                     bandName: selected.bandName,
                     showTime: selected.showTime,
                     testTime: selected.testTime,
-                    managerId: selected.managerId ? selected.managerId : '',
-                    manager: selected.manager,
-                    managerPhone: selected.managerPhone,
                     bandInfo: selected.bandInfo,
                     contacts: selected.contacts,
                     fileUrl: selected.fileUrl
@@ -313,64 +282,11 @@ const EditableBand = ({
             />
           </div>
         </div>
-        <div className='inputs-cointainer' style={{ alignItems: 'flex-end' }}>
+        <div className='inputs-cointainer'>
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-end',
-              flex: 1
-            }}
-          >
-            <Select
-              label='Seleccionar contacto existente'
-              placeholder='Buscar...'
-              searchable
-              clearable
-              data={
-                allContacts
-                  ?.filter((c) => c._id !== bandData.managerId)
-                  .map((c) => ({
-                    value: c._id,
-                    label: c.name
-                  })) || []
-              }
-              value={bandData.managerId || ''}
-              onChange={(val) => {
-                const selected = allContacts?.find((c) => c._id === val);
-                if (selected) {
-                  setBandData((prev) => ({
-                    ...prev,
-                    managerId: selected._id,
-                    manager: selected.name,
-                    managerPhone: selected.phone
-                  }));
-                }
-              }}
-            />
-
-            <Input
-              type='text'
-              name='manager'
-              onChange={handleChange}
-              placeholder='Manager'
-              value={bandData.manager}
-              autoComplete='off'
-            />
-            <Input
-              type='text'
-              name='managerPhone'
-              onChange={handleChange}
-              placeholder='Contacto del manager'
-              value={bandData.managerPhone}
-              autoComplete='off'
-            />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-end',
+              justifyContent: 'space-around',
               flex: 1
             }}
           >
@@ -427,7 +343,6 @@ const EditableBand = ({
           display: 'flex',
           justifyContent: 'center',
           gap: '16px',
-          marginTop: '16px'
         }}
       >
         <Button style={{ width: '20%' }} onClick={cancelEdit} color='red'>
@@ -456,7 +371,6 @@ const EditableBand = ({
               setSelectedContact(null);
             }}
             allContacts={allContacts || []}
-            handleSaveOrEditContact={handleSaveOrEditContact}
           />
         )}
       </div>
@@ -475,7 +389,7 @@ const EditableBand = ({
                 }}
               >
                 <span>
-                  <strong>{c.name}</strong> - {c.phone}
+                  <strong>{c.name}</strong> - {c.phone} - {c.rol}
                 </span>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <IconEdit

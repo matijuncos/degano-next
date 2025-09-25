@@ -221,9 +221,19 @@ const DrawerContent = () => {
               <div className={styles.sectionContainer} key={i}>
                 <p>+ {band?.bandName}</p>
                 <p>{band?.bandInfo}</p>
-                <p>
-                  Contacto: {band?.manager}: {band?.managerPhone}
-                </p>
+                {band.contacts.length > 0 && (
+                  <p>
+                    `$
+                    {band.contacts[0].name
+                      ? `- Contacto: ${band.contacts[0].name}`
+                      : ''}{' '}
+                    $
+                    {band.contacts[0].rol
+                      ? `- Rol: ${band.contacts[0].rol}`
+                      : ''}
+                    `
+                  </p>
+                )}
               </div>
             ))}
           <h4 className={styles.subtitle}>

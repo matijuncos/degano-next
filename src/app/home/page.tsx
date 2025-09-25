@@ -10,7 +10,8 @@ import {
   IconMusic,
   IconPlus,
   IconUser,
-  IconUsers
+  IconUsers,
+  IconVinyl
 } from '@tabler/icons-react';
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
@@ -59,6 +60,11 @@ const Home = () => {
       label: 'Staff',
       path: '/staff',
       Icon: IconUsers
+    },
+    {
+      label: 'Bandas',
+      path: '/bands',
+      Icon: IconVinyl
     }
   ];
   const itemVariants = {
