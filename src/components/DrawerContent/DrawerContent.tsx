@@ -4,18 +4,18 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { DrawerHeader, NavLink, Divider } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import styles from './DrawerContent.module.css';
-import { NewEquipmentType } from '../equipmentStockTable/types';
+// import { NewEquipmentType } from '../equipmentStockTable/types';
 import { useState, useCallback, useEffect } from 'react';
 import { initializeGapiClientAndGetToken } from '@/lib/gapi';
 import { IconBrandGoogleDrive } from '@tabler/icons-react';
 
-const CATEGORIES: NewEquipmentType[] = [
-  'Sonido',
-  'Iluminación',
-  'Imagen',
-  'Accesorios',
-  'No Definido'
-];
+// const CATEGORIES: NewEquipmentType[] = [
+//   'Sonido',
+//   'Iluminación',
+//   'Imagen',
+//   'Accesorios',
+//   'No Definido'
+// ];
 
 interface FileItem {
   id: string;
@@ -270,7 +270,7 @@ const DrawerContent = () => {
             <u>Equipamiento:</u>
           </h4>
           <div>
-            {CATEGORIES.map((category) => {
+            {/* {CATEGORIES.map((category) => {
               const equipmentInCategory =
                 selectedEvent?.equipment.filter((eq) => eq.type === category) ||
                 [];
@@ -294,7 +294,7 @@ const DrawerContent = () => {
                   </div>
                 )
               );
-            })}
+            })} */}
           </div>
           {selectedEvent &&
             selectedEvent?.bands.map((band, i) => (

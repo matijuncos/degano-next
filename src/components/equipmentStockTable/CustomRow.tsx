@@ -105,7 +105,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <CustomCell
+        {/* <CustomCell
           field='totalQuantity'
           value={eq.totalQuantity || ''}
           isEditing={isEditing}
@@ -122,31 +122,31 @@ const CustomRow: React.FC<CustomRowProps> = ({
           value={eq.price || ''}
           isEditing={isEditing}
           handleChange={handleChange}
-        />
+        /> */}
         <CustomCell
           field='brand'
           value={eq.brand || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <CustomCell
+        {/* <CustomCell
           field='codeNumber'
           value={eq.codeNumber || ''}
           isEditing={isEditing}
           handleChange={handleChange}
-        />
+        /> */}
         <CustomCell
           field='model'
           value={eq.model || ''}
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <CustomCell
+        {/* <CustomCell
           field='realPrice'
           value={eq.realPrice || ''}
           isEditing={isEditing}
           handleChange={handleChange}
-        />
+        /> */}
         <TableTd>
           <Flex align='center' gap='24px'>
             {isEditing ? (

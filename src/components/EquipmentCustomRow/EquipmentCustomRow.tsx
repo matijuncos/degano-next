@@ -110,7 +110,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
           isEditing={isEditing}
           handleChange={handleChange}
         />
-        <CustomCell
+        {/* <CustomCell
           field='selectedQuantity'
           value={eq.selectedQuantity || ''}
           isEditing={isEditing}
@@ -132,7 +132,7 @@ const CustomRow: React.FC<CustomRowProps> = ({
           {user?.role === 'admin'
             ? Number(eq.price) * Number(eq.selectedQuantity)
             : '****'}
-        </TableTd>
+        </TableTd> */}
         <TableTd>
           <Flex align='center' gap='24px'>
             {isEditing ? (
