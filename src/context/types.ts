@@ -26,6 +26,7 @@ export interface EventModel {
   bands: Array<Band>;
   music: Music;
   equipment: NewEquipment[];
+  equipmentPrice: number;
   payment: {
     upfrontAmount: string;
     totalPaymentDate?: Date;
@@ -37,7 +38,7 @@ export interface EventModel {
   };
   moreData: string;
   date: Date | string;
-  endDate?: Date | string;
+  endDate: Date | string;
   active: boolean;
   playlist: {
     label: string;

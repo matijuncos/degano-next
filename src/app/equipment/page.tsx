@@ -44,6 +44,7 @@ export default function EquipmentPage() {
           onSelect={setSelectedCategory}
           selectedCategory={selectedCategory}
           onEdit={handleEdit}
+          newEvent={false}
         />
       </Box>
 
@@ -62,6 +63,7 @@ export default function EquipmentPage() {
           setDisableCreateEquipment={setDisableCreateEquipment}
           onEdit={handleEdit}
           onCancel={handleCancel}
+          newEvent={false}
         />
       </Box>
 

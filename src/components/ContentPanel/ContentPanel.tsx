@@ -10,18 +10,21 @@ import {
   Button
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 
 export default function ContentPanel({
   selectedCategory,
   setDisableCreateEquipment,
   onEdit,
-  onCancel
+  onCancel,
+  newEvent
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
   onEdit?: (item: any) => void;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
+  newEvent: boolean;
 }) {
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data: categories = [] } = useSWR('/api/categories', fetcher);
@@ -107,6 +110,9 @@ export default function ContentPanel({
         );
       });
     } else if (isCategory) {
+      const dynamicAvailableStock = items.filter(
+        (item: any) => !item.outOfService?.isOut
+      ).length;
       return items.map((item: any, index: number) => {
         return (
           <tr
@@ -121,14 +127,19 @@ export default function ContentPanel({
             }}
             onClick={() => onEdit?.(item)}
           >
-            <td style={{padding: '0 5px'}}>{item.name}</td>
-            <td style={{padding: '0 5px'}}>{selectedCategory?.totalStock}</td>
-            <td style={{padding: '0 5px'}}>{selectedCategory?.availableStock}</td>
-            <td style={{padding: '0 5px'}}>{item.code}</td>
-            <td style={{padding: '0 5px'}}>{item.brand}</td>
-            <td style={{padding: '0 5px'}}>{item.model}</td>
-            <td style={{padding: '0 5px'}}>{item.serialNumber}</td>
-            <td style={{ color: item.outOfService?.isOut ? 'red' : 'green', padding: '0 5px'}}>
+            <td style={{ padding: '0 5px' }}>{item.name}</td>
+            <td style={{ padding: '0 5px' }}>{selectedCategory?.totalStock}</td>
+            <td style={{ padding: '0 5px' }}>{dynamicAvailableStock}</td>
+            <td style={{ padding: '0 5px' }}>{item.code}</td>
+            <td style={{ padding: '0 5px' }}>{item.brand}</td>
+            <td style={{ padding: '0 5px' }}>{item.model}</td>
+            <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
+            <td
+              style={{
+                color: item.outOfService?.isOut ? 'red' : 'green',
+                padding: '0 5px'
+              }}
+            >
               {item.outOfService?.isOut ? 'No disponible' : 'OK'}
             </td>
           </tr>
@@ -139,16 +150,27 @@ export default function ContentPanel({
       if (!item) return null;
 
       return (
-        <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center', whiteSpace: 'nowrap' }}>
-          <td style={{padding: '0 5px'}}>{item.name}</td>
-          <td style={{padding: '0 5px'}}>{item.code}</td>
-          <td style={{padding: '0 5px'}}>{item.brand}</td>
-          <td style={{padding: '0 5px'}}>{item.model}</td>
-          <td style={{padding: '0 5px'}}>{item.serialNumber}</td>
-          <td style={{ color: item.outOfService?.isOut ? 'red' : 'green', padding: '0 5px' }}>
+        <tr
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            textAlign: 'center',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <td style={{ padding: '0 5px' }}>{item.name}</td>
+          <td style={{ padding: '0 5px' }}>{item.code}</td>
+          <td style={{ padding: '0 5px' }}>{item.brand}</td>
+          <td style={{ padding: '0 5px' }}>{item.model}</td>
+          <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
+          <td
+            style={{
+              color: item.outOfService?.isOut ? 'red' : 'green',
+              padding: '0 5px'
+            }}
+          >
             {item.outOfService?.isOut ? 'No disponible' : 'OK'}
           </td>
-          <td style={{padding: '0 5px'}}>{item.location}</td>
+          <td style={{ padding: '0 5px' }}>{item.location}</td>
         </tr>
       );
     }
@@ -178,6 +200,7 @@ export default function ContentPanel({
   };
 
   const renderTitle = () => {
+    if (!!newEvent && !selectedCategory) return 'Selecciona un equipamiento';
     if (!selectedCategory) return 'Selecciona una categoría';
 
     return (
@@ -185,13 +208,36 @@ export default function ContentPanel({
         <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
           {selectedCategory.name}
         </h2>
-        <Group gap='xs'>
-          <Tooltip label='Eliminar'>
-            <ActionIcon color='red' variant='light' onClick={handleDeleteClick}>
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
+        {!newEvent ? (
+          <Group gap='xs'>
+            <Tooltip label='Eliminar'>
+              <ActionIcon
+                color='red'
+                variant='light'
+                onClick={handleDeleteClick}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        ) : (
+          !!newEvent &&
+          selectedCategory.categoryId && (
+            <Group>
+              <Tooltip label='Agregar al evento'>
+                <ActionIcon
+                  color='green'
+                  variant='light'
+                  onClick={() => onEdit?.(selectedCategory)}
+                  style={{ width: '8rem' }}
+                >
+                  <p style={{ marginRight: '15px' }}>Agregar</p>
+                  <IconPlus size={16} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          )
+        )}
       </Group>
     );
   };
@@ -200,11 +246,17 @@ export default function ContentPanel({
     <div style={{ padding: '1rem', width: '100%', overflowX: 'auto' }}>
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
-        <Table striped highlightOnHover withColumnBorders withRowBorders style={{
-      width: '100%',
-      borderCollapse: 'collapse',
-      minWidth: '600px'
-    }}>
+        <Table
+          striped
+          highlightOnHover
+          withColumnBorders
+          withRowBorders
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            minWidth: '600px'
+          }}
+        >
           <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
             {renderHeader()}
           </thead>

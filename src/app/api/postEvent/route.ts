@@ -14,16 +14,17 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const { _id, bands, ...bodyWithoutId } = body;
+    const { _id, bands, equipment, ...bodyWithoutId } = body;
     const db = client.db('degano-app');
     const timestamp = new Date();
     const bandsWithIds = (bands || []).map((b: any) => ({
       ...b,
-      _id: new ObjectId(),
+      _id: new ObjectId()
     }));
     const document = {
       ...(!_id ? bodyWithoutId : body),
       bands: bandsWithIds,
+      equipment,
       createdAt: !_id ? timestamp : undefined,
       updatedAt: timestamp
     };
@@ -31,6 +32,22 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
     const newEvent = await db
       .collection('events')
       .findOne({ _id: event.insertedId });
+
+    if (equipment?.length && newEvent) {
+      const eventStart = new Date(document.date);
+      const eventEnd = new Date(document.endDate);
+
+      await db.collection('equipment').updateMany(
+        { _id: { $in: equipment.map((eq: any) => new ObjectId(eq._id)) } },
+        {
+          $set: {
+            lastUsedStartDate: eventStart,
+            lastUsedEndDate: eventEnd
+          }
+        }
+      );
+    }
+
     const existingClient = await db
       .collection('clients')
       .findOne({ email: body.email });
@@ -44,7 +61,7 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
     }
     return NextResponse.json({ event: newEvent }, { status: 200 });
   } catch (error) {
-    console.log(error);
+    console.error('Error creating event:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
