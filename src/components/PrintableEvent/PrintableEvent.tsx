@@ -241,7 +241,7 @@ const PrintableEvent = () => {
             {selectedEvent.equipment.map((equipment) => (
               <TableTr key={equipment.name}>
                 <TableTd>{equipment.name}</TableTd>
-                <TableTd>{equipment.selectedQuantity}</TableTd>
+                {/* <TableTd>{equipment.selectedQuantity}</TableTd> */}
               </TableTr>
             ))}
           </TableTbody>
@@ -264,9 +264,9 @@ const PrintableEvent = () => {
           {selectedEvent.equipment.map((equipment) => (
             <View style={pdfStyles.tableRow} key={equipment.name}>
               <Text style={pdfStyles.tableCell}>{equipment.name}</Text>
-              <Text style={pdfStyles.tableCell}>
+              {/* <Text style={pdfStyles.tableCell}>
                 {equipment.selectedQuantity}
-              </Text>
+              </Text> */}
             </View>
           ))}
         </View>

@@ -13,6 +13,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   eventCity: '',
   lugar: '',
   date: '',
+  endDate: '',
   churchDate: '',
   civil: '',
   bands: [],
@@ -31,6 +32,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
     totalPayed: false,
     subsequentPayments: []
   },
+  equipmentPrice: 0,
   active: true,
   playlist: [],
   timing: []

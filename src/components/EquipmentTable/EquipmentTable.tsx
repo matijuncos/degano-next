@@ -10,13 +10,13 @@ import {
 import React, { useEffect, useState } from 'react';
 import CustomRow from '../EquipmentCustomRow/EquipmentCustomRow';
 import { IconCheck, IconPlus, IconX } from '@tabler/icons-react';
-import RowWithInputs from '../RowWithInputs/RowWithInputs';
+// import RowWithInputs from '../RowWithInputs/RowWithInputs';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import NewEquipmentTable from '../EquipmentForm/NewEquipmentTable';
-import { NewEquipment, NewEquipmentType } from '../equipmentStockTable/types';
+// import { NewEquipment, NewEquipmentType } from '../equipmentStockTable/types';
 import useNotification from '@/hooks/useNotification';
 import { cloneDeep } from 'lodash';
-import EquipmentSelector from '../EquipmentForm/EquipmentSelector';
+// import EquipmentSelector from '../EquipmentForm/EquipmentSelector';
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent } = useDeganoCtx();
@@ -26,29 +26,29 @@ const EquipmentTable = () => {
   const { user } = useUser();
   const [showInputRow, setShowInputRow] = useState(false);
   const isAdmin = user?.role === 'admin';
-  const notify = useNotification();
-  const [newEquipment, setNewEquipment] = useState<NewEquipment>({
-    name: '',
-    price: 0,
-    totalQuantity: 0,
-    currentQuantity: 0,
-    brand: '',
-    codeNumber: '',
-    model: '',
-    realPrice: 0,
-    type: 'No Definido'
-  });
-  const placeholderMapping: { [key in keyof NewEquipment]: string } = {
-    name: 'Nombre',
-    price: 'Precio del equipo ($)',
-    totalQuantity: 'Stock total',
-    currentQuantity: 'Cantidad disponible',
-    brand: 'Marca',
-    codeNumber: 'Número de serie',
-    model: 'Modelo',
-    realPrice: 'Precio real ($)',
-    type: 'Clasificación'
-  };
+  // const notify = useNotification();
+  // const [newEquipment, setNewEquipment] = useState<NewEquipment>({
+  //   name: '',
+  //   price: 0,
+  //   totalQuantity: 0,
+  //   currentQuantity: 0,
+  //   brand: '',
+  //   codeNumber: '',
+  //   model: '',
+  //   realPrice: 0,
+  //   type: 'No Definido'
+  // });
+  // const placeholderMapping: { [key in keyof NewEquipment]: string } = {
+  //   name: 'Nombre',
+  //   price: 'Precio del equipo ($)',
+  //   totalQuantity: 'Stock total',
+  //   currentQuantity: 'Cantidad disponible',
+  //   brand: 'Marca',
+  //   codeNumber: 'Número de serie',
+  //   model: 'Modelo',
+  //   realPrice: 'Precio real ($)',
+  //   type: 'Clasificación'
+  // };
 
   useEffect(() => {
     if (selectedEvent) {
@@ -60,14 +60,14 @@ const EquipmentTable = () => {
     setShowInputRow(true);
   };
 
-  const calculateTotal = () => {
-    return isAdmin
-      ? equipmentListToEdit.reduce(
-          (acc, item) => acc + item.price * (item.selectedQuantity || 1),
-          0
-        )
-      : '****';
-  };
+  // const calculateTotal = () => {
+  //   return isAdmin
+  //     ? equipmentListToEdit.reduce(
+  //         (acc, item) => acc + item.price * (item.selectedQuantity || 1),
+  //         0
+  //       )
+  //     : '****';
+  // };
 
   // const handleChange = (field: keyof NewEquipment, value: string | number) => {
   //   setNewEquipment((prev) => ({
@@ -165,42 +165,42 @@ const EquipmentTable = () => {
         </TableTh>
       </TableThead>
       <TableTbody>
-        {(showInputRow && selectedEvent) &&(
-          // <RowWithInputs hideRow={() => setShowInputRow(false)} />
-          // <div style={{ display: 'flex' }}>
-          //   <NewEquipmentTable
-          //     handleChange={handleChange}
-          //     newEquipment={newEquipment}
-          //     placeholderMapping={placeholderMapping}
-          //     newEvent={false}
-          //   />
-          //   <div
-          //     style={{
-          //       display: 'flex',
-          //       flexDirection: 'column',
-          //       justifyContent: 'space-evenly',
-          //       alignItems: 'center',
-          //       marginLeft: '10px'
-          //     }}
-          //   >
-          //     <IconCheck
-          //       color='green'
-          //       onClick={() => handleAddEquipment(newEquipment)}
-          //       className='cursorPointer'
-          //     />
-          //     <IconX
-          //       color='red'
-          //       onClick={() => setShowInputRow(false)}
-          //       className='cursorPointer'
-          //     />
-          //   </div>
-          // </div>
+        {/* {(showInputRow && selectedEvent) &&(
+          <RowWithInputs hideRow={() => setShowInputRow(false)} />
+          <div style={{ display: 'flex' }}>
+            <NewEquipmentTable
+              handleChange={handleChange}
+              newEquipment={newEquipment}
+              placeholderMapping={placeholderMapping}
+              newEvent={false}
+            />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-evenly',
+                alignItems: 'center',
+                marginLeft: '10px'
+              }}
+            >
+              <IconCheck
+                color='green'
+                onClick={() => handleAddEquipment(newEquipment)}
+                className='cursorPointer'
+              />
+              <IconX
+                color='red'
+                onClick={() => setShowInputRow(false)}
+                className='cursorPointer'
+              />
+            </div>
+          </div>
           <EquipmentSelector 
           event={selectedEvent}
           showInputsToAdd={showInputRow}
           setShowInputsToAdd={setShowInputRow}
           setPrice={()=>{}} />
-        )}
+        )} */}
         {equipmentListToEdit.map((eq, i) => (
           <CustomRow
             setEquipmentListToEdit={setEquipmentListToEdit}
@@ -210,11 +210,11 @@ const EquipmentTable = () => {
             eq={eq}
           />
         ))}
-        <TableTr>
+        {/* <TableTr>
           <TableTd align='right' colSpan={6}>
             Total: ${calculateTotal()}
           </TableTd>
-        </TableTr>
+        </TableTr> */}
       </TableTbody>
     </Table>
   );

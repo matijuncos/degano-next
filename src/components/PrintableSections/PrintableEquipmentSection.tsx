@@ -52,10 +52,10 @@ const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
             {event.equipment.map((equipment, index) => (
               <View key={index} style={styles.tableRow}>
                 <Text style={styles.tableCell}>{equipment.name}</Text>
-                <Text style={styles.tableCell}>
+                {/* <Text style={styles.tableCell}>
                   {equipment.selectedQuantity || equipment.totalQuantity}
-                </Text>
-                <Text style={styles.tableCell}>${equipment.price}</Text>
+                </Text> */}
+                {/* <Text style={styles.tableCell}>${equipment.price}</Text> */}
               </View>
             ))}
           </View>
