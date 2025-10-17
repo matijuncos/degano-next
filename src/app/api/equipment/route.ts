@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { isDateBetweenInclusive } from '@/utils/dateUtils';
 
 export async function GET() {
   const client = await clientPromise;
@@ -12,7 +13,27 @@ export async function GET() {
     .find()
     .sort({ name: 1 })
     .toArray();
-  return NextResponse.json(equipments);
+  const today = new Date();
+  const enriched = equipments.map((eq) => {
+    const inEvent = isDateBetweenInclusive(
+      today,
+      eq.lastUsedStartDate ? new Date(eq.lastUsedStartDate) : null,
+      eq.lastUsedEndDate ? new Date(eq.lastUsedEndDate) : null
+    );
+
+    const outOfServiceMasked = inEvent
+      ? { isOut: true, reason: 'En Evento' }
+      : eq.outOfService;
+
+    return {
+      ...eq,
+      outOfService: outOfServiceMasked,
+      isInUse: inEvent,
+      isAvailable: !inEvent && !eq.outOfService?.isOut
+    };
+  });
+
+  return NextResponse.json(enriched);
 }
 
 export async function POST(req: Request) {

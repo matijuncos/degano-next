@@ -1,15 +1,24 @@
-export type NewEquipmentType = 'Sonido' | 'Iluminación' | 'Imagen' | 'Accesorios' | 'No Definido';
-
-export type NewEquipment = {
-  _id?: string;
+export interface NewEquipment {
+  _id: string;
   name: string;
-  price: number;
-  totalQuantity: number;
-  currentQuantity: number;
-  selectedQuantity?: number;
-  brand?: string;
-  codeNumber?: string;
+  code: string;
+  brand: string;
   model: string;
-  realPrice: number;
-  type: NewEquipmentType;
-};
+  serialNumber: string;
+  lastUsedStartDate: Date | string;
+  lastUsedEndDate: Date | string;
+  rentalPrice: number;
+  rentalPriceFormatted: string;
+  investmentPrice: number;
+  investmentPriceFormatted: string;
+  weight: number;
+  location: string;
+  outOfService: {
+    isOut: boolean;
+    reason: string;
+  };
+  history: string;
+  imageUrl: string;
+  pdfUrl: string;
+  pdfFileName: string | null;
+}

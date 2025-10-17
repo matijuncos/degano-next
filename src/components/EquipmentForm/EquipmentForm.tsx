@@ -1,11 +1,11 @@
+import ContentPanel from '@/components/ContentPanel/ContentPanel';
+import Sidebar from '@/components/Sidebar/Sidebar';
+import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Button, Flex, Text } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react';
+import { Box, Button } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
-import { EVENT_TABS } from '@/context/config';
-import { useUser } from '@auth0/nextjs-auth0/client';
-import EquipmentSelector from './EquipmentSelector';
+import EquipmentList from './EquipmentList';
 
 const EquipmentForm = ({
   event,
@@ -16,138 +16,94 @@ const EquipmentForm = ({
   onNextTab: Function;
   onBackTab: Function;
 }) => {
-  const { user } = useUser();
-  const [equipment, setEquipment] = useState<EventModel>(event);
-  const [useEquipmentDataBase, setUseEquipmentDataBase] = useState(true);
-  const [equipmentFromDB, setEquipmentFromDB] = useState<NewEquipment[]>([]);
-  const [price, setPrice] = useState<number>(0);
-  const [showInputsToAdd, setShowInputsToAdd] = useState(false);
+
+  const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [eventEquipment, setEventEquipment] = useState<EventModel>(event);
+  const [total, setTotal] = useState(0);
 
   const next = () => {
-    onNextTab(4, equipment);
+    onNextTab(4, eventEquipment);
   };
   const back = () => {
-    onBackTab(EVENT_TABS.MUSIC, equipment);
+    onBackTab(EVENT_TABS.MUSIC, eventEquipment);
   };
 
-  const handleRemoveEquipment = (idxToRemove: number) => {
-    setEquipment((prevEquipment) => {
-      const updatedEquipment = prevEquipment.equipment.filter(
-        (_, idx) => idx !== idxToRemove
+  useEffect(() => {
+    setEventEquipment((prev) => ({ ...prev, equipmentPrice: total }));
+  }, [total]);
+
+  const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
+    if (equipmentSelected.outOfService.isOut) return;
+    setEventEquipment((prev) => {
+      const alreadyAdded = prev.equipment.some(
+        (eq) => eq._id === equipmentSelected._id
       );
-      const newPrice = updatedEquipment.reduce((totalPrice, equipment) => {
-        return (
-          totalPrice + equipment.price * Number(equipment.selectedQuantity)
-        );
-      }, 0);
-      setPrice(newPrice);
-      return { ...prevEquipment, equipment: updatedEquipment };
+      if (alreadyAdded) return prev;
+      return {
+        ...prev,
+        equipment: [...prev.equipment, {...equipmentSelected, lastUsedStartDate: prev.date,
+            lastUsedEndDate: prev.endDate}],
+        equipmentPrice: total
+      };
     });
   };
 
-  useEffect(() => {
-    const getEquipmentFromDB = async () => {
-      const response = await fetch('/api/getEquipmentV2');
-      const data = await response.json();
-      setEquipmentFromDB(data.equipment as NewEquipment[]);
-    };
-    getEquipmentFromDB();
-  }, []);
-
-  useEffect(() => {
-    const equipmentFiltered = equipment?.equipment?.filter((eq) => Number(eq.selectedQuantity) > 0);
-    const totalPrice = equipmentFiltered.reduce((total, item) => {
-      const subtotal = item.selectedQuantity ? item.selectedQuantity * item.price : 0;
-      return total + subtotal;
-    }, 0)
-    setPrice(totalPrice);
-  },[equipment?.equipment])
-
   return (
     <div>
-      <h2>Equipamiento necesario </h2>
-      <Flex 
-        gap='12px' 
-        align='center' 
-        my='18px' 
-        justify='flex-end'
-        onClick={() => setShowInputsToAdd(!showInputsToAdd)} 
-        className='cursorPointer' >
-        <Text
-          size='20px'
+      <div
+        className='flex'
+        style={{ height: '75vh', minHeight: '75vh', overflow: 'hidden' }}
+      >
+        <Box
+          style={{
+            width: '25%',
+            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+            height: '75vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
         >
-          Agregar nuevo equipo
-        </Text>
-        <IconPlus />
-      </Flex>
-      <div>
-        {/* {useEquipmentDataBase && (
-          <>
-            <ChooseComponentFromDBComponent
-              equipment={equipment}
-              setEquipment={setEquipment}
-              equipmentFromDB={equipmentFromDB}
-              setEquipmentFromDB={setEquipmentFromDB}
-              showInputsToAdd={showInputsToAdd}
-              setShowInputsToAdd={setShowInputsToAdd}
-            />
-          </>
-        )}
-        <Flex
-          className='cantidad-precio-lista'
-          direction='column'
-          gap='6px'
-          style={{ width: '90%' }}
-          mt='12px'
+          <Sidebar
+            onSelect={setSelectedEquipment}
+            selectedCategory={{}}
+            onEdit={() => {}}
+            newEvent={true}
+          />
+        </Box>
+
+        <Box
+          style={{
+            width: '55%',
+            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+            height: '75vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
         >
-          {equipment?.equipment
-            ?.filter((eq) => Number(eq.selectedQuantity) > 0)
-            .map((item, idx) => {
-              return (
-                <Flex
-                  gap='6px'
-                  key={item.name + idx}
-                  className='equipmentDiv flex'
-                  p='3px 6px'
-                  style={{
-                    border: 'solid 1px white',
-                    width: 'fit-content',
-                    borderRadius: '4px'
-                  }}
-                >
-                  <Text className='itemName'> {item.name}</Text>|
-                  <Text className='quantity'>
-                    Cantidad: {item.selectedQuantity}
-                  </Text>
-                  |
-                  {user?.role === 'admin' && (
-                    <Text className='price'>Precio individual: ${item.price}</Text>
-                  )}
-                  -
-                  <ActionIcon
-                    size='sm'
-                    variant='subtle'
-                    color='red'
-                    onClick={(e) => handleRemoveEquipment(idx)}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Flex>
-              );
-            })}
-        </Flex> */}
-        <EquipmentSelector 
-          event={event}
-          showInputsToAdd={showInputsToAdd}
-          setShowInputsToAdd={setShowInputsToAdd}
-          setPrice={setPrice}
-        />
-        <div
-          style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}
+          <ContentPanel
+            selectedCategory={selectedEquipment}
+            setDisableCreateEquipment={() => {}}
+            onEdit={handleEquipmentSelection}
+            onCancel={() => {}}
+            newEvent={true}
+          />
+        </Box>
+
+        <Box
+          style={{
+            width: '20%',
+            height: '75vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto'
+          }}
         >
-          <h3 style={{ fontWeight: 'bold' }}>Total: </h3>
-          <p>${price}</p>
-        </div>
+          <EquipmentList
+            equipmentList={eventEquipment.equipment}
+            setEventEquipment={setEventEquipment}
+            setTotal={setTotal}
+          />
+        </Box>
       </div>
       <div
         style={{

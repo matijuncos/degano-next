@@ -178,11 +178,13 @@ function TreeNode({
 export default function TreeView({
   onSelect,
   selectedCategory,
-  onEdit
+  onEdit,
+  newEvent
 }: {
   onSelect?: (n: CategoryNode | null) => void;
   selectedCategory?: CategoryNode | null;
   onEdit?: (item: any) => void;
+  newEvent: boolean;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const { data: treeNodes = [] } = useSWR<CategoryNode[]>(
@@ -242,12 +244,13 @@ export default function TreeView({
         flexDirection: 'column'
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          margin: '0 0.75rem'
+      {!newEvent && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            margin: '0 0.75rem'
         }}
       >
         <Button
@@ -267,7 +270,7 @@ export default function TreeView({
         >
           Cargar equipamiento
         </Button>
-      </div>
+      </div>)}
       <Divider my='sm' />
       <div
         style={{
