@@ -28,8 +28,6 @@ export async function GET() {
     return {
       ...eq,
       outOfService: outOfServiceMasked,
-      isInUse: inEvent,
-      isAvailable: !inEvent && !eq.outOfService?.isOut
     };
   });
 
