@@ -9,10 +9,21 @@ export interface ExtraContact {
   type: 'contact';
 }
 
+export interface ExtraClient {
+  _id?: string;
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  rol: string;
+  age?: string;
+  address?: string;
+}
+
 export interface EventModel {
   // All event properties
   fullName: string;
   phoneNumber: string;
+  extraClients: ExtraClient[];
   email: string;
   age: string;
   address: string;
@@ -114,7 +125,7 @@ export interface Band {
   bandInfo: string;
   contacts: ExtraContact[];
   fileUrl: string;
-  type: 'band'
+  type: 'band';
 }
 
 export interface EmployeeModel {
