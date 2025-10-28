@@ -5,6 +5,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   fullName: '',
   phoneNumber: '',
   email: '',
+  extraClients: [],
   age: '',
   address: '',
   type: '',
