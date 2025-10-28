@@ -56,9 +56,65 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
       await db.collection('clients').insertOne({
         fullName: body.fullName,
         phoneNumber: body.phoneNumber,
-        email: body.email
+        email: body.email,
+        age: body.age || '',
+        address: body.address || '',
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
     }
+
+    if (Array.isArray(body.extraClients) && body.extraClients.length > 0) {
+      for (const extra of body.extraClients) {
+        const extraId =
+          extra._id && ObjectId.isValid(extra._id)
+            ? new ObjectId(extra._id)
+            : null;
+
+        // Buscar por _id o por email
+        let existingExtra = null;
+        if (extraId) {
+          existingExtra = await db
+            .collection('clients')
+            .findOne({ _id: extraId });
+        } else if (extra.email) {
+          existingExtra = await db
+            .collection('clients')
+            .findOne({ email: extra.email });
+        }
+
+        // Crear si no existe
+        if (!existingExtra) {
+          await db.collection('clients').insertOne({
+            fullName: extra.fullName,
+            phoneNumber: extra.phoneNumber,
+            email: extra.email,
+            age: extra.age || '',
+            address: extra.address || '',
+            rol: extra.rol,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+        } else {
+          // Actualizar si ya existe
+          await db.collection('clients').updateOne(
+            { _id: existingExtra._id },
+            {
+              $set: {
+                fullName: extra.fullName,
+                phoneNumber: extra.phoneNumber,
+                email: extra.email,
+                age: extra.age || '',
+                address: extra.address || '',
+                rol: extra.rol,
+                updatedAt: new Date()
+              }
+            }
+          );
+        }
+      }
+    }
+
     return NextResponse.json({ event: newEvent }, { status: 200 });
   } catch (error) {
     console.error('Error creating event:', error);

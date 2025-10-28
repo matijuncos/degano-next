@@ -78,7 +78,6 @@ const ClientForm = ({
     'rol'
   ];
 
-  console.log('clientData ', clientData);
   // Fetch clients on component mount
   useEffect(() => {
     fetchClients();
@@ -133,7 +132,6 @@ const ClientForm = ({
         address: ''
       });
     }
-    setMainClientConfirmed(true);
   };
 
   const handleNewClient = () => {
@@ -187,7 +185,6 @@ const ClientForm = ({
     return isValidExtra;
   };
 
-  console.log('validateExtra ', validateExtra, extraClientData);
   const handleConfirmClient = (isExtra = false) => {
     if (isExtra) {
       const isExtraValid = validateExtraClientFields();
@@ -312,7 +309,7 @@ const ClientForm = ({
     setEditingExtraIndex(index);
     setIsEditingExtra(true);
     setAddingExtraClient(true);
-    setIsNewExtraClient(false);
+    setIsNewExtraClient(true);
     setSelectedExtraClientId(clientToEdit._id || null);
     setValidateExtra(false);
   };
@@ -434,7 +431,6 @@ const ClientForm = ({
 
       {/* Client Form Section */}
       {mainClientConfirmed ||
-        (isNewClient && (
           <Card
             shadow='sm'
             padding='lg'
@@ -509,7 +505,7 @@ const ClientForm = ({
               />
             </div>
           </Card>
-        ))}
+        }
 
       {mainClientConfirmed && (
         <Card withBorder mt='md'>
@@ -554,13 +550,11 @@ const ClientForm = ({
         </Card>
       )}
 
-      {/* === FORMULARIO DE CLIENTE EXTRA === */}
       {addingExtraClient && (
         <Card mt='md' withBorder padding='lg'>
-          <Text fw={500}>Nuevo cliente extra</Text>
           <Card shadow='sm' padding='md' radius='md' withBorder mb='md'>
             <Group justify='space-between' mb='md'>
-              <Text fw={500}>Seleccionar Cliente Extra</Text>
+              <Text fw={500}>{isNewExtraClient ? 'Crear Nuevo Cliente Extra' : 'Seleccionar Cliente Extra'}</Text>
               <Badge
                 color={isNewExtraClient ? 'blue' : 'green'}
                 variant='light'
@@ -605,14 +599,12 @@ const ClientForm = ({
                 )}
               </>
             )}
-
-            <Divider my='md' />
-
             <Group>
               {!isNewExtraClient && (
                 <Button
                   variant='outline'
                   leftSection={<IconUserPlus size={16} />}
+                  style={{ marginTop: '8px' }}
                   onClick={() => {
                     setIsNewExtraClient(true);
                     setSelectedExtraClientId(null);
