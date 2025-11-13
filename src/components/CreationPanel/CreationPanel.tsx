@@ -11,6 +11,7 @@ import {
   Group
 } from '@mantine/core';
 import { IconUpload, IconFile } from '@tabler/icons-react';
+import { formatPrice } from '@/utils/priceUtils';
 
 export default function CreationPanel({
   selectedCategory,
@@ -49,13 +50,13 @@ export default function CreationPanel({
           model: editItem.model,
           serialNumber: editItem.serialNumber,
           rentalPrice: editItem.rentalPrice,
-          rentalPriceFormatted: `$ ${new Intl.NumberFormat('es-AR').format(
+          rentalPriceFormatted: formatPrice(
             rawRental
-          )}`,
+          ),
           investmentPrice: editItem.investmentPrice,
-          investmentPriceFormatted: `$ ${new Intl.NumberFormat('es-AR').format(
+          investmentPriceFormatted: formatPrice(
             rawInvestment
-          )}`,
+          ),
           weight: editItem.weight,
           location: editItem.location || '',
           isOut: editItem.outOfService?.isOut || false,
@@ -244,7 +245,7 @@ export default function CreationPanel({
             onChange={(e) => {
               const rawValue = e.currentTarget.value.replace(/\D/g, '');
               const formattedValue = rawValue
-                ? `$ ${new Intl.NumberFormat('es-AR').format(Number(rawValue))}`
+                ? formatPrice(Number(rawValue))
                 : '';
               setFormData((prev: any) => ({
                 ...prev,

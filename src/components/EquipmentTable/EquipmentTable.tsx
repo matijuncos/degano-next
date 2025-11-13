@@ -1,222 +1,137 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
-import {
-  Table,
-  TableTbody,
-  TableTd,
-  TableTh,
-  TableThead,
-  TableTr
-} from '@mantine/core';
 import React, { useEffect, useState } from 'react';
-import CustomRow from '../EquipmentCustomRow/EquipmentCustomRow';
-import { IconCheck, IconPlus, IconX } from '@tabler/icons-react';
-// import RowWithInputs from '../RowWithInputs/RowWithInputs';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import NewEquipmentTable from '../EquipmentForm/NewEquipmentTable';
-// import { NewEquipment, NewEquipmentType } from '../equipmentStockTable/types';
 import useNotification from '@/hooks/useNotification';
-import { cloneDeep } from 'lodash';
-// import EquipmentSelector from '../EquipmentForm/EquipmentSelector';
+import { isEqual } from 'lodash';
+import ContentPanel from '@/components/ContentPanel/ContentPanel';
+import Sidebar from '@/components/Sidebar/Sidebar';
+import { Box } from '@mantine/core';
+import EquipmentList from '../EquipmentForm/EquipmentList';
+import { EventModel } from '@/context/types';
+import { NewEquipment } from '../equipmentStockTable/types';
 
 const EquipmentTable = () => {
-  const { selectedEvent, setSelectedEvent } = useDeganoCtx();
-  const [equipmentListToEdit, setEquipmentListToEdit] = useState(
-    selectedEvent?.equipment || []
-  );
+  const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
+  const notify = useNotification();
   const { user } = useUser();
-  const [showInputRow, setShowInputRow] = useState(false);
   const isAdmin = user?.role === 'admin';
-  // const notify = useNotification();
-  // const [newEquipment, setNewEquipment] = useState<NewEquipment>({
-  //   name: '',
-  //   price: 0,
-  //   totalQuantity: 0,
-  //   currentQuantity: 0,
-  //   brand: '',
-  //   codeNumber: '',
-  //   model: '',
-  //   realPrice: 0,
-  //   type: 'No Definido'
-  // });
-  // const placeholderMapping: { [key in keyof NewEquipment]: string } = {
-  //   name: 'Nombre',
-  //   price: 'Precio del equipo ($)',
-  //   totalQuantity: 'Stock total',
-  //   currentQuantity: 'Cantidad disponible',
-  //   brand: 'Marca',
-  //   codeNumber: 'Número de serie',
-  //   model: 'Modelo',
-  //   realPrice: 'Precio real ($)',
-  //   type: 'Clasificación'
-  // };
+
+  const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [eventEquipment, setEventEquipment] = useState<EventModel>(
+    selectedEvent!
+  );
+  const [total, setTotal] = useState(0);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    if (selectedEvent) {
-      setEquipmentListToEdit(selectedEvent.equipment);
-    }
-  }, [selectedEvent]);
+    setEventEquipment((prev) => ({ ...prev, equipmentPrice: total }));
+  }, [total]);
 
-  const handleAddNewRow = () => {
-    setShowInputRow(true);
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const oldEquip = selectedEvent.equipment || [];
+    const newEquip = eventEquipment.equipment || [];
+    const changed = !isEqual(oldEquip, newEquip);
+    setHasChanges(changed);
+  }, [eventEquipment, selectedEvent]);
+
+  const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
+    if (equipmentSelected.outOfService.isOut) return;
+    setEventEquipment((prev) => {
+      const alreadyAdded = prev.equipment.some(
+        (eq) => eq._id === equipmentSelected._id
+      );
+      if (alreadyAdded) return prev;
+      return {
+        ...prev,
+        equipment: [
+          ...prev.equipment,
+          {
+            ...equipmentSelected,
+            lastUsedStartDate: prev.date,
+            lastUsedEndDate: prev.endDate
+          }
+        ],
+        equipmentPrice: total
+      };
+    });
   };
 
-  // const calculateTotal = () => {
-  //   return isAdmin
-  //     ? equipmentListToEdit.reduce(
-  //         (acc, item) => acc + item.price * (item.selectedQuantity || 1),
-  //         0
-  //       )
-  //     : '****';
-  // };
-
-  // const handleChange = (field: keyof NewEquipment, value: string | number) => {
-  //   setNewEquipment((prev) => ({
-  //     ...prev,
-  //     [field]: value
-  //   }));
-  // };
-
-  // const makePutRequest = async (newEquipment: NewEquipment) => {
-  //   notify({ loading: true });
-  //   try {
-  //     const response = await fetch('/api/updateEquipmentV2', {
-  //       method: 'PUT',
-  //       body: JSON.stringify({ equipment: newEquipment }),
-  //       cache: 'no-store',
-  //       headers: {
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
-  //     const equipmentData = await response.json();
-  //     const equipmentUpdated = [
-  //       ...equipmentListToEdit,
-  //       equipmentData.insertedDocument
-  //     ];
-  //     const event = cloneDeep(selectedEvent);
-  //     event!.equipment = equipmentUpdated;
-  //     const eventResponse = await fetch(`/api/updateEvent`, {
-  //       method: 'PUT',
-  //       cache: 'no-store',
-  //       headers: {
-  //         'Content-Type': 'application/json'
-  //       },
-  //       body: JSON.stringify(event)
-  //     });
-  //     const data = await eventResponse.json();
-  //     notify({ message: 'Se actualizo el evento correctamente' });
-  //     setSelectedEvent(data.event);
-  //     return await eventResponse.json();
-  //   } catch (error) {
-  //     notify({ type: 'defaultError' });
-  //     console.error('Error en la solicitud PUT:', error);
-  //     throw error;
-  //   }
-  // };
-
-  // const handleAddEquipment = async (equipmentItem: typeof newEquipment) => {
-  //   const formattedEquipment: NewEquipment = {
-  //     name: equipmentItem.name,
-  //     price: Number(equipmentItem.price),
-  //     totalQuantity: Number(equipmentItem.totalQuantity),
-  //     currentQuantity: Number(equipmentItem.currentQuantity),
-  //     brand: equipmentItem.brand,
-  //     codeNumber: equipmentItem.codeNumber,
-  //     model: equipmentItem.model,
-  //     realPrice: Number(equipmentItem.realPrice),
-  //     type: equipmentItem.type as NewEquipmentType
-  //   };
-  //   const response = await makePutRequest(formattedEquipment);
-  //   if (response.status === 200) {
-  //     setEquipmentListToEdit([
-  //       ...(selectedEvent?.equipment ?? []),
-  //       response.insertedDocument
-  //     ]);
-  //     setShowInputRow(false);
-  //   }
-  //   setNewEquipment({
-  //     name: '',
-  //     price: 0,
-  //     totalQuantity: 0,
-  //     currentQuantity: 0,
-  //     brand: '',
-  //     codeNumber: '',
-  //     model: '',
-  //     realPrice: 0,
-  //     type: 'No Definido'
-  //   });
-  // };
+  const updateEvent = async () => {
+    setLoading(true);
+    notify({ loading: true });
+    try {
+      const response = await fetch(`/api/updateEvent`, {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventEquipment)
+      });
+      const data = await response.json();
+      notify({ message: 'Se actualizo el evento correctamente' });
+      setSelectedEvent(data.event);
+    } catch (error) {
+      notify({ type: 'defaultError' });
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Table>
-      <TableThead>
-        <TableTh style={{ width: '60%' }}>Equipo</TableTh>
-        <TableTh>Cantidad</TableTh>
-        <TableTh>Precio ($)</TableTh>
-        <TableTh>Subtotal</TableTh>
-        <TableTh>Acciones</TableTh>
-        <TableTh>
-          <div
-            className='cursorPointer'
-            style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}
-            onClick={() => setShowInputRow(!showInputRow)}
-          >
-            {!showInputRow ? <IconPlus /> : <IconX />}
-          </div>
-        </TableTh>
-      </TableThead>
-      <TableTbody>
-        {/* {(showInputRow && selectedEvent) &&(
-          <RowWithInputs hideRow={() => setShowInputRow(false)} />
-          <div style={{ display: 'flex' }}>
-            <NewEquipmentTable
-              handleChange={handleChange}
-              newEquipment={newEquipment}
-              placeholderMapping={placeholderMapping}
-              newEvent={false}
-            />
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-evenly',
-                alignItems: 'center',
-                marginLeft: '10px'
-              }}
-            >
-              <IconCheck
-                color='green'
-                onClick={() => handleAddEquipment(newEquipment)}
-                className='cursorPointer'
-              />
-              <IconX
-                color='red'
-                onClick={() => setShowInputRow(false)}
-                className='cursorPointer'
-              />
-            </div>
-          </div>
-          <EquipmentSelector 
-          event={selectedEvent}
-          showInputsToAdd={showInputRow}
-          setShowInputsToAdd={setShowInputRow}
-          setPrice={()=>{}} />
-        )} */}
-        {equipmentListToEdit.map((eq, i) => (
-          <CustomRow
-            setEquipmentListToEdit={setEquipmentListToEdit}
-            equipmentListToEdit={equipmentListToEdit}
-            index={i}
-            key={i}
-            eq={eq}
-          />
-        ))}
-        {/* <TableTr>
-          <TableTd align='right' colSpan={6}>
-            Total: ${calculateTotal()}
-          </TableTd>
-        </TableTr> */}
-      </TableTbody>
-    </Table>
+    <div className='flex' style={{ overflow: 'hidden' }}>
+      <Box
+        style={{
+          width: '25%',
+          borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <Sidebar
+          onSelect={setSelectedEquipment}
+          selectedCategory={{}}
+          onEdit={() => {}}
+          newEvent={true}
+        />
+      </Box>
+
+      <Box
+        style={{
+          width: '55%',
+          borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <ContentPanel
+          selectedCategory={selectedEquipment}
+          setDisableCreateEquipment={() => {}}
+          onEdit={handleEquipmentSelection}
+          onCancel={() => {}}
+          newEvent={true}
+        />
+      </Box>
+
+      <Box
+        style={{
+          width: '20%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto'
+        }}
+      >
+        <EquipmentList
+          equipmentList={eventEquipment.equipment}
+          setEventEquipment={setEventEquipment}
+          setTotal={setTotal}
+          allowSave={hasChanges}
+          onSave={updateEvent}
+        />
+      </Box>
+    </div>
   );
 };
 

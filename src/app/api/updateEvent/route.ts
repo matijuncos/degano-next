@@ -16,7 +16,7 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const eventId = body._id;
-    // delete body._id;
+    const eventEquipment = body.equipment;
     delete body._id;
     const event = await db
       .collection('events')
@@ -25,6 +25,21 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
         { $set: body },
         { returnDocument: 'after' }
       );
+
+    if (eventEquipment?.length) {
+      const eventStart = new Date(body.date);
+      const eventEnd = new Date(body.endDate);
+
+      await db.collection('equipment').updateMany(
+        { _id: { $in: eventEquipment.map((eq: any) => new ObjectId(eq._id)) } },
+        {
+          $set: {
+            lastUsedStartDate: eventStart,
+            lastUsedEndDate: eventEnd
+          }
+        }
+      );
+    }
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {
     console.error(error);
