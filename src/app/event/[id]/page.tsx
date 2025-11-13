@@ -401,18 +401,18 @@ const EventPage = () => {
         <MoreInfoInformation selectedEvent={selectedEvent} />
       </PDFActions>
     ),
-    // equipment: (
-    //   <PDFActions
-    //     sectionKey='equipment'
-    //     eventTitle={
-    //       dateString
-    //         ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
-    //         : undefined
-    //     }
-    //   >
-    //     <EquipmentInformation />
-    //   </PDFActions>
-    // ),
+    equipment: (
+      <PDFActions
+        sectionKey='equipment'
+        eventTitle={
+          dateString
+            ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
+            : undefined
+        }
+      >
+        <EquipmentInformation />
+      </PDFActions>
+    ),
     files: <FilesHandlerComponent />,
     payments: (
       <PDFActions

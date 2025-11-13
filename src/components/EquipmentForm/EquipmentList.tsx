@@ -1,5 +1,5 @@
 'use client';
-import { ActionIcon, Group, Text, Stack, Divider } from '@mantine/core';
+import { ActionIcon, Group, Text, Stack, Divider, Button } from '@mantine/core';
 import { useEffect } from 'react';
 import { FaTrashAlt } from 'react-icons/fa';
 import React from 'react';
@@ -10,12 +10,16 @@ type EquipmentListProps = {
   equipmentList: NewEquipment[];
   setEventEquipment: React.Dispatch<React.SetStateAction<EventModel>>;
   setTotal: React.Dispatch<React.SetStateAction<number>>;
+  allowSave?: boolean;
+  onSave?: () => void;
 };
 
 export default function EquipmentList({
   equipmentList,
   setEventEquipment,
-  setTotal
+  setTotal,
+  allowSave = false,
+  onSave
 }: EquipmentListProps) {
   const handleRemove = (id: string) => {
     setEventEquipment((prev) => ({
@@ -70,6 +74,11 @@ export default function EquipmentList({
         <Text fw={500}>Total:</Text>
         <Text fw={600}>$ {new Intl.NumberFormat('es-AR').format(total)}</Text>
       </Group>
+      {allowSave && (
+        <Group justify='center' px='xs' onClick={onSave}>
+          <Button>Guardar Cambios</Button>
+        </Group>
+      )}
     </Stack>
   );
 }

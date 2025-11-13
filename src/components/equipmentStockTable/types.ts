@@ -17,6 +17,7 @@ export interface NewEquipment {
     isOut: boolean;
     reason: string;
   };
+  selectedQuantity: number;
   history: string;
   imageUrl: string;
   pdfUrl: string;
