@@ -76,6 +76,41 @@ const MusicForm = ({
   const [valsInputValue, setValsInputValue] = useState('');
   const [ambienceMusicInputValue, setAmbienceMusicInputValue] = useState('');
 
+  // Sincronizar estado local con el prop event cuando el usuario navega
+  useEffect(() => {
+    if (event) {
+      const normalizedEvent = {
+        ...event,
+        welcomeSongs: Array.isArray(event.welcomeSongs)
+          ? event.welcomeSongs
+          : event.welcomeSongs
+          ? [event.welcomeSongs as string]
+          : [],
+        walkIn: Array.isArray(event.walkIn)
+          ? event.walkIn
+          : event.walkIn
+          ? [event.walkIn as string]
+          : [],
+        vals: Array.isArray(event.vals)
+          ? event.vals
+          : event.vals
+          ? [event.vals as string]
+          : [],
+        ambienceMusic: Array.isArray(event.ambienceMusic)
+          ? event.ambienceMusic
+          : event.ambienceMusic
+          ? [event.ambienceMusic as string]
+          : []
+      };
+      setMusicData(normalizedEvent);
+
+      // Restaurar spotifyLinks si existen
+      if (event.playlist && Array.isArray(event.playlist)) {
+        setSpotifyLinks(event.playlist);
+      }
+    }
+  }, [event]);
+
   // Update musicData with database genres when they load
   useEffect(() => {
     if (

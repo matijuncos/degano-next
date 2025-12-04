@@ -34,10 +34,12 @@ const NewEventPage = () => {
   const onNextTab = (tab: number, data: EventModel) => {
     setFormState(tab);
     setEvent(data);
+    setValidate(false); // Resetear validación al cambiar de pestaña
   };
   const onBackTab = (tab: number, data: EventModel) => {
     setFormState(tab);
     setEvent(data);
+    setValidate(false); // Resetear validación al cambiar de pestaña
   };
 
   useEffect(() => {

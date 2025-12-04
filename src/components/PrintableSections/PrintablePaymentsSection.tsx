@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
+import { formatPrice } from '@/utils/priceUtils';
 
 const styles = StyleSheet.create({
   page: { padding: 24, fontSize: 12 },
@@ -46,11 +47,11 @@ const PrintablePaymentsSection: React.FC<PrintablePaymentsSectionProps> = ({
       <View style={styles.section}>
         <View style={styles.row}>
           <Text style={styles.label}>Monto inicial:</Text>
-          <Text>${event.payment.upfrontAmount}</Text>
+          <Text>{event.payment.upfrontAmount ? formatPrice(Number(event.payment.upfrontAmount)) : '$0'}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Total a pagar:</Text>
-          <Text>${event.payment.totalToPay}</Text>
+          <Text>{event.payment.totalToPay ? formatPrice(Number(event.payment.totalToPay)) : '$0'}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Pago parcial realizado:</Text>
@@ -98,7 +99,7 @@ const PrintablePaymentsSection: React.FC<PrintablePaymentsSectionProps> = ({
                           : '-'}
                       </Text>
                       <Text style={styles.tableCell}>
-                        ${payment.amount || '-'}
+                        {payment.amount ? formatPrice(Number(payment.amount)) : '-'}
                       </Text>
                       <Text style={styles.tableCell}>
                         {payment.description || '-'}

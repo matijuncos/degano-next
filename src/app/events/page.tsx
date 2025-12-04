@@ -202,63 +202,69 @@ export default withPageAuthRequired(function EventPage() {
               </Flex>
             </Flex>
           </Flex>
-          <DataTable
-            style={{ height: 'auto' }}
-            highlightOnHover
-            rowColor={({ date }) => {
-              const now = new Date();
-              if (now <= new Date(date)) return 'green';
-              return 'grey';
+          <Box
+            style={{
+              maxHeight: 'calc(100vh - 200px)',
+              overflow: 'auto'
             }}
-            columns={[
-              { accessor: 'fullName', title: 'Nombre' },
-              {
-                accessor: 'date',
-                title: 'Fecha',
-                render: ({ date }) => new Date(date).toLocaleDateString(),
-                sortable: true
-              },
-              {
-                accessor: 'date',
-                title: 'Hora',
-                render: ({ date }) => new Date(date).toLocaleTimeString()
-              },
-              { accessor: 'lugar', title: 'Lugar' },
-              { accessor: 'type', title: 'Tipo de evento' },
-              {
-                accessor: 'actions',
-                title: 'Acciones',
-                render: (event) => (
-                  <Group gap={4} justify='left' wrap='nowrap'>
-                    <ActionIcon
-                      size='sm'
-                      variant='subtle'
-                      color='green'
-                      onClick={() =>
-                        handleEvent({ event, action: actions.see })
-                      }
-                    >
-                      <IconEye size={16} />
-                    </ActionIcon>
+          >
+            <DataTable
+              highlightOnHover
+              rowColor={({ date }) => {
+                const now = new Date();
+                if (now <= new Date(date)) return 'green';
+                return 'grey';
+              }}
+              columns={[
+                { accessor: 'fullName', title: 'Nombre' },
+                {
+                  accessor: 'date',
+                  title: 'Fecha',
+                  render: ({ date }) => new Date(date).toLocaleDateString(),
+                  sortable: true
+                },
+                {
+                  accessor: 'date',
+                  title: 'Hora',
+                  render: ({ date }) => new Date(date).toLocaleTimeString()
+                },
+                { accessor: 'lugar', title: 'Lugar' },
+                { accessor: 'type', title: 'Tipo de evento' },
+                {
+                  accessor: 'actions',
+                  title: 'Acciones',
+                  render: (event) => (
+                    <Group gap={4} justify='left' wrap='nowrap'>
+                      <ActionIcon
+                        size='sm'
+                        variant='subtle'
+                        color='green'
+                        onClick={() =>
+                          handleEvent({ event, action: actions.see })
+                        }
+                      >
+                        <IconEye size={16} />
+                      </ActionIcon>
 
-                    <ActionIcon
-                      size='sm'
-                      variant='subtle'
-                      color='red'
-                      onClick={() =>
-                        handleEvent({ event, action: actions.remove })
-                      }
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
-                )
-              }
-            ]}
-            records={filteredRecords}
-            sortStatus={sortStatus}
-            onSortStatusChange={setSortStatus}
-          />
+                      <ActionIcon
+                        size='sm'
+                        variant='subtle'
+                        color='red'
+                        onClick={() =>
+                          handleEvent({ event, action: actions.remove })
+                        }
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Group>
+                  )
+                }
+              ]}
+              records={filteredRecords}
+              sortStatus={sortStatus}
+              onSortStatusChange={setSortStatus}
+            />
+          </Box>
         </>
       )}
     </>

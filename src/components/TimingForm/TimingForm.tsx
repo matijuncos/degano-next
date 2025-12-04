@@ -2,7 +2,7 @@ import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { Button, Input, Textarea, Flex, Text, Box } from '@mantine/core';
 import { IconPlus, IconX } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const TimingForm = ({
   event,
@@ -14,6 +14,13 @@ const TimingForm = ({
   onBackTab: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
+
+  // Sincronizar estado local con el prop event cuando el usuario navega
+  useEffect(() => {
+    if (event) {
+      setEventData(event);
+    }
+  }, [event]);
 
   const next = () => {
     onNextTab(EVENT_TABS.EQUIPMENT, eventData);

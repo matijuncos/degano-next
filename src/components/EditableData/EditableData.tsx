@@ -77,6 +77,25 @@ const EditableData = ({
     }
   };
 
+  const setNestedProperty = (obj: any, path: string, value: any) => {
+    // Handle both dot notation and bracket notation
+    // e.g., "extraClients.0.fullName" or "timing[0].time"
+    const pathParts = path
+      .replace(/\[(\d+)\]/g, '.$1') // Convert brackets to dots: timing[0] -> timing.0
+      .split('.')
+      .filter(Boolean);
+
+    let current = obj;
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      const part = pathParts[i];
+      if (!(part in current)) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+    current[pathParts[pathParts.length - 1]] = value;
+  };
+
   const toggleEdit = (field: keyof typeof editState, action: string) => {
     const eventCopy = cloneDeep(selectedEvent) as Record<string, any>;
     if (
@@ -87,7 +106,10 @@ const EditableData = ({
       eventCopy.music[property] = editState.inputValue;
     } else {
       if (selectedEvent) {
-        if (property in eventCopy) {
+        // Handle nested properties like "extraClients.0.fullName" or "timing[0].time"
+        if (property.includes('.') || property.includes('[')) {
+          setNestedProperty(eventCopy, property, editState.inputValue);
+        } else if (property in eventCopy) {
           eventCopy[property] = editState.inputValue;
         }
       }

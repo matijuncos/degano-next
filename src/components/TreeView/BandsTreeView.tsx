@@ -2,11 +2,12 @@
 'use client';
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
-import { Button, Divider } from '@mantine/core';
+import { Button, Divider, Input, CloseButton } from '@mantine/core';
 import {
   IconFolderPlus,
   IconChevronRight,
-  IconUser
+  IconUser,
+  IconSearch
 } from '@tabler/icons-react';
 import { Band, ExtraContact } from '@/context/types';
 
@@ -18,7 +19,8 @@ function TreeNode({
   selectedId,
   level = 0,
   onEdit,
-  bandsData
+  bandsData,
+  forceExpanded = false
 }: {
   node: Band | ExtraContact;
   onSelect: (node: BandNode | null) => void;
@@ -26,10 +28,18 @@ function TreeNode({
   level?: number;
   onEdit?: (item: BandNode) => void;
   bandsData: Band[];
+  forceExpanded?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isBand = (n: any): n is Band => 'bandName' in n;
   const isSelected = selectedId === node._id;
+
+  // Auto-expandir cuando hay búsqueda, pero permitir cerrar manualmente
+  useEffect(() => {
+    if (forceExpanded) {
+      setOpen(true);
+    }
+  }, [forceExpanded]);
 
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -108,6 +118,7 @@ function TreeNode({
                 level={level + 1}
                 onEdit={onEdit}
                 bandsData={bandsData}
+                forceExpanded={forceExpanded}
               />
             ))}
           </div>
@@ -127,7 +138,31 @@ export default function BandsTreeView({
   onEdit?: (item: BandNode | null) => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const [searchTerm, setSearchTerm] = useState('');
   const { data: bandsData = [] } = useSWR<Band[]>('/api/bands', fetcher);
+
+  const filterBands = (bands: Band[], term: string): Band[] => {
+    if (!term.trim()) return bands;
+
+    const lowerTerm = term.toLowerCase();
+
+    return bands.reduce<Band[]>((acc, band) => {
+      const bandMatches = band.bandName.toLowerCase().includes(lowerTerm);
+      const contactsMatch = band.contacts?.filter(contact =>
+        contact.name.toLowerCase().includes(lowerTerm)
+      ) || [];
+
+      if (bandMatches || contactsMatch.length > 0) {
+        acc.push({
+          ...band,
+          contacts: bandMatches ? band.contacts : contactsMatch
+        });
+      }
+      return acc;
+    }, []);
+  };
+
+  const filteredBands = filterBands(bandsData, searchTerm);
 
   const handleCreateBand = () => {
     onSelect?.({
@@ -169,6 +204,24 @@ export default function BandsTreeView({
         </Button>
       </div>
       <Divider my='sm' />
+      <Input
+        placeholder="Buscar banda o contacto..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.currentTarget.value)}
+        leftSection={<IconSearch size={16} />}
+        rightSection={
+          searchTerm && (
+            <CloseButton
+              size="sm"
+              onClick={() => setSearchTerm('')}
+              aria-label="Limpiar búsqueda"
+            />
+          )
+        }
+        rightSectionPointerEvents="auto"
+        mb="sm"
+        mx="0.75rem"
+      />
       <div
         style={{
           overflowY: 'auto',
@@ -177,7 +230,7 @@ export default function BandsTreeView({
         }}
       >
         <div style={{ minWidth: 'max-content' }}>
-          {bandsData.map((band: Band) => (
+          {filteredBands.map((band: Band) => (
             <TreeNode
               key={band._id}
               node={band}
@@ -185,6 +238,7 @@ export default function BandsTreeView({
               selectedId={selectedBand?._id}
               bandsData={bandsData}
               onEdit={onEdit}
+              forceExpanded={!!searchTerm.trim()}
             />
           ))}
         </div>

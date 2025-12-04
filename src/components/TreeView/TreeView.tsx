@@ -1,14 +1,15 @@
 // TreeView.tsx
 'use client';
 import useSWR from 'swr';
-import { useState } from 'react';
-import { Button, Divider } from '@mantine/core';
+import { useState, useEffect } from 'react';
+import { Button, Divider, Input, CloseButton } from '@mantine/core';
 import {
   IconFolder,
   IconFolderPlus,
   IconPlus,
   IconChevronRight,
-  IconDeviceFloppy
+  IconDeviceFloppy,
+  IconSearch
 } from '@tabler/icons-react';
 
 export type CategoryNode = {
@@ -28,7 +29,8 @@ function TreeNode({
   selectedId,
   equipmentData,
   level = 0,
-  onEdit
+  onEdit,
+  forceExpanded = false
 }: {
   node: CategoryNode;
   onSelect: (node: CategoryNode | null) => void;
@@ -36,9 +38,17 @@ function TreeNode({
   equipmentData: any[];
   level?: number;
   onEdit?: (item: any) => void;
+  forceExpanded?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isSelected = selectedId === node._id;
+
+  // Auto-expandir cuando hay búsqueda, pero permitir cerrar manualmente
+  useEffect(() => {
+    if (forceExpanded) {
+      setOpen(true);
+    }
+  }, [forceExpanded]);
 
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -163,6 +173,7 @@ function TreeNode({
                       equipmentData={equipmentData}
                       level={level + 1}
                       onEdit={onEdit}
+                      forceExpanded={forceExpanded}
                     />
                   </div>
                 </div>
@@ -179,19 +190,30 @@ export default function TreeView({
   onSelect,
   selectedCategory,
   onEdit,
-  newEvent
+  newEvent,
+  eventStartDate,
+  eventEndDate
 }: {
   onSelect?: (n: CategoryNode | null) => void;
   selectedCategory?: CategoryNode | null;
   onEdit?: (item: any) => void;
   newEvent: boolean;
+  eventStartDate?: Date | string;
+  eventEndDate?: Date | string;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const [searchTerm, setSearchTerm] = useState('');
   const { data: treeNodes = [] } = useSWR<CategoryNode[]>(
     '/api/categoryTreeData',
     fetcher
   );
-  const { data: equipmentFullData = [] } = useSWR('/api/equipment', fetcher);
+
+  // Construir URL con parámetros de fecha si están presentes
+  const equipmentUrl = eventStartDate && eventEndDate
+    ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
+    : '/api/equipment';
+
+  const { data: equipmentFullData = [] } = useSWR(equipmentUrl, fetcher);
 
   const buildTree = (
     nodes: CategoryNode[],
@@ -205,7 +227,25 @@ export default function TreeView({
       }));
   };
 
+  const filterTree = (nodes: CategoryNode[], term: string): CategoryNode[] => {
+    if (!term.trim()) return nodes;
+
+    return nodes.reduce<CategoryNode[]>((acc, node) => {
+      const nodeMatches = node.name.toLowerCase().includes(term.toLowerCase());
+      const filteredChildren = node.children ? filterTree(node.children, term) : [];
+
+      if (nodeMatches || filteredChildren.length > 0) {
+        acc.push({
+          ...node,
+          children: nodeMatches ? node.children : filteredChildren
+        });
+      }
+      return acc;
+    }, []);
+  };
+
   const tree = buildTree(treeNodes);
+  const filteredTree = filterTree(tree, searchTerm);
 
   const handleCreateCategory = () => {
     const isValidSelection =
@@ -272,6 +312,24 @@ export default function TreeView({
         </Button>
       </div>)}
       <Divider my='sm' />
+      <Input
+        placeholder="Buscar equipamiento..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.currentTarget.value)}
+        leftSection={<IconSearch size={16} />}
+        rightSection={
+          searchTerm && (
+            <CloseButton
+              size="sm"
+              onClick={() => setSearchTerm('')}
+              aria-label="Limpiar búsqueda"
+            />
+          )
+        }
+        rightSectionPointerEvents="auto"
+        mb="sm"
+        mx="0.75rem"
+      />
       <div
         style={{
           overflowY: 'auto',
@@ -280,7 +338,7 @@ export default function TreeView({
         }}
       >
         <div style={{ minWidth: 'max-content' }}>
-          {tree.map((node) => (
+          {filteredTree.map((node) => (
             <TreeNode
               key={node._id}
               node={node}
@@ -288,6 +346,7 @@ export default function TreeView({
               selectedId={selectedCategory?._id}
               equipmentData={equipmentFullData}
               onEdit={onEdit}
+              forceExpanded={!!searchTerm.trim()}
             />
           ))}
         </div>

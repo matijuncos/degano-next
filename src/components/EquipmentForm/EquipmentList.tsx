@@ -5,6 +5,7 @@ import { FaTrashAlt } from 'react-icons/fa';
 import React from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import { EventModel } from '@/context/types';
+import { formatPrice } from '@/utils/priceUtils';
 
 type EquipmentListProps = {
   equipmentList: NewEquipment[];
@@ -55,7 +56,7 @@ export default function EquipmentList({
         >
           <Text size='sm'>{eq.name}</Text>
           <Text size='sm' c='dimmed'>
-            $ {new Intl.NumberFormat('es-AR').format(eq.rentalPrice || 0)}
+            {formatPrice(eq.rentalPrice || 0)}
           </Text>
           <ActionIcon
             color='red'
@@ -72,7 +73,7 @@ export default function EquipmentList({
       {/* Total */}
       <Group justify='space-between' px='xs'>
         <Text fw={500}>Total:</Text>
-        <Text fw={600}>$ {new Intl.NumberFormat('es-AR').format(total)}</Text>
+        <Text fw={600}>{formatPrice(total)}</Text>
       </Group>
       {allowSave && (
         <Group justify='center' px='xs' onClick={onSave}>
