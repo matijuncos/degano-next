@@ -39,6 +39,28 @@ const EventForm = ({
     event.endDate ? toTimeString(new Date(event.endDate)) : ''
   );
 
+  // Sincronizar estado local con el prop event cuando el usuario navega
+  useEffect(() => {
+    if (event) {
+      const updatedEvent: EventModel = {
+        ...event,
+        churchDate: typeof event.churchDate === 'string' ? event.churchDate : '',
+        civil: typeof event.civil === 'string' ? event.civil : ''
+      };
+      setEventData(updatedEvent);
+
+      // Actualizar fechas y horas
+      if (event.date) {
+        setDateOnly(new Date(event.date));
+        setTimeOnly(toTimeString(new Date(event.date)));
+      }
+      if (event.endDate) {
+        setEndDateOnly(new Date(event.endDate));
+        setEndTimeOnly(toTimeString(new Date(event.endDate)));
+      }
+    }
+  }, [event]);
+
   useEffect(() => {
     const combined = combineDateAndTime(dateOnly, timeOnly);
     if (combined) {

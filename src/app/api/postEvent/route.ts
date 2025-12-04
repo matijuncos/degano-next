@@ -3,6 +3,7 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0';
+import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 
 export const POST = async function handler(req: Request, res: NextApiResponse) {
   const session = await getSession();
@@ -46,6 +47,22 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
           }
         }
       );
+
+      // Registrar uso en evento para cada equipo
+      for (const eq of equipment) {
+        await createHistoryEntry(db, {
+          equipmentId: eq._id,
+          equipmentName: eq.name,
+          equipmentCode: eq.code,
+          action: 'uso_evento',
+          userId: session?.user?.sub,
+          eventId: newEvent._id.toString(),
+          eventName: document.type,
+          eventDate: eventStart,
+          eventLocation: document.lugar,
+          details: `Usado en ${document.type} - ${document.lugar}`
+        });
+      }
     }
 
     const existingClient = await db

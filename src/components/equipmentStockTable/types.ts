@@ -13,6 +13,7 @@ export interface NewEquipment {
   investmentPriceFormatted: string;
   weight: number;
   location: string;
+  propiedad: 'Degano' | 'Alquilado';
   outOfService: {
     isOut: boolean;
     reason: string;

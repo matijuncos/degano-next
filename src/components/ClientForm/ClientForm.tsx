@@ -73,8 +73,6 @@ const ClientForm = ({
 
   const requiredExtraFields: (keyof ExtraClient)[] = [
     'fullName',
-    'phoneNumber',
-    'email',
     'rol'
   ];
 
@@ -82,6 +80,20 @@ const ClientForm = ({
   useEffect(() => {
     fetchClients();
   }, []);
+
+  // Sincronizar estado local con el prop event cuando el usuario vuelve atrás
+  useEffect(() => {
+    if (event && event.fullName && event.phoneNumber && event.email) {
+      // Si el evento tiene datos de cliente, restaurar el estado
+      setClientData(event);
+      setMainClientConfirmed(true);
+
+      // Restaurar clientes extras si existen
+      if (event.extraClients && event.extraClients.length > 0) {
+        setExtraClients(event.extraClients);
+      }
+    }
+  }, [event]);
 
   const fetchClients = async () => {
     setLoading(true);
@@ -244,8 +256,17 @@ const ClientForm = ({
   };
 
   const next = () => {
+    // Si el cliente ya fue confirmado, avanzar directamente
+    if (mainClientConfirmed) {
+      setValidate(false);
+      onNextTab(EVENT_TABS.EVENT, clientData);
+      return;
+    }
+
+    // Si no fue confirmado, validar primero
     if (validateRequiredFields()) {
       setValidate(false);
+      handleConfirmClient(false);
       onNextTab(EVENT_TABS.EVENT, clientData);
     }
   };
@@ -659,7 +680,7 @@ const ClientForm = ({
               disabled={!isNewExtraClient && !selectedExtraClientId}
             />
             <Input
-              placeholder='Teléfono *'
+              placeholder='Teléfono'
               name='phoneNumber'
               error={validateExtra && !extraClientData.phoneNumber}
               value={extraClientData.phoneNumber}
@@ -667,7 +688,7 @@ const ClientForm = ({
               disabled={!isNewExtraClient && !selectedExtraClientId}
             />
             <Input
-              placeholder='Email *'
+              placeholder='Email'
               name='email'
               error={validateExtra && !extraClientData.email}
               value={extraClientData.email}

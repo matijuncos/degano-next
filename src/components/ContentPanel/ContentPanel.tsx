@@ -18,17 +18,46 @@ export default function ContentPanel({
   setDisableCreateEquipment,
   onEdit,
   onCancel,
-  newEvent
+  newEvent,
+  eventStartDate,
+  eventEndDate
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
   onEdit?: (item: any) => void;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
   newEvent: boolean;
+  eventStartDate?: Date | string;
+  eventEndDate?: Date | string;
 }) {
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data: categories = [] } = useSWR('/api/categories', fetcher);
-  const { data: equipment = [] } = useSWR('/api/equipment', fetcher);
+
+  // Función para determinar el estado del equipamiento
+  const getEquipmentStatus = (item: any) => {
+    // No Disponible: fuera de servicio (pero no en evento)
+    if (item.outOfService?.isOut && item.outOfService?.reason !== 'En Evento') {
+      return { label: 'No Disponible', color: 'red' };
+    }
+
+    // En Uso: en evento o location diferente de "Deposito"
+    if (
+      (item.outOfService?.isOut && item.outOfService?.reason === 'En Evento') ||
+      (item.location && item.location !== 'Deposito')
+    ) {
+      return { label: 'En Uso', color: '#fbbf24' }; // amarillo tipo warning
+    }
+
+    // Disponible: en "Deposito" y no fuera de servicio
+    return { label: 'Disponible', color: 'green' };
+  };
+
+  // Construir URL con parámetros de fecha si están presentes
+  const equipmentUrl = eventStartDate && eventEndDate
+    ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
+    : '/api/equipment';
+
+  const { data: equipment = [] } = useSWR(equipmentUrl, fetcher);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -68,6 +97,7 @@ export default function ContentPanel({
           <th>Marca</th>
           <th>Modelo</th>
           <th>N° Serie</th>
+          <th>Propiedad</th>
           <th>Estado</th>
         </tr>
       );
@@ -79,6 +109,7 @@ export default function ContentPanel({
           <th>Marca</th>
           <th>Modelo</th>
           <th>N° Serie</th>
+          <th>Propiedad</th>
           <th>Estado</th>
           <th>Locación</th>
         </tr>
@@ -134,13 +165,14 @@ export default function ContentPanel({
             <td style={{ padding: '0 5px' }}>{item.brand}</td>
             <td style={{ padding: '0 5px' }}>{item.model}</td>
             <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
+            <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
             <td
               style={{
-                color: item.outOfService?.isOut ? 'red' : 'green',
+                color: getEquipmentStatus(item).color,
                 padding: '0 5px'
               }}
             >
-              {item.outOfService?.isOut ? 'No disponible' : 'OK'}
+              {getEquipmentStatus(item).label}
             </td>
           </tr>
         );
@@ -162,13 +194,14 @@ export default function ContentPanel({
           <td style={{ padding: '0 5px' }}>{item.brand}</td>
           <td style={{ padding: '0 5px' }}>{item.model}</td>
           <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
+          <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
           <td
             style={{
-              color: item.outOfService?.isOut ? 'red' : 'green',
+              color: getEquipmentStatus(item).color,
               padding: '0 5px'
             }}
           >
-            {item.outOfService?.isOut ? 'No disponible' : 'OK'}
+            {getEquipmentStatus(item).label}
           </td>
           <td style={{ padding: '0 5px' }}>{item.location}</td>
         </tr>

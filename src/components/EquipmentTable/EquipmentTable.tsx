@@ -95,6 +95,8 @@ const EquipmentTable = () => {
           selectedCategory={{}}
           onEdit={() => {}}
           newEvent={true}
+          eventStartDate={selectedEvent?.date}
+          eventEndDate={selectedEvent?.endDate}
         />
       </Box>
 
@@ -112,6 +114,8 @@ const EquipmentTable = () => {
           onEdit={handleEquipmentSelection}
           onCancel={() => {}}
           newEvent={true}
+          eventStartDate={selectedEvent?.date}
+          eventEndDate={selectedEvent?.endDate}
         />
       </Box>
 

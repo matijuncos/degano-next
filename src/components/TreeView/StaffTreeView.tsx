@@ -2,13 +2,14 @@
 'use client';
 import useSWR from 'swr';
 import { useState } from 'react';
-import { Button, Divider } from '@mantine/core';
+import { Button, Divider, Input, CloseButton } from '@mantine/core';
 import {
   IconFolder,
   IconFolderPlus,
   IconPlus,
   IconChevronRight,
-  IconDeviceFloppy
+  IconDeviceFloppy,
+  IconSearch
 } from '@tabler/icons-react';
 
 export type StaffNode = {
@@ -176,8 +177,15 @@ export default function StaffTreeView({
   onEdit?: (item: any) => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: staffData = [] } = useSWR('/api/employees', fetcher);
+
+  const filteredStaff = searchTerm.trim()
+    ? staffData.filter((staff: StaffNode) =>
+        staff.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : staffData;
 
   const handleCreateCategory = () => {
     onSelect?.({
@@ -235,6 +243,24 @@ export default function StaffTreeView({
         </Button>
       </div>
       <Divider my='sm' />
+      <Input
+        placeholder="Buscar empleado..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.currentTarget.value)}
+        leftSection={<IconSearch size={16} />}
+        rightSection={
+          searchTerm && (
+            <CloseButton
+              size="sm"
+              onClick={() => setSearchTerm('')}
+              aria-label="Limpiar búsqueda"
+            />
+          )
+        }
+        rightSectionPointerEvents="auto"
+        mb="sm"
+        mx="0.75rem"
+      />
       <div
         style={{
           overflowY: 'auto',
@@ -243,7 +269,7 @@ export default function StaffTreeView({
         }}
       >
         <div style={{ minWidth: 'max-content' }}>
-          {staffData.map((node: StaffNode) => (
+          {filteredStaff.map((node: StaffNode) => (
             <TreeNode
               key={node._id}
               node={node}

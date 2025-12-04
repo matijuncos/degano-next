@@ -10,8 +10,10 @@ import {
   Textarea,
   Group
 } from '@mantine/core';
-import { IconUpload, IconFile } from '@tabler/icons-react';
+import { IconUpload, IconFile, IconHistory } from '@tabler/icons-react';
+import { useDisclosure } from '@mantine/hooks';
 import { formatPrice } from '@/utils/priceUtils';
+import EquipmentHistoryModal from '@/components/EquipmentHistory/EquipmentHistoryModal';
 
 export default function CreationPanel({
   selectedCategory,
@@ -27,6 +29,10 @@ export default function CreationPanel({
   const { data: locations = [] } = useSWR('/api/equipmentLocation', (url) =>
     fetch(url).then((res) => res.json())
   );
+  const [
+    historyModalOpened,
+    { open: openHistory, close: closeHistory }
+  ] = useDisclosure(false);
 
   const isCreatingCategory =
     selectedCategory?._id === '' && !selectedCategory?.parentIdOriginal;
@@ -59,6 +65,7 @@ export default function CreationPanel({
           ),
           weight: editItem.weight,
           location: editItem.location || '',
+          propiedad: editItem.propiedad || 'Degano',
           isOut: editItem.outOfService?.isOut || false,
           reason: editItem.outOfService?.reason || '',
           history: editItem.history || '',
@@ -161,6 +168,7 @@ export default function CreationPanel({
             investmentPrice: formData.investmentPrice,
             weight: formData.weight,
             location: locationValue,
+            propiedad: formData.propiedad || 'Degano',
             imageUrl,
             pdfUrl,
             pdfFileName:
@@ -300,6 +308,12 @@ export default function CreationPanel({
               onChange={(e) => setCustomLocation(e.currentTarget.value)}
             />
           )}
+          <Select
+            label='Propiedad'
+            data={['Degano', 'Alquilado']}
+            value={formData.propiedad || 'Degano'}
+            onChange={(val) => handleInput('propiedad', val)}
+          />
           <Select
             label='Estado'
             data={['Disponible', 'Fuera de servicio']}
@@ -494,6 +508,29 @@ export default function CreationPanel({
           Cancelar
         </Button>
       </Group>
+
+      {/* Botón Ver Historial */}
+      {isEditingEquipment && editItem?._id && (
+        <>
+          <Button
+            variant='light'
+            color='gray'
+            leftSection={<IconHistory size={16} />}
+            onClick={openHistory}
+            mt='md'
+            fullWidth
+          >
+            Ver Historial
+          </Button>
+
+          <EquipmentHistoryModal
+            opened={historyModalOpened}
+            onClose={closeHistory}
+            equipmentId={editItem._id}
+            equipmentName={editItem.name}
+          />
+        </>
+      )}
     </div>
   );
 }

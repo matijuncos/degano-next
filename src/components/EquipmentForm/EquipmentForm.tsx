@@ -21,6 +21,12 @@ const EquipmentForm = ({
   const [eventEquipment, setEventEquipment] = useState<EventModel>(event);
   const [total, setTotal] = useState(0);
 
+  // Estilos para ocultar scrollbar pero mantener funcionalidad
+  const scrollContainerStyle = {
+    scrollbarWidth: 'none' as const,
+    msOverflowStyle: 'none' as const,
+  };
+
   const next = () => {
     onNextTab(4, eventEquipment);
   };
@@ -50,17 +56,25 @@ const EquipmentForm = ({
 
   return (
     <div>
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       <div
         className='flex'
-        style={{ height: '75vh', minHeight: '75vh', overflow: 'hidden' }}
+        style={{ height: '75vh', minHeight: '75vh' }}
       >
         <Box
+          className='hide-scrollbar'
           style={{
             width: '25%',
             borderRight: '1px solid rgba(255, 255, 255, 0.15)',
             height: '75vh',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            overflowY: 'auto',
+            ...scrollContainerStyle
           }}
         >
           <Sidebar
@@ -68,16 +82,21 @@ const EquipmentForm = ({
             selectedCategory={{}}
             onEdit={() => {}}
             newEvent={true}
+            eventStartDate={eventEquipment.date}
+            eventEndDate={eventEquipment.endDate}
           />
         </Box>
 
         <Box
+          className='hide-scrollbar'
           style={{
             width: '55%',
             borderRight: '1px solid rgba(255, 255, 255, 0.15)',
             height: '75vh',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            overflowY: 'auto',
+            ...scrollContainerStyle
           }}
         >
           <ContentPanel
@@ -86,16 +105,20 @@ const EquipmentForm = ({
             onEdit={handleEquipmentSelection}
             onCancel={() => {}}
             newEvent={true}
+            eventStartDate={eventEquipment.date}
+            eventEndDate={eventEquipment.endDate}
           />
         </Box>
 
         <Box
+          className='hide-scrollbar'
           style={{
             width: '20%',
             height: '75vh',
             display: 'flex',
             flexDirection: 'column',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            ...scrollContainerStyle
           }}
         >
           <EquipmentList

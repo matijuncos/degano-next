@@ -4,7 +4,8 @@ import useNotification from '@/hooks/useNotification';
 import { Box, Button, Flex, Group, Input, Text } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
 import { IconCheck, IconTrash } from '@tabler/icons-react';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { formatPrice } from '@/utils/priceUtils';
 
 const EditablePayments = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
@@ -17,6 +18,26 @@ const EditablePayments = () => {
   const [subsequentPayments, setSubsequentPayments] = useState<any[]>(
     selectedEvent?.payment.subsequentPayments || []
   );
+
+  // Función para limpiar el formato y obtener solo números
+  const parseFormattedNumber = (value: string): string => {
+    return value.replace(/[^0-9]/g, '');
+  };
+
+  // Función para formatear número mientras se escribe
+  const formatNumberInput = (value: string): string => {
+    const numericValue = parseFormattedNumber(value);
+    if (!numericValue) return '';
+    return `$ ${new Intl.NumberFormat('es-AR').format(Number(numericValue))}`;
+  };
+
+  // Calcular el costo total de renta del equipamiento
+  const rentalCost = useMemo(() => {
+    return selectedEvent?.equipment.reduce(
+      (total, equipment) => total + (equipment.rentalPrice || 0),
+      0
+    ) || 0;
+  }, [selectedEvent?.equipment]);
   const updateEvent = async (event: any) => {
     setLoading(true);
     notify({ loading: true });
@@ -43,13 +64,23 @@ const EditablePayments = () => {
   };
   const handleEdit = () => {
     if (isEditing) {
+      const numericValue = parseFormattedNumber(editedTotalToPay.toString());
       const eventUpdated = {
         ...selectedEvent,
-        payment: { ...selectedEvent!.payment, totalToPay: editedTotalToPay }
+        payment: { ...selectedEvent!.payment, totalToPay: numericValue }
       };
       updateEvent(eventUpdated);
+    } else {
+      // Al empezar a editar, formatear el valor actual
+      const currentValue = selectedEvent?.payment.totalToPay || '';
+      setEditedTotalToPay(formatNumberInput(currentValue.toString()));
     }
     setIsEditing(!isEditing);
+  };
+
+  const handleTotalToPayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatNumberInput(e.target.value);
+    setEditedTotalToPay(formattedValue);
   };
 
   const addPayment = () => {
@@ -64,8 +95,15 @@ const EditablePayments = () => {
   };
 
   const updatePayment = (id: string, field: 'amount' | 'date', value: any) => {
+    let processedValue = value;
+
+    // Si es el campo amount, formatear el valor
+    if (field === 'amount') {
+      processedValue = formatNumberInput(value);
+    }
+
     const updatedPayments = subsequentPayments?.map((payment) =>
-      payment.id === id ? { ...payment, [field]: value } : payment
+      payment.id === id ? { ...payment, [field]: processedValue } : payment
     );
     setSubsequentPayments(updatedPayments);
   };
@@ -75,13 +113,19 @@ const EditablePayments = () => {
   };
 
   const savePaymentData = () => {
+    // Limpiar los montos formateados antes de guardar
+    const cleanedPayments = subsequentPayments.map((payment) => ({
+      ...payment,
+      amount: parseFormattedNumber(payment.amount || '')
+    }));
+
     const eventUpdated = {
       ...selectedEvent,
       payment: {
         ...selectedEvent!.payment,
         subsequentPayments: [
           ...(selectedEvent!.payment.subsequentPayments as any[]),
-          ...subsequentPayments
+          ...cleanedPayments
         ]
       }
     };
@@ -102,7 +146,26 @@ const EditablePayments = () => {
   console.log(selectedEvent.payment);
   return (
     <>
-      <Box mb='24px' pt='md'>
+      {/* Costo de Renta del Equipamiento */}
+      <Box
+        mb='16px'
+        pt='md'
+        p='12px'
+        style={{
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)'
+        }}
+      >
+        <Text fw={600} size='sm' mb='4px' c='dimmed'>
+          Costo de Renta (Equipamiento)
+        </Text>
+        <Text fw={700} size='lg'>
+          {formatPrice(rentalCost)}
+        </Text>
+      </Box>
+
+      <Box mb='24px'>
         <Flex justify='space-between'>
           <Flex
             gap='16px'
@@ -115,13 +178,14 @@ const EditablePayments = () => {
             <Text fw={600}>Cotizaciòn total del evento</Text>
             {isEditing ? (
               <Input
-                type='number'
+                type='text'
                 value={editedTotalToPay}
-                onChange={(e) => setEditedTotalToPay(e.target.value)}
+                onChange={handleTotalToPayChange}
+                placeholder='$ 0'
               />
             ) : (
               <Text>
-                ${Number(selectedEvent?.payment.totalToPay).toLocaleString()}
+                {formatPrice(Number(selectedEvent?.payment.totalToPay))}
               </Text>
             )}
           </Flex>
@@ -152,7 +216,7 @@ const EditablePayments = () => {
               -
             </Text>
             <Text>
-              ${Number(selectedEvent.payment.upfrontAmount).toLocaleString()}
+              {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
             </Text>
           </Flex>
           {selectedEvent.payment.subsequentPayments?.map((payment) => (
@@ -161,7 +225,7 @@ const EditablePayments = () => {
                 <Text fw={600}>Pago parcial:</Text>
 
                 <Text>{new Date(payment.date).toLocaleDateString()}</Text>
-                <Text> - ${Number(payment.amount).toLocaleString()}</Text>
+                <Text> - {formatPrice(Number(payment.amount))}</Text>
               </Flex>
             </Box>
           ))}
@@ -174,13 +238,13 @@ const EditablePayments = () => {
           </Text>
           <Group>
             <Input
-              type='number'
-              placeholder='Monto'
-              value={payment.amount.toLocaleString()}
+              type='text'
+              placeholder='$ 0'
+              value={payment.amount}
               onChange={(e) =>
                 updatePayment(payment.id, 'amount', e.target.value)
               }
-              style={{ width: '120px' }}
+              style={{ width: '180px' }}
             />
             <DateTimePicker
               placeholder='Fecha de pago'
@@ -216,11 +280,11 @@ const EditablePayments = () => {
         }}
       >
         <Text fw={600} mb='8px'>
-          Suma de pagos parciales: ${sumOfPayments.toLocaleString()}
+          Suma de pagos parciales: {formatPrice(sumOfPayments)}
         </Text>
         <hr />
         <Text fw={600} my='8px'>
-          Falta pagar: ${remainingPayment.toLocaleString()}
+          Falta pagar: {formatPrice(remainingPayment)}
         </Text>
       </Box>
       {!subsequentPayments.length && (

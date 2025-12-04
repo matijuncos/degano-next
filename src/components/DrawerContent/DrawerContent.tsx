@@ -8,6 +8,7 @@ import styles from './DrawerContent.module.css';
 import { useState, useCallback, useEffect } from 'react';
 import { initializeGapiClientAndGetToken } from '@/lib/gapi';
 import { IconBrandGoogleDrive } from '@tabler/icons-react';
+import { formatPrice } from '@/utils/priceUtils';
 
 // const CATEGORIES: NewEquipmentType[] = [
 //   'Sonido',
@@ -260,9 +261,9 @@ const DrawerContent = () => {
               style={{ padding: '5px', margin: '10px 0' }}
             />
             <p style={{ paddingLeft: '12px' }}>
-              ${selectedEvent?.payment?.totalToPay}
+              {selectedEvent?.payment?.totalToPay ? formatPrice(Number(selectedEvent.payment.totalToPay)) : '$0'}
             </p>
-            <p>- ${selectedEvent?.payment?.upfrontAmount}</p>
+            <p>- {selectedEvent?.payment?.upfrontAmount ? formatPrice(Number(selectedEvent.payment.upfrontAmount)) : '$0'}</p>
             {/* agrgare mapeo de cada cosa que vyaa restando */}
             <p>Restante: </p>
           </div>

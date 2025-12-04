@@ -60,20 +60,8 @@ const MainInformation = ({
 }) => {
   if (!selectedEvent) return null;
   return (
-    <Grid gutter='xl'>
-      <Grid.Col span={5.5}>
-        <EditableData
-          type='text'
-          property='phoneNumber'
-          title='Teléfono'
-          value={selectedEvent.phoneNumber}
-        />
-        <EditableData
-          type='text'
-          property='type'
-          title='Tipo de evento'
-          value={selectedEvent.type}
-        />
+    <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+      {/* <Grid.Col span={5.5}> */}
         <EditableData
           type='date'
           property='date'
@@ -92,15 +80,15 @@ const MainInformation = ({
         )}
         <EditableData
           type='text'
-          property='lugar'
-          title='Lugar'
-          value={selectedEvent.lugar}
+          property='type'
+          title='Tipo de evento'
+          value={selectedEvent.type}
         />
         <EditableData
           type='text'
-          property='eventAddress'
-          title='Dirección'
-          value={selectedEvent.eventAddress}
+          property='lugar'
+          title='Lugar'
+          value={selectedEvent.lugar}
         />
         <EditableData
           type='text'
@@ -114,19 +102,17 @@ const MainInformation = ({
           title='Cantidad de invitados'
           value={selectedEvent.guests}
         />
-      </Grid.Col>
-      <Grid.Col
-        span='auto'
-        style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
-      >
-        <Divider orientation='vertical' />
-      </Grid.Col>
-      <Grid.Col span={5.5}>
         <EditableData
           type='text'
-          property='age'
-          title='Edad'
-          value={selectedEvent.age}
+          property='fullName'
+          title='Nombre Cliente'
+          value={selectedEvent.fullName}
+        />
+        <EditableData
+          type='text'
+          property='phoneNumber'
+          title='Teléfono'
+          value={selectedEvent.phoneNumber}
         />
         <EditableData
           type='text'
@@ -134,20 +120,54 @@ const MainInformation = ({
           title='Email'
           value={selectedEvent.email}
         />
-        {/*    <EditableData
+
+        {/* <EditableData
           type='text'
-          property='bandName'
-          title='Banda'
-          value={selectedEvent.bandName}
-        />
+          property='eventAddress'
+          title='Dirección'
+          value={selectedEvent.eventAddress}
+        /> */}
         <EditableData
           type='text'
-          property='guests'
-          title='Invitados'
-          value={selectedEvent.guests}
-        /> */}
+          property='age'
+          title='Edad'
+          value={selectedEvent.age}
+        />
+      {/* </Grid.Col>
+      <Grid.Col 
+        span='auto'
+        style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
+      >*/}
+        {/* <Divider orientation='vertical' />
       </Grid.Col>
-    </Grid>
+      <Grid.Col span={5.5}> */}
+        {selectedEvent.extraClients.length > 0 &&
+          selectedEvent.extraClients.map((client, index) => {
+            return (
+              <React.Fragment key={`extra-client-${index}`}>
+                <EditableData
+                  type='text'
+                  property={`extraClients.${index}.fullName`}
+                  title={`Nombre Cliente Extra ${index + 1}`}
+                  value={client.fullName}
+                />
+                <EditableData
+                  type='text'
+                  property={`extraClients.${index}.phoneNumber`}
+                  title={`Teléfono Cliente Extra ${index + 1}`}
+                  value={client.phoneNumber}
+                />
+                <EditableData
+                  type='text'
+                  property={`extraClients.${index}.email`}
+                  title={`Email Cliente Extra ${index + 1}`}
+                  value={client.email}
+                />
+              </React.Fragment>
+            );
+          })}
+      {/* </Grid.Col> */}
+    </Box>
   );
 };
 const MusicInformation = ({
