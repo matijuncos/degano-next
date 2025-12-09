@@ -136,7 +136,7 @@ const PaymentForm = ({
 
       <Input
         type='text'
-        placeholder='$ 0'
+        placeholder='Monto total del evento ($)'
         onChange={handleTotalToPayChange}
         name='totalToPay'
         value={formattedTotalToPay}
@@ -145,7 +145,7 @@ const PaymentForm = ({
       <div className='inputs-grid'>
         <Input
           type='text'
-          placeholder='$ 0'
+          placeholder='Monto del pago inicial ($)'
           onChange={handleUpfrontAmountChange}
           name='upfrontAmount'
           value={formattedUpfrontAmount}
