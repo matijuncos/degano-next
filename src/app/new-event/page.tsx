@@ -6,6 +6,7 @@ import EventForm from '@/components/EventForm/EventForm';
 import MusicForm from '@/components/MusicForm/MusicForm';
 import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import TimingForm from '@/components/TimingForm/TimingForm';
+import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
@@ -15,7 +16,7 @@ import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
-import { Tabs } from '@mantine/core';
+import { Tabs, Button } from '@mantine/core';
 
 const NewEventPage = () => {
   const {
@@ -45,6 +46,23 @@ const NewEventPage = () => {
   useEffect(() => {
     setFormState(EVENT_TABS.CLIENT);
   }, []);
+
+  // Actualizar folderName cuando los campos necesarios estén disponibles
+  useEffect(() => {
+    if (event.date && event.type && event.lugar) {
+      const folder = `${new Date(event.date).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      })} - ${event.type} - ${event.lugar}`;
+      setFolderName(folder);
+    }
+  }, [event.date, event.type, event.lugar, setFolderName]);
+
+  // Verificar si se puede mostrar la tab de archivos
+  const canShowFilesTab = () => {
+    return !!(event.date && event.type && event.lugar);
+  };
 
   const saveEvent = async (newEvent: EventModel) => {
     setLoadingCursor(true);
@@ -78,11 +96,20 @@ const NewEventPage = () => {
             year: '2-digit'
           })} - ${newEvent.type} - ${newEvent.lugar}`
         );
-        if (data.event)
+        if (data.event) {
           setAllEvents((prev: EventModel[]) => [...prev, data.event]);
-        router.push('/upload-file');
+          setEvent(data.event);
+        }
+
+        // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
+        if (canShowFilesTab()) {
+          setFormState(EVENT_TABS.FILES);
+          notify({ message: 'Evento guardado correctamente. Ahora puedes subir archivos.' });
+        } else {
+          router.push('/upload-file');
+          notify();
+        }
       }
-      notify();
     } catch (err) {
       notify({ type: 'defaultError' });
       console.error('failed to save the event ', err);
@@ -145,6 +172,25 @@ const NewEventPage = () => {
             event={event}
           />
         );
+      case EVENT_TABS.FILES:
+        return (
+          <div>
+            <h3>Archivos del evento</h3>
+            <FilesHandlerComponent />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginTop: '20px'
+              }}
+            >
+              <Button onClick={() => onBackTab(EVENT_TABS.PAYMENT, event)}>
+                Atrás
+              </Button>
+            </div>
+          </div>
+        );
       default:
         break;
     }
@@ -168,6 +214,9 @@ const NewEventPage = () => {
               Equipamiento
             </Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Presupuesto</Tabs.Tab>
+            {canShowFilesTab() && (
+              <Tabs.Tab value={EVENT_TABS.FILES.toString()}>Archivos</Tabs.Tab>
+            )}
           </Tabs.List>
         </Tabs>
       </div>

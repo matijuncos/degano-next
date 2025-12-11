@@ -60,7 +60,7 @@ const MainInformation = ({
 }) => {
   if (!selectedEvent) return null;
   return (
-    <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+    <Flex direction='column' gap='8px' mt='8px'>
       {/* <Grid.Col span={5.5}> */}
         <EditableData
           type='date'
@@ -114,12 +114,14 @@ const MainInformation = ({
           title='Teléfono'
           value={selectedEvent.phoneNumber}
         />
-        <EditableData
-          type='text'
-          property='email'
-          title='Email'
-          value={selectedEvent.email}
-        />
+        {selectedEvent.email && (
+          <EditableData
+            type='text'
+            property='email'
+            title='Email'
+            value={selectedEvent.email}
+          />
+        )}
 
         {/* <EditableData
           type='text'
@@ -157,17 +159,19 @@ const MainInformation = ({
                   title={`Teléfono Cliente Extra ${index + 1}`}
                   value={client.phoneNumber}
                 />
-                <EditableData
-                  type='text'
-                  property={`extraClients.${index}.email`}
-                  title={`Email Cliente Extra ${index + 1}`}
-                  value={client.email}
-                />
+                {client.email && (
+                  <EditableData
+                    type='text'
+                    property={`extraClients.${index}.email`}
+                    title={`Email Cliente Extra ${index + 1}`}
+                    value={client.email}
+                  />
+                )}
               </React.Fragment>
             );
           })}
       {/* </Grid.Col> */}
-    </Box>
+    </Flex>
   );
 };
 const MusicInformation = ({
@@ -232,18 +236,21 @@ const TimingInformation = ({
 }) => {
   if (!selectedEvent) return null;
   return (
-    <Flex direction='column' gap='16px' mt='16px'>
+    <Flex direction='column' gap='8px' mt='8px'>
       {selectedEvent.timing && selectedEvent.timing.length > 0 ? (
-        selectedEvent.timing.map((item, index) => (
+        selectedEvent.timing.map((item, index, array) => (
           <Box
             key={index}
-            p='md'
-            // style={{ border: '1px solid #e9ecef', borderRadius: '8px' }}
+            style={{
+              borderBottom: index < array.length - 1 ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+              paddingBottom: '8px',
+              marginBottom: '4px'
+            }}
           >
-            <Text fw={600} size='sm' mb='xs'>
+            <Text fw={500} size='xs' c='dimmed' mb='4px'>
               #{index + 1}
             </Text>
-            <Flex gap='sm'>
+            <Flex gap='sm' mb='4px'>
               <EditableData
                 type='text'
                 property={`timing[${index}].time`}
@@ -531,12 +538,14 @@ const EventPage = () => {
                   title='Edad'
                   value={selectedEvent.age}
                 />
-                <EditableData
-                  type='text'
-                  property='email'
-                  title='Email'
-                  value={selectedEvent.email}
-                />
+                {selectedEvent.email && (
+                  <EditableData
+                    type='text'
+                    property='email'
+                    title='Email'
+                    value={selectedEvent.email}
+                  />
+                )}
                 <EditableData
                   type='text'
                   property='guests'

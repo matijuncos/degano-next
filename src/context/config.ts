@@ -31,5 +31,6 @@ export const EVENT_TABS = {
   MUSIC: 2,
   EQUIPMENT: 3,
   PAYMENT: 4,
-  TIMING: 5
+  TIMING: 5,
+  FILES: 6
 };

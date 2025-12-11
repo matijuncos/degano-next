@@ -19,7 +19,7 @@ interface Client {
   _id: string;
   fullName: string;
   phoneNumber: string;
-  email: string;
+  email?: string;
   age?: string;
   address?: string;
 }
@@ -67,8 +67,7 @@ const ClientForm = ({
 
   const requiredMainFields: (keyof EventModel)[] = [
     'fullName',
-    'phoneNumber',
-    'email'
+    'phoneNumber'
   ];
 
   const requiredExtraFields: (keyof ExtraClient)[] = [
@@ -83,7 +82,7 @@ const ClientForm = ({
 
   // Sincronizar estado local con el prop event cuando el usuario vuelve atrás
   useEffect(() => {
-    if (event && event.fullName && event.phoneNumber && event.email) {
+    if (event && event.fullName && event.phoneNumber) {
       // Si el evento tiene datos de cliente, restaurar el estado
       setClientData(event);
       setMainClientConfirmed(true);
@@ -276,7 +275,6 @@ const ClientForm = ({
     .filter(
       (client) =>
         client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.phoneNumber.includes(searchTerm)
     )
     .filter(
@@ -291,7 +289,7 @@ const ClientForm = ({
 
   const clientOptions = filteredClients.map((client) => ({
     value: client._id,
-    label: `${client.fullName} - ${client.email}`
+    label: `${client.fullName} - ${client.phoneNumber}`
   }));
 
   const handleExtraClientSelect = (clientId: string | null) => {
@@ -397,8 +395,7 @@ const ClientForm = ({
                   <Box pl='md'>
                     <Text fw={500}>{clientData.fullName}</Text>
                     <Text size='sm'>
-                      Teléfono: {clientData.phoneNumber} • Email:{' '}
-                      {clientData.email}
+                      Teléfono: {clientData.phoneNumber}
                     </Text>
                   </Box>
                 </Card>
@@ -500,15 +497,6 @@ const ClientForm = ({
                 disabled={!isNewClient && !selectedClientId}
               />
               <Input
-                placeholder='Dirección de email *'
-                name='email'
-                onChange={handleInputChange}
-                autoComplete='off'
-                error={validate && !clientData.email}
-                value={clientData.email || ''}
-                disabled={!isNewClient && !selectedClientId}
-              />
-              <Input
                 placeholder='Edad'
                 name='age'
                 onChange={handleInputChange}
@@ -536,7 +524,6 @@ const ClientForm = ({
           <Box mt='xs' mb='sm'>
             <Text>{clientData.fullName}</Text>
             <Text size='sm'>Tel: {clientData.phoneNumber}</Text>
-            <Text size='sm'>Email: {clientData.email}</Text>
             <Text size='sm'>Dirección: {clientData.address}</Text>
           </Box>
           <Group>
@@ -612,8 +599,7 @@ const ClientForm = ({
                     <Box pl='md'>
                       <Text fw={500}>{extraClientData.fullName}</Text>
                       <Text size='sm'>
-                        Teléfono: {extraClientData.phoneNumber} • Email:{' '}
-                        {extraClientData.email}
+                        Teléfono: {extraClientData.phoneNumber}
                       </Text>
                     </Box>
                   </Card>
@@ -688,14 +674,6 @@ const ClientForm = ({
               disabled={!isNewExtraClient && !selectedExtraClientId}
             />
             <Input
-              placeholder='Email'
-              name='email'
-              error={validateExtra && !extraClientData.email}
-              value={extraClientData.email}
-              onChange={handleExtraInputChange}
-              disabled={!isNewExtraClient && !selectedExtraClientId}
-            />
-            <Input
               placeholder='Edad'
               name='age'
               value={extraClientData.age}
@@ -744,7 +722,7 @@ const ClientForm = ({
                     {i + 1}. {c.fullName} ({c.rol})
                   </Text>
                   <Text size='sm'>
-                    Tel: {c.phoneNumber} • Email: {c.email}
+                    Tel: {c.phoneNumber}
                   </Text>
                 </Box>
                 <Button
