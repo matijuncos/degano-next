@@ -52,7 +52,7 @@ const EVENT_DETAILS_LABELS = {
   playlist: 'Playlists'
 } as const;
 
-const EXCLUDED_FIELDS: (keyof typeof EVENT_DETAILS_LABELS)[] = [];
+const EXCLUDED_FIELDS: (keyof typeof EVENT_DETAILS_LABELS)[] = ['bands' as any, 'equipment', 'playlist', 'music', 'payment', 'extraClients'];
 
 // Types
 type EventDetailsKey = keyof typeof EVENT_DETAILS_LABELS;
@@ -218,6 +218,44 @@ const PrintableEvent = () => {
     ));
   };
 
+  const renderBandsTable = () => {
+    if (!selectedEvent?.bands?.length) return null;
+
+    return (
+      <Box my='20px'>
+        <Text
+          style={{
+            fontWeight: 700,
+            fontSize: '26px',
+            marginBottom: '28px'
+          }}
+        >
+          Bandas en vivo
+        </Text>
+        <Table>
+          <TableThead>
+            <TableTr>
+              <TableTh>Banda</TableTh>
+              <TableTh>Información</TableTh>
+              <TableTh>Hora del show</TableTh>
+              <TableTh>Hora de prueba</TableTh>
+            </TableTr>
+          </TableThead>
+          <TableTbody>
+            {selectedEvent.bands.map((band, index) => (
+              <TableTr key={index}>
+                <TableTd>{band.bandName}</TableTd>
+                <TableTd>{band.bandInfo || '-'}</TableTd>
+                <TableTd>{band.showTime || '-'}</TableTd>
+                <TableTd>{band.testTime || '-'}</TableTd>
+              </TableTr>
+            ))}
+          </TableTbody>
+        </Table>
+      </Box>
+    );
+  };
+
   const renderEquipmentTable = () => {
     if (!selectedEvent?.equipment?.length) return null;
 
@@ -247,6 +285,30 @@ const PrintableEvent = () => {
           </TableTbody>
         </Table>
       </Box>
+    );
+  };
+
+  const renderPDFBands = () => {
+    if (!selectedEvent?.bands?.length) return null;
+
+    return (
+      <View style={pdfStyles.equipment} wrap={false}>
+        <Text style={pdfStyles.equipmentTitle}>Bandas en vivo</Text>
+        <View style={pdfStyles.table}>
+          <View style={pdfStyles.tableHeader}>
+            <Text style={pdfStyles.tableCell}>Banda</Text>
+            <Text style={pdfStyles.tableCell}>Info</Text>
+            <Text style={pdfStyles.tableCell}>Hora Show</Text>
+          </View>
+          {selectedEvent.bands.map((band, index) => (
+            <View style={pdfStyles.tableRow} key={index}>
+              <Text style={pdfStyles.tableCell}>{band.bandName}</Text>
+              <Text style={pdfStyles.tableCell}>{band.bandInfo || '-'}</Text>
+              <Text style={pdfStyles.tableCell}>{band.showTime || '-'}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
     );
   };
 
@@ -321,6 +383,7 @@ const PrintableEvent = () => {
         </View>
         <View>{renderPDFEventFields()}</View>
         {renderPDFPlaylists()}
+        {renderPDFBands()}
         {renderPDFEquipment()}
       </Page>
     </Document>
@@ -361,6 +424,7 @@ const PrintableEvent = () => {
         </Flex>
 
         {renderPlaylists()}
+        {renderBandsTable()}
         {renderEquipmentTable()}
       </Flex>
 

@@ -103,10 +103,17 @@ const EquipmentForm = ({
             selectedCategory={selectedEquipment}
             setDisableCreateEquipment={() => {}}
             onEdit={handleEquipmentSelection}
+            onRemove={(equipmentId: string) => {
+              setEventEquipment((prev) => ({
+                ...prev,
+                equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+              }));
+            }}
             onCancel={() => {}}
             newEvent={true}
             eventStartDate={eventEquipment.date}
             eventEndDate={eventEquipment.endDate}
+            selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
           />
         </Box>
 

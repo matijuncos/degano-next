@@ -299,8 +299,22 @@ export default function FilesHandlerComponent() {
                 <Dropzone
                   multiple
                   onDrop={(files) => setAllfiles((prev) => [...prev, ...files])}
-                  onReject={(files) => console.log('rejected files', files)}
+                  onReject={(files) => {
+                    console.log('rejected files', files);
+                    alert(`Archivos rechazados: ${files.map(f => f.file.name).join(', ')}. Verifica que no excedan 10MB.`);
+                  }}
                   maxSize={10 * 1024 ** 2}
+                  accept={{
+                    'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
+                    'video/*': ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv'],
+                    'audio/*': ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac'],
+                    'application/pdf': ['.pdf'],
+                    'application/msword': ['.doc'],
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                    'application/vnd.ms-excel': ['.xls'],
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                    'text/*': ['.txt', '.csv']
+                  }}
                   style={{ width: '100%', flex: 5 }}
                 >
                   <Group
@@ -336,8 +350,8 @@ export default function FilesHandlerComponent() {
                             Arrastra archivos o haz click
                           </Text>
                           <Text size='sm' c='dimmed' inline mt={7}>
-                            Adjunta la cantidad de archivos que quieras. Cada
-                            archivo no debe exceder los 5mb
+                            Adjunta la cantidad de archivos que quieras (imágenes, videos, audio, PDFs, etc.). Cada
+                            archivo no debe exceder los 10MB
                           </Text>
                         </div>
                       </>
@@ -419,7 +433,7 @@ export default function FilesHandlerComponent() {
               </Flex>
 
               <Button
-                disabled={allFiles.length === 0 || loading.uploading}
+                disabled={allFiles.length === 0 || loading.uploading || !authToken}
                 mt='18px'
                 w='100%'
                 onClick={handleUploadClick}
@@ -427,7 +441,11 @@ export default function FilesHandlerComponent() {
                   loading.uploading && <Loader size='sm' color='white' />
                 }
               >
-                {loading.uploading ? 'Subiendo...' : 'Subir Archivos'}
+                {!authToken
+                  ? 'Autenticando con Google...'
+                  : loading.uploading
+                  ? 'Subiendo...'
+                  : 'Subir Archivos'}
               </Button>
               <Box py='24px'>
                 <hr />

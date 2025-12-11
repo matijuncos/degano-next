@@ -13,7 +13,7 @@ export interface ExtraClient {
   _id?: string;
   fullName: string;
   phoneNumber: string;
-  email: string;
+  email?: string;
   rol: string;
   age?: string;
   address?: string;
@@ -24,7 +24,7 @@ export interface EventModel {
   fullName: string;
   phoneNumber: string;
   extraClients: ExtraClient[];
-  email: string;
+  email?: string;
   age: string;
   address: string;
   type: string;

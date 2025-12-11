@@ -47,26 +47,43 @@ export default function EquipmentList({
   }
 
   return (
-    <Stack>
+    <Stack gap='xs'>
       {equipmentList.map((eq) => (
-        <Group
+        <Stack
           key={eq._id}
-          justify='space-between'
-          style={{ padding: '0 8px' }}
+          gap='2px'
+          style={{
+            padding: '6px 8px',
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '4px',
+            borderLeft: '2px solid rgba(64, 192, 87, 0.5)'
+          }}
         >
-          <Text size='sm'>{eq.name}</Text>
-          <Text size='sm' c='dimmed'>
-            {formatPrice(eq.rentalPrice || 0)}
-          </Text>
-          <ActionIcon
-            color='red'
-            variant='subtle'
-            onClick={() => handleRemove(eq._id)}
-            title='Quitar equipo'
-          >
-            <FaTrashAlt size={12} />
-          </ActionIcon>
-        </Group>
+          <Group justify='space-between' gap='xs'>
+            <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
+              <Text size='sm' fw={500} truncate>
+                {eq.name}
+              </Text>
+              <Text size='10px' c='dimmed'>
+                Código: {eq.code || 'N/A'}
+              </Text>
+            </Stack>
+            <Group gap='4px' style={{ flexShrink: 0 }}>
+              <Text size='xs' c='green' fw={600}>
+                {formatPrice(eq.rentalPrice || 0)}
+              </Text>
+              <ActionIcon
+                size='xs'
+                color='red'
+                variant='subtle'
+                onClick={() => handleRemove(eq._id)}
+                title='Quitar equipo'
+              >
+                <FaTrashAlt size={10} />
+              </ActionIcon>
+            </Group>
+          </Group>
+        </Stack>
       ))}
       <Divider my='xs' />
 

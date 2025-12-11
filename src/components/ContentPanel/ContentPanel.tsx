@@ -17,18 +17,22 @@ export default function ContentPanel({
   selectedCategory,
   setDisableCreateEquipment,
   onEdit,
+  onRemove,
   onCancel,
   newEvent,
   eventStartDate,
-  eventEndDate
+  eventEndDate,
+  selectedEquipmentIds = []
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
   onEdit?: (item: any) => void;
+  onRemove?: (equipmentId: string) => void;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
   newEvent: boolean;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  selectedEquipmentIds?: string[];
 }) {
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data: categories = [] } = useSWR('/api/categories', fetcher);
@@ -90,6 +94,7 @@ export default function ContentPanel({
     } else if (isCategory) {
       return (
         <tr>
+          {newEvent && <th>Acción</th>}
           <th>Nombre</th>
           <th>Stock total</th>
           <th>Disponible</th>
@@ -145,6 +150,11 @@ export default function ContentPanel({
         (item: any) => !item.outOfService?.isOut
       ).length;
       return items.map((item: any, index: number) => {
+        const isSelected = selectedEquipmentIds.includes(item._id);
+        const status = getEquipmentStatus(item);
+        const displayStatus = newEvent && isSelected ? 'RESERVADO' : status.label;
+        const displayColor = newEvent && isSelected ? '#fbbf24' : status.color;
+
         return (
           <tr
             key={item._id}
@@ -152,12 +162,34 @@ export default function ContentPanel({
               backgroundColor:
                 index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
               textAlign: 'center',
-              cursor: 'pointer',
               fontWeight: 500,
               whiteSpace: 'nowrap'
             }}
-            onClick={() => onEdit?.(item)}
           >
+            {newEvent && (
+              <td style={{ padding: '0 5px' }}>
+                {isSelected ? (
+                  <ActionIcon
+                    size='md'
+                    color='red'
+                    variant='light'
+                    onClick={() => onRemove?.(item._id)}
+                  >
+                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
+                  </ActionIcon>
+                ) : (
+                  <ActionIcon
+                    size='md'
+                    color='green'
+                    variant='light'
+                    onClick={() => onEdit?.(item)}
+                    disabled={item.outOfService?.isOut}
+                  >
+                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>
+                  </ActionIcon>
+                )}
+              </td>
+            )}
             <td style={{ padding: '0 5px' }}>{item.name}</td>
             <td style={{ padding: '0 5px' }}>{selectedCategory?.totalStock}</td>
             <td style={{ padding: '0 5px' }}>{dynamicAvailableStock}</td>
@@ -168,11 +200,11 @@ export default function ContentPanel({
             <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
             <td
               style={{
-                color: getEquipmentStatus(item).color,
+                color: displayColor,
                 padding: '0 5px'
               }}
             >
-              {getEquipmentStatus(item).label}
+              {displayStatus}
             </td>
           </tr>
         );

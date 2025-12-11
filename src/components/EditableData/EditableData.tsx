@@ -5,9 +5,10 @@ import {
   CloseIcon,
   Flex,
   Input,
-  Rating,
   Text,
-  Textarea
+  Textarea,
+  Group,
+  UnstyledButton
 } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
 import {
@@ -187,14 +188,12 @@ const EditableData = ({
 
   const typeTextData = () => (
     <Box
-      p='12px'
-      mb='12px'
+      py='4px'
+      mb='4px'
       style={{
         position: 'relative',
-        borderRadius: '8px',
-        backgroundColor:
-          textHover && !editState.showInput ? '#f8f9fa' : 'transparent',
-        border: '1px solid #e9ecef',
+        backgroundColor: textHover && !editState.showInput ? 'rgba(64, 192, 87, 0.1)' : 'transparent',
+        borderBottom: textHover && !editState.showInput ? '1px solid rgba(64, 192, 87, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
         transition: 'all 0.2s ease',
         cursor: 'pointer',
         ...style
@@ -203,12 +202,12 @@ const EditableData = ({
       onMouseEnter={() => setTextHover(true)}
       onMouseLeave={() => setTextHover(false)}
     >
-      <Flex align='center' gap='12px' style={{ paddingRight: '32px' }}>
+      <Flex align='center' gap='8px'>
         {title && (
           <Text
             fw={600}
             size='sm'
-            c={textHover && !editState.showInput ? 'black' : 'white'}
+            c='white'
             style={{ minWidth: 'fit-content' }}
           >
             {title}:
@@ -336,110 +335,142 @@ const EditableData = ({
     </>
   );
 
-  const typeRatingData = () => (
-    <>
-      {editState.showEditableRating ? (
-        <>
-          <CheckIcon
-            color='green'
-            size='22'
-            onClick={() => toggleEdit('showEditableRating', 'save')}
-          />
-          {Array.isArray(editState.inputValue) &&
-            editState.inputValue.map((genre, i) => (
-              <Flex
-                gap='6px'
-                key={genre + i}
-                align='center'
-                py='10px'
-                style={{
-                  borderBottom: 'solid 1px white'
-                }}
-              >
-                <div style={{ width: '190px', flexShrink: 0 }}>
-                  <Text style={{ margin: 0 }}>{genre.genre}</Text>
-                </div>
-                <Rating
-                  value={genre.value}
-                  onChange={(e) => rateGenre(e as any, i)}
-                />
-              </Flex>
-            ))}
-        </>
-      ) : (
-        <>
-          <Flex mt='2rem' gap='8px' align='center'>
-            <Text fw='600'>Editar Géneros</Text>
-            <IconEdit
+  const typeRatingData = () => {
+    const options = [
+      { label: 'Mucho', value: 3, color: '#51cf66' },
+      { label: 'Normal', value: 2, color: '#fd7e14' },
+      { label: 'Poco o Nada', value: 1, color: '#fa5252' }
+    ];
+
+    return (
+      <>
+        {editState.showEditableRating ? (
+          <>
+            <CheckIcon
+              color='green'
               size='22'
-              onClick={() => toggleEdit('showEditableRating', 'open')}
+              onClick={() => toggleEdit('showEditableRating', 'save')}
             />
-          </Flex>
-          <Box>
             {Array.isArray(editState.inputValue) &&
-              editState.inputValue
-                .filter((item) => item.value !== 0)
-                .map((genre, i) => (
-                  <div
-                    key={`i${i}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '12px 0',
-                      borderBottom: 'solid 1px grey'
-                    }}
-                  >
-                    <div style={{ width: '190px', flexShrink: 0 }}>
-                      <p
+              editState.inputValue.map((genre, i) => (
+                <Flex
+                  gap='12px'
+                  key={genre + i}
+                  align='flex-start'
+                  py='10px'
+                  style={{
+                    borderBottom: 'solid 1px white'
+                  }}
+                >
+                  <div style={{ width: '190px', flexShrink: 0, paddingTop: '6px' }}>
+                    <Text style={{ margin: 0, fontWeight: 500 }}>{genre.genre}</Text>
+                  </div>
+                  <Flex gap='sm'>
+                    {options.map((option) => (
+                      <Flex
+                        key={option.value}
+                        direction='column'
+                        align='center'
+                        gap='4px'
+                        style={{ maxWidth: '70px' }}
+                      >
+                        <UnstyledButton
+                          onClick={() => rateGenre(option.value, i)}
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            borderRadius: '50%',
+                            border: genre.value === option.value
+                              ? `3px solid ${option.color}`
+                              : '2px solid rgba(255, 255, 255, 0.2)',
+                            backgroundColor: genre.value === option.value
+                              ? option.color
+                              : 'transparent',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          title={option.label}
+                        />
+                        <Text size='10px' c='dimmed' ta='center' style={{ lineHeight: 1.2 }}>
+                          {option.label}
+                        </Text>
+                      </Flex>
+                    ))}
+                  </Flex>
+                </Flex>
+              ))}
+          </>
+        ) : (
+          <>
+            <Flex mt='2rem' gap='8px' align='center'>
+              <Text fw='600'>Editar Géneros</Text>
+              <IconEdit
+                size='22'
+                onClick={() => toggleEdit('showEditableRating', 'open')}
+              />
+            </Flex>
+            <Box>
+              {Array.isArray(editState.inputValue) &&
+                editState.inputValue
+                  .filter((item) => item.value !== 0)
+                  .map((genre, i) => {
+                    const selectedOption = options.find(o => o.value === genre.value);
+                    return (
+                      <div
+                        key={`i${i}`}
                         style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          margin: 0
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 0',
+                          borderBottom: 'solid 1px grey'
                         }}
                       >
-                        {genre.genre}
-                      </p>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexShrink: 0
-                      }}
-                    >
-                      {Array.from({ length: genre.value }, (_, idx) => (
-                        <IconStarFilled
-                          color='gold'
-                          key={`filled-${genre.genre}-${idx}`}
+                        <div style={{ width: '190px', flexShrink: 0 }}>
+                          <p
+                            style={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              margin: 0
+                            }}
+                          >
+                            {genre.genre}
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            borderRadius: '50%',
+                            backgroundColor: selectedOption?.color || 'transparent',
+                            border: `2px solid ${selectedOption?.color || 'grey'}`,
+                            flexShrink: 0
+                          }}
+                          title={selectedOption?.label}
                         />
-                      ))}
-                      {Array.from({ length: 5 - genre.value }, (_, idx) => (
-                        <IconStar
-                          color='gold'
-                          key={`empty-${genre.genre}-${idx}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-          </Box>
-        </>
-      )}
-    </>
-  );
+                        <Text size='sm' c='dimmed'>
+                          {selectedOption?.label || ''}
+                        </Text>
+                      </div>
+                    );
+                  })}
+            </Box>
+          </>
+        )}
+      </>
+    );
+  };
 
   const typeTextArea = () => {
     return (
       <Box
-        p='12px'
-        mb='12px'
+        py='4px'
+        mb='4px'
         style={{
           position: 'relative',
-          borderRadius: '8px',
           backgroundColor: 'transparent',
-          border: '1px solid #e9ecef',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
           transition: 'all 0.2s ease',
           cursor: 'pointer',
           minHeight: '48px'
@@ -447,7 +478,7 @@ const EditableData = ({
         //  onMouseEnter={() => setTextareaHover(true)}
         //onMouseLeave={() => setTextareaHover(false)}
       >
-        <Flex direction='column' gap='8px' style={{ paddingRight: '32px' }}>
+        <Flex direction='column' gap='4px'>
           {title && (
             <Text fw={600} size='sm' c='dimmed'>
               {title}:
@@ -520,14 +551,12 @@ const EditableData = ({
 
   const typeDateData = () => (
     <Box
-      p='12px'
-      mb='12px'
+      py='4px'
+      mb='4px'
       style={{
         position: 'relative',
-        borderRadius: '8px',
-        backgroundColor:
-          textHover && !editState.showEditableDate ? '#f8f9fa' : 'transparent',
-        border: '1px solid #e9ecef',
+        backgroundColor: textHover && !editState.showEditableDate ? 'rgba(64, 192, 87, 0.1)' : 'transparent',
+        borderBottom: textHover && !editState.showEditableDate ? '1px solid rgba(64, 192, 87, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
         transition: 'all 0.2s ease',
         cursor: 'pointer'
       }}
@@ -535,12 +564,12 @@ const EditableData = ({
       onMouseEnter={() => setTextHover(true)}
       onMouseLeave={() => setTextHover(false)}
     >
-      <Flex align='center' gap='12px' style={{ paddingRight: '32px' }}>
+      <Flex align='center' gap='8px'>
         {title && (
           <Text
             fw={600}
             size='sm'
-            c={textHover && !editState.showEditableDate ? 'black' : 'white'}
+            c='white'
             style={{ minWidth: 'fit-content' }}
           >
             {title}:
@@ -606,17 +635,16 @@ const EditableData = ({
 
   const typeStringArrayData = () => (
     <Box
-      p='12px'
-      mb='12px'
+      py='4px'
+      mb='8px'
       style={{
         position: 'relative',
-        borderRadius: '8px',
         backgroundColor: 'transparent',
-        border: '1px solid #e9ecef',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         transition: 'all 0.2s ease'
       }}
     >
-      <Flex direction='column' gap='8px'>
+      <Flex direction='column' gap='4px'>
         {title && (
           <Text fw={600} size='sm' c='dimmed'>
             {title}:
@@ -656,43 +684,44 @@ const EditableData = ({
         )}
 
         <Box>
-          {Array.isArray(editState.inputValue) &&
-          editState.inputValue.length > 0 ? (
-            editState.inputValue.map((item, index) => (
-              <Flex
-                key={`${item}-${index}`}
-                align='center'
-                justify='space-between'
-                p='8px'
-                mb='4px'
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}
-              >
-                <Text
-                  size='sm'
-                  c='white'
-                  style={{ flex: 1, paddingRight: '8px' }}
+          {(() => {
+            const inputArray = Array.isArray(editState.inputValue) ? editState.inputValue : [];
+            return inputArray.length > 0 ? (
+              inputArray.map((item, index) => (
+                <Flex
+                  key={`${item}-${index}`}
+                  align='center'
+                  justify='space-between'
+                  py='4px'
+                  mb='2px'
+                  style={{
+                    backgroundColor: 'transparent',
+                    borderBottom: index < inputArray.length - 1 ? '1px solid rgba(255, 255, 255, 0.03)' : 'none'
+                  }}
                 >
-                  {item}
-                </Text>
-                {editState.showEditableStringArray && (
-                  <IconX
-                    cursor='pointer'
-                    size={16}
-                    color='red'
-                    onClick={() => removeStringItem(item)}
-                  />
-                )}
-              </Flex>
-            ))
-          ) : (
-            <Text c='dimmed' fs='italic' size='sm'>
+                  <Text
+                    size='sm'
+                    c='white'
+                    style={{ flex: 1, paddingRight: '8px' }}
+                  >
+                    {item}
+                  </Text>
+                  {editState.showEditableStringArray && (
+                    <IconX
+                      cursor='pointer'
+                      size={16}
+                      color='red'
+                      onClick={() => removeStringItem(item)}
+                    />
+                  )}
+                </Flex>
+              ))
+            ) : (
+              <Text c='dimmed' fs='italic' size='sm'>
               No hay elementos agregados
             </Text>
-          )}
+            );
+          })()}
         </Box>
       </Flex>
 

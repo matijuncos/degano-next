@@ -67,18 +67,21 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
 
     const existingClient = await db
       .collection('clients')
-      .findOne({ email: body.email });
+      .findOne({ fullName: body.fullName, phoneNumber: body.phoneNumber });
 
     if (!existingClient) {
-      await db.collection('clients').insertOne({
+      const clientData: any = {
         fullName: body.fullName,
         phoneNumber: body.phoneNumber,
-        email: body.email,
         age: body.age || '',
         address: body.address || '',
         createdAt: new Date(),
         updatedAt: new Date()
-      });
+      };
+      if (body.email) {
+        clientData.email = body.email;
+      }
+      await db.collection('clients').insertOne(clientData);
     }
 
     if (Array.isArray(body.extraClients) && body.extraClients.length > 0) {
@@ -88,44 +91,50 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
             ? new ObjectId(extra._id)
             : null;
 
-        // Buscar por _id o por email
+        // Buscar por _id o por fullName + phoneNumber
         let existingExtra = null;
         if (extraId) {
           existingExtra = await db
             .collection('clients')
             .findOne({ _id: extraId });
-        } else if (extra.email) {
+        } else {
           existingExtra = await db
             .collection('clients')
-            .findOne({ email: extra.email });
+            .findOne({ fullName: extra.fullName, phoneNumber: extra.phoneNumber });
         }
 
         // Crear si no existe
         if (!existingExtra) {
-          await db.collection('clients').insertOne({
+          const extraClientData: any = {
             fullName: extra.fullName,
             phoneNumber: extra.phoneNumber,
-            email: extra.email,
             age: extra.age || '',
             address: extra.address || '',
             rol: extra.rol,
             createdAt: new Date(),
             updatedAt: new Date()
-          });
+          };
+          if (extra.email) {
+            extraClientData.email = extra.email;
+          }
+          await db.collection('clients').insertOne(extraClientData);
         } else {
           // Actualizar si ya existe
+          const updateData: any = {
+            fullName: extra.fullName,
+            phoneNumber: extra.phoneNumber,
+            age: extra.age || '',
+            address: extra.address || '',
+            rol: extra.rol,
+            updatedAt: new Date()
+          };
+          if (extra.email) {
+            updateData.email = extra.email;
+          }
           await db.collection('clients').updateOne(
             { _id: existingExtra._id },
             {
-              $set: {
-                fullName: extra.fullName,
-                phoneNumber: extra.phoneNumber,
-                email: extra.email,
-                age: extra.age || '',
-                address: extra.address || '',
-                rol: extra.rol,
-                updatedAt: new Date()
-              }
+              $set: updateData
             }
           );
         }

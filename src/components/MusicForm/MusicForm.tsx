@@ -4,11 +4,12 @@ import {
   Chip,
   Flex,
   Input,
-  Rating,
   rem,
   Text,
   Loader,
-  Alert
+  Alert,
+  Group,
+  UnstyledButton
 } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { EventModel } from '@/context/types';
@@ -525,13 +526,47 @@ const MusicForm = ({
       ) : (
         <div className={styles.ratingContainer}>
           {musicData?.music.genres.map((genre: GenreType, index: number) => {
+            const options = [
+              { label: 'Mucho', value: 3, color: '#51cf66' },
+              { label: 'Normal', value: 2, color: '#fd7e14' },
+              { label: 'Poco o Nada', value: 1, color: '#fa5252' }
+            ];
+
             return (
-              <div className='eachRating' key={genre.genre}>
-                <p>{genre.genre}</p>
-                <Rating
-                  value={genre.value}
-                  onChange={(e) => rateGenre(e as any, index)}
-                />
+              <div className='eachRating' key={genre.genre} style={{ maxWidth: '100%' }}>
+                <p style={{ marginBottom: '12px', fontWeight: 500 }}>{genre.genre}</p>
+                <Flex gap='sm' align='flex-start'>
+                  {options.map((option) => (
+                    <Flex
+                      key={option.value}
+                      direction='column'
+                      align='center'
+                      gap='4px'
+                      style={{ flex: 1, maxWidth: '70px' }}
+                    >
+                      <UnstyledButton
+                        onClick={() => rateGenre(option.value, index)}
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '50%',
+                          border: genre.value === option.value
+                            ? `3px solid ${option.color}`
+                            : '2px solid rgba(255, 255, 255, 0.2)',
+                          backgroundColor: genre.value === option.value
+                            ? option.color
+                            : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                        title={option.label}
+                      />
+                      <Text size='10px' c='dimmed' ta='center' style={{ lineHeight: 1.2 }}>
+                        {option.label}
+                      </Text>
+                    </Flex>
+                  ))}
+                </Flex>
               </div>
             );
           })}
