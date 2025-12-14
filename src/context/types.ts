@@ -19,6 +19,18 @@ export interface ExtraClient {
   address?: string;
 }
 
+export interface CeremonyMusic {
+  ingreso: string;
+  firmas: string;
+  salida: string;
+  otros?: { titulo: string; cancion: string }[];
+}
+
+export interface AmbienceMusicItem {
+  descripcion: string; // ej: "Recepción", "Cena"
+  generos: string[]; // ej: ["Chill out", "electro pop", "Sunset"]
+}
+
 export interface EventModel {
   // All event properties
   fullName: string;
@@ -57,15 +69,22 @@ export interface EventModel {
   }[];
   // status: string;
   _id: string;
-  welcomeSongs?: string[];
-  walkIn?: string[];
-  vals?: string[];
-  openingPartySong?: string;
-  ambienceMusic?: string[];
+  welcomeSongs?: string[]; // Tema 1, Tema 2, etc.
+  walkIn?: string[]; // Canción de rosas - Tema 1, Tema 2, etc.
+  vals?: string[]; // Vals 1, Vals 2, etc.
+  openingPartySong?: string; // Canción apertura pista
+  ceremoniaCivil?: CeremonyMusic;
+  ceremoniaExtra?: CeremonyMusic;
+  ambienceMusic?: AmbienceMusicItem[];
   timing?: {
     time: string;
     title: string;
     details: string;
+  }[];
+  staff?: {
+    employeeId: string;
+    employeeName: string;
+    rol: string;
   }[];
 }
 export interface SelectedEventType extends EventModel {

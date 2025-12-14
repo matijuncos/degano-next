@@ -6,6 +6,7 @@ import { Box, Button } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import EquipmentList from './EquipmentList';
+import { findMainCategorySync } from '@/utils/categoryUtils';
 
 const EquipmentForm = ({
   event,
@@ -20,6 +21,21 @@ const EquipmentForm = ({
   const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [eventEquipment, setEventEquipment] = useState<EventModel>(event);
   const [total, setTotal] = useState(0);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  // Cargar categorías al montar el componente
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Estilos para ocultar scrollbar pero mantener funcionalidad
   const scrollContainerStyle = {
@@ -45,10 +61,34 @@ const EquipmentForm = ({
         (eq) => eq._id === equipmentSelected._id
       );
       if (alreadyAdded) return prev;
+
+      // Calcular mainCategoryId y mainCategoryName
+      let mainCategoryId = '';
+      let mainCategoryName = 'Sin categoría';
+
+      if (equipmentSelected.categoryId && categories.length > 0) {
+        const mainCategory = findMainCategorySync(
+          equipmentSelected.categoryId,
+          categories
+        );
+        if (mainCategory) {
+          mainCategoryId = mainCategory.id;
+          mainCategoryName = mainCategory.name;
+        }
+      }
+
       return {
         ...prev,
-        equipment: [...prev.equipment, {...equipmentSelected, lastUsedStartDate: prev.date,
-            lastUsedEndDate: prev.endDate}],
+        equipment: [
+          ...prev.equipment,
+          {
+            ...equipmentSelected,
+            lastUsedStartDate: prev.date,
+            lastUsedEndDate: prev.endDate,
+            mainCategoryId,
+            mainCategoryName
+          }
+        ],
         equipmentPrice: total
       };
     });
