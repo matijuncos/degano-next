@@ -193,9 +193,9 @@ export default function GoogleCalendarManager({
 
     const accountCalendarIds = account.calendars.map((cal) => cal.id);
     const allCalendars = accounts.flatMap((acc) => acc.calendars);
-    const newSelectedIds = [
-      ...new Set([...selectedCalendarIds, ...accountCalendarIds])
-    ];
+    const newSelectedIds = Array.from(
+      new Set([...selectedCalendarIds, ...accountCalendarIds])
+    );
     onCalendarsChange(newSelectedIds, allCalendars);
   };
 
