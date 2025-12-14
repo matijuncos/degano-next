@@ -6,274 +6,148 @@ import {
   IconUpload,
   IconPhoto,
   IconTrash,
-  IconFile3d
+  IconFile3d,
+  IconFile,
+  IconFileMusic,
+  IconVideo,
+  IconFileTypePdf,
+  IconFileText,
+  IconFileZip
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { initializeGapiClientAndGetToken } from '@/lib/gapi';
+import useNotification from '@/hooks/useNotification';
+
 interface FileItem {
   id: string;
-  [key: string]: any;
+  name: string;
+  webViewLink: string;
+  mimeType: string;
+  createdTime: string;
 }
 
 interface LoadingState {
-  findingFolder: boolean;
   fetchingFiles: boolean;
   uploading: boolean;
   deletingFile: string | null;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL;
-const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_DISCOVERY_DOCS];
-
-const gapiConfig = {
-  apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
-  clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-  discoveryDocs: [DISCOVERY_DOCS],
-  scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES
-};
-
 export default function FilesHandlerComponent() {
-  const { folderName, authToken, setAuthToken } = useDeganoCtx();
-  const [value, setValue] = useState<File | null>(null);
+  const { folderName } = useDeganoCtx();
+  const notify = useNotification();
   const [allFiles, setAllfiles] = useState<File[]>([]);
-  // const [authToken, setAuthToken] = useState<string | null>(null);
-  const [folderId, setFolderId] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [showUploadSection, setShowUploadSection] = useState(false);
   const [loading, setLoading] = useState<LoadingState>({
-    findingFolder: false,
     fetchingFiles: false,
     uploading: false,
     deletingFile: null
   });
-  useEffect(() => {
-    if (value) {
-      setAllfiles((prev: File[]) => {
-        if (!prev.some((file) => file.name === value.name)) {
-          return [...prev, value];
-        } else {
-          return [...prev];
-        }
-      });
+
+  // Función para obtener el ícono según el tipo de archivo
+  const getFileIcon = (mimeType: string, fileName: string) => {
+    const size = 20;
+
+    // Por MIME type
+    if (mimeType?.startsWith('image/')) {
+      return <IconPhoto size={size} />;
     }
-    setValue(null);
-  }, [value]);
+    if (mimeType?.startsWith('video/')) {
+      return <IconVideo size={size} />;
+    }
+    if (mimeType?.startsWith('audio/')) {
+      return <IconFileMusic size={size} />;
+    }
+    if (mimeType === 'application/pdf') {
+      return <IconFileTypePdf size={size} />;
+    }
 
-  // function updateSigninStatus(isSignedIn: boolean) {
-  //   if (isSignedIn) {
-  //     const currentAuth = gapiRef.current.auth2
-  //       .getAuthInstance()
-  //       .currentUser.get()
-  //       .getAuthResponse().access_token;
-  //     setAuthToken(currentAuth);
-  //   } else {
-  //     console.log('User not signed in.');
-  //   }
-  // }
+    // Por extensión de archivo
+    const extension = fileName?.split('.').pop()?.toLowerCase();
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(extension || '')) {
+      return <IconFileMusic size={size} />;
+    }
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension || '')) {
+      return <IconVideo size={size} />;
+    }
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')) {
+      return <IconPhoto size={size} />;
+    }
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) {
+      return <IconFileZip size={size} />;
+    }
+    if (['txt', 'doc', 'docx'].includes(extension || '')) {
+      return <IconFileText size={size} />;
+    }
 
-  const gapiRef = useRef<any>(null);
-  // useEffect(() => {
-  //   async function start() {
-  //     const gapiModule = await import('gapi-script');
-  //     gapiRef.current = gapiModule.gapi || gapiModule.default.gapi; // Adjust based on actual module structure
-  //     if (gapiRef.current) {
-  //       gapiRef.current.load('client:auth2', () => {
-  //         gapiRef.current.client
-  //           .init(gapiConfig)
-  //           .then(() => {
-  //             gapiRef.current.auth2.getAuthInstance().signIn();
-  //             gapiRef.current.auth2
-  //               .getAuthInstance()
-  //               .isSignedIn.listen(updateSigninStatus);
-  //             updateSigninStatus(
-  //               gapiRef.current.auth2.getAuthInstance().isSignedIn.get()
-  //             );
-  //           })
-  //           .catch((e: any) => console.log(e));
-  //       });
-  //     } else {
-  //       console.error('Failed to load gapi from gapi-script');
-  //     }
-  //   }
-  //   start();
-  // }, []);
-
-  const findOrCreateFolder = useCallback(
-    async (folderName: string) => {
-      if (!authToken) return;
-      setLoading((prev) => ({ ...prev, findingFolder: true }));
-      try {
-        const searchResponse = await fetch(
-          `${baseUrl}/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-          {
-            method: 'GET',
-            cache: 'no-store',
-            headers: new Headers({
-              Authorization: 'Bearer ' + authToken
-            })
-          }
-        );
-        const searchResult = await searchResponse.json();
-        const folders = searchResult?.files;
-        if (folders?.length > 0) {
-          console.log('Folder exists', folders[0]);
-          setFolderId(folders[0].id);
-          return folders[0].id;
-        } else {
-          const metadata = {
-            name: folderName,
-            mimeType: 'application/vnd.google-apps.folder'
-          };
-          const createResponse = await fetch(baseUrl + '/drive/v3/files', {
-            method: 'POST',
-            headers: new Headers({
-              Authorization: 'Bearer ' + authToken,
-              'Content-Type': 'application/json'
-            }),
-            body: JSON.stringify(metadata)
-          });
-          const folder = await createResponse.json();
-          console.log('Folder created', folder);
-          setFolderId(folder.id);
-          return folder.id;
-        }
-      } catch (error) {
-        console.error('Error finding or creating folder', error);
-        return null;
-      } finally {
-        setLoading((prev) => ({ ...prev, findingFolder: false }));
-      }
-    },
-    [authToken, setFolderId]
-  );
-
-  const fetchFilesFromFolder = useCallback(
-    async (folderId: string) => {
-      setLoading((prev) => ({ ...prev, fetchingFiles: true }));
-      try {
-        const response = await fetch(
-          `${baseUrl}/drive/v3/files?q='${folderId}'+in+parents and trashed=false`,
-          {
-            method: 'GET',
-            cache: 'no-store',
-            headers: new Headers({
-              Authorization: 'Bearer ' + authToken
-            })
-          }
-        );
-        const result = await response.json();
-        return result.files; // Returns an array of files
-      } catch (error) {
-        console.error('Error fetching files from folder', error);
-        return [];
-      } finally {
-        setLoading((prev) => ({ ...prev, fetchingFiles: false }));
-      }
-    },
-    [authToken]
-  );
-
-  useEffect(() => {
-    findOrCreateFolder(folderName);
-  }, [findOrCreateFolder]);
-
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (authToken && folderId) {
-        fetchFilesFromFolder(folderId)
-          .then((res) => {
-            setFiles(res);
-          })
-          .catch((e) => console.log(e));
-      } else if (!authToken) {
-        const token = await getToken();
-        if (token) setAuthToken(token);
-      }
-    };
-    fetchFiles();
-  }, [authToken, folderId, fetchFilesFromFolder]);
-
-  const getToken = async () => {
-    const token = await initializeGapiClientAndGetToken(gapiConfig);
-    return token;
+    return <IconFile size={size} />;
   };
 
-  const handleUploadClick = async () => {
-    setLoading((prev) => ({ ...prev, uploading: true }));
-    try {
-      const newfolderId = await findOrCreateFolder(folderName); // Use client name, lugar and date to build the name
-      if (!newfolderId) return;
-
-      allFiles.forEach((file) => {
-        const form = new FormData();
-        form.append(
-          'metadata',
-          new Blob(
-            [
-              JSON.stringify({
-                name: file.name,
-                mimeType: file.type,
-                parents: [newfolderId]
-              })
-            ],
-            { type: 'application/json' }
-          )
-        );
-        form.append('file', file);
-
-        fetch(baseUrl + '/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST',
-          headers: new Headers({ Authorization: 'Bearer ' + authToken }),
-          body: form
-        })
-          .then((response) => response.json())
-          .then(() => {
-            fetchFilesFromFolder(folderId)
-              .then((res) => {
-                setFiles(res);
-                setAllfiles([]);
-              })
-              .catch((e) => console.log(e))
-              .finally(() =>
-                setLoading((prev) => ({ ...prev, uploading: false }))
-              );
-          })
-          .catch((error) => {
-            console.error('Error uploading file', error);
-          });
-      });
-    } catch (error) {
-      console.log(error);
+  // Cargar archivos al montar o cambiar folderName
+  useEffect(() => {
+    if (folderName) {
+      fetchFiles();
     }
-  };
+  }, [folderName]);
 
-  const deleteFileFromFolder = async (fileId: string) => {
-    if (!authToken) {
-      console.error('No auth token available');
-      return;
-    }
-
-    setLoading((prev) => ({ ...prev, deletingFile: fileId }));
+  const fetchFiles = async () => {
+    setLoading((prev) => ({ ...prev, fetchingFiles: true }));
     try {
-      const response = await fetch(`${baseUrl}/drive/v3/files/${fileId}`, {
-        method: 'DELETE',
-        headers: new Headers({
-          Authorization: `Bearer ${authToken}`
-        })
+      const response = await fetch('/api/listGoogleDriveFiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderName })
       });
 
       if (response.ok) {
-        console.log(`File with ID ${fileId} deleted successfully.`);
-        setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
-      } else {
-        console.error('Failed to delete file', await response.text());
+        const data = await response.json();
+        setFiles(data.files || []);
       }
     } catch (error) {
-      console.error('Error deleting file:', error);
+      console.error('Error fetching files:', error);
+      notify({ type: 'defaultError', message: 'Error al cargar archivos' });
     } finally {
-      setLoading((prev) => ({ ...prev, deletingFile: null }));
+      setLoading((prev) => ({ ...prev, fetchingFiles: false }));
+    }
+  };
+
+  const handleUploadClick = async () => {
+    if (allFiles.length === 0) return;
+
+    setLoading((prev) => ({ ...prev, uploading: true }));
+    notify({ loading: true });
+
+    try {
+      // Subir cada archivo
+      const uploadPromises = allFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folderName', folderName);
+
+        const response = await fetch('/api/uploadToGoogleDrive', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error subiendo ${file.name}`);
+        }
+
+        return response.json();
+      });
+
+      await Promise.all(uploadPromises);
+
+      // Limpiar y recargar
+      setAllfiles([]);
+      await fetchFiles();
+      notify({ message: 'Archivos subidos correctamente' });
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      notify({ type: 'defaultError', message: 'Error al subir archivos' });
+    } finally {
+      setLoading((prev) => ({ ...prev, uploading: false }));
     }
   };
 
@@ -290,8 +164,6 @@ export default function FilesHandlerComponent() {
               ? 'Ocultar sección de carga de archivos'
               : 'Mostrar sección de carga de archivos'}
           </Button>
-
-          {loading.findingFolder && <Loader size='sm' />}
 
           {showUploadSection && (
             <>
@@ -433,7 +305,7 @@ export default function FilesHandlerComponent() {
               </Flex>
 
               <Button
-                disabled={allFiles.length === 0 || loading.uploading || !authToken}
+                disabled={allFiles.length === 0 || loading.uploading}
                 mt='18px'
                 w='100%'
                 onClick={handleUploadClick}
@@ -441,11 +313,7 @@ export default function FilesHandlerComponent() {
                   loading.uploading && <Loader size='sm' color='white' />
                 }
               >
-                {!authToken
-                  ? 'Autenticando con Google...'
-                  : loading.uploading
-                  ? 'Subiendo...'
-                  : 'Subir Archivos'}
+                {loading.uploading ? 'Subiendo...' : 'Subir Archivos'}
               </Button>
               <Box py='24px'>
                 <hr />
@@ -463,6 +331,7 @@ export default function FilesHandlerComponent() {
                   gap='12px'
                   key={file.id}
                   justify='space-between'
+                  align='center'
                   p='12px 18px'
                   flex={1}
                   w='100%'
@@ -471,9 +340,25 @@ export default function FilesHandlerComponent() {
                     border: 'solid 1px rgba(180, 180, 180, 0.3)',
                     borderRadius: '6px',
                     width: '100%',
-                    maxWidth: '350px'
+                    maxWidth: '350px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s, transform 0.1s'
+                  }}
+                  onClick={() => {
+                    if (file.webViewLink) {
+                      window.open(file.webViewLink, '_blank');
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '';
+                    e.currentTarget.style.transform = 'translateX(0)';
                   }}
                 >
+                  {getFileIcon(file.mimeType, file.name)}
                   <div
                     style={{
                       width: '250px',
@@ -482,26 +367,8 @@ export default function FilesHandlerComponent() {
                       textOverflow: 'ellipsis'
                     }}
                   >
-                    <a
-                      href={
-                        file.webContentLink ||
-                        `https://drive.google.com/uc?id=${file.id}&export=download`
-                      }
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      Descargar - {file.name}
-                    </a>
+                    {file.name}
                   </div>
-                  {loading.deletingFile === file.id ? (
-                    <Loader size='xs' />
-                  ) : (
-                    <IconTrash
-                      color='red'
-                      onClick={() => deleteFileFromFolder(file.id)}
-                      cursor='pointer'
-                    />
-                  )}
                 </Flex>
               ))
             )}

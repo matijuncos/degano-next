@@ -1,356 +1,658 @@
 'use client';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
-import { DrawerHeader, NavLink, Divider } from '@mantine/core';
+import {
+  DrawerHeader,
+  NavLink,
+  Divider,
+  Stack,
+  Text,
+  Title,
+  Box,
+  Group,
+  Button,
+  Modal,
+  Select,
+  Card,
+  ActionIcon,
+  Badge
+} from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import styles from './DrawerContent.module.css';
-// import { NewEquipmentType } from '../equipmentStockTable/types';
-import { useState, useCallback, useEffect } from 'react';
-import { initializeGapiClientAndGetToken } from '@/lib/gapi';
-import { IconBrandGoogleDrive } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import {
+  IconPlus,
+  IconTrash,
+  IconFile,
+  IconFileMusic,
+  IconVideo,
+  IconPhoto,
+  IconFileTypePdf,
+  IconFileText,
+  IconFileZip
+} from '@tabler/icons-react';
 import { formatPrice } from '@/utils/priceUtils';
-
-// const CATEGORIES: NewEquipmentType[] = [
-//   'Sonido',
-//   'Iluminación',
-//   'Imagen',
-//   'Accesorios',
-//   'No Definido'
-// ];
+import useNotification from '@/hooks/useNotification';
+import { findMainCategorySync } from '@/utils/categoryUtils';
 
 interface FileItem {
   id: string;
+  name: string;
+  webViewLink: string;
+  mimeType: string;
   [key: string]: any;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_GOOGLE_BASE_URL;
-const DISCOVERY_DOCS = [process.env.NEXT_PUBLIC_GOOGLE_DISCOVERY_DOCS];
-
-const gapiConfig = {
-  apiKey: process.env.NEXT_PUBLIC_GAPICONFIG_APIKEY,
-  clientId: process.env.NEXT_PUBLIC_GAPICONFIG_CLIENTID,
-  discoveryDocs: [DISCOVERY_DOCS],
-  scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES
-};
+interface StaffMember {
+  employeeId: string;
+  employeeName: string;
+  rol: string;
+}
 
 const DrawerContent = () => {
-  const { selectedEvent, authToken, setAuthToken } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent, folderName } = useDeganoCtx();
   const router = useRouter();
   const setLoadingCursor = useLoadingCursor();
-  const [folderId, setFolderId] = useState('');
+  const notify = useNotification();
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const capitalizeFirstLetter = (string: string) => {
     return string.charAt(0).toUpperCase() + string.slice(1);
   };
 
-  const findFolder = useCallback(
-    async (folderName: string) => {
-      try {
-        const searchResponse = await fetch(
-          `${baseUrl}/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-          {
-            method: 'GET',
-            cache: 'no-store',
-            headers: new Headers({
-              Authorization: 'Bearer ' + authToken
-            })
-          }
-        );
-        const searchResult = await searchResponse.json();
-        const folders = searchResult?.files;
-        if (folders?.length > 0) {
-          console.log('Folder exists', folders[0]);
-          setFolderId(folders[0].id);
-          return folders[0].id;
-        }
-      } catch (error) {
-        console.error('Error finding or creating folder', error);
-        return null;
-      }
-    },
-    [authToken, setFolderId]
-  );
-
-  const fetchFilesFromFolder = useCallback(
-    async (folderId: string) => {
-      try {
-        const response = await fetch(
-          `${baseUrl}/drive/v3/files?q='${folderId}'+in+parents and trashed=false&fields=files(id,name,webViewLink)`,
-          {
-            method: 'GET',
-            cache: 'no-store',
-            headers: new Headers({
-              Authorization: 'Bearer ' + authToken
-            })
-          }
-        );
-        const result = await response.json();
-        return result.files;
-      } catch (error) {
-        console.error('Error fetching files from folder', error);
-        return [];
-      }
-    },
-    [authToken]
-  );
-
+  // Fetch categories
   useEffect(() => {
-    if (selectedEvent) {
-      const folderName = `${new Date(selectedEvent?.date).toLocaleDateString(
-        'es-ES',
-        {
-          day: '2-digit',
-          month: '2-digit',
-          year: '2-digit'
-        }
-      )} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`;
-      findFolder(folderName);
-    }
-  }, [findFolder]);
-
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (authToken && folderId) {
-        console.log('token and folderId ready');
-        fetchFilesFromFolder(folderId)
-          .then((res) => {
-            setFiles(res);
-          })
-          .catch((e) => console.log(e));
-      } else if (!authToken) {
-        const token = await getToken();
-        if (token) setAuthToken(token);
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
       }
     };
-    fetchFiles();
-  }, [authToken, folderId, fetchFilesFromFolder]);
+    fetchCategories();
+  }, []);
 
-  const getToken = async () => {
-    const token = await initializeGapiClientAndGetToken(gapiConfig);
-    return token;
+  // Fetch employees for staff selection
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const response = await fetch('/api/employees');
+        const data = await response.json();
+        // La API devuelve el array directamente
+        if (Array.isArray(data)) {
+          setEmployees(data);
+        } else if (data.employees) {
+          setEmployees(data.employees);
+        }
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+      }
+    };
+    fetchEmployees();
+  }, []);
+
+  // Load staff members from selectedEvent
+  useEffect(() => {
+    if (selectedEvent?.staff) {
+      setStaffMembers(selectedEvent.staff);
+    }
+  }, [selectedEvent]);
+
+  // Función para obtener el ícono según el tipo de archivo
+  const getFileIcon = (mimeType: string, fileName: string) => {
+    const size = 32;
+
+    // Por MIME type
+    if (mimeType?.startsWith('image/')) {
+      return <IconPhoto size={size} />;
+    }
+    if (mimeType?.startsWith('video/')) {
+      return <IconVideo size={size} />;
+    }
+    if (mimeType?.startsWith('audio/')) {
+      return <IconFileMusic size={size} />;
+    }
+    if (mimeType === 'application/pdf') {
+      return <IconFileTypePdf size={size} />;
+    }
+
+    // Por extensión de archivo
+    const extension = fileName?.split('.').pop()?.toLowerCase();
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(extension || '')) {
+      return <IconFileMusic size={size} />;
+    }
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension || '')) {
+      return <IconVideo size={size} />;
+    }
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')) {
+      return <IconPhoto size={size} />;
+    }
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) {
+      return <IconFileZip size={size} />;
+    }
+    if (['txt', 'doc', 'docx'].includes(extension || '')) {
+      return <IconFileText size={size} />;
+    }
+
+    return <IconFile size={size} />;
   };
+
+  // Fetch de archivos usando la API
+  useEffect(() => {
+    const fetchFiles = async () => {
+      if (!folderName || folderName === 'untitled') return;
+
+      setLoadingFiles(true);
+      try {
+        const response = await fetch('/api/listGoogleDriveFiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folderName })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setFiles(data.files || []);
+        }
+      } catch (error) {
+        console.error('Error fetching files:', error);
+      } finally {
+        setLoadingFiles(false);
+      }
+    };
+
+    fetchFiles();
+  }, [folderName]);
+
+  const handleAddStaff = async () => {
+    if (!selectedEmployee) {
+      notify({ type: 'defaultError', message: 'Por favor selecciona un empleado' });
+      return;
+    }
+
+    const employee = employees.find((emp) => emp._id === selectedEmployee);
+    if (!employee) return;
+
+    // Verificar si el empleado ya está en el staff
+    const alreadyAdded = staffMembers.some(
+      (member) => member.employeeId === employee._id
+    );
+    if (alreadyAdded) {
+      notify({ type: 'defaultError', message: 'Este empleado ya está en el staff' });
+      return;
+    }
+
+    const newStaffMember: StaffMember = {
+      employeeId: employee._id,
+      employeeName: employee.fullName,
+      rol: employee.rol || 'Sin rol'
+    };
+
+    const updatedStaff = [...staffMembers, newStaffMember];
+    setStaffMembers(updatedStaff);
+
+    // Update event in database
+    try {
+      setLoadingCursor(true);
+      const response = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          _id: selectedEvent?._id,
+          staff: updatedStaff
+        })
+      });
+
+      const { event } = await response.json();
+      setSelectedEvent(event);
+      setIsStaffModalOpen(false);
+      setSelectedEmployee(null);
+      notify({ message: 'Staff agregado correctamente' });
+    } catch (error) {
+      notify({ type: 'defaultError' });
+      console.error('Error adding staff:', error);
+    } finally {
+      setLoadingCursor(false);
+    }
+  };
+
+  const handleRemoveStaff = async (index: number) => {
+    const updatedStaff = staffMembers.filter((_, i) => i !== index);
+    setStaffMembers(updatedStaff);
+
+    try {
+      setLoadingCursor(true);
+      const response = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          _id: selectedEvent?._id,
+          staff: updatedStaff
+        })
+      });
+
+      const { event } = await response.json();
+      setSelectedEvent(event);
+      notify({ message: 'Staff eliminado correctamente' });
+    } catch (error) {
+      notify({ type: 'defaultError' });
+      console.error('Error removing staff:', error);
+    } finally {
+      setLoadingCursor(false);
+    }
+  };
+
+  // Group equipment by main category
+  const groupedEquipment = selectedEvent?.equipment?.reduce((acc: any, eq: any) => {
+    let mainCategoryName = eq.mainCategoryName;
+
+    // Si no tiene mainCategoryName, calcularlo usando la función recursiva
+    if (!mainCategoryName && eq.categoryId && categories.length > 0) {
+      const mainCategory = findMainCategorySync(eq.categoryId, categories);
+      mainCategoryName = mainCategory?.name || 'Sin categoría';
+    }
+
+    // Fallback si aún no hay nombre
+    if (!mainCategoryName) {
+      mainCategoryName = 'Sin categoría';
+    }
+
+    if (!acc[mainCategoryName]) {
+      acc[mainCategoryName] = [];
+    }
+    acc[mainCategoryName].push(eq);
+    return acc;
+  }, {}) || {};
 
   return (
     <>
-      <DrawerHeader
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start'
-        }}
-      >
-        <h3>
+      {/* HEADER PRINCIPAL */}
+      <DrawerHeader>
+        <Title order={2}>
           {selectedEvent?.type} - {selectedEvent?.lugar}
-        </h3>
-        <p style={{ padding: '8px 0px' }}>
+        </Title>
+      </DrawerHeader>
+
+      <Stack gap='xl' style={{ padding: '0 16px', marginBottom: '20px' }}>
+        {/* FECHA */}
+        <Text size='sm' c='dimmed'>
           {selectedEvent?.start
             ? capitalizeFirstLetter(
-                new Date(selectedEvent.start ?? '').toLocaleDateString(
-                  'es-AR',
-                  {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                  }
-                )
+                new Date(selectedEvent.start).toLocaleDateString('es-AR', {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })
               )
             : 'N/A'}
-        </p>
-      </DrawerHeader>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          minHeight: '78vh',
-          maxHeight: '78vh'
-        }}
-      >
-        <div>
-          <h4 className={styles.subtitle}>
-            <u>{`${selectedEvent?.type} - ${selectedEvent?.lugar} - ${selectedEvent?.address}`}</u>
-          </h4>
-          <div className={styles.sectionContainer}>
-            <p>
-              {capitalizeFirstLetter(
-                new Date(selectedEvent?.start ?? '').toLocaleDateString(
-                  'es-AR',
-                  {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                    weekday: 'short',
-                    day: '2-digit'
-                  }
-                )
-              )}{' '}
-              Hs. a{' '}
-              {capitalizeFirstLetter(
-                new Date(selectedEvent?.endDate ?? '').toLocaleTimeString(
-                  'es-AR',
-                  {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    weekday: 'short',
-                    day: '2-digit',
-                    hour12: false
-                  }
-                )
-              )}{' '}
-              Hs.
-            </p>
-            <p>
-              {selectedEvent?.guests ? `${selectedEvent?.guests} Pers.` : ''}
-            </p>
-          </div>
-          <h4 className={styles.subtitle}>
-            <u>Cliente:</u>
-          </h4>
-          <div className={styles.sectionContainer}>
-            <p>{`${selectedEvent?.fullName}: ${selectedEvent?.phoneNumber}`}</p>
-          </div>
-          <h4 className={styles.subtitle}>
-            <u>
-              Show{selectedEvent && selectedEvent.bands.length > 0 && 's'} en
-              vivo:
-            </u>
-          </h4>
-          {selectedEvent &&
-            selectedEvent?.bands.map((band, i) => (
-              <div className={styles.sectionContainer} key={i}>
-                <p>+ {band?.bandName}</p>
-                <p>{band?.bandInfo}</p>
-                {band.contacts.length > 0 && (
-                  <p>
-                    `$
-                    {band.contacts[0].name
-                      ? `- Contacto: ${band.contacts[0].name}`
-                      : ''}{' '}
-                    $
-                    {band.contacts[0].rol
-                      ? `- Rol: ${band.contacts[0].rol}`
-                      : ''}
-                    `
-                  </p>
-                )}
-              </div>
-            ))}
-          <h4 className={styles.subtitle}>
-            <u>Características:</u>
-          </h4>
-          <div className={styles.sectionContainer}>
-            <p>{selectedEvent?.moreData}</p>
-          </div>
-          <h4 className={styles.subtitle}>
-            <u>Staff:</u>
-          </h4>
-          <div className={styles.sectionContainer}>
-            <p>STAFF</p>
-          </div>
-          <h4 className={styles.subtitle}>
-            <u>Presupuesto:</u>
-          </h4>
-          <div className={styles.sectionContainer}>
-            <p>$ anexos</p>
-            <Divider
-              variant='dashed'
-              size='sm'
-              color='#C9C9C9'
-              style={{ padding: '5px', margin: '10px 0' }}
-            />
-            <p style={{ paddingLeft: '12px' }}>
-              {selectedEvent?.payment?.totalToPay ? formatPrice(Number(selectedEvent.payment.totalToPay)) : '$0'}
-            </p>
-            <p>- {selectedEvent?.payment?.upfrontAmount ? formatPrice(Number(selectedEvent.payment.upfrontAmount)) : '$0'}</p>
-            {/* agrgare mapeo de cada cosa que vyaa restando */}
-            <p>Restante: </p>
-          </div>
-          <h4 className={styles.subtitle}>
-            <u>Equipamiento:</u>
-          </h4>
-          <div>
-            {/* {CATEGORIES.map((category) => {
-              const equipmentInCategory =
-                selectedEvent?.equipment.filter((eq) => eq.type === category) ||
-                [];
+        </Text>
 
-              return (
-                equipmentInCategory?.length > 0 && (
-                  <div key={category}>
-                    <h4
-                      className={styles.subtitle}
-                      style={{ textTransform: 'uppercase' }}
-                    >
-                      {category}:
-                    </h4>
-                    <div className={styles.sectionContainer}>
-                      {equipmentInCategory.map((eq) => (
-                        <p key={eq._id}>
-                          {eq.selectedQuantity} {eq.name}
-                        </p>
+        <Divider />
+        {/* SECCIÓN: INFORMACIÓN PRINCIPAL */}
+        <Box>
+          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+            {selectedEvent?.type} - {selectedEvent?.lugar} -{' '}
+            {selectedEvent?.eventCity}
+          </Text>
+          <Text size='sm' mb='xs'>
+            {selectedEvent?.start &&
+              new Date(selectedEvent.start).toLocaleTimeString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}{' '}
+            a{' '}
+            {selectedEvent?.end &&
+              new Date(selectedEvent.end).toLocaleTimeString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+          </Text>
+
+          {/* TIMING */}
+          {selectedEvent?.timing && selectedEvent.timing.length > 0 && (
+            <Stack gap='xs' mt='sm'>
+              {selectedEvent.timing.map((item, index) => (
+                <Text key={index} size='sm'>
+                  • {item.time}hs - {item.title}
+                  {item.details && `: ${item.details}`}
+                </Text>
+              ))}
+            </Stack>
+          )}
+
+          <Text size='sm' mt='sm'>
+            Cantidad de personas: {selectedEvent?.guests || 'N/A'}
+          </Text>
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: CLIENTE */}
+        <Box>
+          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+            Cliente
+          </Text>
+          <Text size='sm'>
+            {selectedEvent?.fullName}: {selectedEvent?.phoneNumber}
+          </Text>
+          {selectedEvent?.email && (
+            <Text size='sm' c='dimmed'>
+              {selectedEvent.email}
+            </Text>
+          )}
+
+          {/* CLIENTES EXTRAS */}
+          {selectedEvent?.extraClients &&
+            selectedEvent.extraClients.length > 0 && (
+              <Stack gap='xs' mt='md'>
+                {selectedEvent.extraClients.map((client, index) => (
+                  <Box key={index}>
+                    <Text size='sm'>
+                      {client.fullName}: {client.phoneNumber}
+                    </Text>
+                    {client.rol && (
+                      <Text size='xs' c='dimmed'>
+                        {client.rol}
+                      </Text>
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+            )}
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: SHOW EN VIVO */}
+        <Box>
+          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+            Show en vivo
+          </Text>
+          {selectedEvent?.bands && selectedEvent.bands.length > 0 ? (
+            <Stack gap='md'>
+              {selectedEvent.bands.map((band, index) => (
+                <Card key={index} withBorder padding='sm'>
+                  <Text fw={500} mb='xs'>
+                    {band.bandName}
+                  </Text>
+                  {band.showTime && (
+                    <Text size='sm' c='dimmed' mb='xs'>
+                      Horario: {band.showTime}
+                    </Text>
+                  )}
+                  {band.testTime && (
+                    <Text size='sm' c='dimmed' mb='xs'>
+                      Prueba de sonido: {band.testTime}
+                    </Text>
+                  )}
+                  {band.bandInfo && (
+                    <Text size='sm' mb='xs'>
+                      {band.bandInfo}
+                    </Text>
+                  )}
+                  {band.contacts && band.contacts.length > 0 && (
+                    <Box mt='xs'>
+                      <Text size='xs' fw={500}>
+                        Contactos:
+                      </Text>
+                      {band.contacts.map((contact, idx) => (
+                        <Text key={idx} size='xs'>
+                          • {contact.name} - {contact.rol} - {contact.phone}
+                        </Text>
                       ))}
-                    </div>
-                  </div>
-                )
-              );
-            })} */}
-          </div>
-          {selectedEvent &&
-            selectedEvent?.bands.map((band, i) => (
-              <div key={i}>
-                <h4 className={styles.subtitle}>
-                  <p>{`Anexo Banda en Vivo "${band.bandName}"`}</p>
-                </h4>
-                <p>DEFINIR EQUIPAMIENTOS POR BANDA?</p>
-              </div>
+                    </Box>
+                  )}
+                </Card>
+              ))}
+            </Stack>
+          ) : (
+            <Text size='sm' c='dimmed'>
+              No hay shows en vivo programados
+            </Text>
+          )}
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: STAFF */}
+        <Box>
+          <Group justify='space-between' mb='sm'>
+            <Text fw={700} size='md' style={{ textDecoration: 'underline' }}>
+              Staff
+            </Text>
+            <Button
+              size='xs'
+              leftSection={<IconPlus size={14} />}
+              onClick={() => setIsStaffModalOpen(true)}
+            >
+              Agregar
+            </Button>
+          </Group>
+          {staffMembers.length > 0 ? (
+            <Stack gap='xs'>
+              {staffMembers.map((member, index) => (
+                <Group key={index} justify='space-between'>
+                  <Box>
+                    <Text size='sm' fw={500}>
+                      {member.rol} - {member.employeeName}
+                    </Text>
+                  </Box>
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => handleRemoveStaff(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Group>
+              ))}
+            </Stack>
+          ) : (
+            <Text size='sm' c='dimmed'>
+              No hay staff asignado
+            </Text>
+          )}
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: PRESUPUESTO */}
+        <Box>
+          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+            Presupuesto
+          </Text>
+          {selectedEvent?.payment?.totalToPay && (
+            <Text size='sm' mb='xs'>
+              Total a pagar:{' '}
+              {formatPrice(Number(selectedEvent.payment.totalToPay))}
+            </Text>
+          )}
+          {selectedEvent?.equipmentPrice && (
+            <Text size='sm' mb='xs'>
+              Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
+            </Text>
+          )}
+
+          <Divider
+            variant='dashed'
+            size='sm'
+            my='md'
+            style={{ borderColor: '#C9C9C9' }}
+          />
+
+          <Text size='sm' fw={500} mb='xs'>
+            Pagos realizados:
+          </Text>
+          {selectedEvent?.payment?.upfrontAmount && (
+            <Text size='sm' pl='md'>
+              - Adelanto:{' '}
+              {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
+            </Text>
+          )}
+          {selectedEvent?.payment?.subsequentPayments &&
+            selectedEvent.payment.subsequentPayments.map((payment: any, idx: number) => (
+              <Text key={idx} size='sm' pl='md'>
+                - {payment.description || 'Pago'}:{' '}
+                {formatPrice(Number(payment.amount))}
+              </Text>
             ))}
-        </div>
-        <div>
-          {files.length > 0 &&
-            files.map((file) => (
-              <div
-                key={file.name}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '200px',
-                  justifyContent: 'flex-start',
-                  flex: 1,
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  if (file.webViewLink) {
-                    window.open(file.webViewLink, '_blank');
-                  }
-                }}
-              >
-                <IconBrandGoogleDrive size={34} />
-                <div
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: EQUIPAMIENTO */}
+        <Box>
+          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+            Equipamiento
+          </Text>
+          {Object.keys(groupedEquipment).length > 0 ? (
+            <Stack gap='md'>
+              {Object.keys(groupedEquipment).map((category) => (
+                <Box key={category}>
+                  <Text fw={500} size='sm' tt='uppercase' mb='xs'>
+                    {category}:
+                  </Text>
+                  <Stack gap={4} pl='md'>
+                    {groupedEquipment[category].map((eq: any, idx: number) => (
+                      <Text key={idx} size='sm'>
+                        {eq.name} - Cantidad: {eq.quantity || 1}
+                      </Text>
+                    ))}
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          ) : (
+            <Text size='sm' c='dimmed'>
+              No hay equipamiento asignado
+            </Text>
+          )}
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: ARCHIVOS */}
+        <Box>
+          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+            Archivos
+          </Text>
+          {loadingFiles ? (
+            <Text size='sm' c='dimmed'>
+              Cargando archivos...
+            </Text>
+          ) : files.length > 0 ? (
+            <Group gap='sm'>
+              {files.map((file) => (
+                <Card
+                  key={file.id}
+                  withBorder
+                  padding='xs'
                   style={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    marginLeft: '5px'
+                    cursor: 'pointer',
+                    width: '80px',
+                    transition: 'transform 0.1s, box-shadow 0.1s'
+                  }}
+                  onClick={() => {
+                    if (file.webViewLink) {
+                      window.open(file.webViewLink, '_blank');
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '';
                   }}
                 >
-                  {file.name}
-                </div>
-              </div>
-            ))}
-        </div>
-        <div>
-          <NavLink
-            active
-            onClick={() => {
-              setLoadingCursor(true);
-              router.push(`/event/${selectedEvent?._id}`);
-            }}
-            label='Ver Evento'
-          ></NavLink>
-        </div>
-      </div>
+                  <Stack align='center' gap={4}>
+                    {getFileIcon(file.mimeType, file.name)}
+                    <Text
+                      size='xs'
+                      ta='center'
+                      style={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        width: '100%'
+                      }}
+                    >
+                      {file.name}
+                    </Text>
+                  </Stack>
+                </Card>
+              ))}
+            </Group>
+          ) : (
+            <Text size='sm' c='dimmed'>
+              No hay archivos adjuntos
+            </Text>
+          )}
+        </Box>
+
+        <Divider />
+
+        {/* BOTÓN VER EVENTO */}
+        <Button
+          fullWidth
+          size='md'
+          onClick={() => {
+            setLoadingCursor(true);
+            router.push(`/event/${selectedEvent?._id}`);
+          }}
+        >
+          Ver Evento Completo
+        </Button>
+      </Stack>
+
+      {/* MODAL: AGREGAR STAFF */}
+      <Modal
+        opened={isStaffModalOpen}
+        onClose={() => {
+          setIsStaffModalOpen(false);
+          setSelectedEmployee(null);
+        }}
+        title='Agregar Staff'
+      >
+        <Stack gap='md'>
+          <Select
+            label='Empleado'
+            placeholder='Seleccionar empleado'
+            data={employees.map((emp) => ({
+              value: emp._id,
+              label: `${emp.rol || 'Sin rol'} - ${emp.fullName}`
+            }))}
+            value={selectedEmployee}
+            onChange={setSelectedEmployee}
+            searchable
+          />
+          <Text size='sm' c='dimmed'>
+            El rol se asignará automáticamente según el rol del empleado en la base de datos.
+          </Text>
+          <Group justify='flex-end'>
+            <Button
+              variant='light'
+              onClick={() => {
+                setIsStaffModalOpen(false);
+                setSelectedEmployee(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleAddStaff}>Agregar</Button>
+          </Group>
+        </Stack>
+      </Modal>
     </>
   );
 };

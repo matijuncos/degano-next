@@ -23,4 +23,8 @@ export interface NewEquipment {
   imageUrl: string;
   pdfUrl: string;
   pdfFileName: string | null;
+  categoryId?: string;
+  mainCategoryId?: string;
+  mainCategoryName?: string;
+  quantity?: number;
 }

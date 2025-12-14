@@ -9,11 +9,17 @@ import {
   Loader,
   Alert,
   Group,
-  UnstyledButton
+  UnstyledButton,
+  Stack,
+  Accordion,
+  ActionIcon,
+  Card,
+  TextInput,
+  Divider
 } from '@mantine/core';
 import { useEffect, useState } from 'react';
-import { EventModel } from '@/context/types';
-import { IconX, IconAlertCircle, IconPlus } from '@tabler/icons-react';
+import { EventModel, CeremonyMusic, AmbienceMusicItem } from '@/context/types';
+import { IconX, IconAlertCircle, IconPlus, IconTrash } from '@tabler/icons-react';
 import styles from './MusicForm.module.css';
 import { EVENT_TABS } from '@/context/config';
 import { useGenres, transformGenresForMusic } from '@/hooks/useGenres';
@@ -42,70 +48,60 @@ const MusicForm = ({
     loading: genresLoading,
     error: genresError
   } = useGenres();
+
   const [musicData, setMusicData] = useState(() => {
-    // Ensure array fields are always arrays
     const normalizedEvent = {
       ...event,
-      welcomeSongs: Array.isArray(event.welcomeSongs)
-        ? event.welcomeSongs
-        : event.welcomeSongs
-        ? [event.welcomeSongs as string]
-        : [],
-      walkIn: Array.isArray(event.walkIn)
-        ? event.walkIn
-        : event.walkIn
-        ? [event.walkIn as string]
-        : [],
-      vals: Array.isArray(event.vals)
-        ? event.vals
-        : event.vals
-        ? [event.vals as string]
-        : [],
-      ambienceMusic: Array.isArray(event.ambienceMusic)
-        ? event.ambienceMusic
-        : event.ambienceMusic
-        ? [event.ambienceMusic as string]
-        : []
+      welcomeSongs: Array.isArray(event.welcomeSongs) ? event.welcomeSongs : [],
+      walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
+      vals: Array.isArray(event.vals) ? event.vals : [],
+      openingPartySong: event.openingPartySong || '',
+      ceremoniaCivil: event.ceremoniaCivil || {
+        ingreso: '',
+        firmas: '',
+        salida: '',
+        otros: []
+      },
+      ceremoniaExtra: event.ceremoniaExtra || {
+        ingreso: '',
+        firmas: '',
+        salida: '',
+        otros: []
+      },
+      ambienceMusic: Array.isArray(event.ambienceMusic) ? event.ambienceMusic : []
     };
     return normalizedEvent;
   });
+
   const [spotifyLinks, setSpotifyLinks] = useState<SpotifyLink[]>([]);
   const [spotifyLinkInputValue, setSpotifyLinkInputValue] = useState('');
   const [spotifyLabelInputValue, setSpotifyLabelInputValue] = useState('');
-  const [welcomeSongInputValue, setWelcomeSongInputValue] = useState('');
-  const [walkInInputValue, setWalkInInputValue] = useState('');
-  const [valsInputValue, setValsInputValue] = useState('');
-  const [ambienceMusicInputValue, setAmbienceMusicInputValue] = useState('');
 
   // Sincronizar estado local con el prop event cuando el usuario navega
   useEffect(() => {
     if (event) {
       const normalizedEvent = {
         ...event,
-        welcomeSongs: Array.isArray(event.welcomeSongs)
-          ? event.welcomeSongs
-          : event.welcomeSongs
-          ? [event.welcomeSongs as string]
-          : [],
-        walkIn: Array.isArray(event.walkIn)
-          ? event.walkIn
-          : event.walkIn
-          ? [event.walkIn as string]
-          : [],
-        vals: Array.isArray(event.vals)
-          ? event.vals
-          : event.vals
-          ? [event.vals as string]
-          : [],
-        ambienceMusic: Array.isArray(event.ambienceMusic)
-          ? event.ambienceMusic
-          : event.ambienceMusic
-          ? [event.ambienceMusic as string]
-          : []
+        welcomeSongs: Array.isArray(event.welcomeSongs) ? event.welcomeSongs : [],
+        walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
+        vals: Array.isArray(event.vals) ? event.vals : [],
+        openingPartySong: event.openingPartySong || '',
+        ceremoniaCivil: event.ceremoniaCivil || {
+          ingreso: '',
+          firmas: '',
+          salida: '',
+          otros: []
+        },
+        ceremoniaExtra: event.ceremoniaExtra || {
+          ingreso: '',
+          firmas: '',
+          salida: '',
+          otros: []
+        },
+        ambienceMusic: Array.isArray(event.ambienceMusic) ? event.ambienceMusic : []
       };
       setMusicData(normalizedEvent);
 
-      // Restaurar spotifyLinks si existen
       if (event.playlist && Array.isArray(event.playlist)) {
         setSpotifyLinks(event.playlist);
       }
@@ -134,7 +130,7 @@ const MusicForm = ({
     const value = target.value;
     if (e.key === 'Enter') {
       setMusicData((prevData) => {
-        if (!prevData) return null; // Ensure prevData is not null
+        if (!prevData) return null;
         const updatedMusicData = {
           ...prevData,
           music: {
@@ -142,17 +138,18 @@ const MusicForm = ({
             forbidden: [...(prevData.music?.forbidden || []), value]
           }
         };
-        return updatedMusicData as any; // Cast to SelectedEventType to resolve type mismatch
+        return updatedMusicData as any;
       });
       target.value = '';
     }
   };
+
   const handleRequired = (e: any) => {
     const target = e.target as HTMLInputElement;
     const value = target.value;
     if (e.key === 'Enter') {
       setMusicData((prevData) => {
-        if (!prevData) return null; // Ensure prevData is not null
+        if (!prevData) return null;
         const updatedMusicData = {
           ...prevData,
           music: {
@@ -160,11 +157,12 @@ const MusicForm = ({
             required: [...(prevData.music?.required || []), value]
           }
         };
-        return updatedMusicData as any; // Cast to SelectedEventType to resolve type mismatch
+        return updatedMusicData as any;
       });
       target.value = '';
     }
   };
+
   const rateGenre = (value: number, index: number) => {
     setMusicData((prevData) => {
       if (!prevData) return prevData;
@@ -178,40 +176,44 @@ const MusicForm = ({
           genres: updatedGenres
         }
       };
-      return updatedMusicData; // No need to cast to any
+      return updatedMusicData;
     });
   };
+
   const deleteSongForbidden = (arg: any) => {
     const newList = musicData?.music.forbidden.filter((song) => song !== arg);
     setMusicData((prevData: any) => {
-      if (!prevData) return null; // Ensure prevData is not null
+      if (!prevData) return null;
       return {
         ...prevData,
         music: {
           ...prevData.music,
           forbidden: newList
         },
-        allDay: prevData.allDay ?? false // Provide a default boolean value for allDay
+        allDay: prevData.allDay ?? false
       };
     });
   };
+
   const deleteSongRequired = (arg: any) => {
     const newList = musicData?.music.required.filter((song) => song !== arg);
     setMusicData((prevData: any) => {
-      if (!prevData) return null; // Ensure prevData is not null
+      if (!prevData) return null;
       return {
         ...prevData,
         music: {
           ...prevData.music,
           required: newList
         },
-        allDay: prevData.allDay ?? false // Provide a default boolean value for allDay
+        allDay: prevData.allDay ?? false
       };
     });
   };
+
   const next = () => {
     onNextTab(EVENT_TABS.EQUIPMENT, { ...musicData, playlist: spotifyLinks });
   };
+
   const back = () => {
     onBackTab(EVENT_TABS.EVENT, { ...musicData, playlist: spotifyLinks });
   };
@@ -233,461 +235,778 @@ const MusicForm = ({
     }
   };
 
-  const handleWelcomeSong = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      addWelcomeSong();
-    }
-  };
-
+  // Canciones de ingreso handlers
   const addWelcomeSong = () => {
-    if (welcomeSongInputValue.trim()) {
-      setMusicData((prevData) => ({
-        ...prevData,
-        welcomeSongs: [
-          ...(prevData.welcomeSongs || []),
-          welcomeSongInputValue.trim()
-        ]
-      }));
-      setWelcomeSongInputValue('');
-    }
-  };
-
-  const deleteWelcomeSong = (songToDelete: string) => {
     setMusicData((prevData) => ({
       ...prevData,
-      welcomeSongs: (prevData.welcomeSongs || []).filter(
-        (song) => song !== songToDelete
+      welcomeSongs: [...(prevData.welcomeSongs || []), '']
+    }));
+  };
+
+  const updateWelcomeSong = (index: number, value: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      welcomeSongs: (prevData.welcomeSongs || []).map((song, i) =>
+        i === index ? value : song
       )
     }));
   };
 
-  const handleWalkIn = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      addWalkIn();
-    }
+  const deleteWelcomeSong = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      welcomeSongs: (prevData.welcomeSongs || []).filter((_, i) => i !== index)
+    }));
   };
 
+  // Canción de rosas handlers
   const addWalkIn = () => {
-    if (walkInInputValue.trim()) {
-      setMusicData((prevData) => ({
-        ...prevData,
-        walkIn: [...(prevData.walkIn || []), walkInInputValue.trim()]
-      }));
-      setWalkInInputValue('');
-    }
-  };
-
-  const deleteWalkIn = (songToDelete: string) => {
     setMusicData((prevData) => ({
       ...prevData,
-      walkIn: (prevData.walkIn || []).filter((song) => song !== songToDelete)
+      walkIn: [...(prevData.walkIn || []), '']
     }));
   };
 
-  const handleVals = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      addVals();
-    }
+  const updateWalkIn = (index: number, value: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      walkIn: (prevData.walkIn || []).map((song, i) => (i === index ? value : song))
+    }));
   };
 
+  const deleteWalkIn = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      walkIn: (prevData.walkIn || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Vals handlers
   const addVals = () => {
-    if (valsInputValue.trim()) {
-      setMusicData((prevData) => ({
-        ...prevData,
-        vals: [...(prevData.vals || []), valsInputValue.trim()]
-      }));
-      setValsInputValue('');
-    }
-  };
-
-  const deleteVals = (songToDelete: string) => {
     setMusicData((prevData) => ({
       ...prevData,
-      vals: (prevData.vals || []).filter((song) => song !== songToDelete)
+      vals: [...(prevData.vals || []), '']
     }));
   };
 
-  const handleAmbienceMusic = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      addAmbienceMusic();
-    }
-  };
-
-  const addAmbienceMusic = () => {
-    if (ambienceMusicInputValue.trim()) {
-      setMusicData((prevData) => ({
-        ...prevData,
-        ambienceMusic: [
-          ...(prevData.ambienceMusic || []),
-          ambienceMusicInputValue.trim()
-        ]
-      }));
-      setAmbienceMusicInputValue('');
-    }
-  };
-
-  const deleteAmbienceMusic = (songToDelete: string) => {
+  const updateVals = (index: number, value: string) => {
     setMusicData((prevData) => ({
       ...prevData,
-      ambienceMusic: (prevData.ambienceMusic || []).filter(
-        (song) => song !== songToDelete
+      vals: (prevData.vals || []).map((song, i) => (i === index ? value : song))
+    }));
+  };
+
+  const deleteVals = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      vals: (prevData.vals || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Ceremonia handlers
+  const updateCeremony = (
+    type: 'ceremoniaCivil' | 'ceremoniaExtra',
+    field: 'ingreso' | 'firmas' | 'salida',
+    value: string
+  ) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      [type]: {
+        ...prevData[type],
+        [field]: value
+      }
+    }));
+  };
+
+  const addCeremonyOtro = (type: 'ceremoniaCivil' | 'ceremoniaExtra') => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      [type]: {
+        ...prevData[type],
+        otros: [...(prevData[type]?.otros || []), { titulo: '', cancion: '' }]
+      }
+    }));
+  };
+
+  const updateCeremonyOtro = (
+    type: 'ceremoniaCivil' | 'ceremoniaExtra',
+    index: number,
+    field: 'titulo' | 'cancion',
+    value: string
+  ) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      [type]: {
+        ...prevData[type],
+        otros: (prevData[type]?.otros || []).map((item, i) =>
+          i === index ? { ...item, [field]: value } : item
+        )
+      }
+    }));
+  };
+
+  const deleteCeremonyOtro = (
+    type: 'ceremoniaCivil' | 'ceremoniaExtra',
+    index: number
+  ) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      [type]: {
+        ...prevData[type],
+        otros: (prevData[type]?.otros || []).filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  // Música para ambientar handlers
+  const addAmbienceCategory = () => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      ambienceMusic: [
+        ...(prevData.ambienceMusic || []),
+        { descripcion: '', generos: [] }
+      ]
+    }));
+  };
+
+  const updateAmbienceDescription = (index: number, value: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      ambienceMusic: (prevData.ambienceMusic || []).map((item, i) =>
+        i === index ? { ...item, descripcion: value } : item
       )
+    }));
+  };
+
+  const addAmbienceGenre = (index: number, genre: string) => {
+    if (!genre.trim()) return;
+    setMusicData((prevData) => ({
+      ...prevData,
+      ambienceMusic: (prevData.ambienceMusic || []).map((item, i) =>
+        i === index ? { ...item, generos: [...item.generos, genre.trim()] } : item
+      )
+    }));
+  };
+
+  const deleteAmbienceGenre = (categoryIndex: number, genreIndex: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      ambienceMusic: (prevData.ambienceMusic || []).map((item, i) =>
+        i === categoryIndex
+          ? {
+              ...item,
+              generos: item.generos.filter((_, j) => j !== genreIndex)
+            }
+          : item
+      )
+    }));
+  };
+
+  const deleteAmbienceCategory = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      ambienceMusic: (prevData.ambienceMusic || []).filter((_, i) => i !== index)
     }));
   };
 
   return (
-    <div>
-      <h2>Canciones de ingreso</h2>
-      <Flex mb='md' gap='8px'>
-        <Input
-          placeholder='Agregar canción de ingreso'
-          value={welcomeSongInputValue}
-          onChange={(e) => setWelcomeSongInputValue(e.target.value)}
-          onKeyDown={handleWelcomeSong}
-          style={{ flexGrow: 1 }}
-        />
-        <Button onClick={addWelcomeSong} leftSection={<IconPlus size={16} />}>
-          Agregar
-        </Button>
-      </Flex>
-
-      <div style={{ marginBottom: '16px' }}>
-        {(musicData.welcomeSongs || []).map((song, index) => (
-          <div
-            key={song + index}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              marginBottom: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '4px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
-              {song}
-            </Text>
-            <IconX
-              cursor='pointer'
-              size={16}
-              color='red'
-              onClick={() => deleteWelcomeSong(song)}
-            />
-          </div>
-        ))}
-      </div>
-      <h2>Camino de Rosas</h2>
-      <Flex mb='md' gap='8px'>
-        <Input
-          placeholder='Agregar canción de camino de rosas'
-          value={walkInInputValue}
-          onChange={(e) => setWalkInInputValue(e.target.value)}
-          onKeyDown={handleWalkIn}
-          style={{ flexGrow: 1 }}
-        />
-        <Button onClick={addWalkIn} leftSection={<IconPlus size={16} />}>
-          Agregar
-        </Button>
-      </Flex>
-
-      <div style={{ marginBottom: '16px' }}>
-        {(musicData.walkIn || []).map((song, index) => (
-          <div
-            key={song + index}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              marginBottom: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '4px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
-              {song}
-            </Text>
-            <IconX
-              cursor='pointer'
-              size={16}
-              color='red'
-              onClick={() => deleteWalkIn(song)}
-            />
-          </div>
-        ))}
-      </div>
-
-      <h2>Vals</h2>
-      <Flex mb='md' gap='8px'>
-        <Input
-          placeholder='Agregar vals'
-          value={valsInputValue}
-          onChange={(e) => setValsInputValue(e.target.value)}
-          onKeyDown={handleVals}
-          style={{ flexGrow: 1 }}
-        />
-        <Button onClick={addVals} leftSection={<IconPlus size={16} />}>
-          Agregar
-        </Button>
-      </Flex>
-
-      <div style={{ marginBottom: '16px' }}>
-        {(musicData.vals || []).map((song, index) => (
-          <div
-            key={song + index}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              marginBottom: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '4px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
-              {song}
-            </Text>
-            <IconX
-              cursor='pointer'
-              size={16}
-              color='red'
-              onClick={() => deleteVals(song)}
-            />
-          </div>
-        ))}
-      </div>
-      <h2>Inicio de fiesta - Cancion apertura de fiesta</h2>
-      <Input
-        placeholder='Inicio de fiesta - Cancion apertura de fiesta'
-        value={musicData.openingPartySong}
-        onChange={(e) =>
-          setMusicData({ ...musicData, openingPartySong: e.target.value })
-        }
-        mb='md'
-      />
-      <h2>Música para ambientar</h2>
-      <Flex mb='md' gap='8px'>
-        <Input
-          placeholder='Agregar música para ambientar'
-          value={ambienceMusicInputValue}
-          onChange={(e) => setAmbienceMusicInputValue(e.target.value)}
-          onKeyDown={handleAmbienceMusic}
-          style={{ flexGrow: 1 }}
-        />
-        <Button onClick={addAmbienceMusic} leftSection={<IconPlus size={16} />}>
-          Agregar
-        </Button>
-      </Flex>
-
-      <div style={{ marginBottom: '16px' }}>
-        {(musicData.ambienceMusic || []).map((song, index) => (
-          <div
-            key={song + index}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              marginBottom: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '4px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <Text size='sm' c='white' className='breakWord' style={{ flex: 1, paddingRight: '8px' }}>
-              {song}
-            </Text>
-            <IconX
-              cursor='pointer'
-              size={16}
-              color='red'
-              onClick={() => deleteAmbienceMusic(song)}
-            />
-          </div>
-        ))}
-      </div>
-      <h2>Musica de preferencia</h2>
-
-      {/* Genres Loading/Error States */}
-      {genresLoading ? (
-        <Flex align='center' gap='sm' mb='md'>
-          <Loader size='sm' />
-          <Text>Cargando géneros...</Text>
-        </Flex>
-      ) : genresError ? (
-        <Alert icon={<IconAlertCircle size='1rem' />} color='red' mb='md'>
-          Error cargando géneros: {genresError}
-        </Alert>
-      ) : (
-        <div className={styles.ratingContainer}>
-          {musicData?.music.genres.map((genre: GenreType, index: number) => {
-            const options = [
-              { label: 'Mucho', value: 3, color: '#51cf66' },
-              { label: 'Normal', value: 2, color: '#fd7e14' },
-              { label: 'Poco o Nada', value: 1, color: '#fa5252' }
-            ];
-
-            return (
-              <div className='eachRating' key={genre.genre} style={{ maxWidth: '100%' }}>
-                <p style={{ marginBottom: '12px', fontWeight: 500 }}>{genre.genre}</p>
-                <Flex gap='sm' align='flex-start'>
-                  {options.map((option) => (
-                    <Flex
-                      key={option.value}
-                      direction='column'
-                      align='center'
-                      gap='4px'
-                      style={{ flex: 1, maxWidth: '70px' }}
-                    >
-                      <UnstyledButton
-                        onClick={() => rateGenre(option.value, index)}
-                        style={{
-                          width: '30px',
-                          height: '30px',
-                          borderRadius: '50%',
-                          border: genre.value === option.value
-                            ? `3px solid ${option.color}`
-                            : '2px solid rgba(255, 255, 255, 0.2)',
-                          backgroundColor: genre.value === option.value
-                            ? option.color
-                            : 'transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                        title={option.label}
-                      />
-                      <Text size='10px' c='dimmed' ta='center' style={{ lineHeight: 1.2 }}>
-                        {option.label}
-                      </Text>
-                    </Flex>
-                  ))}
+    <Box>
+      <Accordion multiple defaultValue={['ingreso', 'ceremonia', 'vals', 'fiesta', 'ambiente']}>
+        {/* Canciones de ingreso */}
+        <Accordion.Item value='ingreso'>
+          <Accordion.Control>Canciones de ingreso</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='xs'>
+              {(musicData.welcomeSongs || []).map((song, index) => (
+                <Flex key={index} gap='xs' align='center'>
+                  <TextInput
+                    placeholder={`Tema ${index + 1}`}
+                    value={song}
+                    onChange={(e) => updateWelcomeSong(index, e.target.value)}
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => deleteWelcomeSong(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
                 </Flex>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className={styles.inputPair}>
-        <Input
-          className={styles.input}
-          placeholder='Prohibidos'
-          onChange={(e) => handleForbidden(e)}
-          onKeyDown={handleForbidden}
-        />
-        <Input
-          className={styles.input}
-          placeholder='Infaltables'
-          onChange={(e) => handleRequired(e)}
-          onKeyDown={handleRequired}
-        />
-      </div>
-      <div className={styles.inputPair}>
-        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
-          {musicData?.music.forbidden.map((song, index) => {
-            return (
-              <div key={song + index} style={{ margin: '8px' }}>
-                <Chip
-                  icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-                  id='forbidden'
-                  color='red'
-                  defaultChecked
-                  onClick={() => {
-                    deleteSongForbidden(song);
-                  }}
-                >
-                  {song}
-                </Chip>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
-          {musicData?.music.required.map((song, index) => {
-            return (
-              <div key={song + index} style={{ margin: '8px' }}>
-                <Chip
-                  defaultChecked
-                  color='green'
-                  icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-                  id='required'
-                  onClick={() => deleteSongRequired(song)}
-                >
-                  {song}
-                </Chip>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <Box mt='md'>
-        <Text fw={500} size='lg' mb='xs'>
-          Spotify Playlists
-        </Text>
-        <Flex mb='md' gap='8px'>
-          <Input
-            placeholder='Playlist Label'
-            value={spotifyLabelInputValue}
-            onChange={(e) => setSpotifyLabelInputValue(e.target.value)}
-            style={{ flexGrow: 1 }}
-          />
-          <Input
-            placeholder='Spotify playlist URL'
-            value={spotifyLinkInputValue}
-            onChange={(e) => setSpotifyLinkInputValue(e.target.value)}
-            onKeyDown={handleSpotifyLinks}
-            style={{ flexGrow: 2 }}
-          />
-          <Button onClick={addSpotifyLinkButton}>Agregar</Button>
-        </Flex>
-
-        {spotifyLinks.map((link, index) => (
-          <Flex key={index} align='center' mb='xs' gap='8px'>
-            <Box style={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-              <Text fw={500} mr='xs'>
-                {link.label}:
-              </Text>
-              <Text
-                style={{
-                  flexGrow: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
+              ))}
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={addWelcomeSong}
               >
-                {link.url}
-              </Text>
-            </Box>
-            <Button
-              variant='light'
-              onClick={() => window.open(link.url, '_blank')}
-            >
-              Visitar
-            </Button>
-            <Button
-              variant='light'
-              color='red'
-              onClick={() => {
-                setSpotifyLinks((links) => links.filter((_, i) => i !== index));
-              }}
-            >
-              <IconX size={16} />
-            </Button>
-          </Flex>
-        ))}
-      </Box>
-      <Flex direction='column' gap='12px'>
-        <Button onClick={back}>Anterior</Button>
+                Agregar tema
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Canción de rosas */}
+        <Accordion.Item value='rosas'>
+          <Accordion.Control>Canción de rosas</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='xs'>
+              {(musicData.walkIn || []).map((song, index) => (
+                <Flex key={index} gap='xs' align='center'>
+                  <TextInput
+                    placeholder={`Tema ${index + 1}`}
+                    value={song}
+                    onChange={(e) => updateWalkIn(index, e.target.value)}
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => deleteWalkIn(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Flex>
+              ))}
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={addWalkIn}
+              >
+                Agregar tema
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Ceremonia Civil */}
+        <Accordion.Item value='ceremonia-civil'>
+          <Accordion.Control>Ceremonia Civil</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='xs'>
+              <TextInput
+                label='Ingreso'
+                placeholder='Canción de ingreso'
+                value={musicData.ceremoniaCivil?.ingreso || ''}
+                onChange={(e) =>
+                  updateCeremony('ceremoniaCivil', 'ingreso', e.target.value)
+                }
+                size='sm'
+              />
+              <TextInput
+                label='Firmas'
+                placeholder='Canción de firmas'
+                value={musicData.ceremoniaCivil?.firmas || ''}
+                onChange={(e) =>
+                  updateCeremony('ceremoniaCivil', 'firmas', e.target.value)
+                }
+                size='sm'
+              />
+              <TextInput
+                label='Salida'
+                placeholder='Canción de salida'
+                value={musicData.ceremoniaCivil?.salida || ''}
+                onChange={(e) =>
+                  updateCeremony('ceremoniaCivil', 'salida', e.target.value)
+                }
+                size='sm'
+              />
+
+              {(musicData.ceremoniaCivil?.otros || []).length > 0 && (
+                <Divider label='Otros momentos' labelPosition='center' />
+              )}
+
+              {(musicData.ceremoniaCivil?.otros || []).map((item, index) => (
+                <Card key={index} withBorder p='xs'>
+                  <Flex gap='xs' align='flex-end'>
+                    <TextInput
+                      label='Título'
+                      placeholder='Ej: Entrada niños'
+                      value={item.titulo}
+                      onChange={(e) =>
+                        updateCeremonyOtro(
+                          'ceremoniaCivil',
+                          index,
+                          'titulo',
+                          e.target.value
+                        )
+                      }
+                      style={{ flex: 1 }}
+                      size='sm'
+                    />
+                    <TextInput
+                      label='Canción'
+                      placeholder='Nombre de la canción'
+                      value={item.cancion}
+                      onChange={(e) =>
+                        updateCeremonyOtro(
+                          'ceremoniaCivil',
+                          index,
+                          'cancion',
+                          e.target.value
+                        )
+                      }
+                      style={{ flex: 1 }}
+                      size='sm'
+                    />
+                    <ActionIcon
+                      color='red'
+                      variant='subtle'
+                      onClick={() => deleteCeremonyOtro('ceremoniaCivil', index)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Flex>
+                </Card>
+              ))}
+
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={() => addCeremonyOtro('ceremoniaCivil')}
+              >
+                Agregar otro momento
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Ceremonia Extra */}
+        <Accordion.Item value='ceremonia-extra'>
+          <Accordion.Control>Ceremonia Extra</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='xs'>
+              <TextInput
+                label='Ingreso'
+                placeholder='Canción de ingreso'
+                value={musicData.ceremoniaExtra?.ingreso || ''}
+                onChange={(e) =>
+                  updateCeremony('ceremoniaExtra', 'ingreso', e.target.value)
+                }
+                size='sm'
+              />
+              <TextInput
+                label='Firmas'
+                placeholder='Canción de firmas'
+                value={musicData.ceremoniaExtra?.firmas || ''}
+                onChange={(e) =>
+                  updateCeremony('ceremoniaExtra', 'firmas', e.target.value)
+                }
+                size='sm'
+              />
+              <TextInput
+                label='Salida'
+                placeholder='Canción de salida'
+                value={musicData.ceremoniaExtra?.salida || ''}
+                onChange={(e) =>
+                  updateCeremony('ceremoniaExtra', 'salida', e.target.value)
+                }
+                size='sm'
+              />
+
+              {(musicData.ceremoniaExtra?.otros || []).length > 0 && (
+                <Divider label='Otros momentos' labelPosition='center' />
+              )}
+
+              {(musicData.ceremoniaExtra?.otros || []).map((item, index) => (
+                <Card key={index} withBorder p='xs'>
+                  <Flex gap='xs' align='flex-end'>
+                    <TextInput
+                      label='Título'
+                      placeholder='Ej: Entrada niños'
+                      value={item.titulo}
+                      onChange={(e) =>
+                        updateCeremonyOtro(
+                          'ceremoniaExtra',
+                          index,
+                          'titulo',
+                          e.target.value
+                        )
+                      }
+                      style={{ flex: 1 }}
+                      size='sm'
+                    />
+                    <TextInput
+                      label='Canción'
+                      placeholder='Nombre de la canción'
+                      value={item.cancion}
+                      onChange={(e) =>
+                        updateCeremonyOtro(
+                          'ceremoniaExtra',
+                          index,
+                          'cancion',
+                          e.target.value
+                        )
+                      }
+                      style={{ flex: 1 }}
+                      size='sm'
+                    />
+                    <ActionIcon
+                      color='red'
+                      variant='subtle'
+                      onClick={() => deleteCeremonyOtro('ceremoniaExtra', index)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Flex>
+                </Card>
+              ))}
+
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={() => addCeremonyOtro('ceremoniaExtra')}
+              >
+                Agregar otro momento
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Vals */}
+        <Accordion.Item value='vals'>
+          <Accordion.Control>Vals</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='xs'>
+              {(musicData.vals || []).map((song, index) => (
+                <Flex key={index} gap='xs' align='center'>
+                  <TextInput
+                    placeholder={`Vals ${index + 1}`}
+                    value={song}
+                    onChange={(e) => updateVals(index, e.target.value)}
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => deleteVals(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Flex>
+              ))}
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={addVals}
+              >
+                Agregar vals
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Inicio de fiesta */}
+        <Accordion.Item value='fiesta'>
+          <Accordion.Control>Inicio de fiesta (post cena)</Accordion.Control>
+          <Accordion.Panel>
+            <TextInput
+              label='Canción apertura pista'
+              placeholder='Nombre de la canción'
+              value={musicData.openingPartySong || ''}
+              onChange={(e) =>
+                setMusicData({ ...musicData, openingPartySong: e.target.value })
+              }
+              size='sm'
+            />
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Música para ambientar */}
+        <Accordion.Item value='ambiente'>
+          <Accordion.Control>Música para ambientar</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='md'>
+              {(musicData.ambienceMusic || []).map((category, categoryIndex) => (
+                <Card key={categoryIndex} withBorder p='sm'>
+                  <Stack gap='xs'>
+                    <Flex gap='xs' align='flex-start'>
+                      <TextInput
+                        label='Momento/Descripción'
+                        placeholder='Ej: Recepción, Cena, Sobremesa'
+                        value={category.descripcion}
+                        onChange={(e) =>
+                          updateAmbienceDescription(categoryIndex, e.target.value)
+                        }
+                        style={{ flex: 1 }}
+                        size='sm'
+                      />
+                      <ActionIcon
+                        color='red'
+                        variant='subtle'
+                        onClick={() => deleteAmbienceCategory(categoryIndex)}
+                        mt='xl'
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Flex>
+
+                    <Box>
+                      <Text size='xs' fw={500} mb='xs'>
+                        Géneros/Estilos:
+                      </Text>
+                      <Flex wrap='wrap' gap='xs' mb='xs'>
+                        {category.generos.map((genre, genreIndex) => (
+                          <Chip
+                            key={genreIndex}
+                            checked={false}
+                            onChange={() =>
+                              deleteAmbienceGenre(categoryIndex, genreIndex)
+                            }
+                            color='blue'
+                            size='xs'
+                          >
+                            {genre}
+                          </Chip>
+                        ))}
+                      </Flex>
+                      <TextInput
+                        placeholder='Agregar género/estilo (Enter para agregar)'
+                        size='xs'
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const value = e.currentTarget.value;
+                            addAmbienceGenre(categoryIndex, value);
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Stack>
+                </Card>
+              ))}
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={addAmbienceCategory}
+              >
+                Agregar categoría
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Música de preferencia */}
+        <Accordion.Item value='preferencias'>
+          <Accordion.Control>Música de preferencia</Accordion.Control>
+          <Accordion.Panel>
+            {genresLoading ? (
+              <Flex align='center' gap='sm'>
+                <Loader size='sm' />
+                <Text>Cargando géneros...</Text>
+              </Flex>
+            ) : genresError ? (
+              <Alert icon={<IconAlertCircle size='1rem' />} color='red'>
+                Error cargando géneros: {genresError}
+              </Alert>
+            ) : (
+              <div className={styles.ratingContainer}>
+                {musicData?.music.genres.map((genre: GenreType, index: number) => {
+                  const options = [
+                    { label: 'Mucho', value: 3, color: '#51cf66' },
+                    { label: 'Normal', value: 2, color: '#fd7e14' },
+                    { label: 'Poco o Nada', value: 1, color: '#fa5252' }
+                  ];
+
+                  return (
+                    <div
+                      className='eachRating'
+                      key={genre.genre}
+                      style={{ maxWidth: '100%' }}
+                    >
+                      <p style={{ marginBottom: '12px', fontWeight: 500 }}>
+                        {genre.genre}
+                      </p>
+                      <Flex gap='sm' align='flex-start'>
+                        {options.map((option) => (
+                          <Flex
+                            key={option.value}
+                            direction='column'
+                            align='center'
+                            gap='4px'
+                            style={{ flex: 1, maxWidth: '70px' }}
+                          >
+                            <UnstyledButton
+                              onClick={() => rateGenre(option.value, index)}
+                              style={{
+                                width: '30px',
+                                height: '30px',
+                                borderRadius: '50%',
+                                border:
+                                  genre.value === option.value
+                                    ? `3px solid ${option.color}`
+                                    : '2px solid rgba(255, 255, 255, 0.2)',
+                                backgroundColor:
+                                  genre.value === option.value
+                                    ? option.color
+                                    : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              title={option.label}
+                            />
+                            <Text
+                              size='10px'
+                              c='dimmed'
+                              ta='center'
+                              style={{ lineHeight: 1.2 }}
+                            >
+                              {option.label}
+                            </Text>
+                          </Flex>
+                        ))}
+                      </Flex>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <Divider my='md' />
+
+            <div className={styles.inputPair}>
+              <Input
+                className={styles.input}
+                placeholder='Prohibidos'
+                onChange={(e) => handleForbidden(e)}
+                onKeyDown={handleForbidden}
+                size='sm'
+              />
+              <Input
+                className={styles.input}
+                placeholder='Infaltables'
+                onChange={(e) => handleRequired(e)}
+                onKeyDown={handleRequired}
+                size='sm'
+              />
+            </div>
+            <div className={styles.inputPair}>
+              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
+                {musicData?.music.forbidden.map((song, index) => {
+                  return (
+                    <div key={song + index} style={{ margin: '8px' }}>
+                      <Chip
+                        icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
+                        id='forbidden'
+                        color='red'
+                        defaultChecked
+                        onClick={() => {
+                          deleteSongForbidden(song);
+                        }}
+                        size='sm'
+                      >
+                        {song}
+                      </Chip>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
+                {musicData?.music.required.map((song, index) => {
+                  return (
+                    <div key={song + index} style={{ margin: '8px' }}>
+                      <Chip
+                        defaultChecked
+                        color='green'
+                        icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
+                        id='required'
+                        onClick={() => deleteSongRequired(song)}
+                        size='sm'
+                      >
+                        {song}
+                      </Chip>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Accordion.Panel>
+        </Accordion.Item>
+
+        {/* Spotify Playlists */}
+        <Accordion.Item value='spotify'>
+          <Accordion.Control>Spotify Playlists</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='sm'>
+              <Flex gap='xs'>
+                <TextInput
+                  placeholder='Playlist Label'
+                  value={spotifyLabelInputValue}
+                  onChange={(e) => setSpotifyLabelInputValue(e.target.value)}
+                  style={{ flex: 1 }}
+                  size='sm'
+                />
+                <TextInput
+                  placeholder='Spotify playlist URL'
+                  value={spotifyLinkInputValue}
+                  onChange={(e) => setSpotifyLinkInputValue(e.target.value)}
+                  onKeyDown={handleSpotifyLinks}
+                  style={{ flex: 2 }}
+                  size='sm'
+                />
+                <Button size='sm' onClick={addSpotifyLinkButton}>
+                  Agregar
+                </Button>
+              </Flex>
+
+              {spotifyLinks.map((link, index) => (
+                <Flex key={index} align='center' gap='xs'>
+                  <Box style={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+                    <Text fw={500} mr='xs' size='sm'>
+                      {link.label}:
+                    </Text>
+                    <Text
+                      size='sm'
+                      style={{
+                        flexGrow: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {link.url}
+                    </Text>
+                  </Box>
+                  <Button
+                    variant='light'
+                    size='xs'
+                    onClick={() => window.open(link.url, '_blank')}
+                  >
+                    Visitar
+                  </Button>
+                  <ActionIcon
+                    variant='light'
+                    color='red'
+                    onClick={() => {
+                      setSpotifyLinks((links) => links.filter((_, i) => i !== index));
+                    }}
+                  >
+                    <IconX size={16} />
+                  </ActionIcon>
+                </Flex>
+              ))}
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+
+      <Flex direction='column' gap='xs' mt='lg'>
+        <Button onClick={back} variant='default'>
+          Anterior
+        </Button>
         <Button onClick={next} disabled={genresLoading}>
           Siguiente
         </Button>
       </Flex>
-    </div>
+    </Box>
   );
 };
 

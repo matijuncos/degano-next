@@ -20,8 +20,14 @@ import {
   Flex,
   Switch,
   Tabs,
-  Text
+  Text,
+  Card,
+  Badge,
+  Select,
+  Input,
+  Group
 } from '@mantine/core';
+import { IconUserPlus, IconUserCheck, IconSearch } from '@tabler/icons-react';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -58,6 +64,149 @@ const MainInformation = ({
 }: {
   selectedEvent: EventModel | null;
 }) => {
+  const [addingExtraClient, setAddingExtraClient] = useState(false);
+  const [isNewExtraClient, setIsNewExtraClient] = useState(false);
+  const [selectedExtraClientId, setSelectedExtraClientId] = useState<string | null>(null);
+  const [extraClientData, setExtraClientData] = useState<{
+    _id?: string;
+    fullName: string;
+    phoneNumber: string;
+    email?: string;
+    rol: string;
+    age?: string;
+    address?: string;
+  }>({
+    fullName: '',
+    phoneNumber: '',
+    email: '',
+    rol: '',
+    age: '',
+    address: ''
+  });
+  const [validateExtra, setValidateExtra] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { setSelectedEvent } = useDeganoCtx();
+  const setLoadingCursor = useLoadingCursor();
+  const notify = useNotification();
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const response = await fetch('/api/getClients');
+      const data = await response.json();
+      if (data.clients) {
+        setClients(data.clients);
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    }
+  };
+
+  const handleExtraInputChange = (e: any) => {
+    setExtraClientData({
+      ...extraClientData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleExtraClientSelect = (clientId: string | null) => {
+    setSelectedExtraClientId(clientId);
+    setIsNewExtraClient(false);
+
+    if (clientId) {
+      const selectedClient = clients.find((client) => client._id === clientId);
+      if (selectedClient) {
+        setExtraClientData({
+          _id: selectedClient._id,
+          fullName: selectedClient.fullName,
+          phoneNumber: selectedClient.phoneNumber,
+          email: selectedClient.email,
+          age: selectedClient.age || '',
+          address: selectedClient.address || '',
+          rol: extraClientData.rol || ''
+        });
+      }
+    } else {
+      setExtraClientData({
+        fullName: '',
+        phoneNumber: '',
+        email: '',
+        age: '',
+        address: '',
+        rol: ''
+      });
+    }
+  };
+
+  const validateExtraClientFields = () => {
+    setValidateExtra(true);
+    return !!(extraClientData.fullName && extraClientData.rol);
+  };
+
+  const handleAddExtraClient = async () => {
+    if (!validateExtraClientFields()) return;
+    if (!selectedEvent) return;
+
+    setLoadingCursor(true);
+    notify({ loading: true });
+
+    try {
+      const updatedExtraClients = [...selectedEvent.extraClients, extraClientData];
+      const response = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          _id: selectedEvent._id,
+          extraClients: updatedExtraClients
+        })
+      });
+
+      const { event } = await response.json();
+      setSelectedEvent(event);
+      setAddingExtraClient(false);
+      setExtraClientData({
+        fullName: '',
+        phoneNumber: '',
+        email: '',
+        rol: '',
+        age: '',
+        address: ''
+      });
+      setValidateExtra(false);
+      setSelectedExtraClientId(null);
+      notify({ message: 'Cliente extra agregado correctamente' });
+    } catch (error) {
+      notify({ type: 'defaultError' });
+      console.error('Error adding extra client:', error);
+    } finally {
+      setLoadingCursor(false);
+    }
+  };
+
+  const filteredClients = clients
+    .filter(
+      (client) =>
+        client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.phoneNumber.includes(searchTerm)
+    )
+    .filter(
+      (client) =>
+        !selectedEvent?.extraClients.some((extra) => extra._id && extra._id === client._id)
+    )
+    .filter((client) => client.fullName !== selectedEvent?.fullName);
+
+  const clientOptions = filteredClients.map((client) => ({
+    value: client._id,
+    label: `${client.fullName} - ${client.phoneNumber}`
+  }));
+
   if (!selectedEvent) return null;
   return (
     <Flex direction='column' gap='8px' mt='8px'>
@@ -136,7 +285,7 @@ const MainInformation = ({
           value={selectedEvent.age}
         />
       {/* </Grid.Col>
-      <Grid.Col 
+      <Grid.Col
         span='auto'
         style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
       >*/}
@@ -170,6 +319,187 @@ const MainInformation = ({
               </React.Fragment>
             );
           })}
+
+      {/* Botón para agregar cliente extra */}
+      <Button
+        variant='light'
+        leftSection={<IconUserPlus size={16} />}
+        onClick={() => {
+          setAddingExtraClient(true);
+          setSelectedExtraClientId(null);
+          setIsNewExtraClient(false);
+          setExtraClientData({
+            fullName: '',
+            phoneNumber: '',
+            email: '',
+            age: '',
+            address: '',
+            rol: ''
+          });
+          setValidateExtra(false);
+        }}
+        mt='md'
+      >
+        Agregar cliente extra
+      </Button>
+
+      {/* Formulario para agregar cliente extra */}
+      {addingExtraClient && (
+        <Card mt='md' withBorder padding='lg'>
+          <Card shadow='sm' padding='md' radius='md' withBorder mb='md'>
+            <Group justify='space-between' mb='md'>
+              <Text fw={500}>{isNewExtraClient ? 'Crear Nuevo Cliente Extra' : 'Seleccionar Cliente Extra'}</Text>
+              <Badge
+                color={isNewExtraClient ? 'blue' : 'green'}
+                variant='light'
+                leftSection={
+                  isNewExtraClient ? (
+                    <IconUserPlus size={14} />
+                  ) : (
+                    <IconUserCheck size={14} />
+                  )
+                }
+              >
+                {isNewExtraClient ? 'Nuevo Cliente Extra' : 'Cliente Existente'}
+              </Badge>
+            </Group>
+
+            {!isNewExtraClient && (
+              <>
+                <Select
+                  placeholder='Buscar cliente existente...'
+                  data={clientOptions}
+                  value={selectedExtraClientId}
+                  onChange={handleExtraClientSelect}
+                  searchable
+                  clearable
+                  leftSection={<IconSearch size={16} />}
+                  mb='md'
+                />
+
+                {selectedExtraClientId && (
+                  <Card withBorder p='sm' bg='gray.7' color='white'>
+                    <Text size='sm' mb='xs'>
+                      Cliente seleccionado:
+                    </Text>
+                    <Box pl='md'>
+                      <Text fw={500}>{extraClientData.fullName}</Text>
+                      <Text size='sm'>
+                        Teléfono: {extraClientData.phoneNumber}
+                      </Text>
+                    </Box>
+                  </Card>
+                )}
+              </>
+            )}
+            <Group>
+              {!isNewExtraClient && (
+                <Button
+                  variant='outline'
+                  leftSection={<IconUserPlus size={16} />}
+                  style={{ marginTop: '8px' }}
+                  onClick={() => {
+                    setIsNewExtraClient(true);
+                    setSelectedExtraClientId(null);
+                    setExtraClientData({
+                      fullName: '',
+                      phoneNumber: '',
+                      email: '',
+                      age: '',
+                      address: '',
+                      rol: ''
+                    });
+                  }}
+                  size='sm'
+                >
+                  Crear Nuevo Cliente Extra
+                </Button>
+              )}
+
+              {isNewExtraClient && (
+                <Button
+                  variant='outline'
+                  leftSection={<IconUserCheck size={16} />}
+                  onClick={() => {
+                    setIsNewExtraClient(false);
+                    setSelectedExtraClientId(null);
+                    setExtraClientData({
+                      fullName: '',
+                      phoneNumber: '',
+                      email: '',
+                      age: '',
+                      address: '',
+                      rol: ''
+                    });
+                  }}
+                  size='sm'
+                >
+                  Seleccionar Existente
+                </Button>
+              )}
+            </Group>
+          </Card>
+
+          <Flex direction='column' gap='md'>
+            <Input
+              placeholder='Nombre y Apellido *'
+              name='fullName'
+              error={validateExtra && !extraClientData.fullName}
+              value={extraClientData.fullName}
+              onChange={handleExtraInputChange}
+              disabled={!isNewExtraClient && !selectedExtraClientId}
+            />
+            <Input
+              placeholder='Teléfono'
+              name='phoneNumber'
+              value={extraClientData.phoneNumber}
+              onChange={handleExtraInputChange}
+              disabled={!isNewExtraClient && !selectedExtraClientId}
+            />
+            <Input
+              placeholder='Email'
+              name='email'
+              value={extraClientData.email}
+              onChange={handleExtraInputChange}
+              disabled={!isNewExtraClient && !selectedExtraClientId}
+            />
+            <Input
+              placeholder='Edad'
+              name='age'
+              value={extraClientData.age}
+              onChange={handleExtraInputChange}
+              disabled={!isNewExtraClient && !selectedExtraClientId}
+            />
+            <Input
+              placeholder='Dirección'
+              name='address'
+              value={extraClientData.address}
+              onChange={handleExtraInputChange}
+              disabled={!isNewExtraClient && !selectedExtraClientId}
+            />
+            <Input
+              placeholder='Rol en el evento *'
+              name='rol'
+              error={validateExtra && !extraClientData.rol}
+              value={extraClientData.rol}
+              onChange={handleExtraInputChange}
+            />
+          </Flex>
+
+          <Group mt='md'>
+            <Button onClick={handleAddExtraClient}>
+              Confirmar cliente extra
+            </Button>
+            <Button
+              variant='light'
+              color='gray'
+              onClick={() => setAddingExtraClient(false)}
+            >
+              Cancelar
+            </Button>
+          </Group>
+        </Card>
+      )}
       {/* </Grid.Col> */}
     </Flex>
   );
@@ -180,48 +510,273 @@ const MusicInformation = ({
   selectedEvent: EventModel | null;
 }) => {
   if (!selectedEvent) return null;
+
   return (
-    <Flex direction='column' gap='16px' mt='16px'>
-      <EditableData
-        type='stringArray'
-        title='Canciones de ingreso'
-        value={selectedEvent.welcomeSongs || []}
-        property='welcomeSongs'
-      />
-      <EditableData
-        type='stringArray'
-        title='Camino de rosas'
-        value={selectedEvent.walkIn || []}
-        property='walkIn'
-      />
-      <EditableData
-        type='stringArray'
-        title='Vals'
-        value={selectedEvent.vals || []}
-        property='vals'
-      />
-      <EditableData
-        type='stringArray'
-        title='Música para ambientar'
-        value={selectedEvent.ambienceMusic || []}
-        property='ambienceMusic'
-      />
-      <EditableData
-        type='chips'
-        value={selectedEvent.music.forbidden}
-        property='forbidden'
-      />
-      <EditableData
-        type='chips'
-        value={selectedEvent.music.required}
-        property='required'
-      />
-      <EditableData
-        type='rate'
-        property='genres'
-        value={selectedEvent.music.genres}
-      />
-      <SpotifyTable />
+    <Flex direction='column' gap='8px' mt='8px'>
+      {/* Canciones de ingreso */}
+      {selectedEvent.welcomeSongs && selectedEvent.welcomeSongs.length > 0 && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Canciones de ingreso
+          </Text>
+          {selectedEvent.welcomeSongs.map((song, index) => (
+            <EditableData
+              key={`welcome-${index}`}
+              type='text'
+              property={`welcomeSongs[${index}]`}
+              title={`Tema ${index + 1}`}
+              value={song}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Canción de rosas */}
+      {selectedEvent.walkIn && selectedEvent.walkIn.length > 0 && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Canción de rosas
+          </Text>
+          {selectedEvent.walkIn.map((song, index) => (
+            <EditableData
+              key={`walkin-${index}`}
+              type='text'
+              property={`walkIn[${index}]`}
+              title={`Tema ${index + 1}`}
+              value={song}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Ceremonia Civil */}
+      {selectedEvent.ceremoniaCivil && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Ceremonia Civil
+          </Text>
+          {selectedEvent.ceremoniaCivil.ingreso && (
+            <EditableData
+              type='text'
+              property='ceremoniaCivil.ingreso'
+              title='Ingreso'
+              value={selectedEvent.ceremoniaCivil.ingreso}
+            />
+          )}
+          {selectedEvent.ceremoniaCivil.firmas && (
+            <EditableData
+              type='text'
+              property='ceremoniaCivil.firmas'
+              title='Firmas'
+              value={selectedEvent.ceremoniaCivil.firmas}
+            />
+          )}
+          {selectedEvent.ceremoniaCivil.salida && (
+            <EditableData
+              type='text'
+              property='ceremoniaCivil.salida'
+              title='Salida'
+              value={selectedEvent.ceremoniaCivil.salida}
+            />
+          )}
+          {selectedEvent.ceremoniaCivil.otros &&
+            selectedEvent.ceremoniaCivil.otros.length > 0 && (
+              <>
+                {selectedEvent.ceremoniaCivil.otros.map((item, index) => (
+                  <Box
+                    key={`civil-otro-${index}`}
+                    style={{
+                      borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                      paddingLeft: '12px',
+                      marginTop: '8px'
+                    }}
+                  >
+                    <EditableData
+                      type='text'
+                      property={`ceremoniaCivil.otros[${index}].titulo`}
+                      title='Título'
+                      value={item.titulo}
+                    />
+                    <EditableData
+                      type='text'
+                      property={`ceremoniaCivil.otros[${index}].cancion`}
+                      title='Canción'
+                      value={item.cancion}
+                    />
+                  </Box>
+                ))}
+              </>
+            )}
+        </Box>
+      )}
+
+      {/* Ceremonia Extra */}
+      {selectedEvent.ceremoniaExtra && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Ceremonia Extra
+          </Text>
+          {selectedEvent.ceremoniaExtra.ingreso && (
+            <EditableData
+              type='text'
+              property='ceremoniaExtra.ingreso'
+              title='Ingreso'
+              value={selectedEvent.ceremoniaExtra.ingreso}
+            />
+          )}
+          {selectedEvent.ceremoniaExtra.firmas && (
+            <EditableData
+              type='text'
+              property='ceremoniaExtra.firmas'
+              title='Firmas'
+              value={selectedEvent.ceremoniaExtra.firmas}
+            />
+          )}
+          {selectedEvent.ceremoniaExtra.salida && (
+            <EditableData
+              type='text'
+              property='ceremoniaExtra.salida'
+              title='Salida'
+              value={selectedEvent.ceremoniaExtra.salida}
+            />
+          )}
+          {selectedEvent.ceremoniaExtra.otros &&
+            selectedEvent.ceremoniaExtra.otros.length > 0 && (
+              <>
+                {selectedEvent.ceremoniaExtra.otros.map((item, index) => (
+                  <Box
+                    key={`extra-otro-${index}`}
+                    style={{
+                      borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                      paddingLeft: '12px',
+                      marginTop: '8px'
+                    }}
+                  >
+                    <EditableData
+                      type='text'
+                      property={`ceremoniaExtra.otros[${index}].titulo`}
+                      title='Título'
+                      value={item.titulo}
+                    />
+                    <EditableData
+                      type='text'
+                      property={`ceremoniaExtra.otros[${index}].cancion`}
+                      title='Canción'
+                      value={item.cancion}
+                    />
+                  </Box>
+                ))}
+              </>
+            )}
+        </Box>
+      )}
+
+      {/* Vals */}
+      {selectedEvent.vals && selectedEvent.vals.length > 0 && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Vals
+          </Text>
+          {selectedEvent.vals.map((song, index) => (
+            <EditableData
+              key={`vals-${index}`}
+              type='text'
+              property={`vals[${index}]`}
+              title={`Vals ${index + 1}`}
+              value={song}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Inicio de fiesta */}
+      {selectedEvent.openingPartySong && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Inicio de fiesta (post cena)
+          </Text>
+          <EditableData
+            type='text'
+            property='openingPartySong'
+            title='Canción apertura pista'
+            value={selectedEvent.openingPartySong}
+          />
+        </Box>
+      )}
+
+      {/* Música para ambientar */}
+      {selectedEvent.ambienceMusic && selectedEvent.ambienceMusic.length > 0 && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Música para ambientar
+          </Text>
+          {selectedEvent.ambienceMusic.map((category, categoryIndex) => (
+            <Box
+              key={`ambience-${categoryIndex}`}
+              style={{
+                borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                paddingLeft: '12px',
+                marginBottom: '12px'
+              }}
+            >
+              <EditableData
+                type='text'
+                property={`ambienceMusic[${categoryIndex}].descripcion`}
+                title='Momento/Descripción'
+                value={category.descripcion}
+              />
+              {category.generos && category.generos.length > 0 && (
+                <Box mt='xs' ml='md'>
+                  <Text size='xs' c='dimmed' mb='4px'>
+                    Géneros/Estilos:
+                  </Text>
+                  <Group gap='xs'>
+                    {category.generos.map((genre, genreIndex) => (
+                      <Badge key={`genre-${genreIndex}`} size='sm' variant='light'>
+                        {genre}
+                      </Badge>
+                    ))}
+                  </Group>
+                </Box>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      <Divider my='md' />
+
+      {/* Música de preferencia */}
+      <Box>
+        <Text fw={500} size='sm' mb='xs' c='dimmed'>
+          Música de preferencia
+        </Text>
+        <EditableData
+          type='chips'
+          value={selectedEvent.music.forbidden}
+          property='forbidden'
+        />
+        <EditableData
+          type='chips'
+          value={selectedEvent.music.required}
+          property='required'
+        />
+        <EditableData
+          type='rate'
+          property='genres'
+          value={selectedEvent.music.genres}
+        />
+      </Box>
+
+      <Divider my='md' />
+
+      {/* Spotify Playlists */}
+      <Box>
+        <Text fw={500} size='sm' mb='xs' c='dimmed'>
+          Spotify Playlists
+        </Text>
+        <SpotifyTable />
+      </Box>
     </Flex>
   );
 };
