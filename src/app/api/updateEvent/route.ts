@@ -118,7 +118,7 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
 
     // Liberar equipos removidos del evento
     if (removedEquipmentIds.length > 0) {
-      const removedObjectIds = removedEquipmentIds.map((id) => new ObjectId(id));
+      const removedObjectIds = removedEquipmentIds.map((id: string) => new ObjectId(id));
 
       await db.collection('equipment').updateMany(
         { _id: { $in: removedObjectIds } },
@@ -150,7 +150,7 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
             userId: session?.user?.sub,
             fromValue: 'En Evento',
             toValue: 'Disponible',
-            details: `Removido de ${oldEvent.type} - ${oldEvent.lugar}`
+            details: `Removido de ${oldEvent?.type} - ${oldEvent?.lugar}`
           });
         }
       }
