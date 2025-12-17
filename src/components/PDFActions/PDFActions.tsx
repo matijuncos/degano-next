@@ -47,7 +47,7 @@ const PDFActions: React.FC<PDFActionsProps> = ({
   const getSectionTitle = (sectionKey: string): string => {
     const titles: Record<string, string> = {
       main: 'Información Principal',
-      bands: 'Banda en vivo',
+      bands: 'Show en vivo',
       music: 'Música',
       moreInfo: 'Más Información',
       equipment: 'Equipos',

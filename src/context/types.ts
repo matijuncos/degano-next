@@ -35,15 +35,18 @@ export interface EventModel {
   // All event properties
   fullName: string;
   phoneNumber: string;
+  rol: string;
   extraClients: ExtraClient[];
   email?: string;
   age: string;
   address: string;
   type: string;
+  company?: string;
   guests: string;
   eventAddress: string;
   eventCity: string;
   lugar: string;
+  venueContact?: string;
   churchDate?: string;
   civil: string;
   bands: Array<Band>;
@@ -86,6 +89,8 @@ export interface EventModel {
     employeeName: string;
     rol: string;
   }[];
+  staffArrivalTime?: string;
+  equipmentArrivalTime?: string;
 }
 export interface SelectedEventType extends EventModel {
   title?: string;
@@ -144,6 +149,7 @@ export interface Band {
   bandInfo: string;
   contacts: ExtraContact[];
   fileUrl: string;
+  fileUrls?: string[]; // Array para múltiples archivos
   type: 'band';
 }
 

@@ -10,7 +10,7 @@ import {
   Group,
   UnstyledButton
 } from '@mantine/core';
-import { DateTimePicker } from '@mantine/dates';
+import { DateTimePicker, DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import {
   IconEdit,
   IconStar,
@@ -28,13 +28,15 @@ const EditableData = ({
   value,
   property,
   type,
-  style
+  style,
+  onSave
 }: {
   title?: string;
   value: string | any[] | Date;
   property: string;
   type: string;
   style?: React.CSSProperties;
+  onSave?: (value: any) => void;
 }) => {
   const { selectedEvent } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
@@ -116,7 +118,11 @@ const EditableData = ({
       }
     }
     if (action === 'save') {
-      updateEvent(eventCopy);
+      if (onSave) {
+        onSave(editState.inputValue);
+      } else {
+        updateEvent(eventCopy);
+      }
     }
     setEditState((prev) => ({ ...prev, [field]: !prev[field] }));
   };
@@ -192,8 +198,18 @@ const EditableData = ({
       mb='4px'
       style={{
         position: 'relative',
-        backgroundColor: textHover && !editState.showInput ? 'rgba(64, 192, 87, 0.1)' : 'transparent',
-        borderBottom: textHover && !editState.showInput ? '1px solid rgba(64, 192, 87, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
+        backgroundColor:
+          textHover && !editState.showInput
+            ? 'rgba(64, 192, 87, 0.25)'
+            : 'transparent',
+        border:
+          textHover && !editState.showInput
+            ? '1px solid rgba(64, 192, 87, 0.5)'
+            : '1px solid transparent',
+        borderBottom:
+          textHover && !editState.showInput
+            ? '1px solid rgba(64, 192, 87, 0.3)'
+            : '1px solid rgba(255, 255, 255, 0.05)',
         transition: 'all 0.2s ease',
         cursor: 'pointer',
         ...style
@@ -225,25 +241,39 @@ const EditableData = ({
             size='sm'
           />
         ) : (
-          <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
+          <Text flex={1} size='sm' c='white'>
             {typeof editState.inputValue === 'string'
               ? editState.inputValue
               : ''}
           </Text>
         )}
         {editState.showInput && (
-          <CheckIcon
-            cursor='pointer'
-            size={18}
-            color='green'
-            onClick={() => toggleEdit('showInput', 'save')}
-            style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          />
+          <>
+            <CheckIcon
+              cursor='pointer'
+              size={18}
+              color='green'
+              onClick={() => toggleEdit('showInput', 'save')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+            <CloseIcon
+              cursor='pointer'
+              size={'18'}
+              color='red'
+              onClick={() => toggleEdit('showInput', 'cancel')}
+              style={{
+                position: 'absolute',
+                right: '40px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+          </>
         )}
       </Flex>
       {!editState.showInput && (
@@ -263,7 +293,7 @@ const EditableData = ({
           <IconEdit
             cursor='pointer'
             size={14}
-            color='black'
+            color='white'
             onClick={() => toggleEdit('showInput', 'open')}
           />
         </div>
@@ -282,7 +312,7 @@ const EditableData = ({
           placeholder='Add new chip'
         />
       )}
-      <Flex justify='space-between'>
+      <Flex justify='space-between' style={{marginBottom: '10px'}}>
         <Flex gap='8px'>
           {Array.isArray(editState.inputValue) &&
           editState.inputValue.length > 0 ? (
@@ -337,9 +367,10 @@ const EditableData = ({
 
   const typeRatingData = () => {
     const options = [
-      { label: 'Mucho', value: 3, color: '#51cf66' },
-      { label: 'Normal', value: 2, color: '#fd7e14' },
-      { label: 'Poco o Nada', value: 1, color: '#fa5252' }
+      { label: 'Mucho', value: 4, color: '#51cf66' },     // Green
+      { label: 'Normal', value: 3, color: '#ffd43b' },    // Yellow
+      { label: 'Poco', value: 2, color: '#fd7e14' },      // Orange
+      { label: 'Nada', value: 1, color: '#fa5252' }       // Red
     ];
 
     return (
@@ -349,6 +380,7 @@ const EditableData = ({
             <CheckIcon
               color='green'
               size='22'
+              cursor='pointer'
               onClick={() => toggleEdit('showEditableRating', 'save')}
             />
             {Array.isArray(editState.inputValue) &&
@@ -362,8 +394,12 @@ const EditableData = ({
                     borderBottom: 'solid 1px white'
                   }}
                 >
-                  <div style={{ width: '190px', flexShrink: 0, paddingTop: '6px' }}>
-                    <Text style={{ margin: 0, fontWeight: 500 }}>{genre.genre}</Text>
+                  <div
+                    style={{ width: '190px', flexShrink: 0, paddingTop: '6px' }}
+                  >
+                    <Text style={{ margin: 0, fontWeight: 500 }}>
+                      {genre.genre}
+                    </Text>
                   </div>
                   <Flex gap='sm'>
                     {options.map((option) => (
@@ -380,18 +416,25 @@ const EditableData = ({
                             width: '30px',
                             height: '30px',
                             borderRadius: '50%',
-                            border: genre.value === option.value
-                              ? `3px solid ${option.color}`
-                              : '2px solid rgba(255, 255, 255, 0.2)',
-                            backgroundColor: genre.value === option.value
-                              ? option.color
-                              : 'transparent',
+                            border:
+                              genre.value === option.value
+                                ? `3px solid ${option.color}`
+                                : '2px solid rgba(255, 255, 255, 0.2)',
+                            backgroundColor:
+                              genre.value === option.value
+                                ? option.color
+                                : 'transparent',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease'
                           }}
                           title={option.label}
                         />
-                        <Text size='10px' c='dimmed' ta='center' style={{ lineHeight: 1.2 }}>
+                        <Text
+                          size='10px'
+                          c='dimmed'
+                          ta='center'
+                          style={{ lineHeight: 1.2 }}
+                        >
                           {option.label}
                         </Text>
                       </Flex>
@@ -406,6 +449,7 @@ const EditableData = ({
               <Text fw='600'>Editar Géneros</Text>
               <IconEdit
                 size='22'
+                cursor='pointer'
                 onClick={() => toggleEdit('showEditableRating', 'open')}
               />
             </Flex>
@@ -414,7 +458,9 @@ const EditableData = ({
                 editState.inputValue
                   .filter((item) => item.value !== 0)
                   .map((genre, i) => {
-                    const selectedOption = options.find(o => o.value === genre.value);
+                    const selectedOption = options.find(
+                      (o) => o.value === genre.value
+                    );
                     return (
                       <div
                         key={`i${i}`}
@@ -443,8 +489,11 @@ const EditableData = ({
                             width: '30px',
                             height: '30px',
                             borderRadius: '50%',
-                            backgroundColor: selectedOption?.color || 'transparent',
-                            border: `2px solid ${selectedOption?.color || 'grey'}`,
+                            backgroundColor:
+                              selectedOption?.color || 'transparent',
+                            border: `2px solid ${
+                              selectedOption?.color || 'grey'
+                            }`,
                             flexShrink: 0
                           }}
                           title={selectedOption?.label}
@@ -555,8 +604,18 @@ const EditableData = ({
       mb='4px'
       style={{
         position: 'relative',
-        backgroundColor: textHover && !editState.showEditableDate ? 'rgba(64, 192, 87, 0.1)' : 'transparent',
-        borderBottom: textHover && !editState.showEditableDate ? '1px solid rgba(64, 192, 87, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
+        backgroundColor:
+          textHover && !editState.showEditableDate
+            ? 'rgba(64, 192, 87, 0.25)'
+            : 'transparent',
+        border:
+          textHover && !editState.showEditableDate
+            ? '1px solid rgba(64, 192, 87, 0.5)'
+            : '1px solid transparent',
+        borderBottom:
+          textHover && !editState.showEditableDate
+            ? '1px solid rgba(64, 192, 87, 0.3)'
+            : '1px solid rgba(255, 255, 255, 0.05)',
         transition: 'all 0.2s ease',
         cursor: 'pointer'
       }}
@@ -578,14 +637,18 @@ const EditableData = ({
         {editState.showEditableDate ? (
           <DateTimePicker
             value={
-              editState.inputValue instanceof Date ? editState.inputValue.toISOString() : null
+              editState.inputValue instanceof Date
+                ? editState.inputValue.toISOString()
+                : null
             }
-            onChange={(value) => handleDateChange(value ? new Date(value) : null)}
+            onChange={(value) =>
+              handleDateChange(value ? new Date(value) : null)
+            }
             size='sm'
             style={{ flex: 1 }}
           />
         ) : (
-          <Text flex={1} size='sm' c={textHover ? 'black' : 'white'}>
+          <Text flex={1} size='sm' c='white'>
             {editState.inputValue instanceof Date
               ? `${editState.inputValue.toLocaleDateString()} - ${editState.inputValue.toLocaleTimeString()}`
               : typeof editState.inputValue === 'string'
@@ -594,18 +657,32 @@ const EditableData = ({
           </Text>
         )}
         {editState.showEditableDate && (
-          <CheckIcon
-            cursor='pointer'
-            size={18}
-            color='green'
-            onClick={() => toggleEdit('showEditableDate', 'save')}
-            style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          />
+          <>
+            <CheckIcon
+              cursor='pointer'
+              size={18}
+              color='green'
+              onClick={() => toggleEdit('showEditableDate', 'save')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+            <CloseIcon
+              cursor='pointer'
+              size={'18'}
+              color='red'
+              onClick={() => toggleEdit('showEditableDate', 'cancel')}
+              style={{
+                position: 'absolute',
+                right: '40px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+          </>
         )}
       </Flex>
       {!editState.showEditableDate && (
@@ -625,7 +702,7 @@ const EditableData = ({
           <IconEdit
             cursor='pointer'
             size={14}
-            color='black'
+            color='white'
             onClick={() => toggleEdit('showEditableDate', 'open')}
           />
         </div>
@@ -685,7 +762,9 @@ const EditableData = ({
 
         <Box>
           {(() => {
-            const inputArray = Array.isArray(editState.inputValue) ? editState.inputValue : [];
+            const inputArray = Array.isArray(editState.inputValue)
+              ? editState.inputValue
+              : [];
             return inputArray.length > 0 ? (
               inputArray.map((item, index) => (
                 <Flex
@@ -696,7 +775,10 @@ const EditableData = ({
                   mb='2px'
                   style={{
                     backgroundColor: 'transparent',
-                    borderBottom: index < inputArray.length - 1 ? '1px solid rgba(255, 255, 255, 0.03)' : 'none'
+                    borderBottom:
+                      index < inputArray.length - 1
+                        ? '1px solid rgba(255, 255, 255, 0.03)'
+                        : 'none'
                   }}
                 >
                   <Text
@@ -718,8 +800,8 @@ const EditableData = ({
               ))
             ) : (
               <Text c='dimmed' fs='italic' size='sm'>
-              No hay elementos agregados
-            </Text>
+                No hay elementos agregados
+              </Text>
             );
           })()}
         </Box>
@@ -764,6 +846,219 @@ const EditableData = ({
     </Box>
   );
 
+  const typeDateOnlyData = () => (
+    <Box
+      py='4px'
+      mb='4px'
+      style={{
+        position: 'relative',
+        backgroundColor:
+          textHover && !editState.showEditableDate
+            ? 'rgba(64, 192, 87, 0.25)'
+            : 'transparent',
+        border:
+          textHover && !editState.showEditableDate
+            ? '1px solid rgba(64, 192, 87, 0.5)'
+            : '1px solid transparent',
+        borderBottom:
+          textHover && !editState.showEditableDate
+            ? '1px solid rgba(64, 192, 87, 0.3)'
+            : '1px solid rgba(255, 255, 255, 0.05)',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer'
+      }}
+      c='white'
+      onMouseEnter={() => setTextHover(true)}
+      onMouseLeave={() => setTextHover(false)}
+    >
+      <Flex align='center' gap='8px'>
+        {title && (
+          <Text
+            fw={600}
+            size='sm'
+            c='white'
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {title}:
+          </Text>
+        )}
+        {editState.showEditableDate ? (
+          <DatePickerInput
+            placeholder='Seleccionar fecha'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={editState.inputValue as DateValue}
+            onChange={(value) => setEditState((prev) => ({ ...prev, inputValue: value }))}
+            size='sm'
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Text flex={1} size='sm' c='white'>
+            {editState.inputValue && editState.inputValue instanceof Date
+              ? editState.inputValue.toLocaleDateString('es-AR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })
+              : value && typeof value === 'string' ? value : 'Sin fecha'}
+          </Text>
+        )}
+        {editState.showEditableDate && (
+          <>
+            <CheckIcon
+              cursor='pointer'
+              size={18}
+              color='green'
+              onClick={() => toggleEdit('showEditableDate', 'save')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+            <CloseIcon
+              cursor='pointer'
+              size={'18'}
+              color='red'
+              onClick={() => toggleEdit('showEditableDate', 'cancel')}
+              style={{
+                position: 'absolute',
+                right: '40px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+          </>
+        )}
+      </Flex>
+      {!editState.showEditableDate && (
+        <div
+          style={{
+            display: textHover ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={18}
+            onClick={() => toggleEdit('showEditableDate', 'open')}
+          />
+        </div>
+      )}
+    </Box>
+  );
+
+  const typeTimeOnlyData = () => (
+    <Box
+      py='4px'
+      mb='4px'
+      style={{
+        position: 'relative',
+        backgroundColor:
+          textHover && !editState.showInput
+            ? 'rgba(64, 192, 87, 0.25)'
+            : 'transparent',
+        border:
+          textHover && !editState.showInput
+            ? '1px solid rgba(64, 192, 87, 0.5)'
+            : '1px solid transparent',
+        borderBottom:
+          textHover && !editState.showInput
+            ? '1px solid rgba(64, 192, 87, 0.3)'
+            : '1px solid rgba(255, 255, 255, 0.05)',
+        transition: 'all 0.2s ease',
+        cursor: 'pointer'
+      }}
+      c='white'
+      onMouseEnter={() => setTextHover(true)}
+      onMouseLeave={() => setTextHover(false)}
+    >
+      <Flex align='center' gap='8px'>
+        {title && (
+          <Text
+            fw={600}
+            size='sm'
+            c='white'
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {title}:
+          </Text>
+        )}
+        {editState.showInput ? (
+          <TimePicker
+            value={editState.inputValue as string}
+            onChange={(value: string) => setEditState((prev) => ({ ...prev, inputValue: value }))}
+            size='sm'
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Text flex={1} size='sm' c='white'>
+            {typeof editState.inputValue === 'string'
+              ? editState.inputValue
+              : (typeof value === 'string' ? value : 'Sin hora')}
+          </Text>
+        )}
+        {editState.showInput && (
+          <>
+            <CheckIcon
+              cursor='pointer'
+              size={18}
+              color='green'
+              onClick={() => toggleEdit('showInput', 'save')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+            <CloseIcon
+              cursor='pointer'
+              size={'18'}
+              color='red'
+              onClick={() => toggleEdit('showInput', 'cancel')}
+              style={{
+                position: 'absolute',
+                right: '40px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+          </>
+        )}
+      </Flex>
+      {!editState.showInput && (
+        <div
+          style={{
+            display: textHover ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <IconEdit
+            cursor='pointer'
+            size={18}
+            onClick={() => toggleEdit('showInput', 'open')}
+          />
+        </div>
+      )}
+    </Box>
+  );
+
   return (
     <>
       {type === 'text' ? (
@@ -776,6 +1071,10 @@ const EditableData = ({
         typeTextArea()
       ) : type === 'date' ? (
         typeDateData()
+      ) : type === 'dateOnly' ? (
+        typeDateOnlyData()
+      ) : type === 'timeOnly' ? (
+        typeTimeOnlyData()
       ) : type === 'stringArray' ? (
         typeStringArrayData()
       ) : (

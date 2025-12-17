@@ -1,0 +1,292 @@
+/* Estilos personalizados para el calendario */
+
+/* Fondo principal del calendario - gris oscuro como la app */
+.rbc-calendar {
+  background-color: #1a1b1e;
+  color: #c1c2c5;
+}
+
+/* Header del calendario */
+.rbc-header {
+  background-color: #25262b;
+  color: #c1c2c5;
+  border-color: #373a40;
+  padding: 6px 3px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rbc-header + .rbc-header {
+  border-left-color: #373a40;
+}
+
+/* Toolbar (navegación superior) */
+.rbc-toolbar {
+  background-color: #25262b;
+  padding: 8px 12px;
+  border-bottom: 1px solid #373a40;
+  margin-bottom: 0;
+}
+
+.rbc-toolbar button {
+  background-color: #2c2e33;
+  border: 1px solid #373a40;
+  color: #c1c2c5;
+  padding: 5px 10px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.rbc-toolbar button:hover {
+  background-color: #373a40;
+  color: #fff;
+}
+
+.rbc-toolbar button:active,
+.rbc-toolbar button.rbc-active {
+  background-color: #37b24d;
+  border-color: #37b24d;
+  color: #fff;
+}
+
+.rbc-toolbar-label {
+  color: #c1c2c5;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* Celdas del calendario */
+.rbc-day-bg {
+  background-color: #25262b;
+  border-color: #373a40;
+}
+
+.rbc-off-range-bg {
+  background-color: #1a1b1e;
+}
+
+.rbc-today {
+  background-color: rgba(55, 178, 77, 0.12) !important;
+  border: 2px solid #37b24d !important;
+}
+
+/* Números de día */
+.rbc-date-cell {
+  padding: 3px 5px;
+  text-align: right;
+}
+
+.rbc-date-cell > a {
+  color: #c1c2c5;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rbc-off-range .rbc-date-cell > a {
+  color: #5c5f66;
+}
+
+.rbc-now .rbc-date-cell > a {
+  color: #37b24d;
+  font-weight: 700;
+}
+
+/* Eventos */
+.rbc-event {
+  padding: 1px 3px;
+  font-size: 11px;
+  border-radius: 3px;
+  border: none;
+  font-weight: 500;
+}
+
+/* Eventos internos - verde oscuro */
+.rbc-event[style*="background-color: rgb(55, 178, 77)"],
+.rbc-event[style*="backgroundColor: rgb(55, 178, 77)"] {
+  background-color: #37b24d !important;
+  border-left: 3px solid #2b8a3e;
+}
+
+/* Eventos de Google - mantener su color original pero con mejor contraste */
+.rbc-event:not([style*="background-color: rgb(55, 178, 77)"]) {
+  opacity: 0.9;
+}
+
+.rbc-event:hover {
+  opacity: 1;
+  filter: brightness(1.1);
+}
+
+.rbc-event-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rbc-event-content {
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Evento seleccionado */
+.rbc-selected {
+  background-color: #2b8a3e !important;
+}
+
+/* Slot de tiempo */
+.rbc-time-slot {
+  border-top-color: #373a40;
+}
+
+/* Vista de mes - hacer celdas más compactas */
+.rbc-month-view {
+  border-color: #373a40;
+}
+
+.rbc-month-row {
+  border-color: #373a40;
+  min-height: 65px; /* Más compacto */
+}
+
+.rbc-row-content {
+  min-height: 65px; /* Más compacto */
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #373a40;
+}
+
+/* Vista de semana y día */
+.rbc-time-view {
+  border-color: #373a40;
+}
+
+.rbc-time-header {
+  border-color: #373a40;
+}
+
+.rbc-time-content {
+  border-top-color: #373a40;
+}
+
+.rbc-time-gutter {
+  background-color: #25262b;
+  border-right-color: #373a40;
+}
+
+.rbc-timeslot-group {
+  border-left-color: #373a40;
+  min-height: 50px; /* Más compacto */
+}
+
+.rbc-time-header-content {
+  border-left-color: #373a40;
+}
+
+.rbc-label {
+  color: #909296;
+  font-size: 11px;
+}
+
+/* Current time indicator (línea verde en vista día/semana) */
+.rbc-current-time-indicator {
+  background-color: #37b24d;
+  height: 2px;
+}
+
+/* Botón "Show more" cuando hay muchos eventos */
+.rbc-show-more {
+  background-color: transparent;
+  color: #37b24d;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 3px;
+  margin: 1px 3px;
+}
+
+.rbc-show-more:hover {
+  background-color: rgba(55, 178, 77, 0.1);
+  text-decoration: none;
+}
+
+/* Overlay cuando se hace clic en "show more" */
+.rbc-overlay {
+  background-color: #25262b;
+  border: 1px solid #373a40;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+}
+
+.rbc-overlay-header {
+  background-color: #2c2e33;
+  border-bottom: 1px solid #373a40;
+  padding: 8px 12px;
+  color: #c1c2c5;
+  font-weight: 600;
+  border-radius: 6px 6px 0 0;
+}
+
+/* Agenda view */
+.rbc-agenda-view {
+  background-color: #25262b;
+}
+
+.rbc-agenda-table {
+  border-color: #373a40;
+}
+
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell,
+.rbc-agenda-event-cell {
+  background-color: #25262b;
+  border-color: #373a40;
+  color: #c1c2c5;
+  padding: 8px 12px;
+}
+
+.rbc-agenda-date-cell {
+  font-weight: 600;
+}
+
+/* Ajustes responsive para hacer el calendario más compacto */
+@media (max-width: 768px) {
+  .rbc-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rbc-toolbar-label {
+    font-size: 14px;
+  }
+
+  .rbc-header {
+    font-size: 11px;
+    padding: 6px 2px;
+  }
+
+  .rbc-month-row {
+    min-height: 60px;
+  }
+
+  .rbc-event {
+    font-size: 10px;
+    padding: 1px 3px;
+  }
+}
+
+/* Scrollbar personalizada para mantener la estética */
+.rbc-time-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rbc-time-content::-webkit-scrollbar-track {
+  background: #1a1b1e;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb {
+  background: #373a40;
+  border-radius: 4px;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb:hover {
+  background: #37b24d;
+}

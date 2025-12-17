@@ -1,11 +1,10 @@
 import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
 import { useEffect, useState } from 'react';
-import { Band, EventModel } from '@/context/types';
-import { Button, Input } from '@mantine/core';
+import { EventModel } from '@/context/types';
+import { Button, Input, Divider, Text, Select, ComboboxItem } from '@mantine/core';
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import { combineDateAndTime, toTimeString } from '@/utils/dateUtils';
-import BandList from '../BandManager/BandList';
 
 const EventForm = ({
   event,
@@ -38,6 +37,28 @@ const EventForm = ({
   const [endTimeOnly, setEndTimeOnly] = useState<string>(
     event.endDate ? toTimeString(new Date(event.endDate)) : ''
   );
+  const [salons, setSalons] = useState<string[]>([]);
+  const [loadingSalons, setLoadingSalons] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+
+  // Fetch salons from API
+  useEffect(() => {
+    const fetchSalons = async () => {
+      setLoadingSalons(true);
+      try {
+        const response = await fetch('/api/salons');
+        const data = await response.json();
+        if (data.salons) {
+          setSalons(data.salons.map((s: any) => s.name));
+        }
+      } catch (error) {
+        console.error('Error fetching salons:', error);
+      } finally {
+        setLoadingSalons(false);
+      }
+    };
+    fetchSalons();
+  }, []);
 
   // Sincronizar estado local con el prop event cuando el usuario navega
   useEffect(() => {
@@ -106,26 +127,46 @@ const EventForm = ({
     });
     return isValid;
   };
-  const next = () => {
+  const saveSalonIfNew = async () => {
+    // Si el salón no está en la lista, guardarlo en la BD
+    if (eventData.lugar && !salons.includes(eventData.lugar)) {
+      try {
+        await fetch('/api/salons', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: eventData.lugar,
+            city: eventData.eventCity || '',
+            address: eventData.eventAddress || '',
+            contact: eventData.venueContact || ''
+          })
+        });
+      } catch (error) {
+        console.error('Error saving salon:', error);
+      }
+    }
+  };
+
+  const next = async () => {
     const baseValid = validateRequiredFields();
     const timesValid = validateTimes();
 
     if (baseValid && timesValid) {
       setValidate(false);
-      onNextTab(EVENT_TABS.MUSIC, eventData);
+      await saveSalonIfNew();
+      onNextTab(EVENT_TABS.SHOW, eventData);
     }
   };
   const back = () => {
     onBackTab(EVENT_TABS.CLIENT, eventData);
   };
 
-  const handleBandsChange = (bands: Band[]) => {
-    setEventData((prev) => ({ ...prev, bands }));
-  };
-
   return (
     <>
-      <h3>Datos del evento</h3>
+      {/* SECCIÓN: DATOS DEL EVENTO */}
+      <Text size='lg' fw={700} mb='md'>Datos del evento</Text>
       <div className='inputs-grid'>
         <DatePickerInput
           placeholder='Fecha de evento *'
@@ -156,12 +197,56 @@ const EventForm = ({
         />
         <Input
           type='text'
-          name='lugar'
-          value={eventData.lugar}
+          placeholder='Empresa'
+          name='company'
           onChange={handleInputChange}
-          placeholder='Lugar *'
           autoComplete='off'
+          value={eventData.company || ''}
+        />
+        <Input
+          placeholder='Cantidad de Invitados'
+          type='text'
+          name='guests'
+          onChange={handleInputChange}
+          autoComplete='off'
+          value={eventData.guests}
+        />
+      </div>
+
+      <Divider my='xl' />
+
+      {/* SECCIÓN: UBICACIÓN */}
+      <Text size='lg' fw={700} mb='md'>Ubicación</Text>
+      <div className='inputs-grid'>
+        <Select
+          placeholder='Lugar *'
+          name='lugar'
+          data={salons}
+          value={eventData.lugar}
+          onChange={(value) =>
+            setEventData((prev) => ({ ...prev, lugar: value || '' }))
+          }
+          searchable
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          nothingFoundMessage={
+            <Button
+              variant='light'
+              size='xs'
+              fullWidth
+              onClick={() => {
+                if (searchValue.trim()) {
+                  setSalons((current) => [...current, searchValue.trim()]);
+                  setEventData((prev) => ({ ...prev, lugar: searchValue.trim() }));
+                  setSearchValue('');
+                }
+              }}
+            >
+              + Crear {searchValue}
+            </Button>
+          }
           error={validate && !eventData.lugar}
+          disabled={loadingSalons}
         />
         <Input
           type='text'
@@ -180,9 +265,23 @@ const EventForm = ({
           onChange={handleInputChange}
           autoComplete='off'
         />
+        <Input
+          type='text'
+          placeholder='Contacto de lugar'
+          name='venueContact'
+          value={eventData.venueContact || ''}
+          onChange={handleInputChange}
+          autoComplete='off'
+        />
+      </div>
 
+      <Divider my='xl' />
+
+      {/* SECCIÓN: HORARIOS */}
+      <Text size='lg' fw={700} mb='md'>Horarios</Text>
+      <div className='inputs-grid'>
         <TimePicker
-          label='Hora de inicio HH:mm *'
+          label='Hora de inicio *'
           name='timeOnly'
           value={timeOnly}
           onChange={(value: string) => setTimeOnly(value)}
@@ -190,7 +289,7 @@ const EventForm = ({
         />
 
         <TimePicker
-          label='Hora de Finalización HH:mm *'
+          label='Hora de Finalización *'
           name='endTimeOnly'
           value={endTimeOnly}
           onChange={(value: string) => setEndTimeOnly(value)}
@@ -205,6 +304,7 @@ const EventForm = ({
             setEventData((prev) => ({ ...prev, churchDate: value }))
           }
         />
+
         <TimePicker
           label='Hora del civil'
           name='civil'
@@ -213,25 +313,32 @@ const EventForm = ({
             setEventData((prev) => ({ ...prev, civil: value }))
           }
         />
-        <Input
-          placeholder='Cantidad de Invitados'
-          type='text'
-          name='guests'
-          onChange={handleInputChange}
-          autoComplete='off'
-          value={eventData.guests}
+
+        <TimePicker
+          label='Horario llegada staff'
+          name='staffArrivalTime'
+          value={eventData.staffArrivalTime || ''}
+          onChange={(value: string) =>
+            setEventData((prev) => ({ ...prev, staffArrivalTime: value }))
+          }
+        />
+
+        <TimePicker
+          label='Horario llegada equipamiento'
+          name='equipmentArrivalTime'
+          value={eventData.equipmentArrivalTime || ''}
+          onChange={(value: string) =>
+            setEventData((prev) => ({ ...prev, equipmentArrivalTime: value }))
+          }
         />
       </div>
-      <BandList
-        bands={eventData.bands || []}
-        onBandsChange={handleBandsChange}
-      />
+
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
-          marginTop: '10px'
+          marginTop: '20px'
         }}
       >
         <Button onClick={back}>Atrás</Button>

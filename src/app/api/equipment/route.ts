@@ -14,21 +14,72 @@ export async function GET(req: Request) {
 
   const client = await clientPromise;
   const db = client.db('degano-app');
+
+  // PASO 1: Limpiar equipos que tienen eventos expirados (solo si NO estamos en modo evento)
+  if (!eventStartDate && !eventEndDate) {
+    const now = new Date();
+
+    // Buscar equipos que están marcados como "En Evento" pero cuya fecha de fin ya pasó
+    const expiredEquipment = await db
+      .collection('equipment')
+      .find({
+        'outOfService.isOut': true,
+        'outOfService.reason': 'En Evento',
+        lastUsedEndDate: { $lt: now }
+      })
+      .toArray();
+
+    if (expiredEquipment.length > 0) {
+      console.log(`=== LIMPIANDO ${expiredEquipment.length} EQUIPOS CON EVENTOS EXPIRADOS ===`);
+
+      // Actualizar todos los equipos expirados
+      const expiredIds = expiredEquipment.map((eq) => eq._id);
+      await db.collection('equipment').updateMany(
+        { _id: { $in: expiredIds } },
+        {
+          $set: {
+            location: 'Deposito',
+            lastUsedStartDate: null,
+            lastUsedEndDate: null,
+            outOfService: {
+              isOut: false,
+              reason: null,
+              details: null
+            }
+          }
+        }
+      );
+
+      // Registrar en historial para cada equipo
+      const session = await getSession();
+      for (const eq of expiredEquipment) {
+        await createHistoryEntry(db, {
+          equipmentId: eq._id.toString(),
+          equipmentName: eq.name,
+          equipmentCode: eq.code,
+          action: 'cambio_estado',
+          userId: session?.user?.sub || 'SYSTEM',
+          fromValue: 'En Evento',
+          toValue: 'Disponible',
+          details: `Liberado automáticamente - evento finalizado el ${new Date(eq.lastUsedEndDate).toLocaleString('es-AR')}`
+        });
+      }
+
+      console.log(`Equipos liberados: ${expiredEquipment.map((eq) => eq.name).join(', ')}`);
+    }
+  }
+
+  // PASO 2: Obtener equipos actualizados
   const equipments = await db
     .collection('equipment')
     .find()
     .sort({ name: 1 })
     .toArray();
 
-  // Si hay fechas del evento, validar contra esas fechas
-  // Si no, validar contra la fecha actual (modo visualización)
-  const checkDate = eventStartDate ? new Date(eventStartDate) : new Date();
-
+  // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara
   const enriched = equipments.map((eq) => {
-    // Si estamos validando para un evento específico, verificar si el equipo
-    // está ocupado en TODO el rango de fechas del evento
-    let inEvent = false;
-
+    // Si estamos validando para un evento específico (al crear/editar evento),
+    // verificar si el equipo está ocupado en el rango de fechas
     if (eventStartDate && eventEndDate && eq.lastUsedStartDate && eq.lastUsedEndDate) {
       const eStart = new Date(eventStartDate);
       const eEnd = new Date(eventEndDate);
@@ -42,28 +93,28 @@ export async function GET(req: Request) {
       usedEnd.setHours(0, 0, 0, 0);
 
       // Verificar si hay solapamiento entre las fechas del evento y las fechas de uso
-      // Solapamiento ocurre si: (eStart <= usedEnd) AND (eEnd >= usedStart)
-      inEvent = eStart <= usedEnd && eEnd >= usedStart;
-    } else {
-      // Modo visualización: solo verificar si la fecha actual está en uso
-      inEvent = isDateBetweenInclusive(
-        checkDate,
-        eq.lastUsedStartDate ? new Date(eq.lastUsedStartDate) : null,
-        eq.lastUsedEndDate ? new Date(eq.lastUsedEndDate) : null
-      );
+      const inEvent = eStart <= usedEnd && eEnd >= usedStart;
+
+      // Si hay solapamiento, marcar como no disponible para este evento
+      if (inEvent) {
+        return {
+          ...eq,
+          outOfService: { isOut: true, reason: 'En Evento' }
+        };
+      }
     }
 
-    const outOfServiceMasked = inEvent
-      ? { isOut: true, reason: 'En Evento' }
-      : eq.outOfService;
-
-    return {
-      ...eq,
-      outOfService: outOfServiceMasked,
-    };
+    // Devolver el equipamiento tal cual está en la DB
+    return eq;
   });
 
-  return NextResponse.json(enriched);
+  return NextResponse.json(enriched, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  });
 }
 
 export async function POST(req: Request) {

@@ -35,8 +35,26 @@ export default withPageAuthRequired(function EventPage() {
   const [clientFilter, setClientFilter] = useState<string>('');
   const [salonFilter, setSalonFilter] = useState<string>('');
   const [filteredRecords, setFilteredRecords] = useState(records);
+  const [salons, setSalons] = useState<string[]>([]);
   const notify = useNotification();
   const setLoadingCursor = useLoadingCursor();
+
+  // Fetch salons from API
+  useEffect(() => {
+    const fetchSalons = async () => {
+      try {
+        const response = await fetch('/api/salons');
+        const data = await response.json();
+        if (data.salons) {
+          const salonNames = data.salons.map((s: any) => s.name).sort((a: string, b: string) => a.localeCompare(b));
+          setSalons(salonNames);
+        }
+      } catch (error) {
+        console.error('Error fetching salons:', error);
+      }
+    };
+    fetchSalons();
+  }, []);
 
   useEffect(() => {
     const filtered = records.filter(
@@ -57,16 +75,7 @@ export default withPageAuthRequired(function EventPage() {
     )
   );
 
-  const uniqueSalons = Array.from(
-    new Set(
-      records
-        .map((r) => r.lugar)
-        .filter((lugar) => lugar && lugar.trim() !== '')
-    )
-  );
-
   const sortedClients = [...uniqueClients].sort((a, b) => a.localeCompare(b));
-  const sortedSalons = [...uniqueSalons].sort((a, b) => a.localeCompare(b));
 
   useEffect(() => {
     const data = sortBy(allEvents, sortStatus.columnAccessor) as any;
@@ -172,9 +181,9 @@ export default withPageAuthRequired(function EventPage() {
                 onChange={(value) => setSalonFilter(value || '')}
                 data={[
                   { value: '', label: 'Todos los salones' },
-                  ...sortedSalons.map((lugar) => ({
-                    value: lugar,
-                    label: lugar
+                  ...salons.map((salon) => ({
+                    value: salon,
+                    label: salon
                   }))
                 ]}
                 clearable
@@ -216,20 +225,20 @@ export default withPageAuthRequired(function EventPage() {
                 return 'grey';
               }}
               columns={[
-                { accessor: 'fullName', title: 'Nombre' },
                 {
                   accessor: 'date',
                   title: 'Fecha',
                   render: ({ date }) => new Date(date).toLocaleDateString(),
                   sortable: true
                 },
+                { accessor: 'type', title: 'Tipo de evento' },
+                { accessor: 'lugar', title: 'Lugar' },
                 {
                   accessor: 'date',
                   title: 'Hora',
                   render: ({ date }) => new Date(date).toLocaleTimeString()
                 },
-                { accessor: 'lugar', title: 'Lugar' },
-                { accessor: 'type', title: 'Tipo de evento' },
+                { accessor: 'fullName', title: 'Cliente' },
                 {
                   accessor: 'actions',
                   title: 'Acciones',

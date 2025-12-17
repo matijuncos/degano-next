@@ -67,7 +67,8 @@ const ClientForm = ({
 
   const requiredMainFields: (keyof EventModel)[] = [
     'fullName',
-    'phoneNumber'
+    'phoneNumber',
+    'rol'
   ];
 
   const requiredExtraFields: (keyof ExtraClient)[] = [
@@ -497,6 +498,15 @@ const ClientForm = ({
                 disabled={!isNewClient && !selectedClientId}
               />
               <Input
+                placeholder='Rol en el evento *'
+                name='rol'
+                onChange={handleInputChange}
+                autoComplete='off'
+                error={validate && !clientData.rol}
+                value={clientData.rol || ''}
+                disabled={!isNewClient && !selectedClientId}
+              />
+              <Input
                 placeholder='Edad'
                 name='age'
                 onChange={handleInputChange}
@@ -522,9 +532,9 @@ const ClientForm = ({
             Cliente principal confirmado
           </Text>
           <Box mt='xs' mb='sm'>
-            <Text>{clientData.fullName}</Text>
+            <Text>{clientData.fullName} ({clientData.rol})</Text>
             <Text size='sm'>Tel: {clientData.phoneNumber}</Text>
-            <Text size='sm'>Dirección: {clientData.address}</Text>
+            {clientData.address && <Text size='sm'>Dirección: {clientData.address}</Text>}
           </Box>
           <Group>
             <Button

@@ -170,7 +170,7 @@ const PaymentForm = ({
           Atrás
         </Button>
         <Button variant='brand' onClick={save}>
-          Guardar
+          Finalizar Evento
         </Button>
       </div>
     </div>

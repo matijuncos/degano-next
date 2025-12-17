@@ -316,18 +316,48 @@ export default function CreationPanel({
           />
           <Select
             label='Estado'
-            data={['Disponible', 'Fuera de servicio']}
-            value={formData.isOut ? 'Fuera de servicio' : 'Disponible'}
-            onChange={(val) =>
-              handleInput('isOut', val === 'Fuera de servicio')
+            data={['Disponible', 'En Uso', 'Fuera de servicio']}
+            value={
+              formData.isOut && formData.reason === 'En Evento'
+                ? 'En Uso'
+                : formData.isOut
+                ? 'Fuera de servicio'
+                : 'Disponible'
             }
+            onChange={(val) => {
+              if (val === 'Disponible') {
+                handleInput('isOut', false);
+                handleInput('reason', '');
+              } else if (val === 'En Uso') {
+                handleInput('isOut', true);
+                handleInput('reason', 'En Evento');
+              } else if (val === 'Fuera de servicio') {
+                handleInput('isOut', true);
+                handleInput('reason', '');
+              }
+            }}
+            disabled={formData.isOut && formData.reason === 'En Evento'}
           />
-          {formData.isOut && (
+          {formData.isOut && formData.reason !== 'En Evento' && (
             <Textarea
               label='Motivo de fuera de servicio'
               value={formData.reason || ''}
               onChange={(e) => handleInput('reason', e.currentTarget.value)}
             />
+          )}
+          {formData.isOut && formData.reason === 'En Evento' && (
+            <div
+              style={{
+                padding: '8px 12px',
+                backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                borderRadius: '4px',
+                border: '1px solid rgba(251, 191, 36, 0.3)'
+              }}
+            >
+              <span style={{ fontSize: '14px', color: '#fbbf24' }}>
+                ⚠️ Este equipamiento está asignado a un evento. Para cambiar su estado, primero debes quitarlo del evento correspondiente.
+              </span>
+            </div>
           )}
           <Textarea
             label='Historial'

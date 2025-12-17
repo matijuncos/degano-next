@@ -3,9 +3,12 @@
 import ClientForm from '@/components/ClientForm/ClientForm';
 import EquipmentForm from '@/components/EquipmentForm/EquipmentForm';
 import EventForm from '@/components/EventForm/EventForm';
+import ShowForm from '@/components/ShowForm/ShowForm';
 import MusicForm from '@/components/MusicForm/MusicForm';
 import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import TimingForm from '@/components/TimingForm/TimingForm';
+import MoreInfoForm from '@/components/MoreInfoForm/MoreInfoForm';
+import StaffForm from '@/components/StaffForm/StaffForm';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EVENT_TABS } from '@/context/config';
@@ -17,6 +20,7 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
 import { Tabs, Button } from '@mantine/core';
+import { mutate } from 'swr';
 
 const NewEventPage = () => {
   const {
@@ -101,6 +105,15 @@ const NewEventPage = () => {
           setEvent(data.event);
         }
 
+        // Invalidar TODO el cache de SWR relacionado con equipment
+        await Promise.all([
+          mutate('/api/equipment'),
+          mutate('/api/categories'),
+          mutate('/api/categoryTreeData'),
+          mutate('/api/treeData'),
+          mutate('/api/equipmentLocation')
+        ]);
+
         // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
         if (canShowFilesTab()) {
           setFormState(EVENT_TABS.FILES);
@@ -140,6 +153,14 @@ const NewEventPage = () => {
             setValidate={setValidate}
           />
         );
+      case EVENT_TABS.SHOW:
+        return (
+          <ShowForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+          />
+        );
       case EVENT_TABS.MUSIC:
         return (
           <MusicForm
@@ -156,6 +177,14 @@ const NewEventPage = () => {
             event={event}
           />
         );
+      case EVENT_TABS.STAFF:
+        return (
+          <StaffForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+          />
+        );
       case EVENT_TABS.PAYMENT:
         return (
           <PaymentForm
@@ -167,6 +196,14 @@ const NewEventPage = () => {
       case EVENT_TABS.TIMING:
         return (
           <TimingForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+          />
+        );
+      case EVENT_TABS.MORE_INFO:
+        return (
+          <MoreInfoForm
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
@@ -208,15 +245,20 @@ const NewEventPage = () => {
           <Tabs.List>
             <Tabs.Tab value={EVENT_TABS.CLIENT.toString()}>Cliente</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EVENT.toString()}>Evento</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.SHOW.toString()}>Show</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.MUSIC.toString()}>Musica</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.TIMING.toString()}>Timing</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.MORE_INFO.toString()}>
+              Más Información
+            </Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EQUIPMENT.toString()}>
               Equipamiento
             </Tabs.Tab>
-            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Presupuesto</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.STAFF.toString()}>Staff</Tabs.Tab>
             {canShowFilesTab() && (
               <Tabs.Tab value={EVENT_TABS.FILES.toString()}>Archivos</Tabs.Tab>
             )}
+            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Presupuesto</Tabs.Tab>
           </Tabs.List>
         </Tabs>
       </div>

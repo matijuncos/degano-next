@@ -43,7 +43,13 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
         {
           $set: {
             lastUsedStartDate: eventStart,
-            lastUsedEndDate: eventEnd
+            lastUsedEndDate: eventEnd,
+            location: document.lugar,
+            outOfService: {
+              isOut: true,
+              reason: 'En Evento',
+              details: `${document.type} - ${document.lugar}`
+            }
           }
         }
       );

@@ -411,7 +411,7 @@ const MusicForm = ({
 
   return (
     <Box>
-      <Accordion multiple defaultValue={['ingreso', 'ceremonia', 'vals', 'fiesta', 'ambiente']}>
+      <Accordion multiple>
         {/* Canciones de ingreso */}
         <Accordion.Item value='ingreso'>
           <Accordion.Control>Canciones de ingreso</Accordion.Control>
@@ -811,9 +811,10 @@ const MusicForm = ({
               <div className={styles.ratingContainer}>
                 {musicData?.music.genres.map((genre: GenreType, index: number) => {
                   const options = [
-                    { label: 'Mucho', value: 3, color: '#51cf66' },
-                    { label: 'Normal', value: 2, color: '#fd7e14' },
-                    { label: 'Poco o Nada', value: 1, color: '#fa5252' }
+                    { label: 'Mucho', value: 4, color: '#51cf66' },
+                    { label: 'Normal', value: 3, color: '#ffd43b' },
+                    { label: 'Poco', value: 2, color: '#fd7e14' },
+                    { label: 'Nada', value: 1, color: '#fa5252' }
                   ];
 
                   return (
