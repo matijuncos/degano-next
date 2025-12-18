@@ -46,7 +46,9 @@ export interface EventModel {
   eventAddress: string;
   eventCity: string;
   lugar: string;
-  venueContact?: string;
+  venueContact?: string; // Legacy - mantener para retrocompatibilidad
+  venueContactName?: string; // Nuevo campo - nombre del contacto
+  venueContactPhone?: string; // Nuevo campo - teléfono del contacto
   churchDate?: string;
   civil: string;
   bands: Array<Band>;

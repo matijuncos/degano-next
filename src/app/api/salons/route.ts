@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, city, address, contact } = body;
+    const { name, city, address, contact, contactName, contactPhone } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -77,7 +77,11 @@ export async function POST(req: Request) {
       name,
       city: city || '',
       address: address || '',
-      contact: contact || '',
+      // Mantener retrocompatibilidad con campo contact (legacy)
+      contact: contact || contactPhone || '',
+      // Nuevos campos separados
+      contactName: contactName || '',
+      contactPhone: contactPhone || contact || '',
       createdAt: new Date()
     };
 
@@ -104,7 +108,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { _id, name, city, address, contact } = body;
+    const { _id, name, city, address, contact, contactName, contactPhone } = body;
 
     if (!_id) {
       return NextResponse.json(
@@ -131,7 +135,11 @@ export async function PUT(req: Request) {
           name,
           city: city || '',
           address: address || '',
-          contact: contact || '',
+          // Mantener retrocompatibilidad con campo contact (legacy)
+          contact: contact || contactPhone || '',
+          // Nuevos campos separados
+          contactName: contactName || '',
+          contactPhone: contactPhone || contact || '',
           updatedAt: new Date()
         }
       }

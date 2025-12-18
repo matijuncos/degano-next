@@ -17,6 +17,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import { useEffect } from 'react';
 
 interface NavbarLinkProps {
   icon: typeof IconHome2;
@@ -55,10 +56,20 @@ function Navbar() {
   const setLoadingCursor = useLoadingCursor();
   const pathname = usePathname();
 
+  // Desactivar loading cuando cambia la ruta
+  useEffect(() => {
+    setLoadingCursor(false);
+  }, [pathname]);
+
   const handleOnClick = (route: string) => {
     if (pathname !== route) {
       setLoadingCursor(true);
       router.push(route);
+
+      // Timeout de seguridad: quitar loading después de 5 segundos
+      setTimeout(() => {
+        setLoadingCursor(false);
+      }, 5000);
     }
   };
 

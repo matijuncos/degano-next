@@ -1,6 +1,16 @@
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Button, Input, Textarea, Flex, Text, Box, Card, Group, Title } from '@mantine/core';
+import {
+  Button,
+  Input,
+  Textarea,
+  Flex,
+  Text,
+  Box,
+  Card,
+  Group,
+  Title
+} from '@mantine/core';
 import { TimePicker } from '@mantine/dates';
 import { IconPlus } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
@@ -99,46 +109,69 @@ const TimingForm = ({
       {/* Formulario de agregar nuevo timing */}
       {isAdding && (
         <Card withBorder padding='md' mb='md'>
-          <Text fw={500} mb='sm'>Nuevo Evento al Cronograma</Text>
-          <Flex gap='sm' mb='sm' align='flex-end'>
-            <TimePicker
-              label='Hora'
-              value={newItem.time}
-              onChange={(value) => setNewItem({ ...newItem, time: value })}
-              style={{ flex: 1 }}
-            />
-            <Box style={{ flex: 2 }}>
-              <Text size='sm' fw={500} mb='4px'>Título</Text>
-              <Input
-                placeholder='Título del evento'
-                value={newItem.title}
-                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddTiming();
+            }}
+          >
+            <Text fw={500} mb='sm'>
+              Nuevo Evento al Cronograma
+            </Text>
+            <Flex gap='sm' mb='sm' align='flex-end'>
+              <TimePicker
+                label='Hora'
+                value={newItem.time}
+                onChange={(value) => setNewItem({ ...newItem, time: value })}
+                style={{ flex: 1 }}
               />
-            </Box>
-          </Flex>
-          <Textarea
-            placeholder='Detalles adicionales'
-            value={newItem.details}
-            onChange={(e) => setNewItem({ ...newItem, details: e.target.value })}
-            minRows={2}
-            mb='sm'
-          />
-          <Group gap='xs'>
-            <Button onClick={handleAddTiming} color='green' size='xs'>
-              Guardar
-            </Button>
-            <Button
-              onClick={() => {
-                setIsAdding(false);
-                setNewItem({ time: '', title: '', details: '' });
-              }}
-              variant='light'
-              color='gray'
-              size='xs'
-            >
-              Cancelar
-            </Button>
-          </Group>
+              <Box style={{ flex: 2 }}>
+                <Text size='sm' fw={500} mb='4px'>
+                  Título
+                </Text>
+                <Input
+                  placeholder='Título del evento'
+                  value={newItem.title}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, title: e.target.value })
+                  }
+                />
+              </Box>
+            </Flex>
+            <Text size='sm' fw={500} mb='4px'>
+              Detalles
+            </Text>
+            <Textarea
+              placeholder='Detalles adicionales'
+              value={newItem.details}
+              onChange={(e) =>
+                setNewItem({ ...newItem, details: e.target.value })
+              }
+              minRows={2}
+              mb='sm'
+            />
+            <Group gap='xs'>
+              <Button
+                type='submit'
+                onClick={handleAddTiming}
+                color='green'
+                size='xs'
+              >
+                Guardar
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsAdding(false);
+                  setNewItem({ time: '', title: '', details: '' });
+                }}
+                variant='light'
+                color='gray'
+                size='xs'
+              >
+                Cancelar
+              </Button>
+            </Group>
+          </form>
         </Card>
       )}
 
@@ -149,51 +182,73 @@ const TimingForm = ({
             <Card key={index} withBorder padding='sm'>
               {editingIndex === index ? (
                 // Modo edición
-                <Box>
-                  <Text fw={500} mb='sm' c='dimmed'>#{index + 1}</Text>
-                  <Flex gap='sm' mb='sm' align='flex-end'>
-                    <TimePicker
-                      label='Hora'
-                      value={editingItem?.time || ''}
-                      onChange={(value) =>
-                        setEditingItem({ ...editingItem!, time: value })
-                      }
-                      style={{ flex: 1 }}
-                    />
-                    <Box style={{ flex: 2 }}>
-                      <Text size='sm' fw={500} mb='4px'>Título</Text>
-                      <Input
-                        placeholder='Título del evento'
-                        value={editingItem?.title || ''}
-                        onChange={(e) =>
-                          setEditingItem({ ...editingItem!, title: e.target.value })
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSaveEdit();
+                  }}
+                >
+                  <Box>
+                    <Text fw={500} mb='sm' c='dimmed'>
+                      #{index + 1}
+                    </Text>
+                    <Flex gap='sm' mb='sm' align='flex-end'>
+                      <TimePicker
+                        label='Hora'
+                        value={editingItem?.time || ''}
+                        onChange={(value) =>
+                          setEditingItem({ ...editingItem!, time: value })
                         }
+                        style={{ flex: 1 }}
                       />
-                    </Box>
-                  </Flex>
-                  <Textarea
-                    placeholder='Detalles adicionales'
-                    value={editingItem?.details || ''}
-                    onChange={(e) =>
-                      setEditingItem({ ...editingItem!, details: e.target.value })
-                    }
-                    minRows={2}
-                    mb='sm'
-                  />
-                  <Group gap='xs'>
-                    <Button onClick={handleSaveEdit} color='green' size='xs'>
-                      Guardar
-                    </Button>
-                    <Button
-                      onClick={handleCancelEdit}
-                      variant='light'
-                      color='gray'
-                      size='xs'
-                    >
-                      Cancelar
-                    </Button>
-                  </Group>
-                </Box>
+                      <Box style={{ flex: 2 }}>
+                        <Text size='sm' fw={500} mb='4px'>
+                          Título
+                        </Text>
+                        <Input
+                          placeholder='Título del evento'
+                          value={editingItem?.title || ''}
+                          onChange={(e) =>
+                            setEditingItem({
+                              ...editingItem!,
+                              title: e.target.value
+                            })
+                          }
+                        />
+                      </Box>
+                    </Flex>
+                    <Textarea
+                      placeholder='Detalles adicionales'
+                      value={editingItem?.details || ''}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem!,
+                          details: e.target.value
+                        })
+                      }
+                      minRows={2}
+                      mb='sm'
+                    />
+                    <Group gap='xs'>
+                      <Button
+                        type='submit'
+                        onClick={handleSaveEdit}
+                        color='green'
+                        size='xs'
+                      >
+                        Guardar
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        variant='light'
+                        color='gray'
+                        size='xs'
+                      >
+                        Cancelar
+                      </Button>
+                    </Group>
+                  </Box>
+                </form>
               ) : (
                 // Modo visualización
                 <Flex justify='space-between' align='center' gap='md'>
