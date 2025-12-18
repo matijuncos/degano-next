@@ -6,12 +6,14 @@ import {
   momentLocalizer
 } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import './calendar.css';
 import 'moment/locale/es';
 import { Drawer, Button, Flex, Modal, Stack, Badge, Switch } from '@mantine/core';
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
 import GoogleCalendarManager, { GoogleAccount } from '@/components/GoogleCalendarManager/GoogleCalendarManager';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns/format';
 import { parse } from 'date-fns/parse';
 import { startOfWeek } from 'date-fns/startOfWeek';
@@ -39,6 +41,8 @@ const gapiConfig = {
 };
 
 export default withPageAuthRequired(function CalendarPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedGoogleCalendars, setSelectedGoogleCalendars] = useState<string[]>([]);
@@ -63,8 +67,24 @@ export default withPageAuthRequired(function CalendarPage() {
   });
 
   const { setSelectedEvent, allEvents } = useDeganoCtx();
-  const [date, setDate] = useState(new Date());
-  const [view, setView] = useState(Views.MONTH);
+
+  // Inicializar vista y fecha desde URL si existen
+  const viewParam = searchParams.get('view') as 'month' | 'week' | 'day' | null;
+  const dateParam = searchParams.get('date');
+
+  const [date, setDate] = useState(() => {
+    if (dateParam) {
+      return new Date(dateParam);
+    }
+    return new Date();
+  });
+
+  const [view, setView] = useState(() => {
+    if (viewParam && ['month', 'week', 'day'].includes(viewParam)) {
+      return Views[viewParam.toUpperCase() as 'MONTH' | 'WEEK' | 'DAY'];
+    }
+    return Views.MONTH;
+  });
 
   const handleSelectedSlot = (value: any) => {
     // Solo abrir drawer para eventos internos
@@ -95,8 +115,8 @@ export default withPageAuthRequired(function CalendarPage() {
       selectable: true,
       source: 'internal',
       style: {
-        backgroundColor: '#228be6',
-        borderColor: '#1c7ed6'
+        backgroundColor: '#37b24d',
+        borderColor: '#2b8a3e'
       }
     };
   });
@@ -246,29 +266,55 @@ export default withPageAuthRequired(function CalendarPage() {
   const onNavigate = useCallback(
     (newDate: any) => {
       setDate(newDate);
+      // Actualizar URL con la nueva fecha
+      updateURL(newDate, view);
     },
-    [setDate]
+    [view]
   );
-  const onView = useCallback((newView: any) => setView(newView), [setView]);
+
+  const onView = useCallback(
+    (newView: any) => {
+      setView(newView);
+      // Actualizar URL con la nueva vista
+      updateURL(date, newView);
+    },
+    [date]
+  );
+
+  // Función para actualizar la URL con vista y fecha
+  const updateURL = (currentDate: Date, currentView: any) => {
+    const viewName = Object.keys(Views).find(
+      (key) => Views[key as keyof typeof Views] === currentView
+    )?.toLowerCase() || 'month';
+
+    const params = new URLSearchParams();
+    params.set('view', viewName);
+    params.set('date', currentDate.toISOString());
+
+    router.push(`/calendar?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <>
       <Flex
         direction='column'
-        style={{ height: '100vh', backgroundColor: 'white' }}
+        style={{ height: '100vh', backgroundColor: '#1a1b1e' }}
       >
         <Flex
           justify='space-between'
           align='center'
           p='md'
-          style={{ borderBottom: '1px solid #e0e0e0' }}
+          style={{
+            borderBottom: '1px solid #373a40',
+            backgroundColor: '#25262b'
+          }}
         >
           <Flex gap='md' align='center'>
-            <Badge color='blue' variant='filled'>
+            <Badge color='green' variant='filled'>
               {internalEvents.length} eventos internos
             </Badge>
             {googleEvents.length > 0 && (
-              <Badge color='purple' variant='filled'>
+              <Badge color='grape' variant='filled'>
                 {googleEvents.length} eventos de Google
               </Badge>
             )}
@@ -279,18 +325,21 @@ export default withPageAuthRequired(function CalendarPage() {
               checked={showInternalEvents}
               onChange={(e) => setShowInternalEvents(e.currentTarget.checked)}
               size='sm'
+              color='green'
             />
             <Switch
               label='Eventos de Google'
               checked={showGoogleEvents}
               onChange={(e) => setShowGoogleEvents(e.currentTarget.checked)}
               size='sm'
+              color='grape'
               disabled={googleEvents.length === 0}
             />
             <Button
               leftSection={<IconSettings size={16} />}
               onClick={() => setIsSettingsOpen(true)}
               variant='light'
+              color='gray'
             >
               Configurar calendarios
             </Button>
@@ -311,7 +360,7 @@ export default withPageAuthRequired(function CalendarPage() {
           selectable={true}
           eventPropGetter={eventStyleGetter}
           style={{
-            height: 'calc(100vh - 100px)',
+            height: 'calc(100vh - 80px)',
             width: '100%'
           }}
         />

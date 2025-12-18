@@ -31,6 +31,7 @@ import {
   IconFileText,
   IconFileZip
 } from '@tabler/icons-react';
+import { Image } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
 import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
@@ -143,6 +144,60 @@ const DrawerContent = () => {
     }
 
     return <IconFile size={size} />;
+  };
+
+  // Función para obtener preview de archivos de banda
+  const getBandFilePreview = (fileUrl: string) => {
+    if (!fileUrl) return null;
+
+    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
+    const isPdf = /\.pdf$/i.test(fileUrl);
+
+    return (
+      <Box
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          cursor: 'pointer',
+        }}
+        onClick={() => window.open(fileUrl, '_blank')}
+      >
+        <Card
+          withBorder
+          padding="xs"
+          style={{
+            width: '60px',
+            height: '60px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '';
+          }}
+        >
+          {isImage ? (
+            <Image
+              src={fileUrl}
+              alt="Band file"
+              fit="cover"
+              style={{ width: '100%', height: '100%', borderRadius: '4px' }}
+            />
+          ) : isPdf ? (
+            <IconFileTypePdf size={32} color="#FF0000" />
+          ) : (
+            <IconFile size={32} color="#888888" />
+          )}
+        </Card>
+      </Box>
+    );
   };
 
   // Fetch de archivos usando la API
@@ -379,40 +434,61 @@ const DrawerContent = () => {
           </Text>
           {selectedEvent?.bands && selectedEvent.bands.length > 0 ? (
             <Stack gap='md'>
-              {selectedEvent.bands.map((band, index) => (
+              {selectedEvent.bands.map((band, index) => {
+                // Combinar fileUrl singular (legacy) con fileUrls array
+                const allFiles = [
+                  ...((band as any).fileUrl ? [(band as any).fileUrl] : []),
+                  ...(band.fileUrls || [])
+                ];
+                // Remover duplicados
+                const uniqueFiles = [...new Set(allFiles)];
+
+                return (
                 <Card key={index} withBorder padding='sm'>
-                  <Text fw={500} mb='xs'>
-                    {band.bandName}
-                  </Text>
-                  {band.showTime && (
-                    <Text size='sm' c='dimmed' mb='xs'>
-                      Horario: {band.showTime}
-                    </Text>
-                  )}
-                  {band.testTime && (
-                    <Text size='sm' c='dimmed' mb='xs'>
-                      Prueba de sonido: {band.testTime}
-                    </Text>
-                  )}
-                  {band.bandInfo && (
-                    <Text size='sm' mb='xs'>
-                      {band.bandInfo}
-                    </Text>
-                  )}
-                  {band.contacts && band.contacts.length > 0 && (
-                    <Box mt='xs'>
-                      <Text size='xs' fw={500}>
-                        Contactos:
+                  <Group align='flex-start' gap='md' wrap='nowrap'>
+                    {uniqueFiles.length > 0 && (
+                      <Group gap='xs'>
+                        {uniqueFiles.map((fileUrl, idx) => (
+                          <div key={idx}>{getBandFilePreview(fileUrl)}</div>
+                        ))}
+                      </Group>
+                    )}
+                    <Box style={{ flex: 1 }}>
+                      <Text fw={500} mb='xs'>
+                        {band.bandName}
                       </Text>
-                      {band.contacts.map((contact, idx) => (
-                        <Text key={idx} size='xs'>
-                          • {contact.name} - {contact.rol} - {contact.phone}
+                      {band.showTime && (
+                        <Text size='sm' c='dimmed' mb='xs'>
+                          Horario: {band.showTime}
                         </Text>
-                      ))}
+                      )}
+                      {band.testTime && (
+                        <Text size='sm' c='dimmed' mb='xs'>
+                          Prueba de sonido: {band.testTime}
+                        </Text>
+                      )}
+                      {band.bandInfo && (
+                        <Text size='sm' mb='xs'>
+                          {band.bandInfo}
+                        </Text>
+                      )}
+                      {band.contacts && band.contacts.length > 0 && (
+                        <Box mt='xs'>
+                          <Text size='xs' fw={500}>
+                            Contactos:
+                          </Text>
+                          {band.contacts.map((contact, idx) => (
+                            <Text key={idx} size='xs'>
+                              • {contact.name} - {contact.rol} - {contact.phone}
+                            </Text>
+                          ))}
+                        </Box>
+                      )}
                     </Box>
-                  )}
+                  </Group>
                 </Card>
-              ))}
+              );
+              })}
             </Stack>
           ) : (
             <Text size='sm' c='dimmed'>
@@ -422,6 +498,44 @@ const DrawerContent = () => {
         </Box>
 
         <Divider />
+
+        {/* SECCIÓN: HORARIOS */}
+        {(selectedEvent?.churchDate ||
+          selectedEvent?.civil ||
+          selectedEvent?.staffArrivalTime ||
+          selectedEvent?.equipmentArrivalTime) && (
+          <>
+            <Box>
+              <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+                Horarios
+              </Text>
+              <Stack gap='xs'>
+                {selectedEvent?.churchDate && (
+                  <Text size='sm'>
+                    Iglesia: {selectedEvent.churchDate}
+                  </Text>
+                )}
+                {selectedEvent?.civil && (
+                  <Text size='sm'>
+                    Civil: {selectedEvent.civil}
+                  </Text>
+                )}
+                {selectedEvent?.staffArrivalTime && (
+                  <Text size='sm'>
+                    Llegada del Staff: {selectedEvent.staffArrivalTime}
+                  </Text>
+                )}
+                {selectedEvent?.equipmentArrivalTime && (
+                  <Text size='sm'>
+                    Llegada del Equipamiento: {selectedEvent.equipmentArrivalTime}
+                  </Text>
+                )}
+              </Stack>
+            </Box>
+
+            <Divider />
+          </>
+        )}
 
         {/* SECCIÓN: STAFF */}
         <Box>
@@ -524,7 +638,7 @@ const DrawerContent = () => {
                   <Stack gap={4} pl='md'>
                     {groupedEquipment[category].map((eq: any, idx: number) => (
                       <Text key={idx} size='sm'>
-                        {eq.name} - Cantidad: {eq.quantity || 1}
+                        Cant: {eq.quantity || 1} - {eq.name}
                       </Text>
                     ))}
                   </Stack>
@@ -608,7 +722,11 @@ const DrawerContent = () => {
           size='md'
           onClick={() => {
             setLoadingCursor(true);
-            router.push(`/event/${selectedEvent?._id}`);
+            // Obtener la ruta actual y los parámetros de búsqueda para poder volver
+            const currentPath = window.location.pathname;
+            const currentSearch = window.location.search;
+            const fullPath = currentPath + currentSearch;
+            router.push(`/event/${selectedEvent?._id}?from=${encodeURIComponent(fullPath)}`);
           }}
         >
           Ver Evento Completo

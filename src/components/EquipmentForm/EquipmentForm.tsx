@@ -11,11 +11,13 @@ import { findMainCategorySync } from '@/utils/categoryUtils';
 const EquipmentForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
 }) => {
 
   const [selectedEquipment, setSelectedEquipment] = useState(null);
@@ -37,6 +39,13 @@ const EquipmentForm = ({
     fetchCategories();
   }, []);
 
+  // Sincronizar estado local con el prop event cuando el usuario navega
+  useEffect(() => {
+    if (event) {
+      setEventEquipment(event);
+    }
+  }, [event]);
+
   // Estilos para ocultar scrollbar pero mantener funcionalidad
   const scrollContainerStyle = {
     scrollbarWidth: 'none' as const,
@@ -44,10 +53,16 @@ const EquipmentForm = ({
   };
 
   const next = () => {
-    onNextTab(4, eventEquipment);
+    if (updateEvent) {
+      updateEvent(eventEquipment);
+    }
+    onNextTab(EVENT_TABS.STAFF, eventEquipment);
   };
   const back = () => {
-    onBackTab(EVENT_TABS.MUSIC, eventEquipment);
+    if (updateEvent) {
+      updateEvent(eventEquipment);
+    }
+    onBackTab(EVENT_TABS.MORE_INFO, eventEquipment);
   };
 
   useEffect(() => {

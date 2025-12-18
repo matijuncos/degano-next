@@ -1,19 +1,30 @@
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Button, Input, Textarea, Flex, Text, Box } from '@mantine/core';
-import { IconPlus, IconX } from '@tabler/icons-react';
+import { Button, Input, Textarea, Flex, Text, Box, Card, Group, Title } from '@mantine/core';
+import { TimePicker } from '@mantine/dates';
+import { IconPlus } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 
 const TimingForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<{
+    time: string;
+    title: string;
+    details: string;
+  } | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newItem, setNewItem] = useState({ time: '', title: '', details: '' });
 
   // Sincronizar estado local con el prop event cuando el usuario navega
   useEffect(() => {
@@ -23,109 +34,229 @@ const TimingForm = ({
   }, [event]);
 
   const next = () => {
-    onNextTab(EVENT_TABS.EQUIPMENT, eventData);
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
+    onNextTab(EVENT_TABS.MORE_INFO, eventData);
   };
 
   const back = () => {
-    onBackTab(EVENT_TABS.MUSIC, eventData);
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
+    onBackTab(EVENT_TABS.TIMING, eventData);
   };
 
-  const addTimingItem = () => {
-    const newTiming = {
-      time: '',
-      title: '',
-      details: ''
-    };
-    setEventData((prev) => ({
-      ...prev,
-      timing: [...(prev.timing || []), newTiming]
-    }));
+  const handleAddTiming = () => {
+    const updatedTiming = [...(eventData.timing || []), newItem];
+    setEventData((prev) => ({ ...prev, timing: updatedTiming }));
+    setNewItem({ time: '', title: '', details: '' });
+    setIsAdding(false);
   };
 
-  const removeTimingItem = (index: number) => {
-    setEventData((prev) => ({
-      ...prev,
-      timing: prev.timing?.filter((_, i) => i !== index) || []
-    }));
+  const handleEditTiming = (index: number) => {
+    if (!eventData?.timing) return;
+    setEditingIndex(index);
+    setEditingItem({ ...eventData.timing[index] });
   };
 
-  const updateTimingItem = (index: number, field: string, value: string) => {
-    setEventData((prev) => ({
-      ...prev,
-      timing:
-        prev.timing?.map((item, i) =>
-          i === index ? { ...item, [field]: value } : item
-        ) || []
-    }));
+  const handleSaveEdit = () => {
+    if (editingIndex === null || !editingItem) return;
+    const updatedTiming = eventData.timing?.map((item, i) =>
+      i === editingIndex ? editingItem : item
+    );
+    setEventData((prev) => ({ ...prev, timing: updatedTiming }));
+    setEditingIndex(null);
+    setEditingItem(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setEditingItem(null);
+  };
+
+  const handleDeleteTiming = (index: number) => {
+    const updatedTiming = eventData.timing?.filter((_, i) => i !== index);
+    setEventData((prev) => ({ ...prev, timing: updatedTiming }));
   };
 
   return (
-    <Box>
-      <Text size='xl' fw={600} mb='md'>
-        Timing del Evento
-      </Text>
-
-      <Flex direction='column' gap='md'>
-        {eventData.timing?.map((item, index) => (
-          <Box
-            key={index}
-            p='md'
-            style={{ border: '1px solid #e9ecef', borderRadius: '8px' }}
+    <Flex direction='column' gap='md'>
+      {/* Título con botón de agregar */}
+      <Flex justify='space-between' align='center' mb='md'>
+        <Title order={3}>Cronograma del Evento</Title>
+        {!isAdding && (
+          <Button
+            leftSection={<IconPlus size={16} />}
+            variant='outline'
+            onClick={() => setIsAdding(true)}
           >
-            <Flex justify='space-between' align='center' mb='sm'>
-              <Text fw={500}>#{index + 1}</Text>
-              <IconX
-                size={20}
-                color='red'
-                style={{ cursor: 'pointer' }}
-                onClick={() => removeTimingItem(index)}
-              />
-            </Flex>
-            <Flex direction='column' gap='sm'>
-              <Flex gap='sm'>
-                <Input
-                  placeholder='Hora (ej: 20:00)'
-                  style={{ flexGrow: 1 }}
-                  value={item.time}
-                  onChange={(e) =>
-                    updateTimingItem(index, 'time', e.target.value)
-                  }
-                />
-                <Input
-                  placeholder='Título del evento'
-                  style={{ flexGrow: 1 }}
-                  value={item.title}
-                  onChange={(e) =>
-                    updateTimingItem(index, 'title', e.target.value)
-                  }
-                />
-              </Flex>
-              <Textarea
-                placeholder='Detalles adicionales'
-                value={item.details}
-                onChange={(e) =>
-                  updateTimingItem(index, 'details', e.target.value)
-                }
-                minRows={2}
-              />
-            </Flex>
-          </Box>
-        ))}
-
-        <Button
-          leftSection={<IconPlus size={16} />}
-          variant='outline'
-          onClick={addTimingItem}
-        >
-          Agregar Evento al Cronograma
-        </Button>
+            Agregar Evento al Cronograma
+          </Button>
+        )}
       </Flex>
 
-      <Flex gap='sm' mt='xl'>
+      {/* Formulario de agregar nuevo timing */}
+      {isAdding && (
+        <Card withBorder padding='md' mb='md'>
+          <Text fw={500} mb='sm'>Nuevo Evento al Cronograma</Text>
+          <Flex gap='sm' mb='sm' align='flex-end'>
+            <TimePicker
+              label='Hora'
+              value={newItem.time}
+              onChange={(value) => setNewItem({ ...newItem, time: value })}
+              style={{ flex: 1 }}
+            />
+            <Box style={{ flex: 2 }}>
+              <Text size='sm' fw={500} mb='4px'>Título</Text>
+              <Input
+                placeholder='Título del evento'
+                value={newItem.title}
+                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+              />
+            </Box>
+          </Flex>
+          <Textarea
+            placeholder='Detalles adicionales'
+            value={newItem.details}
+            onChange={(e) => setNewItem({ ...newItem, details: e.target.value })}
+            minRows={2}
+            mb='sm'
+          />
+          <Group gap='xs'>
+            <Button onClick={handleAddTiming} color='green' size='xs'>
+              Guardar
+            </Button>
+            <Button
+              onClick={() => {
+                setIsAdding(false);
+                setNewItem({ time: '', title: '', details: '' });
+              }}
+              variant='light'
+              color='gray'
+              size='xs'
+            >
+              Cancelar
+            </Button>
+          </Group>
+        </Card>
+      )}
+
+      {/* Lista de timing */}
+      {eventData.timing && eventData.timing.length > 0 ? (
+        <Flex direction='column' gap='xs'>
+          {eventData.timing.map((item, index) => (
+            <Card key={index} withBorder padding='sm'>
+              {editingIndex === index ? (
+                // Modo edición
+                <Box>
+                  <Text fw={500} mb='sm' c='dimmed'>#{index + 1}</Text>
+                  <Flex gap='sm' mb='sm' align='flex-end'>
+                    <TimePicker
+                      label='Hora'
+                      value={editingItem?.time || ''}
+                      onChange={(value) =>
+                        setEditingItem({ ...editingItem!, time: value })
+                      }
+                      style={{ flex: 1 }}
+                    />
+                    <Box style={{ flex: 2 }}>
+                      <Text size='sm' fw={500} mb='4px'>Título</Text>
+                      <Input
+                        placeholder='Título del evento'
+                        value={editingItem?.title || ''}
+                        onChange={(e) =>
+                          setEditingItem({ ...editingItem!, title: e.target.value })
+                        }
+                      />
+                    </Box>
+                  </Flex>
+                  <Textarea
+                    placeholder='Detalles adicionales'
+                    value={editingItem?.details || ''}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem!, details: e.target.value })
+                    }
+                    minRows={2}
+                    mb='sm'
+                  />
+                  <Group gap='xs'>
+                    <Button onClick={handleSaveEdit} color='green' size='xs'>
+                      Guardar
+                    </Button>
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant='light'
+                      color='gray'
+                      size='xs'
+                    >
+                      Cancelar
+                    </Button>
+                  </Group>
+                </Box>
+              ) : (
+                // Modo visualización
+                <Flex justify='space-between' align='center' gap='md'>
+                  <Flex gap='md' align='center' style={{ flex: 1 }}>
+                    <Text fw={600} c='dimmed' style={{ minWidth: '30px' }}>
+                      #{index + 1}
+                    </Text>
+                    <Text fw={600} style={{ minWidth: '60px' }}>
+                      {item.time}hs
+                    </Text>
+                    <Text fw={500} style={{ flex: 1 }}>
+                      {item.title}
+                    </Text>
+                    {item.details && (
+                      <Text size='sm' c='dimmed' style={{ flex: 2 }}>
+                        {item.details}
+                      </Text>
+                    )}
+                  </Flex>
+                  <Group gap='xs'>
+                    <Button
+                      size='xs'
+                      variant='light'
+                      color='blue'
+                      onClick={() => handleEditTiming(index)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size='xs'
+                      variant='light'
+                      color='red'
+                      onClick={() => handleDeleteTiming(index)}
+                    >
+                      Eliminar
+                    </Button>
+                  </Group>
+                </Flex>
+              )}
+            </Card>
+          ))}
+        </Flex>
+      ) : (
+        !isAdding && (
+          <Text c='dimmed' fs='italic'>
+            No hay cronograma definido
+          </Text>
+        )
+      )}
+
+      {/* Botones de navegación */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          marginTop: '20px'
+        }}
+      >
         <Button onClick={back}>Atrás</Button>
         <Button onClick={next}>Siguiente</Button>
-      </Flex>
-    </Box>
+      </div>
+    </Flex>
   );
 };
 

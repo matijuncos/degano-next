@@ -29,15 +29,20 @@ const ClientForm = ({
   onNextTab,
   onBackTab,
   validate,
-  setValidate
+  setValidate,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   validate: boolean;
   setValidate: Function;
+  updateEvent?: Function;
 }) => {
-  const [clientData, setClientData] = useState<EventModel>(event);
+  const [clientData, setClientData] = useState<EventModel>({
+    ...event,
+    extraClients: event.extraClients || []
+  });
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [isNewClient, setIsNewClient] = useState(false);
@@ -45,7 +50,7 @@ const ClientForm = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [mainClientConfirmed, setMainClientConfirmed] = useState(false);
   const [addingExtraClient, setAddingExtraClient] = useState(false);
-  const [extraClients, setExtraClients] = useState<ExtraClient[]>([]);
+  const [extraClients, setExtraClients] = useState<ExtraClient[]>(event.extraClients || []);
   const [extraClientData, setExtraClientData] = useState<ExtraClient>({
     _id: '',
     fullName: '',
@@ -67,7 +72,8 @@ const ClientForm = ({
 
   const requiredMainFields: (keyof EventModel)[] = [
     'fullName',
-    'phoneNumber'
+    'phoneNumber',
+    'rol'
   ];
 
   const requiredExtraFields: (keyof ExtraClient)[] = [
@@ -80,17 +86,15 @@ const ClientForm = ({
     fetchClients();
   }, []);
 
-  // Sincronizar estado local con el prop event cuando el usuario vuelve atrás
+  // Sincronizar estado local con el prop event cuando el usuario navega entre tabs
   useEffect(() => {
-    if (event && event.fullName && event.phoneNumber) {
-      // Si el evento tiene datos de cliente, restaurar el estado
-      setClientData(event);
+    if (event && event.fullName && event.phoneNumber && event.rol) {
+      setClientData({
+        ...event,
+        extraClients: event.extraClients || []
+      });
       setMainClientConfirmed(true);
-
-      // Restaurar clientes extras si existen
-      if (event.extraClients && event.extraClients.length > 0) {
-        setExtraClients(event.extraClients);
-      }
+      setExtraClients(event.extraClients || []);
     }
   }, [event]);
 
@@ -175,7 +179,16 @@ const ClientForm = ({
   const validateRequiredFields = () => {
     setValidate(true);
 
-    // If in existing client mode but no client is selected, show error
+    // Si el cliente ya fue confirmado, solo validar los campos requeridos
+    if (mainClientConfirmed) {
+      const isValid: boolean = requiredMainFields.every(
+        (field: keyof EventModel) =>
+          clientData[field] && String(clientData[field]).trim() !== ''
+      );
+      return isValid;
+    }
+
+    // Si no fue confirmado, validar selección de cliente o modo nuevo
     if (!isNewClient && !selectedClientId) {
       return false;
     }
@@ -200,35 +213,25 @@ const ClientForm = ({
     if (isExtra) {
       const isExtraValid = validateExtraClientFields();
       if (!isExtraValid) return;
-      if (isEditingExtra && editingExtraIndex !== null) {
-        const updatedClients = [...extraClients];
-        updatedClients[editingExtraIndex] = { ...extraClientData };
 
-        setExtraClients(updatedClients);
-        setClientData({
-          ...clientData,
-          extraClients: updatedClients
-        });
+      let updatedExtraClients: ExtraClient[];
+
+      if (isEditingExtra && editingExtraIndex !== null) {
+        updatedExtraClients = [...extraClients];
+        updatedExtraClients[editingExtraIndex] = { ...extraClientData };
         setIsEditingExtra(false);
         setEditingExtraIndex(null);
-        setAddingExtraClient(false);
-        setExtraClientData({
-          _id: '',
-          fullName: '',
-          phoneNumber: '',
-          email: '',
-          age: '',
-          address: '',
-          rol: ''
-        });
-        return;
+      } else {
+        // Agregar cliente extra al array
+        updatedExtraClients = [...extraClients, extraClientData];
       }
-      // Agregar cliente extra al array
-      setExtraClients((prev) => [...prev, extraClientData]);
-      setClientData({
-        ...clientData,
-        extraClients: [...clientData.extraClients, extraClientData]
-      });
+
+      setExtraClients(updatedExtraClients);
+      setClientData((prev) => ({
+        ...prev,
+        extraClients: updatedExtraClients
+      }));
+
       // Limpiar formulario del cliente extra
       setExtraClientData({
         _id: '',
@@ -240,6 +243,7 @@ const ClientForm = ({
         rol: ''
       });
       setAddingExtraClient(false);
+      setValidateExtra(false);
     } else {
       const isValid = validateRequiredFields();
       if (!isValid) return;
@@ -255,19 +259,24 @@ const ClientForm = ({
   };
 
   const next = () => {
-    // Si el cliente ya fue confirmado, avanzar directamente
-    if (mainClientConfirmed) {
-      setValidate(false);
-      onNextTab(EVENT_TABS.EVENT, clientData);
+    // Siempre validar campos requeridos antes de avanzar
+    if (!validateRequiredFields()) {
       return;
     }
 
-    // Si no fue confirmado, validar primero
-    if (validateRequiredFields()) {
-      setValidate(false);
-      handleConfirmClient(false);
-      onNextTab(EVENT_TABS.EVENT, clientData);
+    // Guardar datos antes de avanzar
+    if (updateEvent) {
+      updateEvent(clientData);
     }
+
+    setValidate(false);
+
+    // Si el cliente no fue confirmado, confirmarlo
+    if (!mainClientConfirmed) {
+      handleConfirmClient(false);
+    }
+
+    onNextTab(EVENT_TABS.EVENT, clientData);
   };
 
   // Filter clients based on search term
@@ -497,6 +506,15 @@ const ClientForm = ({
                 disabled={!isNewClient && !selectedClientId}
               />
               <Input
+                placeholder='Rol en el evento *'
+                name='rol'
+                onChange={handleInputChange}
+                autoComplete='off'
+                error={validate && !clientData.rol}
+                value={clientData.rol || ''}
+                disabled={!isNewClient && !selectedClientId}
+              />
+              <Input
                 placeholder='Edad'
                 name='age'
                 onChange={handleInputChange}
@@ -522,9 +540,9 @@ const ClientForm = ({
             Cliente principal confirmado
           </Text>
           <Box mt='xs' mb='sm'>
-            <Text>{clientData.fullName}</Text>
+            <Text>{clientData.fullName} ({clientData.rol})</Text>
             <Text size='sm'>Tel: {clientData.phoneNumber}</Text>
-            <Text size='sm'>Dirección: {clientData.address}</Text>
+            {clientData.address && <Text size='sm'>Dirección: {clientData.address}</Text>}
           </Box>
           <Group>
             <Button

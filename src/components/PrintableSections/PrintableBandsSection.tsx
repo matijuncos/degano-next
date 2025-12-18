@@ -22,7 +22,7 @@ const PrintableBandsSection: React.FC<PrintableBandsSectionProps> = ({
   <Document>
     <Page size='A4' style={styles.page}>
       <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>
-        Banda en vivo
+        Show en vivo
       </Text>
       <View style={styles.section}>
         {event.bands && event.bands.length > 0 ? (

@@ -4,6 +4,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   _id: '', // Use empty string instead of null
   fullName: '',
   phoneNumber: '',
+  rol: '',
   email: '',
   extraClients: [],
   age: '',

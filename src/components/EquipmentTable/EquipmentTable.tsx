@@ -9,6 +9,7 @@ import { Box } from '@mantine/core';
 import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
+import { mutate } from 'swr';
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
@@ -22,6 +23,7 @@ const EquipmentTable = () => {
   );
   const [total, setTotal] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     setEventEquipment((prev) => ({ ...prev, equipmentPrice: total }));
@@ -34,6 +36,12 @@ const EquipmentTable = () => {
     const changed = !isEqual(oldEquip, newEquip);
     setHasChanges(changed);
   }, [eventEquipment, selectedEvent]);
+
+  // Detectar cuando cambian las fechas del evento y forzar refresh
+  useEffect(() => {
+    if (!selectedEvent) return;
+    setRefreshTrigger(prev => prev + 1);
+  }, [selectedEvent?.date, selectedEvent?.endDate]);
 
   const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
     if (equipmentSelected.outOfService.isOut) return;
@@ -70,8 +78,32 @@ const EquipmentTable = () => {
         body: JSON.stringify(eventEquipment)
       });
       const data = await response.json();
-      notify({ message: 'Se actualizo el evento correctamente' });
+
+      // Actualizar el estado del evento
       setSelectedEvent(data.event);
+      setEventEquipment(data.event);
+
+      // Revalidar paths de Next.js y cache de SWR
+      await Promise.all([
+        // Revalidar paths de Next.js
+        fetch('/api/revalidate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paths: ['/equipment', '/api/equipment'] })
+        }),
+        // Invalidar cache de SWR
+        mutate('/api/equipment'),
+        mutate('/api/equipment?eventStartDate=' + new Date(selectedEvent?.date || '').toISOString() + '&eventEndDate=' + new Date(selectedEvent?.endDate || '').toISOString()),
+        mutate('/api/categories'),
+        mutate('/api/categoryTreeData'),
+        mutate('/api/treeData'),
+        mutate('/api/equipmentLocation')
+      ]);
+
+      // Incrementar refresh trigger para forzar recarga de equipamiento
+      setRefreshTrigger(prev => prev + 1);
+
+      notify({ message: 'Se actualizo el evento correctamente' });
     } catch (error) {
       notify({ type: 'defaultError' });
       console.log(error);
@@ -123,6 +155,7 @@ const EquipmentTable = () => {
           eventStartDate={selectedEvent?.date}
           eventEndDate={selectedEvent?.endDate}
           selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+          refreshTrigger={refreshTrigger}
         />
       </Box>
 

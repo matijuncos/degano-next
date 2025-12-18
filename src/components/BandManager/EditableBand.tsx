@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { useState, useEffect } from 'react';
-import { Select } from '@mantine/core';
+import { Select, Card, Image, Box, Text } from '@mantine/core';
 import { Input, Button, FileButton } from '@mantine/core';
 import { Band, ExtraContact } from '@/context/types';
 import { TimePicker } from '@mantine/dates';
@@ -8,7 +8,9 @@ import {
   IconEdit,
   IconTrash,
   IconSquareRoundedPlus,
-  IconEye
+  IconEye,
+  IconFile,
+  IconFileTypePdf
 } from '@tabler/icons-react';
 import EditableContact from './EditableContact';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
@@ -33,7 +35,33 @@ const EditableBand = ({
 
   useEffect(() => {
     if (band) {
-      setBandData(band);
+      // Combinar fileUrl singular (legacy) con fileUrls array
+      const allFiles = [
+        ...((band as any).fileUrl ? [(band as any).fileUrl] : []),
+        ...(band.fileUrls || [])
+      ];
+      // Remover duplicados
+      const uniqueFiles = [...new Set(allFiles)];
+
+      // Asegurar que fileUrls esté inicializado con todos los archivos
+      const updatedBand = {
+        ...band,
+        fileUrls: uniqueFiles
+      };
+      setBandData(updatedBand);
+
+      // Construir el mapa de nombres de archivos
+      const fileNamesMap = new Map<string, string>();
+      if (uniqueFiles.length > 0) {
+        uniqueFiles.forEach(url => {
+          const urlParts = url.split('/');
+          const fileNameWithParams = urlParts[urlParts.length - 1];
+          const fileName = fileNameWithParams.split('?')[0];
+          const decodedFileName = decodeURIComponent(fileName);
+          fileNamesMap.set(url, decodedFileName);
+        });
+      }
+      setOriginalFileNames(fileNamesMap);
     } else {
       setBandData({
         _id: '',
@@ -42,9 +70,10 @@ const EditableBand = ({
         testTime: '',
         bandInfo: '',
         contacts: [],
-        fileUrl: '',
+        fileUrls: [],
         type: 'band'
       });
+      setOriginalFileNames(new Map());
     }
   }, [band]);
 
@@ -56,7 +85,7 @@ const EditableBand = ({
       testTime: '',
       bandInfo: '',
       contacts: [],
-      fileUrl: '',
+      fileUrls: [],
       type: 'band'
     }
   );
@@ -65,6 +94,7 @@ const EditableBand = ({
     null
   );
   const [waitingAws, setWaitingAws] = useState(false);
+  const [originalFileNames, setOriginalFileNames] = useState<Map<string, string>>(new Map());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBandData({ ...bandData, [e.target.name]: e.target.value });
@@ -78,9 +108,10 @@ const EditableBand = ({
       testTime: '',
       bandInfo: '',
       contacts: [],
-      fileUrl: '',
+      fileUrls: [],
       type: 'band'
     });
+    setOriginalFileNames(new Map());
     onCancel();
   };
 
@@ -121,9 +152,10 @@ const EditableBand = ({
         testTime: '',
         bandInfo: '',
         contacts: [],
-        fileUrl: '',
+        fileUrls: [],
         type: 'band'
       });
+      setOriginalFileNames(new Map());
     } catch (error) {
       console.error('handleSave error', error);
     } finally {
@@ -177,7 +209,18 @@ const EditableBand = ({
         body: file
       });
 
-      setBandData((prev) => ({ ...prev, fileUrl: url }));
+      // Agregar al array de archivos
+      setBandData((prev) => ({
+        ...prev,
+        fileUrls: [...(prev.fileUrls || []), url]
+      }));
+
+      // Agregar el nombre del archivo al mapa
+      setOriginalFileNames((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(url, file.name);
+        return newMap;
+      });
     } catch (error) {
       console.error('Upload error:', error);
     } finally {
@@ -185,21 +228,99 @@ const EditableBand = ({
     }
   };
 
-  const handleDeleteFile = async () => {
-    if (!bandData.fileUrl) return;
+  const handleDeleteFile = async (fileUrl: string) => {
+    if (!fileUrl) return;
     setWaitingAws(true);
     try {
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: bandData.fileUrl, bucket: 'bands' })
+        body: JSON.stringify({ url: fileUrl, bucket: 'bands' })
       });
-      setBandData((prev) => ({ ...prev, fileUrl: '' }));
+
+      // Eliminar del array de archivos
+      setBandData((prev) => ({
+        ...prev,
+        fileUrls: (prev.fileUrls || []).filter(url => url !== fileUrl)
+      }));
+
+      // Eliminar del mapa de nombres
+      setOriginalFileNames((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(fileUrl);
+        return newMap;
+      });
     } catch (error) {
       console.error('Delete error:', error);
     } finally {
       setWaitingAws(false);
     }
+  };
+
+  const getFilePreview = (fileUrl: string) => {
+    if (!fileUrl) return null;
+
+    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
+    const isPdf = /\.pdf$/i.test(fileUrl);
+
+    return (
+      <Box
+        key={fileUrl}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          position: 'relative'
+        }}
+      >
+        <Card
+          withBorder
+          padding="xs"
+          style={{
+            width: '100px',
+            height: '100px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+          }}
+          onClick={() => window.open(fileUrl, '_blank')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '';
+          }}
+        >
+          {isImage ? (
+            <Image
+              src={fileUrl}
+              alt="Band file"
+              fit="cover"
+              style={{ width: '100%', height: '100%', borderRadius: '4px' }}
+            />
+          ) : isPdf ? (
+            <IconFileTypePdf size={48} color="#FF0000" />
+          ) : (
+            <IconFile size={48} color="#888888" />
+          )}
+        </Card>
+        <Button
+          color='red'
+          variant='light'
+          loading={waitingAws}
+          onClick={() => handleDeleteFile(fileUrl)}
+          size='xs'
+          style={{ marginTop: '4px' }}
+        >
+          <IconTrash size={14} />
+        </Button>
+      </Box>
+    );
   };
 
   return (
@@ -231,6 +352,14 @@ const EditableBand = ({
               onChange={(val) => {
                 const selected = allBands?.find((c) => c._id === val);
                 if (selected) {
+                  // Combinar fileUrl singular (legacy) con fileUrls array
+                  const allFiles = [
+                    ...((selected as any).fileUrl ? [(selected as any).fileUrl] : []),
+                    ...(selected.fileUrls || [])
+                  ];
+                  // Remover duplicados
+                  const uniqueFiles = [...new Set(allFiles)];
+
                   setBandData((prev) => ({
                     ...prev,
                     _id: selected._id,
@@ -239,7 +368,7 @@ const EditableBand = ({
                     testTime: selected.testTime,
                     bandInfo: selected.bandInfo,
                     contacts: selected.contacts,
-                    fileUrl: selected.fileUrl
+                    fileUrls: uniqueFiles
                   }));
                 }
               }}
@@ -297,47 +426,44 @@ const EditableBand = ({
               placeholder='Otros datos'
               value={bandData.bandInfo}
               autoComplete='off'
-              style={{ width: '70%' }}
+              style={{ width: '100%' }}
             />
-            <div style={{ marginTop: '16px' }}>
-              {!bandData.fileUrl ? (
-                <FileButton
-                  onChange={handleUpload}
-                  accept='image/*,.pdf,.doc,.docx'
-                >
-                  {(props) => (
-                    <Button {...props} loading={waitingAws} variant='outline'>
-                      Subir archivo
-                    </Button>
-                  )}
-                </FileButton>
-              ) : (
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
-                >
-                  <a
-                    href={bandData.fileUrl}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                  >
-                    <Button variant='light'>
-                      <IconEye size={16} />
-                    </Button>
-                  </a>
-                  <Button
-                    color='red'
-                    variant='light'
-                    loading={waitingAws}
-                    onClick={handleDeleteFile}
-                  >
-                    <IconTrash size={16} />
-                  </Button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Sección de archivos antes de los botones */}
+      <div style={{
+        marginTop: '16px',
+        marginBottom: '16px'
+      }}>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
+          justifyContent: 'center',
+          marginBottom: '16px'
+        }}>
+          {bandData.fileUrls && bandData.fileUrls.length > 0 &&
+            bandData.fileUrls.map((fileUrl) =>
+              getFilePreview(fileUrl)
+            )
+          }
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <FileButton
+            onChange={handleUpload}
+            accept='image/*,.pdf,.doc,.docx'
+          >
+            {(props) => (
+              <Button {...props} loading={waitingAws} variant='outline'>
+                {bandData.fileUrls && bandData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
+              </Button>
+            )}
+          </FileButton>
+        </div>
+      </div>
+
       <div
         style={{
           display: 'flex',

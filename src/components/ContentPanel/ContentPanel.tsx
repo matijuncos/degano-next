@@ -11,7 +11,7 @@ import {
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ContentPanel({
   selectedCategory,
@@ -22,7 +22,8 @@ export default function ContentPanel({
   newEvent,
   eventStartDate,
   eventEndDate,
-  selectedEquipmentIds = []
+  selectedEquipmentIds = [],
+  refreshTrigger = 0
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
@@ -33,35 +34,82 @@ export default function ContentPanel({
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
   selectedEquipmentIds?: string[];
+  refreshTrigger?: number;
 }) {
-  const fetcher = (url: string) => fetch(url).then((res) => res.json());
-  const { data: categories = [] } = useSWR('/api/categories', fetcher);
+  const { data: categories = [] } = useSWR('/api/categories', async (url: string) => {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    return response.json();
+  }, {
+    dedupingInterval: 0,
+    revalidateOnMount: true
+  });
 
   // Función para determinar el estado del equipamiento
   const getEquipmentStatus = (item: any) => {
-    // No Disponible: fuera de servicio (pero no en evento)
-    if (item.outOfService?.isOut && item.outOfService?.reason !== 'En Evento') {
+    // Primero verificar si está en un evento (tiene prioridad)
+    if (item.outOfService?.isOut && item.outOfService?.reason === 'En Evento') {
+      return { label: 'En Uso', color: '#fbbf24' };
+    }
+
+    // Luego verificar si está fuera de servicio por otros motivos (roto, mantenimiento, etc.)
+    if (item.outOfService?.isOut) {
       return { label: 'No Disponible', color: 'red' };
     }
 
-    // En Uso: en evento o location diferente de "Deposito"
-    if (
-      (item.outOfService?.isOut && item.outOfService?.reason === 'En Evento') ||
-      (item.location && item.location !== 'Deposito')
-    ) {
-      return { label: 'En Uso', color: '#fbbf24' }; // amarillo tipo warning
+    // Verificar si está en uso por ubicación (prestado, en traslado, etc.)
+    const locationLower = item.location?.trim().toLowerCase() || '';
+    if (locationLower && locationLower !== 'deposito') {
+      return { label: 'En Uso', color: '#fbbf24' };
     }
 
-    // Disponible: en "Deposito" y no fuera de servicio
+    // Disponible: en Deposito y no fuera de servicio
     return { label: 'Disponible', color: 'green' };
   };
 
-  // Construir URL con parámetros de fecha si están presentes
-  const equipmentUrl = eventStartDate && eventEndDate
-    ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
-    : '/api/equipment';
+  // Estado local para equipamiento - NO usar SWR para evitar caché
+  const [equipment, setEquipment] = useState<any[]>([]);
+  const [isLoadingEquipment, setIsLoadingEquipment] = useState(false);
+  const [equipmentUrl, setEquipmentUrl] = useState<string>('');
 
-  const { data: equipment = [] } = useSWR(equipmentUrl, fetcher);
+  // Construir URL solo cuando cambian las fechas
+  useEffect(() => {
+    const url = eventStartDate && eventEndDate
+      ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
+      : '/api/equipment';
+    setEquipmentUrl(url);
+  }, [eventStartDate, eventEndDate]);
+
+  // Fetch directo sin caché solo cuando cambia la URL o refreshTrigger
+  useEffect(() => {
+    if (!equipmentUrl) return;
+
+    const fetchEquipment = async () => {
+      setIsLoadingEquipment(true);
+      try {
+        const response = await fetch(equipmentUrl, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        const data = await response.json();
+        setEquipment(data);
+      } catch (error) {
+        console.error('Error fetching equipment:', error);
+      } finally {
+        setIsLoadingEquipment(false);
+      }
+    };
+
+    fetchEquipment();
+  }, [equipmentUrl, refreshTrigger]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -213,6 +261,11 @@ export default function ContentPanel({
       const item = equipment.find((eq: any) => eq._id === selectedCategory._id);
       if (!item) return null;
 
+      const isSelected = selectedEquipmentIds.includes(item._id);
+      const status = getEquipmentStatus(item);
+      const displayStatus = newEvent && isSelected ? 'RESERVADO' : status.label;
+      const displayColor = newEvent && isSelected ? '#fbbf24' : status.color;
+
       return (
         <tr
           style={{
@@ -229,11 +282,11 @@ export default function ContentPanel({
           <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
           <td
             style={{
-              color: getEquipmentStatus(item).color,
+              color: displayColor,
               padding: '0 5px'
             }}
           >
-            {getEquipmentStatus(item).label}
+            {displayStatus}
           </td>
           <td style={{ padding: '0 5px' }}>{item.location}</td>
         </tr>
@@ -289,17 +342,32 @@ export default function ContentPanel({
           !!newEvent &&
           selectedCategory.categoryId && (
             <Group>
-              <Tooltip label='Agregar al evento'>
-                <ActionIcon
-                  color='green'
-                  variant='light'
-                  onClick={() => onEdit?.(selectedCategory)}
-                  style={{ width: '8rem' }}
-                >
-                  <p style={{ marginRight: '15px' }}>Agregar</p>
-                  <IconPlus size={16} />
-                </ActionIcon>
-              </Tooltip>
+              {selectedEquipmentIds.includes(selectedCategory._id) ? (
+                <Tooltip label='Quitar del evento'>
+                  <ActionIcon
+                    color='red'
+                    variant='light'
+                    onClick={() => onRemove?.(selectedCategory._id)}
+                    style={{ width: '8rem' }}
+                  >
+                    <p style={{ marginRight: '15px' }}>Quitar</p>
+                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
+                  </ActionIcon>
+                </Tooltip>
+              ) : (
+                <Tooltip label={selectedCategory.outOfService?.isOut ? 'No disponible' : 'Agregar al evento'}>
+                  <ActionIcon
+                    color='green'
+                    variant='light'
+                    onClick={() => onEdit?.(selectedCategory)}
+                    style={{ width: '8rem' }}
+                    disabled={selectedCategory.outOfService?.isOut}
+                  >
+                    <p style={{ marginRight: '15px' }}>Agregar</p>
+                    <IconPlus size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Group>
           )
         )}

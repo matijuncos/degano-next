@@ -3,9 +3,12 @@
 import ClientForm from '@/components/ClientForm/ClientForm';
 import EquipmentForm from '@/components/EquipmentForm/EquipmentForm';
 import EventForm from '@/components/EventForm/EventForm';
+import ShowForm from '@/components/ShowForm/ShowForm';
 import MusicForm from '@/components/MusicForm/MusicForm';
 import PaymentForm from '@/components/PaymentForm/PaymentForm';
 import TimingForm from '@/components/TimingForm/TimingForm';
+import MoreInfoForm from '@/components/MoreInfoForm/MoreInfoForm';
+import StaffForm from '@/components/StaffForm/StaffForm';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EVENT_TABS } from '@/context/config';
@@ -17,6 +20,7 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
 import { Tabs, Button } from '@mantine/core';
+import { mutate } from 'swr';
 
 const NewEventPage = () => {
   const {
@@ -31,6 +35,63 @@ const NewEventPage = () => {
   const [event, setEvent] = useState<EventModel>(INITIAL_EVENT_STATE);
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
+
+  const updateEvent = (data: EventModel) => {
+    setEvent(data);
+  };
+
+  const handleTabChange = (value: string | null) => {
+    if (value !== null) {
+      setFormState(Number(value));
+      setValidate(false);
+    }
+  };
+
+  // Validar todos los campos requeridos del evento
+  const validateAllRequiredFields = () => {
+    const errors: string[] = [];
+
+    // Validar campos de cliente
+    if (!event.fullName || !event.fullName.trim()) {
+      errors.push('Nombre del cliente');
+    }
+    if (!event.phoneNumber || !event.phoneNumber.trim()) {
+      errors.push('Teléfono del cliente');
+    }
+    if (!event.rol || !event.rol.trim()) {
+      errors.push('Rol del cliente');
+    }
+
+    // Validar campos de evento
+    if (
+      !event.date ||
+      !(event.date instanceof Date) ||
+      isNaN(event.date.getTime())
+    ) {
+      errors.push('Fecha de inicio');
+    }
+    if (
+      !event.endDate ||
+      !(event.endDate instanceof Date) ||
+      isNaN(event.endDate.getTime())
+    ) {
+      errors.push('Fecha de finalización');
+    }
+    if (!event.type || !event.type.trim()) {
+      errors.push('Tipo de evento');
+    }
+    if (!event.eventCity || !event.eventCity.trim()) {
+      errors.push('Localidad');
+    }
+    if (!event.lugar || !event.lugar.trim()) {
+      errors.push('Lugar');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
 
   const onNextTab = (tab: number, data: EventModel) => {
     setFormState(tab);
@@ -68,17 +129,6 @@ const NewEventPage = () => {
     setLoadingCursor(true);
     notify({ loading: true });
     try {
-      // agregar update del equipment
-      // await fetch('/api/updateEquipmentV2', {
-      //   method: 'PUT',
-      //   body: JSON.stringify(newEvent.equipment),
-      //   cache: 'no-store',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
-      // Se comenta porque actualmente no es necesario descontar cantidades y no hace falta el update
-      // console.log('equipmentResposne ', equipmentResponse)
       const response = await fetch('/api/postEvent', {
         method: 'POST',
         cache: 'no-store',
@@ -101,10 +151,22 @@ const NewEventPage = () => {
           setEvent(data.event);
         }
 
+        // Invalidar TODO el cache de SWR relacionado con equipment
+        await Promise.all([
+          mutate('/api/equipment'),
+          mutate('/api/categories'),
+          mutate('/api/categoryTreeData'),
+          mutate('/api/treeData'),
+          mutate('/api/equipmentLocation')
+        ]);
+
         // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
         if (canShowFilesTab()) {
+          notify({
+            message:
+            'Evento guardado correctamente. Ahora puedes subir archivos.'
+          });
           setFormState(EVENT_TABS.FILES);
-          notify({ message: 'Evento guardado correctamente. Ahora puedes subir archivos.' });
         } else {
           router.push('/upload-file');
           notify();
@@ -128,6 +190,7 @@ const NewEventPage = () => {
             event={event}
             validate={validate}
             setValidate={setValidate}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.EVENT:
@@ -138,6 +201,16 @@ const NewEventPage = () => {
             event={event}
             validate={validate}
             setValidate={setValidate}
+            updateEvent={updateEvent}
+          />
+        );
+      case EVENT_TABS.SHOW:
+        return (
+          <ShowForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.MUSIC:
@@ -146,22 +219,7 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
-          />
-        );
-      case EVENT_TABS.EQUIPMENT:
-        return (
-          <EquipmentForm
-            onNextTab={onNextTab}
-            onBackTab={onBackTab}
-            event={event}
-          />
-        );
-      case EVENT_TABS.PAYMENT:
-        return (
-          <PaymentForm
-            onBackTab={onBackTab}
-            event={event}
-            onFinish={saveEvent}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.TIMING:
@@ -170,6 +228,35 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
+            updateEvent={updateEvent}
+          />
+        );
+      case EVENT_TABS.MORE_INFO:
+        return (
+          <MoreInfoForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+            updateEvent={updateEvent}
+          />
+        );
+      case EVENT_TABS.EQUIPMENT:
+        return (
+          <EquipmentForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+            updateEvent={updateEvent}
+          />
+        );
+      case EVENT_TABS.STAFF:
+        return (
+          <StaffForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+            updateEvent={updateEvent}
+                        goToFiles={canShowFilesTab()}
           />
         );
       case EVENT_TABS.FILES:
@@ -185,11 +272,27 @@ const NewEventPage = () => {
                 marginTop: '20px'
               }}
             >
-              <Button onClick={() => onBackTab(EVENT_TABS.PAYMENT, event)}>
+              <Button onClick={() => onBackTab(EVENT_TABS.STAFF, event)}>
                 Atrás
+              </Button>
+              <Button
+                variant='brand'
+                onClick={() => onNextTab(EVENT_TABS.PAYMENT, event)}
+              >
+                Siguiente
               </Button>
             </div>
           </div>
+        );
+      case EVENT_TABS.PAYMENT:
+        return (
+          <PaymentForm
+            onBackTab={onBackTab}
+            event={event}
+            onFinish={saveEvent}
+            updateEvent={updateEvent}
+            validateAllRequiredFields={validateAllRequiredFields}
+          />
         );
       default:
         break;
@@ -202,21 +305,28 @@ const NewEventPage = () => {
       <div style={{ display: 'flex', gap: '10px' }}>
         <Tabs
           value={formState.toString()}
-          onChange={(value) => setFormState(Number(value))}
+          onChange={handleTabChange}
           style={{ marginBottom: '2rem' }}
         >
           <Tabs.List>
             <Tabs.Tab value={EVENT_TABS.CLIENT.toString()}>Cliente</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EVENT.toString()}>Evento</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.SHOW.toString()}>Show</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.MUSIC.toString()}>Musica</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.TIMING.toString()}>Timing</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.MORE_INFO.toString()}>
+              Más Información
+            </Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EQUIPMENT.toString()}>
               Equipamiento
             </Tabs.Tab>
-            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Presupuesto</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.STAFF.toString()}>Staff</Tabs.Tab>
             {canShowFilesTab() && (
               <Tabs.Tab value={EVENT_TABS.FILES.toString()}>Archivos</Tabs.Tab>
             )}
+            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>
+              Presupuesto
+            </Tabs.Tab>
           </Tabs.List>
         </Tabs>
       </div>

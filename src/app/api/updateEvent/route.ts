@@ -20,6 +20,12 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
     const eventEquipment = body.equipment;
     delete body._id;
 
+    console.log('=== UPDATE EVENT CALLED ===');
+    console.log('Event ID:', eventId);
+    console.log('Equipment in body:', eventEquipment?.length || 0, 'items');
+    console.log('Nueva fecha:', body.date);
+    console.log('Nueva fecha fin:', body.endDate);
+
     // Obtener evento antiguo para comparar equipos
     const oldEvent = await db
       .collection('events')
@@ -33,30 +39,63 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
         { returnDocument: 'after' }
       );
 
+    // Detectar equipos REMOVIDOS y AGREGADOS
+    const oldEquipmentIds = (oldEvent?.equipment || []).map(
+      (eq: any) => eq._id.toString()
+    );
+    const newEquipmentIds = (eventEquipment || []).map((eq: any) =>
+      eq._id.toString()
+    );
+    const addedEquipmentIds = newEquipmentIds.filter(
+      (id: string) => !oldEquipmentIds.includes(id)
+    );
+    const removedEquipmentIds = oldEquipmentIds.filter(
+      (id: string) => !newEquipmentIds.includes(id)
+    );
+
     if (eventEquipment?.length) {
       const eventStart = new Date(body.date);
       const eventEnd = new Date(body.endDate);
+      const now = new Date();
 
-      // Detectar equipos NUEVOS (solo los que se agregaron)
-      const oldEquipmentIds = (oldEvent?.equipment || []).map(
-        (eq: any) => eq._id.toString()
-      );
-      const newEquipmentIds = eventEquipment.map((eq: any) =>
-        eq._id.toString()
-      );
-      const addedEquipmentIds = newEquipmentIds.filter(
-        (id: string) => !oldEquipmentIds.includes(id)
-      );
+      console.log('=== ACTUALIZANDO FECHAS DE EQUIPAMIENTO ===');
+      console.log('Nueva fecha inicio:', eventStart);
+      console.log('Nueva fecha fin:', eventEnd);
+      console.log('Fecha actual:', now);
+      console.log('Equipos a actualizar:', eventEquipment.map((eq: any) => eq._id));
 
-      await db.collection('equipment').updateMany(
+      // Determinar si el evento sigue activo
+      const eventoActivo = now <= eventEnd;
+      console.log('¿Evento activo?', eventoActivo);
+
+      // Actualizar equipos según si el evento está activo o terminó
+      const updateResult = await db.collection('equipment').updateMany(
         { _id: { $in: eventEquipment.map((eq: any) => new ObjectId(eq._id)) } },
         {
           $set: {
             lastUsedStartDate: eventStart,
-            lastUsedEndDate: eventEnd
+            lastUsedEndDate: eventEnd,
+            location: eventoActivo ? body.lugar : 'Deposito',
+            outOfService: eventoActivo
+              ? {
+                  isOut: true,
+                  reason: 'En Evento',
+                  details: `${body.type} - ${body.lugar}`
+                }
+              : {
+                  isOut: false,
+                  reason: null,
+                  details: null
+                }
           }
         }
       );
+
+      console.log('Resultado actualización:', {
+        matchedCount: updateResult.matchedCount,
+        modifiedCount: updateResult.modifiedCount,
+        estadoFinal: eventoActivo ? 'En Evento' : 'Disponible'
+      });
 
       // Registrar uso en evento SOLO para equipos agregados
       for (const eq of eventEquipment) {
@@ -72,6 +111,46 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
             eventDate: eventStart,
             eventLocation: body.lugar,
             details: `Agregado a ${body.type} - ${body.lugar}`
+          });
+        }
+      }
+    }
+
+    // Liberar equipos removidos del evento
+    if (removedEquipmentIds.length > 0) {
+      const removedObjectIds = removedEquipmentIds.map((id: string) => new ObjectId(id));
+
+      await db.collection('equipment').updateMany(
+        { _id: { $in: removedObjectIds } },
+        {
+          $set: {
+            location: 'Deposito',
+            lastUsedStartDate: null,
+            lastUsedEndDate: null,
+            outOfService: {
+              isOut: false,
+              reason: null,
+              details: null
+            }
+          }
+        }
+      );
+
+      // Registrar liberación en el historial
+      for (const eqId of removedEquipmentIds) {
+        const equipment = oldEvent?.equipment?.find(
+          (eq: any) => eq._id.toString() === eqId
+        );
+        if (equipment) {
+          await createHistoryEntry(db, {
+            equipmentId: eqId,
+            equipmentName: equipment.name,
+            equipmentCode: equipment.code,
+            action: 'cambio_estado',
+            userId: session?.user?.sub,
+            fromValue: 'En Evento',
+            toValue: 'Disponible',
+            details: `Removido de ${oldEvent?.type} - ${oldEvent?.lugar}`
           });
         }
       }

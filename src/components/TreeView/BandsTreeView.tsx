@@ -172,7 +172,7 @@ export default function BandsTreeView({
       testTime: '',
       bandInfo: '',
       contacts: [] as ExtraContact[],
-      fileUrl: '',
+      fileUrls: [],
       type: 'band'
     });
     onEdit?.(null);

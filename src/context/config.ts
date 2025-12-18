@@ -28,9 +28,12 @@ export const genres = [
 export const EVENT_TABS = {
   CLIENT: 0,
   EVENT: 1,
-  MUSIC: 2,
-  EQUIPMENT: 3,
-  PAYMENT: 4,
-  TIMING: 5,
-  FILES: 6
+  SHOW: 2,
+  MUSIC: 3,
+  TIMING: 4,
+  MORE_INFO: 5,
+  EQUIPMENT: 6,
+  STAFF: 7,
+  PAYMENT: 8,
+  FILES: 9
 };
