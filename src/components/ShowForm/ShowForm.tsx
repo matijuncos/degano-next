@@ -7,11 +7,13 @@ import BandList from '../BandManager/BandList';
 const ShowForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
 
@@ -23,10 +25,16 @@ const ShowForm = ({
   }, [event]);
 
   const next = () => {
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
     onNextTab(EVENT_TABS.MUSIC, eventData);
   };
 
   const back = () => {
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
     onBackTab(EVENT_TABS.EVENT, eventData);
   };
 

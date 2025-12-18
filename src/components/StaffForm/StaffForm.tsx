@@ -13,11 +13,15 @@ interface StaffMember {
 const StaffForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent,
+  goToFiles
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
+  goToFiles?: boolean;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -39,6 +43,14 @@ const StaffForm = ({
     };
     fetchEmployees();
   }, []);
+
+  // Sincronizar estado local con el prop event cuando el usuario navega
+  useEffect(() => {
+    if (event) {
+      setEventData(event);
+      setStaffMembers(event.staff || []);
+    }
+  }, [event]);
 
   // Sync staff with eventData
   useEffect(() => {
@@ -75,10 +87,16 @@ const StaffForm = ({
   };
 
   const next = () => {
-    onNextTab(EVENT_TABS.PAYMENT, eventData);
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
+    onNextTab(goToFiles ? EVENT_TABS.FILES : EVENT_TABS.PAYMENT, eventData);
   };
 
   const back = () => {
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
     onBackTab(EVENT_TABS.EQUIPMENT, eventData);
   };
 

@@ -1,17 +1,21 @@
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Button, Input, Box, Text } from '@mantine/core';
+import { Button, Input, Box, Text, Tooltip } from '@mantine/core';
 import { DateValue, DateInput } from '@mantine/dates';
 import { useState, useMemo, useEffect } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
 const PaymentForm = ({
   event,
   onBackTab,
-  onFinish
+  onFinish,
+  updateEvent,
+  validateAllRequiredFields
 }: {
   event: EventModel;
   onBackTab: Function;
   onFinish: Function;
+  updateEvent?: Function;
+  validateAllRequiredFields?: () => { isValid: boolean; errors: string[] };
 }) => {
   const [payment, setPayment] = useState<EventModel>(event);
   const [formattedTotalToPay, setFormattedTotalToPay] = useState('');
@@ -61,6 +65,9 @@ const PaymentForm = ({
         upfrontAmount: parseFormattedNumber(formattedUpfrontAmount)
       }
     };
+    if (updateEvent) {
+      updateEvent(cleanedPayment);
+    }
     await onFinish(cleanedPayment);
   };
   const back = () => {
@@ -73,7 +80,10 @@ const PaymentForm = ({
         upfrontAmount: parseFormattedNumber(formattedUpfrontAmount)
       }
     };
-    onBackTab(EVENT_TABS.EQUIPMENT, cleanedPayment);
+    if (updateEvent) {
+      updateEvent(cleanedPayment);
+    }
+    onBackTab(EVENT_TABS.FILES, cleanedPayment);
   };
 
   const handleTotalToPayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,6 +122,14 @@ const PaymentForm = ({
       }
     });
   };
+
+  // Validar campos requeridos
+  const validation = validateAllRequiredFields ? validateAllRequiredFields() : { isValid: true, errors: [] };
+  const canFinish = validation.isValid;
+  const errorMessage = validation.errors.length > 0
+    ? `Faltan completar campos obligatorios: ${validation.errors.join(', ')}`
+    : '';
+
   return (
     <div>
       <h3>Datos de pago</h3>
@@ -169,9 +187,21 @@ const PaymentForm = ({
         <Button variant='brand' onClick={back}>
           Atrás
         </Button>
-        <Button variant='brand' onClick={save}>
-          Finalizar Evento
-        </Button>
+        <Tooltip
+          label={errorMessage}
+          disabled={canFinish}
+          position='top'
+          withArrow
+        >
+          <Button
+            variant='brand'
+            onClick={save}
+            disabled={!canFinish}
+            style={{ width: '100%' }}
+          >
+            Finalizar Evento
+          </Button>
+        </Tooltip>
       </div>
     </div>
   );

@@ -8,11 +8,13 @@ import { useState, useEffect } from 'react';
 const TimingForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -32,11 +34,17 @@ const TimingForm = ({
   }, [event]);
 
   const next = () => {
-    onNextTab(EVENT_TABS.EQUIPMENT, eventData);
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
+    onNextTab(EVENT_TABS.MORE_INFO, eventData);
   };
 
   const back = () => {
-    onBackTab(EVENT_TABS.MUSIC, eventData);
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
+    onBackTab(EVENT_TABS.TIMING, eventData);
   };
 
   const handleAddTiming = () => {

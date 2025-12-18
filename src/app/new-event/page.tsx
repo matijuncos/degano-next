@@ -36,6 +36,63 @@ const NewEventPage = () => {
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
 
+  const updateEvent = (data: EventModel) => {
+    setEvent(data);
+  };
+
+  const handleTabChange = (value: string | null) => {
+    if (value !== null) {
+      setFormState(Number(value));
+      setValidate(false);
+    }
+  };
+
+  // Validar todos los campos requeridos del evento
+  const validateAllRequiredFields = () => {
+    const errors: string[] = [];
+
+    // Validar campos de cliente
+    if (!event.fullName || !event.fullName.trim()) {
+      errors.push('Nombre del cliente');
+    }
+    if (!event.phoneNumber || !event.phoneNumber.trim()) {
+      errors.push('Teléfono del cliente');
+    }
+    if (!event.rol || !event.rol.trim()) {
+      errors.push('Rol del cliente');
+    }
+
+    // Validar campos de evento
+    if (
+      !event.date ||
+      !(event.date instanceof Date) ||
+      isNaN(event.date.getTime())
+    ) {
+      errors.push('Fecha de inicio');
+    }
+    if (
+      !event.endDate ||
+      !(event.endDate instanceof Date) ||
+      isNaN(event.endDate.getTime())
+    ) {
+      errors.push('Fecha de finalización');
+    }
+    if (!event.type || !event.type.trim()) {
+      errors.push('Tipo de evento');
+    }
+    if (!event.eventCity || !event.eventCity.trim()) {
+      errors.push('Localidad');
+    }
+    if (!event.lugar || !event.lugar.trim()) {
+      errors.push('Lugar');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
   const onNextTab = (tab: number, data: EventModel) => {
     setFormState(tab);
     setEvent(data);
@@ -72,17 +129,6 @@ const NewEventPage = () => {
     setLoadingCursor(true);
     notify({ loading: true });
     try {
-      // agregar update del equipment
-      // await fetch('/api/updateEquipmentV2', {
-      //   method: 'PUT',
-      //   body: JSON.stringify(newEvent.equipment),
-      //   cache: 'no-store',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
-      // Se comenta porque actualmente no es necesario descontar cantidades y no hace falta el update
-      // console.log('equipmentResposne ', equipmentResponse)
       const response = await fetch('/api/postEvent', {
         method: 'POST',
         cache: 'no-store',
@@ -116,8 +162,11 @@ const NewEventPage = () => {
 
         // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
         if (canShowFilesTab()) {
+          notify({
+            message:
+            'Evento guardado correctamente. Ahora puedes subir archivos.'
+          });
           setFormState(EVENT_TABS.FILES);
-          notify({ message: 'Evento guardado correctamente. Ahora puedes subir archivos.' });
         } else {
           router.push('/upload-file');
           notify();
@@ -141,6 +190,7 @@ const NewEventPage = () => {
             event={event}
             validate={validate}
             setValidate={setValidate}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.EVENT:
@@ -151,6 +201,7 @@ const NewEventPage = () => {
             event={event}
             validate={validate}
             setValidate={setValidate}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.SHOW:
@@ -159,6 +210,7 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.MUSIC:
@@ -167,30 +219,7 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
-          />
-        );
-      case EVENT_TABS.EQUIPMENT:
-        return (
-          <EquipmentForm
-            onNextTab={onNextTab}
-            onBackTab={onBackTab}
-            event={event}
-          />
-        );
-      case EVENT_TABS.STAFF:
-        return (
-          <StaffForm
-            onNextTab={onNextTab}
-            onBackTab={onBackTab}
-            event={event}
-          />
-        );
-      case EVENT_TABS.PAYMENT:
-        return (
-          <PaymentForm
-            onBackTab={onBackTab}
-            event={event}
-            onFinish={saveEvent}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.TIMING:
@@ -199,6 +228,7 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
+            updateEvent={updateEvent}
           />
         );
       case EVENT_TABS.MORE_INFO:
@@ -207,6 +237,26 @@ const NewEventPage = () => {
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
+            updateEvent={updateEvent}
+          />
+        );
+      case EVENT_TABS.EQUIPMENT:
+        return (
+          <EquipmentForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+            updateEvent={updateEvent}
+          />
+        );
+      case EVENT_TABS.STAFF:
+        return (
+          <StaffForm
+            onNextTab={onNextTab}
+            onBackTab={onBackTab}
+            event={event}
+            updateEvent={updateEvent}
+                        goToFiles={canShowFilesTab()}
           />
         );
       case EVENT_TABS.FILES:
@@ -222,11 +272,27 @@ const NewEventPage = () => {
                 marginTop: '20px'
               }}
             >
-              <Button onClick={() => onBackTab(EVENT_TABS.PAYMENT, event)}>
+              <Button onClick={() => onBackTab(EVENT_TABS.STAFF, event)}>
                 Atrás
+              </Button>
+              <Button
+                variant='brand'
+                onClick={() => onNextTab(EVENT_TABS.PAYMENT, event)}
+              >
+                Siguiente
               </Button>
             </div>
           </div>
+        );
+      case EVENT_TABS.PAYMENT:
+        return (
+          <PaymentForm
+            onBackTab={onBackTab}
+            event={event}
+            onFinish={saveEvent}
+            updateEvent={updateEvent}
+            validateAllRequiredFields={validateAllRequiredFields}
+          />
         );
       default:
         break;
@@ -239,7 +305,7 @@ const NewEventPage = () => {
       <div style={{ display: 'flex', gap: '10px' }}>
         <Tabs
           value={formState.toString()}
-          onChange={(value) => setFormState(Number(value))}
+          onChange={handleTabChange}
           style={{ marginBottom: '2rem' }}
         >
           <Tabs.List>
@@ -258,7 +324,9 @@ const NewEventPage = () => {
             {canShowFilesTab() && (
               <Tabs.Tab value={EVENT_TABS.FILES.toString()}>Archivos</Tabs.Tab>
             )}
-            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>Presupuesto</Tabs.Tab>
+            <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>
+              Presupuesto
+            </Tabs.Tab>
           </Tabs.List>
         </Tabs>
       </div>

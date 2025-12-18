@@ -35,17 +35,25 @@ const EditableBand = ({
 
   useEffect(() => {
     if (band) {
-      // Asegurar que fileUrls esté inicializado
+      // Combinar fileUrl singular (legacy) con fileUrls array
+      const allFiles = [
+        ...((band as any).fileUrl ? [(band as any).fileUrl] : []),
+        ...(band.fileUrls || [])
+      ];
+      // Remover duplicados
+      const uniqueFiles = [...new Set(allFiles)];
+
+      // Asegurar que fileUrls esté inicializado con todos los archivos
       const updatedBand = {
         ...band,
-        fileUrls: band.fileUrls || []
+        fileUrls: uniqueFiles
       };
       setBandData(updatedBand);
 
       // Construir el mapa de nombres de archivos
       const fileNamesMap = new Map<string, string>();
-      if (updatedBand.fileUrls && updatedBand.fileUrls.length > 0) {
-        updatedBand.fileUrls.forEach(url => {
+      if (uniqueFiles.length > 0) {
+        uniqueFiles.forEach(url => {
           const urlParts = url.split('/');
           const fileNameWithParams = urlParts[urlParts.length - 1];
           const fileName = fileNameWithParams.split('?')[0];
@@ -62,7 +70,6 @@ const EditableBand = ({
         testTime: '',
         bandInfo: '',
         contacts: [],
-        fileUrl: '',
         fileUrls: [],
         type: 'band'
       });
@@ -78,7 +85,6 @@ const EditableBand = ({
       testTime: '',
       bandInfo: '',
       contacts: [],
-      fileUrl: '',
       fileUrls: [],
       type: 'band'
     }
@@ -102,7 +108,6 @@ const EditableBand = ({
       testTime: '',
       bandInfo: '',
       contacts: [],
-      fileUrl: '',
       fileUrls: [],
       type: 'band'
     });
@@ -147,7 +152,6 @@ const EditableBand = ({
         testTime: '',
         bandInfo: '',
         contacts: [],
-        fileUrl: '',
         fileUrls: [],
         type: 'band'
       });
@@ -253,7 +257,7 @@ const EditableBand = ({
     }
   };
 
-  const getFilePreview = (fileUrl: string, fileName: string) => {
+  const getFilePreview = (fileUrl: string) => {
     if (!fileUrl) return null;
 
     const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
@@ -305,19 +309,6 @@ const EditableBand = ({
             <IconFile size={48} color="#888888" />
           )}
         </Card>
-        <Text
-          size="xs"
-          ta="center"
-          style={{
-            maxWidth: '100px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-          title={fileName}
-        >
-          {fileName}
-        </Text>
         <Button
           color='red'
           variant='light'
@@ -361,6 +352,14 @@ const EditableBand = ({
               onChange={(val) => {
                 const selected = allBands?.find((c) => c._id === val);
                 if (selected) {
+                  // Combinar fileUrl singular (legacy) con fileUrls array
+                  const allFiles = [
+                    ...((selected as any).fileUrl ? [(selected as any).fileUrl] : []),
+                    ...(selected.fileUrls || [])
+                  ];
+                  // Remover duplicados
+                  const uniqueFiles = [...new Set(allFiles)];
+
                   setBandData((prev) => ({
                     ...prev,
                     _id: selected._id,
@@ -369,7 +368,7 @@ const EditableBand = ({
                     testTime: selected.testTime,
                     bandInfo: selected.bandInfo,
                     contacts: selected.contacts,
-                    fileUrl: selected.fileUrl
+                    fileUrls: uniqueFiles
                   }));
                 }
               }}
@@ -447,7 +446,7 @@ const EditableBand = ({
         }}>
           {bandData.fileUrls && bandData.fileUrls.length > 0 &&
             bandData.fileUrls.map((fileUrl) =>
-              getFilePreview(fileUrl, originalFileNames.get(fileUrl) || 'Archivo')
+              getFilePreview(fileUrl)
             )
           }
         </div>

@@ -150,12 +150,6 @@ const DrawerContent = () => {
   const getBandFilePreview = (fileUrl: string) => {
     if (!fileUrl) return null;
 
-    // Extraer el nombre del archivo de la URL
-    const urlParts = fileUrl.split('/');
-    const fileNameWithParams = urlParts[urlParts.length - 1];
-    const fileName = fileNameWithParams.split('?')[0]; // Remover parámetros de query
-    const decodedFileName = decodeURIComponent(fileName);
-
     const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
     const isPdf = /\.pdf$/i.test(fileUrl);
 
@@ -165,7 +159,6 @@ const DrawerContent = () => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '4px',
           cursor: 'pointer',
         }}
         onClick={() => window.open(fileUrl, '_blank')}
@@ -203,19 +196,6 @@ const DrawerContent = () => {
             <IconFile size={32} color="#888888" />
           )}
         </Card>
-        <Text
-          size="xs"
-          ta="center"
-          style={{
-            maxWidth: '60px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-          title={decodedFileName}
-        >
-          {decodedFileName}
-        </Text>
       </Box>
     );
   };
@@ -454,10 +434,25 @@ const DrawerContent = () => {
           </Text>
           {selectedEvent?.bands && selectedEvent.bands.length > 0 ? (
             <Stack gap='md'>
-              {selectedEvent.bands.map((band, index) => (
+              {selectedEvent.bands.map((band, index) => {
+                // Combinar fileUrl singular (legacy) con fileUrls array
+                const allFiles = [
+                  ...((band as any).fileUrl ? [(band as any).fileUrl] : []),
+                  ...(band.fileUrls || [])
+                ];
+                // Remover duplicados
+                const uniqueFiles = [...new Set(allFiles)];
+
+                return (
                 <Card key={index} withBorder padding='sm'>
-                  <Group align='flex-start' gap='md'>
-                    {band.fileUrl && getBandFilePreview(band.fileUrl)}
+                  <Group align='flex-start' gap='md' wrap='nowrap'>
+                    {uniqueFiles.length > 0 && (
+                      <Group gap='xs'>
+                        {uniqueFiles.map((fileUrl, idx) => (
+                          <div key={idx}>{getBandFilePreview(fileUrl)}</div>
+                        ))}
+                      </Group>
+                    )}
                     <Box style={{ flex: 1 }}>
                       <Text fw={500} mb='xs'>
                         {band.bandName}
@@ -492,7 +487,8 @@ const DrawerContent = () => {
                     </Box>
                   </Group>
                 </Card>
-              ))}
+              );
+              })}
             </Stack>
           ) : (
             <Text size='sm' c='dimmed'>

@@ -59,6 +59,15 @@ export async function POST(req: Request) {
         });
 
         eventFolderId = folder.data.id!;
+
+        // Hacer la carpeta pública (cualquiera con el link puede ver)
+        await drive.permissions.create({
+          fileId: eventFolderId,
+          requestBody: {
+            role: 'reader',
+            type: 'anyone'
+          }
+        });
       }
     }
 
@@ -81,6 +90,15 @@ export async function POST(req: Request) {
       requestBody: fileMetadata,
       media: media,
       fields: 'id, name, webViewLink'
+    });
+
+    // Hacer el archivo público (cualquiera con el link puede ver)
+    await drive.permissions.create({
+      fileId: uploadedFile.data.id!,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      }
     });
 
     return NextResponse.json(

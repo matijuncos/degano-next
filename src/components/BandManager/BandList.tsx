@@ -58,12 +58,6 @@ const BandList = ({
   const getFilePreview = (fileUrl: string) => {
     if (!fileUrl) return null;
 
-    // Extraer el nombre del archivo de la URL
-    const urlParts = fileUrl.split('/');
-    const fileNameWithParams = urlParts[urlParts.length - 1];
-    const fileName = fileNameWithParams.split('?')[0]; // Remover parámetros de query
-    const decodedFileName = decodeURIComponent(fileName);
-
     const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
     const isPdf = /\.pdf$/i.test(fileUrl);
 
@@ -73,7 +67,6 @@ const BandList = ({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '4px',
           cursor: 'pointer',
         }}
         onClick={() => window.open(fileUrl, '_blank')}
@@ -111,19 +104,6 @@ const BandList = ({
             <IconFile size={40} color="#888888" />
           )}
         </Card>
-        <Text
-          size="xs"
-          ta="center"
-          style={{
-            maxWidth: '80px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-          title={decodedFileName}
-        >
-          {decodedFileName}
-        </Text>
       </Box>
     );
   };
@@ -176,7 +156,16 @@ const BandList = ({
         <div>
           <h4 style={{ marginBottom: '12px' }}>Shows agregados:</h4>
           <ul style={{ padding: '0px 20px 20px' }}>
-            {bands.map((b, index) => (
+            {bands.map((b, index) => {
+              // Combinar fileUrl singular (legacy) con fileUrls array
+              const allFiles = [
+                ...((b as any).fileUrl ? [(b as any).fileUrl] : []),
+                ...(b.fileUrls || [])
+              ];
+              // Remover duplicados
+              const uniqueFiles = [...new Set(allFiles)];
+
+              return (
               <li
                 key={index}
                 style={{
@@ -187,7 +176,13 @@ const BandList = ({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                  {b.fileUrl && getFilePreview(b.fileUrl)}
+                  {uniqueFiles.length > 0 && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {uniqueFiles.map((fileUrl, idx) => (
+                        <div key={idx}>{getFilePreview(fileUrl)}</div>
+                      ))}
+                    </div>
+                  )}
                   <span>
                     <strong>{b.bandName}</strong>{' '}
                     {b.contacts.length > 0 &&
@@ -216,7 +211,8 @@ const BandList = ({
                   />
                 </div>
               </li>
-            ))}
+            );
+            })}
           </ul>
         </div>
       )}

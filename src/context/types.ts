@@ -148,7 +148,6 @@ export interface Band {
   testTime?: string;
   bandInfo: string;
   contacts: ExtraContact[];
-  fileUrl: string;
   fileUrls?: string[]; // Array para múltiples archivos
   type: 'band';
 }

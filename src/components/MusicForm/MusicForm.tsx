@@ -37,11 +37,13 @@ type SpotifyLink = {
 const MusicForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
 }) => {
   const {
     genres: dbGenres,
@@ -211,11 +213,19 @@ const MusicForm = ({
   };
 
   const next = () => {
-    onNextTab(EVENT_TABS.EQUIPMENT, { ...musicData, playlist: spotifyLinks });
+    const dataToSave = { ...musicData, playlist: spotifyLinks };
+    if (updateEvent) {
+      updateEvent(dataToSave);
+    }
+    onNextTab(EVENT_TABS.TIMING, dataToSave);
   };
 
   const back = () => {
-    onBackTab(EVENT_TABS.EVENT, { ...musicData, playlist: spotifyLinks });
+    const dataToSave = { ...musicData, playlist: spotifyLinks };
+    if (updateEvent) {
+      updateEvent(dataToSave);
+    }
+    onBackTab(EVENT_TABS.SHOW, dataToSave);
   };
 
   const handleSpotifyLinks = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1000,8 +1010,8 @@ const MusicForm = ({
       </Accordion>
 
       <Flex direction='column' gap='xs' mt='lg'>
-        <Button onClick={back} variant='default'>
-          Anterior
+        <Button onClick={back} >
+          Atrás
         </Button>
         <Button onClick={next} disabled={genresLoading}>
           Siguiente

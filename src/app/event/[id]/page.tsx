@@ -1071,50 +1071,44 @@ const ShowInformation = ({
     const isPdf = /\.pdf$/i.test(fileUrl);
 
     return (
-      <Box
+      <Card
+        withBorder
+        padding='xs'
         style={{
-          display: 'inline-flex',
+          width: '80px',
+          height: '80px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           cursor: 'pointer',
+          transition: 'transform 0.2s, box-shadow 0.2s',
         }}
         onClick={() => window.open(fileUrl, '_blank')}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '';
+        }}
       >
-        <Card
-          withBorder
-          padding='xs'
-          style={{
-            width: '80px',
-            height: '80px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.05)';
-            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '';
-          }}
-        >
-          {isImage ? (
-            <img
-              src={fileUrl}
-              alt='Show file'
-              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
-            />
-          ) : isPdf ? (
-            <svg width='40' height='40' viewBox='0 0 24 24' fill='#FF0000'>
-              <path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M15.5,16.5C15.5,17.61 14.61,18.5 13.5,18.5H11V20H9.5V13H13.5A2,2 0 0,1 15.5,15V16.5M13.5,16.5V15H11V16.5H13.5Z' />
-            </svg>
-          ) : (
-            <svg width='40' height='40' viewBox='0 0 24 24' fill='#888888'>
-              <path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z' />
-            </svg>
-          )}
-        </Card>
-      </Box>
+        {isImage ? (
+          <img
+            src={fileUrl}
+            alt='Show file'
+            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
+          />
+        ) : isPdf ? (
+          <svg width='40' height='40' viewBox='0 0 24 24' fill='#FF0000'>
+            <path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M15.5,16.5C15.5,17.61 14.61,18.5 13.5,18.5H11V20H9.5V13H13.5A2,2 0 0,1 15.5,15V16.5M13.5,16.5V15H11V16.5H13.5Z' />
+          </svg>
+        ) : (
+          <svg width='40' height='40' viewBox='0 0 24 24' fill='#888888'>
+            <path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z' />
+          </svg>
+        )}
+      </Card>
     );
   };
 
@@ -1199,7 +1193,7 @@ const ShowInformation = ({
                   )}
 
                   {/* Sección de Otros Datos */}
-                  {(band.bandInfo || band.showTime || band.testTime || band.fileUrl) && (
+                  {(band.bandInfo || band.showTime || band.testTime || band.fileUrls) && (
                     <>
                       <Divider my='sm' />
                       <Text size='lg' fw={700} mb='xs'>
@@ -1233,18 +1227,28 @@ const ShowInformation = ({
                         />
                       )}
 
-                      {band.fileUrls && band.fileUrls.length > 0 && (
-                        <Box py='4px' mb='4px'>
-                          <Text fw={600} size='sm' c='white' mb='xs'>Archivos:</Text>
-                          <Flex gap='md' wrap='wrap'>
-                            {band.fileUrls.map((fileUrl, idx) => (
-                              <div key={idx}>
-                                {getFilePreview(fileUrl)}
-                              </div>
-                            ))}
-                          </Flex>
-                        </Box>
-                      )}
+                      {(() => {
+                        // Combinar fileUrl singular (legacy) con fileUrls array
+                        const allFiles = [
+                          ...((band as any).fileUrl ? [(band as any).fileUrl] : []),
+                          ...(band.fileUrls || [])
+                        ];
+                        // Remover duplicados
+                        const uniqueFiles = [...new Set(allFiles)];
+
+                        return uniqueFiles.length > 0 ? (
+                          <Box py='4px' mb='4px'>
+                            <Text fw={600} size='sm' c='white' mb='xs'>Archivos:</Text>
+                            <Flex gap='md' wrap='wrap'>
+                              {uniqueFiles.map((fileUrl, idx) => (
+                                <div key={idx}>
+                                  {getFilePreview(fileUrl)}
+                                </div>
+                              ))}
+                            </Flex>
+                          </Box>
+                        ) : null;
+                      })()}
                     </>
                   )}
                 </Flex>

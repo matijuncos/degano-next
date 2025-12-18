@@ -95,3 +95,67 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { _id, name, city, address, contact } = body;
+
+    if (!_id) {
+      return NextResponse.json(
+        { error: 'Salon ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!name) {
+      return NextResponse.json(
+        { error: 'Salon name is required' },
+        { status: 400 }
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db('degano-app');
+
+    // Actualizar el salón
+    const result = await db.collection('salons').updateOne(
+      { _id: new (await import('mongodb')).ObjectId(_id) },
+      {
+        $set: {
+          name,
+          city: city || '',
+          address: address || '',
+          contact: contact || '',
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { error: 'Salon not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message: 'Salon updated successfully',
+        modifiedCount: result.modifiedCount
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error updating salon:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}

@@ -43,7 +43,18 @@ export default function BandsCreationPanel({
 
   useEffect(() => {
     if (editItem) {
-      setFormData(editItem);
+      // Combinar fileUrl singular (legacy) con fileUrls array
+      const allFiles = [
+        ...((editItem as any).fileUrl ? [(editItem as any).fileUrl] : []),
+        ...((editItem as any).fileUrls || [])
+      ];
+      // Remover duplicados
+      const uniqueFiles = [...new Set(allFiles)];
+
+      setFormData({
+        ...editItem,
+        fileUrls: uniqueFiles
+      });
     } else if (selectedBand) {
       // inicializar vacío según type
       if (selectedBand.type === 'band') {
@@ -53,7 +64,7 @@ export default function BandsCreationPanel({
           bandName: '',
           bandInfo: '',
           contacts: [],
-          fileUrl: ''
+          fileUrls: []
         });
       } else if (selectedBand.type === 'contact') {
         setFormData({
@@ -177,7 +188,7 @@ export default function BandsCreationPanel({
         body: file
       });
 
-      setFormData((prev: Band) => ({ ...prev, fileUrl: url }));
+      setFormData((prev: Band) => ({ ...prev, fileUrls: [...(prev.fileUrls || []), url] }));
     } catch (error) {
       console.error('Upload error:', error);
     } finally {
@@ -185,16 +196,19 @@ export default function BandsCreationPanel({
     }
   };
 
-  const handleDeleteFile = async () => {
-    if (!formData.fileUrl) return;
+  const handleDeleteFile = async (fileUrl: string) => {
+    if (!fileUrl) return;
     setWaitingAws(true);
     try {
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: formData.fileUrl, bucket: 'bands' })
+        body: JSON.stringify({ url: fileUrl, bucket: 'bands' })
       });
-      setFormData((prev: Band) => ({ ...prev, fileUrl: '' }));
+      setFormData((prev: Band) => ({
+        ...prev,
+        fileUrls: (prev.fileUrls || []).filter(url => url !== fileUrl)
+      }));
     } catch (error) {
       console.error('Delete error:', error);
     } finally {
@@ -229,40 +243,42 @@ export default function BandsCreationPanel({
               onChange={(e) => handleInput('bandInfo', e.currentTarget.value)}
             />
             <div style={{ margin: 'auto' }}>
-              {!formData.fileUrl ? (
-                <FileButton
-                  onChange={handleUpload}
-                  accept='image/*,.pdf,.doc,.docx'
-                >
-                  {(props) => (
-                    <Button {...props} loading={waitingAws} variant='outline'>
-                      Subir archivo
-                    </Button>
-                  )}
-                </FileButton>
-              ) : (
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
-                >
-                  <a
-                    href={formData.fileUrl}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                  >
-                    <Button variant='light'>
-                      <IconEye size={16} />
-                    </Button>
-                  </a>
-                  <Button
-                    color='red'
-                    variant='light'
-                    loading={waitingAws}
-                    onClick={handleDeleteFile}
-                  >
-                    <IconTrash size={16} />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginBottom: '12px' }}>
+                {formData.fileUrls && formData.fileUrls.length > 0 &&
+                  formData.fileUrls.map((fileUrl: string, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <a
+                        href={fileUrl}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                      >
+                        <Button variant='light' size='xs'>
+                          <IconEye size={16} />
+                        </Button>
+                      </a>
+                      <Button
+                        color='red'
+                        variant='light'
+                        size='xs'
+                        loading={waitingAws}
+                        onClick={() => handleDeleteFile(fileUrl)}
+                      >
+                        <IconTrash size={16} />
+                      </Button>
+                    </div>
+                  ))
+                }
+              </div>
+              <FileButton
+                onChange={handleUpload}
+                accept='image/*,.pdf,.doc,.docx'
+              >
+                {(props) => (
+                  <Button {...props} loading={waitingAws} variant='outline'>
+                    {formData.fileUrls && formData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
                   </Button>
-                </div>
-              )}
+                )}
+              </FileButton>
             </div>
             {formData.contacts && formData.contacts.length > 0 && (
               <div style={{ marginTop: '1rem', overflowX: 'auto' }}>

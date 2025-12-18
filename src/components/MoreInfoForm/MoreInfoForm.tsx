@@ -6,11 +6,13 @@ import { EVENT_TABS } from '@/context/config';
 const MoreInfoForm = ({
   event,
   onNextTab,
-  onBackTab
+  onBackTab,
+  updateEvent
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
+  updateEvent?: Function;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
 
@@ -21,10 +23,16 @@ const MoreInfoForm = ({
   }, [event]);
 
   const next = () => {
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
     onNextTab(EVENT_TABS.EQUIPMENT, eventData);
   };
 
   const back = () => {
+    if (updateEvent) {
+      updateEvent(eventData);
+    }
     onBackTab(EVENT_TABS.TIMING, eventData);
   };
 
