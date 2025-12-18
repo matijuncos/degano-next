@@ -184,10 +184,19 @@ export default function CreationPanel({
     setFormData({});
     setCustomLocation('');
     const updatedItem = await res.json();
-    mutate('/api/categories');
-    mutate('/api/equipment');
-    mutate('/api/treeData');
-    mutate('/api/equipmentLocation');
+
+    // Invalidar todos los caches relevantes
+    await Promise.all([
+      mutate('/api/categories'),
+      mutate('/api/equipment'),
+      mutate('/api/treeData'),
+      mutate('/api/categoryTreeData'),
+      mutate('/api/equipmentLocation')
+    ]);
+
+    // Invalidar también los caches con filtros de fecha (si existen)
+    mutate((key) => typeof key === 'string' && key.startsWith('/api/equipment?'));
+
     onCancel?.(false, updatedItem);
   };
 

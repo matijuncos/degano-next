@@ -30,7 +30,8 @@ function TreeNode({
   equipmentData,
   level = 0,
   onEdit,
-  forceExpanded = false
+  forceExpanded = false,
+  disableEditOnSelect = false
 }: {
   node: CategoryNode;
   onSelect: (node: CategoryNode | null) => void;
@@ -39,6 +40,7 @@ function TreeNode({
   level?: number;
   onEdit?: (item: any) => void;
   forceExpanded?: boolean;
+  disableEditOnSelect?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isSelected = selectedId === node._id;
@@ -62,10 +64,16 @@ function TreeNode({
       if (node.categoryId) {
         const fullItem = equipmentData.find((eq: any) => eq._id === node._id);
         onSelect(fullItem || node);
-        onEdit?.(fullItem || node);
+        // Solo llamar onEdit si no está deshabilitado (para equipment/page.tsx)
+        if (!disableEditOnSelect) {
+          onEdit?.(fullItem || node);
+        }
       } else {
         onSelect(node);
-        onEdit?.(node);
+        // Solo llamar onEdit si no está deshabilitado (para equipment/page.tsx)
+        if (!disableEditOnSelect) {
+          onEdit?.(node);
+        }
       }
       if (!open && node.children && node.children.length > 0) {
         setOpen(true);
@@ -174,6 +182,7 @@ function TreeNode({
                       level={level + 1}
                       onEdit={onEdit}
                       forceExpanded={forceExpanded}
+                      disableEditOnSelect={disableEditOnSelect}
                     />
                   </div>
                 </div>
@@ -190,16 +199,20 @@ export default function TreeView({
   onSelect,
   selectedCategory,
   onEdit,
+  onOpenModal,
   newEvent,
   eventStartDate,
-  eventEndDate
+  eventEndDate,
+  disableEditOnSelect = false
 }: {
   onSelect?: (n: CategoryNode | null) => void;
   selectedCategory?: CategoryNode | null;
   onEdit?: (item: any) => void;
+  onOpenModal?: () => void;
   newEvent: boolean;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  disableEditOnSelect?: boolean;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const [searchTerm, setSearchTerm] = useState('');
@@ -254,7 +267,14 @@ export default function TreeView({
       selectedCategory.parentId !== 'equipment';
     const parentId = isValidSelection ? selectedCategory._id : null;
     onSelect?.({ _id: '', name: '', parentId });
-    onEdit?.(null);
+
+    if (newEvent && onOpenModal) {
+      // Para new-event, abrir modal
+      onOpenModal();
+    } else {
+      // Para /equipment, mantener comportamiento original
+      onEdit?.(null);
+    }
   };
 
   const handleCreateEquipment = () => {
@@ -270,7 +290,14 @@ export default function TreeView({
       parentId,
       parentIdOriginal: parentId
     });
-    onEdit?.(null);
+
+    if (newEvent && onOpenModal) {
+      // Para new-event, abrir modal
+      onOpenModal();
+    } else {
+      // Para /equipment, mantener comportamiento original
+      onEdit?.(null);
+    }
   };
 
   const disableCreateEquipment =
@@ -284,13 +311,12 @@ export default function TreeView({
         flexDirection: 'column'
       }}
     >
-      {!newEvent && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-            margin: '0 0.75rem'
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          margin: '0 0.75rem'
         }}
       >
         <Button
@@ -310,7 +336,7 @@ export default function TreeView({
         >
           Cargar equipamiento
         </Button>
-      </div>)}
+      </div>
       <Divider my='sm' />
       <Input
         placeholder="Buscar equipamiento..."
@@ -347,6 +373,7 @@ export default function TreeView({
               equipmentData={equipmentFullData}
               onEdit={onEdit}
               forceExpanded={!!searchTerm.trim()}
+              disableEditOnSelect={disableEditOnSelect}
             />
           ))}
         </div>

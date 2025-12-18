@@ -10,12 +10,18 @@ import {
 import styles from './BottomNavBar.module.css';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 const BottomNavBar = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const { activeNavTab } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
+
+  // Desactivar loading cuando cambia la ruta
+  useEffect(() => {
+    setLoadingCursor(false);
+  }, [pathname]);
   const tiles: { label: string; path: string; Icon: JSX.Element }[] = [
     {
       label: 'Inicio',
@@ -49,6 +55,11 @@ const BottomNavBar = () => {
   const handleButtonClick = (path: string): void => {
     setLoadingCursor(true);
     router.push(path);
+
+    // Timeout de seguridad: quitar loading después de 5 segundos
+    setTimeout(() => {
+      setLoadingCursor(false);
+    }, 5000);
   };
 
   return (

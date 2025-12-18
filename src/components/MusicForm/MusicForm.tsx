@@ -848,8 +848,8 @@ const MusicForm = ({
                             <UnstyledButton
                               onClick={() => rateGenre(option.value, index)}
                               style={{
-                                width: '30px',
-                                height: '30px',
+                                width: '25px',
+                                height: '25px',
                                 borderRadius: '50%',
                                 border:
                                   genre.value === option.value

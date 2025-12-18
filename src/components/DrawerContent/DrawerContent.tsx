@@ -352,11 +352,21 @@ const DrawerContent = () => {
         </Text>
 
         <Divider />
-        {/* SECCIÓN: INFORMACIÓN PRINCIPAL */}
+
+        {/* SECCIÓN: TÍTULO DEL EVENTO */}
         <Box>
-          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+          <Text fw={700} size='md' mb='sm'>
             {selectedEvent?.type} - {selectedEvent?.lugar} -{' '}
             {selectedEvent?.eventCity}
+          </Text>
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: HORARIOS DEL EVENTO */}
+        <Box>
+          <Text fw={700} size='md' mb='sm'>
+            Horarios del evento
           </Text>
           <Text size='sm' mb='xs'>
             {selectedEvent?.start &&
@@ -383,9 +393,71 @@ const DrawerContent = () => {
               ))}
             </Stack>
           )}
+        </Box>
 
-          <Text size='sm' mt='sm'>
-            Cantidad de personas: {selectedEvent?.guests || 'N/A'}
+        {/* SECCIÓN: HORARIOS DE CIVIL/IGLESIA */}
+        {(selectedEvent?.churchDate || selectedEvent?.civil) && (
+          <>
+            <Divider />
+            <Box>
+              <Text fw={700} size='md' mb='sm'>
+                Horarios de civil / Iglesia
+              </Text>
+              <Stack gap='xs'>
+                {selectedEvent?.churchDate && (
+                  <Text size='sm'>
+                    Iglesia: {selectedEvent.churchDate}
+                  </Text>
+                )}
+                {selectedEvent?.civil && (
+                  <Text size='sm'>
+                    Civil: {selectedEvent.civil}
+                  </Text>
+                )}
+              </Stack>
+            </Box>
+          </>
+        )}
+
+        {/* SECCIÓN: HORARIOS DE LLEGADA STAFF */}
+        {selectedEvent?.staffArrivalTime && (
+          <>
+            <Divider />
+            <Box>
+              <Text fw={700} size='md' mb='sm'>
+                Horarios de llegada Staff
+              </Text>
+              <Text size='sm'>
+                {selectedEvent.staffArrivalTime}
+              </Text>
+            </Box>
+          </>
+        )}
+
+        {/* SECCIÓN: HORARIOS DE LLEGADA EQUIPAMIENTO */}
+        {selectedEvent?.equipmentArrivalTime && (
+          <>
+            <Divider />
+            <Box>
+              <Text fw={700} size='md' mb='sm'>
+                Horarios de llegada equipamiento
+              </Text>
+              <Text size='sm'>
+                {selectedEvent.equipmentArrivalTime}
+              </Text>
+            </Box>
+          </>
+        )}
+
+        <Divider />
+
+        {/* SECCIÓN: CANTIDAD DE PERSONAS */}
+        <Box>
+          <Text fw={700} size='md' mb='sm'>
+            Cantidad de personas
+          </Text>
+          <Text size='sm'>
+            {selectedEvent?.guests || 'N/A'}
           </Text>
         </Box>
 
@@ -393,7 +465,7 @@ const DrawerContent = () => {
 
         {/* SECCIÓN: CLIENTE */}
         <Box>
-          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+          <Text fw={700} size='md' mb='sm'>
             Cliente
           </Text>
           <Text size='sm'>
@@ -427,9 +499,127 @@ const DrawerContent = () => {
 
         <Divider />
 
+        {/* SECCIÓN: STAFF */}
+        <Box>
+          <Group justify='space-between' mb='sm'>
+            <Text fw={700} size='md'>
+              Staff
+            </Text>
+            <Button
+              variant='light'
+              size='xs'
+              leftSection={<IconPlus size={14} />}
+              onClick={() => setIsStaffModalOpen(true)}
+            >
+              Agregar
+            </Button>
+          </Group>
+          {staffMembers.length > 0 ? (
+            <Stack gap='xs'>
+              {staffMembers.map((member, index) => (
+                <Group key={index} justify='space-between'>
+                  <Box>
+                    <Text size='sm' fw={500}>
+                      {member.rol} - {member.employeeName}
+                    </Text>
+                  </Box>
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => handleRemoveStaff(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Group>
+              ))}
+            </Stack>
+          ) : (
+            <Text size='sm' c='dimmed'>
+              No hay staff asignado
+            </Text>
+          )}
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: PRESUPUESTO */}
+        <Box>
+          <Text fw={700} size='md' mb='sm'>
+            Presupuesto
+          </Text>
+          {selectedEvent?.payment?.totalToPay && (
+            <Text size='sm' mb='xs'>
+              Total a pagar:{' '}
+              {formatPrice(Number(selectedEvent.payment.totalToPay))}
+            </Text>
+          )}
+          {selectedEvent?.equipmentPrice && (
+            <Text size='sm' mb='xs'>
+              Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
+            </Text>
+          )}
+
+          <Divider
+            variant='dashed'
+            size='sm'
+            my='md'
+            style={{ borderColor: '#C9C9C9' }}
+          />
+
+          <Text size='sm' fw={500} mb='xs'>
+            Pagos realizados:
+          </Text>
+          {selectedEvent?.payment?.upfrontAmount && (
+            <Text size='sm' pl='md'>
+              - Adelanto:{' '}
+              {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
+            </Text>
+          )}
+          {selectedEvent?.payment?.subsequentPayments &&
+            selectedEvent.payment.subsequentPayments.map((payment: any, idx: number) => (
+              <Text key={idx} size='sm' pl='md'>
+                - {payment.description || 'Pago'}:{' '}
+                {formatPrice(Number(payment.amount))}
+              </Text>
+            ))}
+        </Box>
+
+        <Divider />
+
+        {/* SECCIÓN: EQUIPAMIENTO */}
+        <Box>
+          <Text fw={700} size='md' mb='sm'>
+            Equipamiento
+          </Text>
+          {Object.keys(groupedEquipment).length > 0 ? (
+            <Stack gap='md'>
+              {Object.keys(groupedEquipment).map((category) => (
+                <Box key={category}>
+                  <Text fw={500} size='sm' tt='uppercase' mb='xs'>
+                    {category}:
+                  </Text>
+                  <Stack gap={4} pl='md'>
+                    {groupedEquipment[category].map((eq: any, idx: number) => (
+                      <Text key={idx} size='sm'>
+                        Cant: {eq.quantity || 1} - {eq.name}
+                      </Text>
+                    ))}
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          ) : (
+            <Text size='sm' c='dimmed'>
+              No hay equipamiento asignado
+            </Text>
+          )}
+        </Box>
+
+        <Divider />
+
         {/* SECCIÓN: SHOW EN VIVO */}
         <Box>
-          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+          <Text fw={700} size='md' mb='sm'>
             Show en vivo
           </Text>
           {selectedEvent?.bands && selectedEvent.bands.length > 0 ? (
@@ -499,164 +689,9 @@ const DrawerContent = () => {
 
         <Divider />
 
-        {/* SECCIÓN: HORARIOS */}
-        {(selectedEvent?.churchDate ||
-          selectedEvent?.civil ||
-          selectedEvent?.staffArrivalTime ||
-          selectedEvent?.equipmentArrivalTime) && (
-          <>
-            <Box>
-              <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
-                Horarios
-              </Text>
-              <Stack gap='xs'>
-                {selectedEvent?.churchDate && (
-                  <Text size='sm'>
-                    Iglesia: {selectedEvent.churchDate}
-                  </Text>
-                )}
-                {selectedEvent?.civil && (
-                  <Text size='sm'>
-                    Civil: {selectedEvent.civil}
-                  </Text>
-                )}
-                {selectedEvent?.staffArrivalTime && (
-                  <Text size='sm'>
-                    Llegada del Staff: {selectedEvent.staffArrivalTime}
-                  </Text>
-                )}
-                {selectedEvent?.equipmentArrivalTime && (
-                  <Text size='sm'>
-                    Llegada del Equipamiento: {selectedEvent.equipmentArrivalTime}
-                  </Text>
-                )}
-              </Stack>
-            </Box>
-
-            <Divider />
-          </>
-        )}
-
-        {/* SECCIÓN: STAFF */}
-        <Box>
-          <Group justify='space-between' mb='sm'>
-            <Text fw={700} size='md' style={{ textDecoration: 'underline' }}>
-              Staff
-            </Text>
-            <Button
-              size='xs'
-              leftSection={<IconPlus size={14} />}
-              onClick={() => setIsStaffModalOpen(true)}
-            >
-              Agregar
-            </Button>
-          </Group>
-          {staffMembers.length > 0 ? (
-            <Stack gap='xs'>
-              {staffMembers.map((member, index) => (
-                <Group key={index} justify='space-between'>
-                  <Box>
-                    <Text size='sm' fw={500}>
-                      {member.rol} - {member.employeeName}
-                    </Text>
-                  </Box>
-                  <ActionIcon
-                    color='red'
-                    variant='subtle'
-                    onClick={() => handleRemoveStaff(index)}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Group>
-              ))}
-            </Stack>
-          ) : (
-            <Text size='sm' c='dimmed'>
-              No hay staff asignado
-            </Text>
-          )}
-        </Box>
-
-        <Divider />
-
-        {/* SECCIÓN: PRESUPUESTO */}
-        <Box>
-          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
-            Presupuesto
-          </Text>
-          {selectedEvent?.payment?.totalToPay && (
-            <Text size='sm' mb='xs'>
-              Total a pagar:{' '}
-              {formatPrice(Number(selectedEvent.payment.totalToPay))}
-            </Text>
-          )}
-          {selectedEvent?.equipmentPrice && (
-            <Text size='sm' mb='xs'>
-              Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
-            </Text>
-          )}
-
-          <Divider
-            variant='dashed'
-            size='sm'
-            my='md'
-            style={{ borderColor: '#C9C9C9' }}
-          />
-
-          <Text size='sm' fw={500} mb='xs'>
-            Pagos realizados:
-          </Text>
-          {selectedEvent?.payment?.upfrontAmount && (
-            <Text size='sm' pl='md'>
-              - Adelanto:{' '}
-              {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
-            </Text>
-          )}
-          {selectedEvent?.payment?.subsequentPayments &&
-            selectedEvent.payment.subsequentPayments.map((payment: any, idx: number) => (
-              <Text key={idx} size='sm' pl='md'>
-                - {payment.description || 'Pago'}:{' '}
-                {formatPrice(Number(payment.amount))}
-              </Text>
-            ))}
-        </Box>
-
-        <Divider />
-
-        {/* SECCIÓN: EQUIPAMIENTO */}
-        <Box>
-          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
-            Equipamiento
-          </Text>
-          {Object.keys(groupedEquipment).length > 0 ? (
-            <Stack gap='md'>
-              {Object.keys(groupedEquipment).map((category) => (
-                <Box key={category}>
-                  <Text fw={500} size='sm' tt='uppercase' mb='xs'>
-                    {category}:
-                  </Text>
-                  <Stack gap={4} pl='md'>
-                    {groupedEquipment[category].map((eq: any, idx: number) => (
-                      <Text key={idx} size='sm'>
-                        Cant: {eq.quantity || 1} - {eq.name}
-                      </Text>
-                    ))}
-                  </Stack>
-                </Box>
-              ))}
-            </Stack>
-          ) : (
-            <Text size='sm' c='dimmed'>
-              No hay equipamiento asignado
-            </Text>
-          )}
-        </Box>
-
-        <Divider />
-
         {/* SECCIÓN: ARCHIVOS */}
         <Box>
-          <Text fw={700} size='md' style={{ textDecoration: 'underline' }} mb='sm'>
+          <Text fw={700} size='md' mb='sm'>
             Archivos
           </Text>
           {loadingFiles ? (

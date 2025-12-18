@@ -1,8 +1,9 @@
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
+import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Box, Button } from '@mantine/core';
+import { Box, Button, Modal } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import EquipmentList from './EquipmentList';
@@ -20,10 +21,14 @@ const EquipmentForm = ({
   updateEvent?: Function;
 }) => {
 
-  const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [eventEquipment, setEventEquipment] = useState<EventModel>(event);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
+  const [modalOpened, setModalOpened] = useState(false);
+  const [previousSelection, setPreviousSelection] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Cargar categorías al montar el componente
   useEffect(() => {
@@ -68,6 +73,32 @@ const EquipmentForm = ({
   useEffect(() => {
     setEventEquipment((prev) => ({ ...prev, equipmentPrice: total }));
   }, [total]);
+
+  const handleEdit = (item: any) => {
+    setPreviousSelection(selectedCategory);
+    setEditItem(item);
+    setModalOpened(true);
+  };
+
+  const handleCancel = (wasCancelled: boolean, updatedItem?: any) => {
+    setModalOpened(false);
+    if (!wasCancelled && updatedItem) {
+      setSelectedCategory(updatedItem); // mantiene selección del nuevo item creado
+      setEditItem(null);
+      // Incrementar refreshTrigger para forzar recarga del ContentPanel
+      setRefreshTrigger(prev => prev + 1);
+    } else {
+      // Restaurar la selección anterior al cancelar
+      setSelectedCategory(previousSelection);
+      setEditItem(null);
+    }
+    setPreviousSelection(null);
+  };
+
+  const handleOpenModal = () => {
+    setPreviousSelection(selectedCategory);
+    setModalOpened(true);
+  };
 
   const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
     if (equipmentSelected.outOfService.isOut) return;
@@ -120,6 +151,7 @@ const EquipmentForm = ({
         className='flex'
         style={{ height: '75vh', minHeight: '75vh' }}
       >
+        {/* Sidebar - Categorías */}
         <Box
           className='hide-scrollbar'
           style={{
@@ -133,15 +165,18 @@ const EquipmentForm = ({
           }}
         >
           <Sidebar
-            onSelect={setSelectedEquipment}
-            selectedCategory={{}}
-            onEdit={() => {}}
+            onSelect={setSelectedCategory}
+            selectedCategory={selectedCategory}
+            onEdit={handleEdit}
+            onOpenModal={handleOpenModal}
             newEvent={true}
             eventStartDate={eventEquipment.date}
             eventEndDate={eventEquipment.endDate}
+            disableEditOnSelect={true}
           />
         </Box>
 
+        {/* ContentPanel - Lista de equipos */}
         <Box
           className='hide-scrollbar'
           style={{
@@ -155,7 +190,7 @@ const EquipmentForm = ({
           }}
         >
           <ContentPanel
-            selectedCategory={selectedEquipment}
+            selectedCategory={selectedCategory}
             setDisableCreateEquipment={() => {}}
             onEdit={handleEquipmentSelection}
             onRemove={(equipmentId: string) => {
@@ -164,14 +199,16 @@ const EquipmentForm = ({
                 equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
               }));
             }}
-            onCancel={() => {}}
+            onCancel={handleCancel}
             newEvent={true}
             eventStartDate={eventEquipment.date}
             eventEndDate={eventEquipment.endDate}
             selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+            refreshTrigger={refreshTrigger}
           />
         </Box>
 
+        {/* EquipmentList - Equipos agregados al evento */}
         <Box
           className='hide-scrollbar'
           style={{
@@ -190,6 +227,22 @@ const EquipmentForm = ({
           />
         </Box>
       </div>
+
+      {/* Modal para crear/editar equipos y categorías */}
+      <Modal
+        opened={modalOpened}
+        onClose={() => setModalOpened(false)}
+        title={editItem ? 'Editar' : selectedCategory ? 'Crear equipamiento' : 'Crear categoría'}
+        size="lg"
+        centered
+      >
+        <CreationPanel
+          selectedCategory={selectedCategory}
+          editItem={editItem}
+          onCancel={handleCancel}
+        />
+      </Modal>
+
       <div
         style={{
           display: 'flex',

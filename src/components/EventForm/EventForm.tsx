@@ -139,7 +139,7 @@ const EventForm = ({
     setEventData(updatedData);
 
     // Guardar inmediatamente para que persista al cambiar de tab
-    if (updateEvent && ['eventCity', 'eventAddress', 'venueContact', 'type', 'company', 'guests'].includes(e.target.name)) {
+    if (updateEvent && ['eventCity', 'eventAddress', 'venueContact', 'venueContactName', 'venueContactPhone', 'type', 'company', 'guests'].includes(e.target.name)) {
       skipSyncRef.current = true;
       updateEvent(updatedData);
     }
@@ -174,7 +174,10 @@ const EventForm = ({
         const hasChanges =
           existingSalon.city !== eventData.eventCity ||
           existingSalon.address !== eventData.eventAddress ||
-          existingSalon.contact !== eventData.venueContact;
+          existingSalon.contactName !== eventData.venueContactName ||
+          existingSalon.contactPhone !== eventData.venueContactPhone ||
+          // Retrocompatibilidad: comparar con venueContact si los nuevos campos no existen
+          (!eventData.venueContactName && !eventData.venueContactPhone && existingSalon.contact !== eventData.venueContact);
 
         if (hasChanges) {
           const response = await fetch('/api/salons', {
@@ -187,7 +190,8 @@ const EventForm = ({
               name: eventData.lugar,
               city: eventData.eventCity || '',
               address: eventData.eventAddress || '',
-              contact: eventData.venueContact || ''
+              contactName: eventData.venueContactName || '',
+              contactPhone: eventData.venueContactPhone || eventData.venueContact || ''
             })
           });
 
@@ -209,7 +213,8 @@ const EventForm = ({
             name: eventData.lugar,
             city: eventData.eventCity || '',
             address: eventData.eventAddress || '',
-            contact: eventData.venueContact || ''
+            contactName: eventData.venueContactName || '',
+            contactPhone: eventData.venueContactPhone || eventData.venueContact || ''
           })
         });
 
@@ -315,13 +320,25 @@ const EventForm = ({
 
             let updatedData = { ...eventData, lugar: value || '' };
 
-            // Si es un salón existente, autocompletar los campos
+            // Si es un salón existente, autocompletar los campos con los datos del salón
+            // Si el salón no tiene esos datos, blanquearlos
             if (selectedSalon) {
               updatedData = {
                 ...updatedData,
-                eventCity: selectedSalon.city || updatedData.eventCity,
-                eventAddress: selectedSalon.address || updatedData.eventAddress,
-                venueContact: selectedSalon.contact || updatedData.venueContact
+                eventCity: selectedSalon.city || '',
+                eventAddress: selectedSalon.address || '',
+                // Siempre usar los datos del salón (aunque sean vacíos)
+                venueContactName: selectedSalon.contactName || '',
+                venueContactPhone: selectedSalon.contactPhone || selectedSalon.contact || ''
+              };
+            } else {
+              // Si no es un salón existente (nuevo), limpiar los campos
+              updatedData = {
+                ...updatedData,
+                eventCity: '',
+                eventAddress: '',
+                venueContactName: '',
+                venueContactPhone: ''
               };
             }
 
@@ -386,9 +403,17 @@ const EventForm = ({
         />
         <Input
           type='text'
-          placeholder='Contacto de lugar'
-          name='venueContact'
-          value={eventData.venueContact || ''}
+          placeholder='Nombre contacto del lugar'
+          name='venueContactName'
+          value={eventData.venueContactName || ''}
+          onChange={handleInputChange}
+          autoComplete='off'
+        />
+        <Input
+          type='text'
+          placeholder='Teléfono de contacto'
+          name='venueContactPhone'
+          value={eventData.venueContactPhone || ''}
           onChange={handleInputChange}
           autoComplete='off'
         />

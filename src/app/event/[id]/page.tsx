@@ -31,7 +31,13 @@ import {
   Group,
   Textarea
 } from '@mantine/core';
-import { IconUserPlus, IconUserCheck, IconSearch, IconArrowLeft, IconPlus } from '@tabler/icons-react';
+import {
+  IconUserPlus,
+  IconUserCheck,
+  IconSearch,
+  IconArrowLeft,
+  IconPlus
+} from '@tabler/icons-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -112,7 +118,6 @@ const MainInformation = ({
     selectedEvent?.endDate ? toTimeString(new Date(selectedEvent.endDate)) : ''
   );
 
-
   // Sincronizar estados cuando cambia selectedEvent
   useEffect(() => {
     if (selectedEvent?.date) {
@@ -151,7 +156,6 @@ const MainInformation = ({
       setLoadingCursor(false);
     }
   };
-
 
   // Solo cargar clientes cuando se abre el formulario de agregar cliente extra
   useEffect(() => {
@@ -285,78 +289,102 @@ const MainInformation = ({
       <Text size='lg' fw={700} mb='md'>
         Datos del evento
       </Text>
-      <EditableData
-        type='dateOnly'
-        property='date'
-        title='Fecha de evento'
-        value={dateOnly ? new Date(dateOnly).toLocaleDateString('es-AR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }) : 'Sin fecha'}
-        onSave={(value) => {
-          setDateOnly(value);
-          if (value && timeOnly && selectedEvent) {
-            const combined = combineDateAndTime(value, timeOnly);
-            if (combined) {
-              updateEventData({ date: combined });
+
+      {/* Fechas en una línea */}
+      <Group align='flex-start' gap='md' wrap='nowrap' style={{ width: '100%' }}>
+        <Box style={{ flex: 1 }}>
+          <EditableData
+            type='dateOnly'
+            property='date'
+            title='Fecha de evento'
+            value={
+              dateOnly
+                ? new Date(dateOnly).toLocaleDateString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })
+                : 'Sin fecha'
             }
-          }
-        }}
-      />
-      <EditableData
-        type='timeOnly'
-        property='date'
-        title='Hora de inicio'
-        value={timeOnly}
-        onSave={(value) => {
-          setTimeOnly(value);
-          if (dateOnly && value && selectedEvent) {
-            const combined = combineDateAndTime(dateOnly, value);
-            if (combined) {
-              updateEventData({ date: combined });
-            }
-          }
-        }}
-      />
-      {selectedEvent.endDate && (
-        <EditableData
-          type='dateOnly'
-          property='endDate'
-          title='Fecha finalización'
-          value={endDateOnly ? new Date(endDateOnly).toLocaleDateString('es-AR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-          }) : 'Sin fecha'}
-          onSave={(value) => {
-            setEndDateOnly(value);
-            if (value && endTimeOnly && selectedEvent) {
-              const combined = combineDateAndTime(value, endTimeOnly);
-              if (combined) {
-                updateEventData({ endDate: combined });
+            onSave={(value) => {
+              setDateOnly(value);
+              if (value && timeOnly && selectedEvent) {
+                const combined = combineDateAndTime(value, timeOnly);
+                if (combined) {
+                  updateEventData({ date: combined });
+                }
               }
-            }
-          }}
-        />
-      )}
-      {selectedEvent.endDate && (
-        <EditableData
-          type='timeOnly'
-          property='endDate'
-          title='Hora de finalización'
-          value={endTimeOnly}
-          onSave={(value) => {
-            setEndTimeOnly(value);
-            if (endDateOnly && value && selectedEvent) {
-              const combined = combineDateAndTime(endDateOnly, value);
-              if (combined) {
-                updateEventData({ endDate: combined });
+            }}
+          />
+        </Box>
+        {selectedEvent.endDate && (
+          <Box style={{ flex: 1 }}>
+            <EditableData
+              type='dateOnly'
+              property='endDate'
+              title='Fecha finalización'
+              value={
+                endDateOnly
+                  ? new Date(endDateOnly).toLocaleDateString('es-AR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })
+                  : 'Sin fecha'
               }
-            }
-          }}
-        />
-      )}
+              onSave={(value) => {
+                setEndDateOnly(value);
+                if (value && endTimeOnly && selectedEvent) {
+                  const combined = combineDateAndTime(value, endTimeOnly);
+                  if (combined) {
+                    updateEventData({ endDate: combined });
+                  }
+                }
+              }}
+            />
+          </Box>
+        )}
+      </Group>
+
+      {/* Horarios en una línea */}
+      <Group align='flex-start' gap='md' wrap='nowrap' style={{ width: '100%' }}>
+        <Box style={{ flex: 1 }}>
+          <EditableData
+            type='timeOnly'
+            property='date'
+            title='Hora de inicio'
+            value={timeOnly}
+            onSave={(value) => {
+              setTimeOnly(value);
+              if (dateOnly && value && selectedEvent) {
+                const combined = combineDateAndTime(dateOnly, value);
+                if (combined) {
+                  updateEventData({ date: combined });
+                }
+              }
+            }}
+          />
+        </Box>
+        {selectedEvent.endDate && (
+          <Box style={{ flex: 1 }}>
+            <EditableData
+              type='timeOnly'
+              property='endDate'
+              title='Hora de finalización'
+              value={endTimeOnly}
+              onSave={(value) => {
+                setEndTimeOnly(value);
+                if (endDateOnly && value && selectedEvent) {
+                  const combined = combineDateAndTime(endDateOnly, value);
+                  if (combined) {
+                    updateEventData({ endDate: combined });
+                  }
+                }
+              }}
+            />
+          </Box>
+        )}
+      </Group>
       <EditableData
         type='text'
         property='type'
@@ -404,12 +432,22 @@ const MainInformation = ({
           value={selectedEvent.eventAddress}
         />
       )}
-      {selectedEvent.venueContact && (
+      {(selectedEvent.venueContactName || selectedEvent.venueContact) && (
         <EditableData
           type='text'
-          property='venueContact'
-          title='Contacto de lugar'
-          value={selectedEvent.venueContact}
+          property='venueContactName'
+          title='Nombre contacto del lugar'
+          value={selectedEvent.venueContactName || ''}
+        />
+      )}
+      {(selectedEvent.venueContactPhone || selectedEvent.venueContact) && (
+        <EditableData
+          type='text'
+          property='venueContactPhone'
+          title='Teléfono de contacto'
+          value={
+            selectedEvent.venueContactPhone || selectedEvent.venueContact || ''
+          }
         />
       )}
 
@@ -1047,7 +1085,9 @@ const ShowInformation = ({
   const handleSaveBand = async (band: Band) => {
     handleBandsChange(
       selectedBand
-        ? selectedEvent!.bands.map((b) => (b.bandName === selectedBand.bandName ? band : b))
+        ? selectedEvent!.bands.map((b) =>
+            b.bandName === selectedBand.bandName ? band : b
+          )
         : [...(selectedEvent?.bands || []), band]
     );
     await refetchBands();
@@ -1061,7 +1101,9 @@ const ShowInformation = ({
   };
 
   const handleDeleteBand = (indexToRemove: number) => {
-    handleBandsChange(selectedEvent!.bands.filter((_, index) => index !== indexToRemove));
+    handleBandsChange(
+      selectedEvent!.bands.filter((_, index) => index !== indexToRemove)
+    );
   };
 
   const getFilePreview = (fileUrl: string) => {
@@ -1081,7 +1123,7 @@ const ShowInformation = ({
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          transition: 'transform 0.2s, box-shadow 0.2s',
+          transition: 'transform 0.2s, box-shadow 0.2s'
         }}
         onClick={() => window.open(fileUrl, '_blank')}
         onMouseEnter={(e) => {
@@ -1097,7 +1139,12 @@ const ShowInformation = ({
           <img
             src={fileUrl}
             alt='Show file'
-            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '4px'
+            }}
           />
         ) : isPdf ? (
           <svg width='40' height='40' viewBox='0 0 24 24' fill='#FF0000'>
@@ -1185,7 +1232,18 @@ const ShowInformation = ({
                       {band.contacts.map((contact, contactIndex) => (
                         <Box key={contactIndex} mb='xs'>
                           <Text size='sm' c='white'>
-                            <Text component='span' fw={600}>Contacto:</Text> {contact.name} - <Text component='span' fw={600}>Rol:</Text> {contact.rol} - <Text component='span' fw={600}>Tel:</Text> {contact.phone}
+                            <Text component='span' fw={600}>
+                              Contacto:
+                            </Text>{' '}
+                            {contact.name} -{' '}
+                            <Text component='span' fw={600}>
+                              Rol:
+                            </Text>{' '}
+                            {contact.rol} -{' '}
+                            <Text component='span' fw={600}>
+                              Tel:
+                            </Text>{' '}
+                            {contact.phone}
                           </Text>
                         </Box>
                       ))}
@@ -1193,7 +1251,10 @@ const ShowInformation = ({
                   )}
 
                   {/* Sección de Otros Datos */}
-                  {(band.bandInfo || band.showTime || band.testTime || band.fileUrls) && (
+                  {(band.bandInfo ||
+                    band.showTime ||
+                    band.testTime ||
+                    band.fileUrls) && (
                     <>
                       <Divider my='sm' />
                       <Text size='lg' fw={700} mb='xs'>
@@ -1230,7 +1291,9 @@ const ShowInformation = ({
                       {(() => {
                         // Combinar fileUrl singular (legacy) con fileUrls array
                         const allFiles = [
-                          ...((band as any).fileUrl ? [(band as any).fileUrl] : []),
+                          ...((band as any).fileUrl
+                            ? [(band as any).fileUrl]
+                            : []),
                           ...(band.fileUrls || [])
                         ];
                         // Remover duplicados
@@ -1238,12 +1301,12 @@ const ShowInformation = ({
 
                         return uniqueFiles.length > 0 ? (
                           <Box py='4px' mb='4px'>
-                            <Text fw={600} size='sm' c='white' mb='xs'>Archivos:</Text>
+                            <Text fw={600} size='sm' c='white' mb='xs'>
+                              Archivos:
+                            </Text>
                             <Flex gap='md' wrap='wrap'>
                               {uniqueFiles.map((fileUrl, idx) => (
-                                <div key={idx}>
-                                  {getFilePreview(fileUrl)}
-                                </div>
+                                <div key={idx}>{getFilePreview(fileUrl)}</div>
                               ))}
                             </Flex>
                           </Box>
@@ -1369,46 +1432,69 @@ const TimingInformation = ({
       {/* Formulario de agregar nuevo timing */}
       {isAdding && (
         <Card withBorder padding='md' mb='md'>
-          <Text fw={500} mb='sm'>Nuevo Evento al Cronograma</Text>
-          <Flex gap='sm' mb='sm' align='flex-end'>
-            <TimePicker
-              label='Hora'
-              value={newItem.time}
-              onChange={(value) => setNewItem({ ...newItem, time: value })}
-              style={{ flex: 1 }}
-            />
-            <Box style={{ flex: 2 }}>
-              <Text size='sm' fw={500} mb='4px'>Título</Text>
-              <Input
-                placeholder='Título del evento'
-                value={newItem.title}
-                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddTiming();
+            }}
+          >
+            <Text fw={500} mb='sm'>
+              Nuevo Evento al Cronograma
+            </Text>
+            <Flex gap='sm' mb='sm' align='flex-end'>
+              <TimePicker
+                label='Hora'
+                value={newItem.time}
+                onChange={(value) => setNewItem({ ...newItem, time: value })}
+                style={{ flex: 1 }}
               />
-            </Box>
-          </Flex>
-          <Textarea
-            placeholder='Detalles adicionales'
-            value={newItem.details}
-            onChange={(e) => setNewItem({ ...newItem, details: e.target.value })}
-            minRows={2}
-            mb='sm'
-          />
-          <Group gap='xs'>
-            <Button onClick={handleAddTiming} color='green' size='xs'>
-              Guardar
-            </Button>
-            <Button
-              onClick={() => {
-                setIsAdding(false);
-                setNewItem({ time: '', title: '', details: '' });
-              }}
-              variant='light'
-              color='gray'
-              size='xs'
-            >
-              Cancelar
-            </Button>
-          </Group>
+              <Box style={{ flex: 2 }}>
+                <Text size='sm' fw={500} mb='4px'>
+                  Título
+                </Text>
+                <Input
+                  placeholder='Título del evento'
+                  value={newItem.title}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, title: e.target.value })
+                  }
+                />
+              </Box>
+            </Flex>
+            <Text size='sm' fw={500} mb='4px'>
+              Detalles
+            </Text>
+            <Textarea
+              placeholder='Detalles adicionales'
+              value={newItem.details}
+              onChange={(e) =>
+                setNewItem({ ...newItem, details: e.target.value })
+              }
+              minRows={2}
+              mb='sm'
+            />
+            <Group gap='xs'>
+              <Button
+                type='submit'
+                onClick={handleAddTiming}
+                color='green'
+                size='xs'
+              >
+                Guardar
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsAdding(false);
+                  setNewItem({ time: '', title: '', details: '' });
+                }}
+                variant='light'
+                color='gray'
+                size='xs'
+              >
+                Cancelar
+              </Button>
+            </Group>
+          </form>
         </Card>
       )}
 
@@ -1419,51 +1505,68 @@ const TimingInformation = ({
             <Card key={index} withBorder padding='sm'>
               {editingIndex === index ? (
                 // Modo edición
-                <Box>
-                  <Text fw={500} mb='sm' c='dimmed'>#{index + 1}</Text>
-                  <Flex gap='sm' mb='sm' align='flex-end'>
-                    <TimePicker
-                      label='Hora'
-                      value={editingItem?.time || ''}
-                      onChange={(value) =>
-                        setEditingItem({ ...editingItem!, time: value })
-                      }
-                      style={{ flex: 1 }}
-                    />
-                    <Box style={{ flex: 2 }}>
-                      <Text size='sm' fw={500} mb='4px'>Título</Text>
-                      <Input
-                        placeholder='Título del evento'
-                        value={editingItem?.title || ''}
-                        onChange={(e) =>
-                          setEditingItem({ ...editingItem!, title: e.target.value })
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSaveEdit();
+                  }}
+                >
+                  <Box>
+                    <Text fw={500} mb='sm' c='dimmed'>
+                      #{index + 1}
+                    </Text>
+                    <Flex gap='sm' mb='sm' align='flex-end'>
+                      <TimePicker
+                        label='Hora'
+                        value={editingItem?.time || ''}
+                        onChange={(value) =>
+                          setEditingItem({ ...editingItem!, time: value })
                         }
+                        style={{ flex: 1 }}
                       />
-                    </Box>
-                  </Flex>
-                  <Textarea
-                    placeholder='Detalles adicionales'
-                    value={editingItem?.details || ''}
-                    onChange={(e) =>
-                      setEditingItem({ ...editingItem!, details: e.target.value })
-                    }
-                    minRows={2}
-                    mb='sm'
-                  />
-                  <Group gap='xs'>
-                    <Button onClick={handleSaveEdit} color='green' size='xs'>
-                      Guardar
-                    </Button>
-                    <Button
-                      onClick={handleCancelEdit}
-                      variant='light'
-                      color='gray'
-                      size='xs'
-                    >
-                      Cancelar
-                    </Button>
-                  </Group>
-                </Box>
+                      <Box style={{ flex: 2 }}>
+                        <Text size='sm' fw={500} mb='4px'>
+                          Título
+                        </Text>
+                        <Input
+                          placeholder='Título del evento'
+                          value={editingItem?.title || ''}
+                          onChange={(e) =>
+                            setEditingItem({
+                              ...editingItem!,
+                              title: e.target.value
+                            })
+                          }
+                        />
+                      </Box>
+                    </Flex>
+                    <Textarea
+                      placeholder='Detalles adicionales'
+                      value={editingItem?.details || ''}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem!,
+                          details: e.target.value
+                        })
+                      }
+                      minRows={2}
+                      mb='sm'
+                    />
+                    <Group gap='xs'>
+                      <Button onClick={handleSaveEdit} color='green' size='xs'>
+                        Guardar
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        variant='light'
+                        color='gray'
+                        size='xs'
+                      >
+                        Cancelar
+                      </Button>
+                    </Group>
+                  </Box>
+                </form>
               ) : (
                 // Modo visualización
                 <Flex justify='space-between' align='center' gap='md'>

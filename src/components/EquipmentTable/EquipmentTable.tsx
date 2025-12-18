@@ -5,7 +5,8 @@ import useNotification from '@/hooks/useNotification';
 import { isEqual } from 'lodash';
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
-import { Box } from '@mantine/core';
+import CreationPanel from '@/components/CreationPanel/CreationPanel';
+import { Box, Modal } from '@mantine/core';
 import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
@@ -17,13 +18,16 @@ const EquipmentTable = () => {
   const { user } = useUser();
   const isAdmin = user?.role === 'admin';
 
-  const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [eventEquipment, setEventEquipment] = useState<EventModel>(
     selectedEvent!
   );
   const [total, setTotal] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [modalOpened, setModalOpened] = useState(false);
+  const [previousSelection, setPreviousSelection] = useState(null);
 
   useEffect(() => {
     setEventEquipment((prev) => ({ ...prev, equipmentPrice: total }));
@@ -42,6 +46,32 @@ const EquipmentTable = () => {
     if (!selectedEvent) return;
     setRefreshTrigger(prev => prev + 1);
   }, [selectedEvent?.date, selectedEvent?.endDate]);
+
+  const handleEdit = (item: any) => {
+    setPreviousSelection(selectedCategory);
+    setEditItem(item);
+    setModalOpened(true);
+  };
+
+  const handleCancel = (wasCancelled: boolean, updatedItem?: any) => {
+    setModalOpened(false);
+    if (!wasCancelled && updatedItem) {
+      setSelectedCategory(updatedItem); // mantiene selección del nuevo item creado
+      setEditItem(null);
+      // Incrementar refreshTrigger para forzar recarga del ContentPanel
+      setRefreshTrigger(prev => prev + 1);
+    } else {
+      // Restaurar la selección anterior al cancelar
+      setSelectedCategory(previousSelection);
+      setEditItem(null);
+    }
+    setPreviousSelection(null);
+  };
+
+  const handleOpenModal = () => {
+    setPreviousSelection(selectedCategory);
+    setModalOpened(true);
+  };
 
   const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
     if (equipmentSelected.outOfService.isOut) return;
@@ -113,69 +143,91 @@ const EquipmentTable = () => {
   };
 
   return (
-    <div className='flex' style={{ overflow: 'hidden' }}>
-      <Box
-        style={{
-          width: '25%',
-          borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <Sidebar
-          onSelect={setSelectedEquipment}
-          selectedCategory={{}}
-          onEdit={() => {}}
-          newEvent={true}
-          eventStartDate={selectedEvent?.date}
-          eventEndDate={selectedEvent?.endDate}
-        />
-      </Box>
-
-      <Box
-        style={{
-          width: '55%',
-          borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <ContentPanel
-          selectedCategory={selectedEquipment}
-          setDisableCreateEquipment={() => {}}
-          onEdit={handleEquipmentSelection}
-          onRemove={(equipmentId: string) => {
-            setEventEquipment((prev) => ({
-              ...prev,
-              equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
-            }));
+    <>
+      <div className='flex' style={{ overflow: 'hidden' }}>
+        {/* Sidebar - Categorías */}
+        <Box
+          style={{
+            width: '25%',
+            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+            display: 'flex',
+            flexDirection: 'column'
           }}
-          onCancel={() => {}}
-          newEvent={true}
-          eventStartDate={selectedEvent?.date}
-          eventEndDate={selectedEvent?.endDate}
-          selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
-          refreshTrigger={refreshTrigger}
-        />
-      </Box>
+        >
+          <Sidebar
+            onSelect={setSelectedCategory}
+            selectedCategory={selectedCategory}
+            onEdit={handleEdit}
+            onOpenModal={handleOpenModal}
+            newEvent={true}
+            eventStartDate={selectedEvent?.date}
+            eventEndDate={selectedEvent?.endDate}
+            disableEditOnSelect={true}
+          />
+        </Box>
 
-      <Box
-        style={{
-          width: '20%',
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto'
-        }}
+        {/* ContentPanel - Lista de equipos */}
+        <Box
+          style={{
+            width: '55%',
+            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <ContentPanel
+            selectedCategory={selectedCategory}
+            setDisableCreateEquipment={() => {}}
+            onEdit={handleEquipmentSelection}
+            onRemove={(equipmentId: string) => {
+              setEventEquipment((prev) => ({
+                ...prev,
+                equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+              }));
+            }}
+            onCancel={handleCancel}
+            newEvent={true}
+            eventStartDate={selectedEvent?.date}
+            eventEndDate={selectedEvent?.endDate}
+            selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+            refreshTrigger={refreshTrigger}
+          />
+        </Box>
+
+        {/* EquipmentList - Equipos agregados al evento */}
+        <Box
+          style={{
+            width: '20%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto'
+          }}
+        >
+          <EquipmentList
+            equipmentList={eventEquipment.equipment}
+            setEventEquipment={setEventEquipment}
+            setTotal={setTotal}
+            allowSave={hasChanges}
+            onSave={updateEvent}
+          />
+        </Box>
+      </div>
+
+      {/* Modal para crear/editar equipos y categorías */}
+      <Modal
+        opened={modalOpened}
+        onClose={() => setModalOpened(false)}
+        title={editItem ? 'Editar' : selectedCategory ? 'Crear equipamiento' : 'Crear categoría'}
+        size="lg"
+        centered
       >
-        <EquipmentList
-          equipmentList={eventEquipment.equipment}
-          setEventEquipment={setEventEquipment}
-          setTotal={setTotal}
-          allowSave={hasChanges}
-          onSave={updateEvent}
+        <CreationPanel
+          selectedCategory={selectedCategory}
+          editItem={editItem}
+          onCancel={handleCancel}
         />
-      </Box>
-    </div>
+      </Modal>
+    </>
   );
 };
 

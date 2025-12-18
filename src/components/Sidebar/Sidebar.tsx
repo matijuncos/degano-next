@@ -4,16 +4,20 @@ export default function Sidebar({
   onSelect,
   selectedCategory,
   onEdit,
+  onOpenModal,
   newEvent,
   eventStartDate,
-  eventEndDate
+  eventEndDate,
+  disableEditOnSelect = false
 }: {
   onSelect: (node: any) => void;
   selectedCategory: any;
   onEdit?: (item: any) => void;
+  onOpenModal?: () => void;
   newEvent: boolean;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  disableEditOnSelect?: boolean;
 }) {
   return (
     <aside className='border-r h-screen p-2 overflow-y-auto' style={{ width: '100%', height: '100%' }}>
@@ -26,9 +30,11 @@ export default function Sidebar({
         onSelect={onSelect}
         selectedCategory={selectedCategory}
         onEdit={onEdit}
+        onOpenModal={onOpenModal}
         newEvent={newEvent}
         eventStartDate={eventStartDate}
         eventEndDate={eventEndDate}
+        disableEditOnSelect={disableEditOnSelect}
       />
     </aside>
   );
