@@ -692,6 +692,13 @@ const ClientForm = ({
               disabled={!isNewExtraClient && !selectedExtraClientId}
             />
             <Input
+              placeholder='Rol en el evento *'
+              name='rol'
+              error={validateExtra && !extraClientData.rol}
+              value={extraClientData.rol}
+              onChange={handleExtraInputChange}
+            />
+            <Input
               placeholder='Edad'
               name='age'
               value={extraClientData.age}
@@ -701,13 +708,6 @@ const ClientForm = ({
               placeholder='Dirección'
               name='address'
               value={extraClientData.address}
-              onChange={handleExtraInputChange}
-            />
-            <Input
-              placeholder='Rol en el evento *'
-              name='rol'
-              error={validateExtra && !extraClientData.rol}
-              value={extraClientData.rol}
               onChange={handleExtraInputChange}
             />
           </div>

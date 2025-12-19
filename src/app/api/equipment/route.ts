@@ -15,57 +15,84 @@ export async function GET(req: Request) {
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  // PASO 1: Limpiar equipos que tienen eventos expirados (solo si NO estamos en modo evento)
+  // PASO 1: Limpiar scheduledUses expirados y actualizar estados (solo si NO estamos en modo evento)
   if (!eventStartDate && !eventEndDate) {
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
-    // Buscar equipos que están marcados como "En Evento" pero cuya fecha de fin ya pasó
-    const expiredEquipment = await db
+    // Buscar equipos con scheduledUses
+    const equipmentWithScheduled = await db
       .collection('equipment')
       .find({
-        'outOfService.isOut': true,
-        'outOfService.reason': 'En Evento',
-        lastUsedEndDate: { $lt: now }
+        scheduledUses: { $exists: true, $ne: [] }
       })
       .toArray();
 
-    if (expiredEquipment.length > 0) {
-      console.log(`=== LIMPIANDO ${expiredEquipment.length} EQUIPOS CON EVENTOS EXPIRADOS ===`);
+    const session = await getSession();
 
-      // Actualizar todos los equipos expirados
-      const expiredIds = expiredEquipment.map((eq) => eq._id);
-      await db.collection('equipment').updateMany(
-        { _id: { $in: expiredIds } },
-        {
-          $set: {
-            location: 'Deposito',
-            lastUsedStartDate: null,
-            lastUsedEndDate: null,
-            outOfService: {
-              isOut: false,
-              reason: null,
-              details: null
-            }
-          }
-        }
-      );
+    for (const eq of equipmentWithScheduled) {
+      const scheduledUses = eq.scheduledUses || [];
 
-      // Registrar en historial para cada equipo
-      const session = await getSession();
-      for (const eq of expiredEquipment) {
-        await createHistoryEntry(db, {
-          equipmentId: eq._id.toString(),
-          equipmentName: eq.name,
-          equipmentCode: eq.code,
-          action: 'cambio_estado',
-          userId: session?.user?.sub || 'SYSTEM',
-          fromValue: 'En Evento',
-          toValue: 'Disponible',
-          details: `Liberado automáticamente - evento finalizado el ${new Date(eq.lastUsedEndDate).toLocaleString('es-AR')}`
+      // Filtrar usos que ya pasaron
+      const activeUses = scheduledUses.filter((use: any) => {
+        const endDate = new Date(use.endDate);
+        endDate.setHours(0, 0, 0, 0);
+        return endDate >= now;
+      });
+
+      const expiredUses = scheduledUses.filter((use: any) => {
+        const endDate = new Date(use.endDate);
+        endDate.setHours(0, 0, 0, 0);
+        return endDate < now;
+      });
+
+      // Si hubo cambios (usos expirados), actualizar
+      if (expiredUses.length > 0) {
+        console.log(`=== LIMPIANDO ${expiredUses.length} USOS EXPIRADOS PARA: ${eq.name} ===`);
+
+        // Verificar si el equipo está actualmente en uso
+        const isCurrentlyInUse = activeUses.some((use: any) => {
+          const startDate = new Date(use.startDate);
+          const endDate = new Date(use.endDate);
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(0, 0, 0, 0);
+          return now >= startDate && now <= endDate;
         });
-      }
 
-      console.log(`Equipos liberados: ${expiredEquipment.map((eq) => eq.name).join(', ')}`);
+        // Actualizar scheduledUses y estado del equipo
+        const updateData: any = {
+          scheduledUses: activeUses
+        };
+
+        // Si ya no está en uso, limpiar estado
+        if (!isCurrentlyInUse && eq.outOfService?.reason === 'En Evento') {
+          updateData.location = 'Deposito';
+          updateData.lastUsedStartDate = null;
+          updateData.lastUsedEndDate = null;
+          updateData.outOfService = {
+            isOut: false,
+            reason: null,
+            details: null
+          };
+
+          // Registrar en historial
+          await createHistoryEntry(db, {
+            equipmentId: eq._id.toString(),
+            equipmentName: eq.name,
+            equipmentCode: eq.code,
+            action: 'cambio_estado',
+            userId: session?.user?.sub || 'SYSTEM',
+            fromValue: 'En Evento',
+            toValue: 'Disponible',
+            details: `Liberado automáticamente - evento finalizado`
+          });
+        }
+
+        await db.collection('equipment').updateOne(
+          { _id: eq._id },
+          { $set: updateData }
+        );
+      }
     }
   }
 
@@ -76,27 +103,30 @@ export async function GET(req: Request) {
     .sort({ name: 1 })
     .toArray();
 
-  // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara
+  // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara basada en scheduledUses
   const enriched = equipments.map((eq) => {
     // Si estamos validando para un evento específico (al crear/editar evento),
     // verificar si el equipo está ocupado en el rango de fechas
-    if (eventStartDate && eventEndDate && eq.lastUsedStartDate && eq.lastUsedEndDate) {
+    if (eventStartDate && eventEndDate) {
       const eStart = new Date(eventStartDate);
       const eEnd = new Date(eventEndDate);
-      const usedStart = new Date(eq.lastUsedStartDate);
-      const usedEnd = new Date(eq.lastUsedEndDate);
-
-      // Resetear horas para comparar solo fechas
       eStart.setHours(0, 0, 0, 0);
       eEnd.setHours(0, 0, 0, 0);
-      usedStart.setHours(0, 0, 0, 0);
-      usedEnd.setHours(0, 0, 0, 0);
 
-      // Verificar si hay solapamiento entre las fechas del evento y las fechas de uso
-      const inEvent = eStart <= usedEnd && eEnd >= usedStart;
+      // Verificar conflictos con scheduledUses
+      const scheduledUses = eq.scheduledUses || [];
+      const hasConflict = scheduledUses.some((use: any) => {
+        const usedStart = new Date(use.startDate);
+        const usedEnd = new Date(use.endDate);
+        usedStart.setHours(0, 0, 0, 0);
+        usedEnd.setHours(0, 0, 0, 0);
 
-      // Si hay solapamiento, marcar como no disponible para este evento
-      if (inEvent) {
+        // Verificar si hay solapamiento entre las fechas del evento y las fechas de uso programado
+        return eStart <= usedEnd && eEnd >= usedStart;
+      });
+
+      // Si hay conflicto, marcar como no disponible para este evento
+      if (hasConflict) {
         return {
           ...eq,
           outOfService: { isOut: true, reason: 'En Evento' }

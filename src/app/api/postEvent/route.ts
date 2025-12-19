@@ -37,22 +37,53 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
     if (equipment?.length && newEvent) {
       const eventStart = new Date(document.date);
       const eventEnd = new Date(document.endDate);
+      const now = new Date();
 
+      // Resetear horas para comparación
+      const eventStartDate = new Date(eventStart);
+      eventStartDate.setHours(0, 0, 0, 0);
+      const nowDate = new Date(now);
+      nowDate.setHours(0, 0, 0, 0);
+
+      // Crear el objeto scheduledUse para este evento
+      const scheduledUse = {
+        eventId: newEvent._id.toString(),
+        eventName: document.name || document.type,
+        eventType: document.type,
+        startDate: eventStart,
+        endDate: eventEnd,
+        location: document.lugar
+      };
+
+      // Determinar si el evento empieza HOY o ya empezó
+      const isCurrentOrPast = eventStartDate <= nowDate;
+
+      // PASO 1: Agregar scheduledUse a todos los equipos
       await db.collection('equipment').updateMany(
         { _id: { $in: equipment.map((eq: any) => new ObjectId(eq._id)) } },
         {
-          $set: {
-            lastUsedStartDate: eventStart,
-            lastUsedEndDate: eventEnd,
-            location: document.lugar,
-            outOfService: {
-              isOut: true,
-              reason: 'En Evento',
-              details: `${document.type} - ${document.lugar}`
-            }
-          }
+          $push: { scheduledUses: scheduledUse }
         }
       );
+
+      // PASO 2: Si el evento empieza HOY o ya empezó, actualizar estado actual
+      if (isCurrentOrPast) {
+        await db.collection('equipment').updateMany(
+          { _id: { $in: equipment.map((eq: any) => new ObjectId(eq._id)) } },
+          {
+            $set: {
+              lastUsedStartDate: eventStart,
+              lastUsedEndDate: eventEnd,
+              location: document.lugar,
+              outOfService: {
+                isOut: true,
+                reason: 'En Evento',
+                details: `${document.type} - ${document.lugar}`
+              }
+            }
+          }
+        );
+      }
 
       // Registrar uso en evento para cada equipo
       for (const eq of equipment) {
@@ -66,7 +97,7 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
           eventName: document.type,
           eventDate: eventStart,
           eventLocation: document.lugar,
-          details: `Usado en ${document.type} - ${document.lugar}`
+          details: `${isCurrentOrPast ? 'Usado' : 'Programado para usar'} en ${document.type} - ${document.lugar}`
         });
       }
     }

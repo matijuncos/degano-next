@@ -78,6 +78,7 @@ export interface EventModel {
   walkIn?: string[]; // Canción de rosas - Tema 1, Tema 2, etc.
   vals?: string[]; // Vals 1, Vals 2, etc.
   openingPartySong?: string; // Canción apertura pista
+  closingSongs?: string[]; // Canciones para cierre de evento - Tema 1, Tema 2, etc.
   ceremoniaCivil?: CeremonyMusic;
   ceremoniaExtra?: CeremonyMusic;
   ambienceMusic?: AmbienceMusicItem[];

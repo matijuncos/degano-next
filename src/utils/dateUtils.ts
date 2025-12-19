@@ -51,3 +51,35 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 export function toTimeString(d: Date | null): string {
   return d ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : '';
 };
+
+export function format24Hour(
+  value?: Date | string
+): string {
+  if (!value) return '--:--';
+
+  let date: Date;
+
+  // Caso 1: ya es Date
+  if (value instanceof Date) {
+    date = value;
+  }
+  // Caso 2: string "HH:mm"
+  else if (/^\d{1,2}:\d{2}$/.test(value)) {
+    const [hours, minutes] = value.split(':').map(Number);
+
+    date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+  }
+  // Caso 3: string fecha ISO o similar
+  else {
+    date = new Date(value);
+  }
+
+  if (isNaN(date.getTime())) return '--:--';
+
+  return date.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
