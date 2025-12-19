@@ -4,6 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
+import { NewEquipment } from '@/components/equipmentStockTable/types';
 
 export const POST = async function handler(req: Request, res: NextApiResponse) {
   const session = await getSession();
@@ -59,7 +60,7 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
       const isCurrentOrPast = eventStartDate <= nowDate;
 
       // PASO 1: Agregar scheduledUse a todos los equipos
-      await db.collection('equipment').updateMany(
+      await db.collection<NewEquipment>('equipment').updateMany(
         { _id: { $in: equipment.map((eq: any) => new ObjectId(eq._id)) } },
         {
           $push: { scheduledUses: scheduledUse }
