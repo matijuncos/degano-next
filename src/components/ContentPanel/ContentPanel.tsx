@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
 export default function ContentPanel({
   selectedCategory,
   setDisableCreateEquipment,
+  onSelect,
   onEdit,
   onRemove,
   onCancel,
@@ -27,6 +28,7 @@ export default function ContentPanel({
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
+  onSelect?: (item: any) => void;
   onEdit?: (item: any) => void;
   onRemove?: (equipmentId: string) => void;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
@@ -129,6 +131,28 @@ export default function ContentPanel({
     setDisableCreateEquipment(isItem);
   }
 
+  // Función para manejar el click en equipos (similar a TreeView handleSelect)
+  const handleEquipmentClick = (item: any) => {
+    // Si es un equipo (tiene categoryId), seleccionarlo
+    if (item.categoryId) {
+      // Verificar si ya está seleccionado
+      const isCurrentlySelected = selectedCategory?._id === item._id;
+
+      if (!isCurrentlySelected) {
+        // Solo seleccionar si no está seleccionado
+        // No deseleccionamos equipos individuales porque vaciaría el ContentPanel
+        onSelect?.(item);
+        // En el caso de newEvent, NO llamamos a onEdit aquí porque
+        // el onEdit se usa para agregar al evento (botón +)
+        // En el caso de equipment page, onEdit se llama para editar
+        if (!newEvent) {
+          onEdit?.(item);
+        }
+      }
+      // Si ya está seleccionado, no hacemos nada (no deseleccionamos)
+    }
+  };
+
   const renderHeader = () => {
     if (!selectedCategory) return null;
     if (children.length > 0) {
@@ -211,8 +235,10 @@ export default function ContentPanel({
                 index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
               textAlign: 'center',
               fontWeight: 500,
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              cursor: 'pointer'
             }}
+            onClick={() => handleEquipmentClick(item)}
           >
             {newEvent && (
               <td style={{ padding: '0 5px' }}>
@@ -221,7 +247,10 @@ export default function ContentPanel({
                     size='md'
                     color='red'
                     variant='light'
-                    onClick={() => onRemove?.(item._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove?.(item._id);
+                    }}
                   >
                     <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
                   </ActionIcon>
@@ -230,7 +259,10 @@ export default function ContentPanel({
                     size='md'
                     color='green'
                     variant='light'
-                    onClick={() => onEdit?.(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit?.(item);
+                    }}
                     disabled={item.outOfService?.isOut}
                   >
                     <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>
@@ -271,8 +303,10 @@ export default function ContentPanel({
           style={{
             backgroundColor: 'rgba(255,255,255,0.05)',
             textAlign: 'center',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            cursor: 'pointer'
           }}
+          onClick={() => handleEquipmentClick(item)}
         >
           <td style={{ padding: '0 5px' }}>{item.name}</td>
           <td style={{ padding: '0 5px' }}>{item.code}</td>

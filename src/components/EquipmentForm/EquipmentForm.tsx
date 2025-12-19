@@ -192,6 +192,7 @@ const EquipmentForm = ({
           <ContentPanel
             selectedCategory={selectedCategory}
             setDisableCreateEquipment={() => {}}
+            onSelect={setSelectedCategory}
             onEdit={handleEquipmentSelection}
             onRemove={(equipmentId: string) => {
               setEventEquipment((prev) => ({

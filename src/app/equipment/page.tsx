@@ -61,6 +61,7 @@ export default function EquipmentPage() {
         <ContentPanel
           selectedCategory={selectedCategory}
           setDisableCreateEquipment={setDisableCreateEquipment}
+          onSelect={setSelectedCategory}
           onEdit={handleEdit}
           onCancel={handleCancel}
           newEvent={false}

@@ -14,6 +14,7 @@ import {
 } from '@tabler/icons-react';
 import EditableContact from './EditableContact';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import useNotification from '@/hooks/useNotification';
 
 const EditableBand = ({
   band,
@@ -27,6 +28,7 @@ const EditableBand = ({
   onCancel: () => void;
 }) => {
   const setLoadingCursor = useLoadingCursor();
+  const notify = useNotification();
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data: allContacts, mutate: refetchContacts } = useSWR<ExtraContact[]>(
     '/api/contacts',
@@ -118,6 +120,7 @@ const EditableBand = ({
   const handleSave = async () => {
     try {
       setLoadingCursor(true);
+      notify({ loading: true });
       const savedContacts: ExtraContact[] = [];
       for (const contact of bandData.contacts) {
         const method = contact._id ? 'PUT' : 'POST';
@@ -156,8 +159,10 @@ const EditableBand = ({
         type: 'band'
       });
       setOriginalFileNames(new Map());
+      bandData._id && notify({ message: 'Banda creada exitosamente'});
     } catch (error) {
       console.error('handleSave error', error);
+      notify({ type: 'defaultError' });
     } finally {
       setLoadingCursor(false);
     }
