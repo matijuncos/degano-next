@@ -415,7 +415,7 @@ const DrawerContent = () => {
             Cantidad de personas
           </Text>
           <Text size='sm'>
-            {selectedEvent?.guests || 'N/A'}
+            {selectedEvent?.guests || '-'}
           </Text>
         </Box>
 
@@ -503,13 +503,13 @@ const DrawerContent = () => {
           <Text fw={700} size='md' mb='sm'>
             Presupuesto
           </Text>
-          {selectedEvent?.payment?.totalToPay && (
+          {selectedEvent?.payment?.totalToPay != null && (
             <Text size='sm' mb='xs'>
               Total a pagar:{' '}
               {formatPrice(Number(selectedEvent.payment.totalToPay))}
             </Text>
           )}
-          {selectedEvent?.equipmentPrice && (
+          {selectedEvent?.equipmentPrice != null && (
             <Text size='sm' mb='xs'>
               Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
             </Text>
