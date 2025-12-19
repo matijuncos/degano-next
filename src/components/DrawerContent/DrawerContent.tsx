@@ -18,7 +18,6 @@ import {
   Badge
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import styles from './DrawerContent.module.css';
 import { useState, useEffect } from 'react';
 import {
   IconPlus,
@@ -35,6 +34,7 @@ import { Image } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
 import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
+import { format24Hour } from '@/utils/dateUtils';
 
 interface FileItem {
   id: string;
@@ -353,101 +353,59 @@ const DrawerContent = () => {
 
         <Divider />
 
-        {/* SECCIÓN: TÍTULO DEL EVENTO */}
+        {/* SECCIÓN: HORARIOS */}
         <Box>
           <Text fw={700} size='md' mb='sm'>
-            {selectedEvent?.type} - {selectedEvent?.lugar} -{' '}
-            {selectedEvent?.eventCity}
+            Horarios
           </Text>
-        </Box>
-
-        <Divider />
-
-        {/* SECCIÓN: HORARIOS DEL EVENTO */}
-        <Box>
-          <Text fw={700} size='md' mb='sm'>
-            Horarios del evento
-          </Text>
-          <Text size='sm' mb='xs'>
-            {selectedEvent?.start &&
-              new Date(selectedEvent.start).toLocaleTimeString('es-AR', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}{' '}
-            a{' '}
-            {selectedEvent?.end &&
-              new Date(selectedEvent.end).toLocaleTimeString('es-AR', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-          </Text>
-
-          {/* TIMING */}
-          {selectedEvent?.timing && selectedEvent.timing.length > 0 && (
-            <Stack gap='xs' mt='sm'>
-              {selectedEvent.timing.map((item, index) => (
-                <Text key={index} size='sm'>
-                  • {item.time}hs - {item.title}
-                  {item.details && `: ${item.details}`}
-                </Text>
-              ))}
-            </Stack>
-          )}
-        </Box>
-
-        {/* SECCIÓN: HORARIOS DE CIVIL/IGLESIA */}
-        {(selectedEvent?.churchDate || selectedEvent?.civil) && (
-          <>
-            <Divider />
-            <Box>
-              <Text fw={700} size='md' mb='sm'>
-                Horarios de civil / Iglesia
-              </Text>
-              <Stack gap='xs'>
-                {selectedEvent?.churchDate && (
-                  <Text size='sm'>
-                    Iglesia: {selectedEvent.churchDate}
-                  </Text>
-                )}
-                {selectedEvent?.civil && (
-                  <Text size='sm'>
-                    Civil: {selectedEvent.civil}
-                  </Text>
-                )}
-              </Stack>
-            </Box>
-          </>
-        )}
-
-        {/* SECCIÓN: HORARIOS DE LLEGADA STAFF */}
-        {selectedEvent?.staffArrivalTime && (
-          <>
-            <Divider />
-            <Box>
-              <Text fw={700} size='md' mb='sm'>
-                Horarios de llegada Staff
-              </Text>
+          <Stack gap='xs'>
+            {/* Horario de inicio */}
+            {selectedEvent?.start && (
               <Text size='sm'>
-                {selectedEvent.staffArrivalTime}
+                <strong>Horario de inicio:</strong>{' '}
+                {format24Hour(selectedEvent.start)}
               </Text>
-            </Box>
-          </>
-        )}
+            )}
 
-        {/* SECCIÓN: HORARIOS DE LLEGADA EQUIPAMIENTO */}
-        {selectedEvent?.equipmentArrivalTime && (
-          <>
-            <Divider />
-            <Box>
-              <Text fw={700} size='md' mb='sm'>
-                Horarios de llegada equipamiento
-              </Text>
+            {/* Horario de finalización */}
+            {selectedEvent?.end && (
               <Text size='sm'>
-                {selectedEvent.equipmentArrivalTime}
+                <strong>Horario de finalización:</strong>{' '}
+                {format24Hour(selectedEvent.end)}
               </Text>
-            </Box>
-          </>
-        )}
+            )}
+
+            {/* Horario de civil */}
+            {selectedEvent?.civil && (
+              <Text size='sm'>
+                <strong>Horario de civil:</strong> {format24Hour(selectedEvent.civil)}
+              </Text>
+            )}
+
+            {/* Horario de Iglesia */}
+            {selectedEvent?.churchDate && (
+              <Text size='sm'>
+                <strong>Horario de Iglesia:</strong> {format24Hour(selectedEvent.churchDate)}
+              </Text>
+            )}
+
+            {/* Horario de llegada Staff */}
+            {selectedEvent?.staffArrivalTime && (
+              <Text size='sm'>
+                <strong>Horario de llegada Staff:</strong>{' '}
+                {format24Hour(selectedEvent.staffArrivalTime)}
+              </Text>
+            )}
+
+            {/* Horario de llegada equipamiento */}
+            {selectedEvent?.equipmentArrivalTime && (
+              <Text size='sm'>
+                <strong>Horario de llegada equipamiento:</strong>{' '}
+                {format24Hour(selectedEvent.equipmentArrivalTime)}
+              </Text>
+            )}
+          </Stack>
+        </Box>
 
         <Divider />
 
@@ -473,7 +431,7 @@ const DrawerContent = () => {
           </Text>
           {selectedEvent?.email && (
             <Text size='sm' c='dimmed'>
-              {selectedEvent.email}
+              Rol: {selectedEvent.rol} - Mail: {selectedEvent.email}
             </Text>
           )}
 
@@ -486,11 +444,9 @@ const DrawerContent = () => {
                     <Text size='sm'>
                       {client.fullName}: {client.phoneNumber}
                     </Text>
-                    {client.rol && (
-                      <Text size='xs' c='dimmed'>
-                        {client.rol}
-                      </Text>
-                    )}
+                    <Text size='xs' c='dimmed'>
+                      Rol: {client.rol}
+                    </Text>
                   </Box>
                 ))}
               </Stack>

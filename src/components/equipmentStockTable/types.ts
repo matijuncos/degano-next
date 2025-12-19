@@ -1,3 +1,12 @@
+export interface ScheduledUse {
+  eventId: string;
+  eventName: string;
+  eventType: string;
+  startDate: Date | string;
+  endDate: Date | string;
+  location: string;
+}
+
 export interface NewEquipment {
   _id: string;
   name: string;
@@ -18,6 +27,7 @@ export interface NewEquipment {
     isOut: boolean;
     reason: string;
   };
+  scheduledUses: ScheduledUse[];
   selectedQuantity: number;
   history: string;
   imageUrl: string;

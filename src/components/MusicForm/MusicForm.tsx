@@ -58,6 +58,7 @@ const MusicForm = ({
       walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
       vals: Array.isArray(event.vals) ? event.vals : [],
       openingPartySong: event.openingPartySong || '',
+      closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
       ceremoniaCivil: event.ceremoniaCivil || {
         ingreso: '',
         firmas: '',
@@ -88,6 +89,7 @@ const MusicForm = ({
         walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
         vals: Array.isArray(event.vals) ? event.vals : [],
         openingPartySong: event.openingPartySong || '',
+        closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
         ceremoniaCivil: event.ceremoniaCivil || {
           ingreso: '',
           firmas: '',
@@ -266,6 +268,30 @@ const MusicForm = ({
     setMusicData((prevData) => ({
       ...prevData,
       welcomeSongs: (prevData.welcomeSongs || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Canciones de cierre handlers
+  const addClosingSong = () => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      closingSongs: [...(prevData.closingSongs || []), '']
+    }));
+  };
+
+  const updateClosingSong = (index: number, value: string) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      closingSongs: (prevData.closingSongs || []).map((song, i) =>
+        i === index ? value : song
+      )
+    }));
+  };
+
+  const deleteClosingSong = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      closingSongs: (prevData.closingSongs || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -804,6 +830,41 @@ const MusicForm = ({
           </Accordion.Panel>
         </Accordion.Item>
 
+        {/* Canciones de cierre */}
+        <Accordion.Item value='cierre'>
+          <Accordion.Control>Canciones para cierre</Accordion.Control>
+          <Accordion.Panel>
+                        <Stack gap='xs'>
+              {(musicData.closingSongs || []).map((song, index) => (
+                <Flex key={index} gap='xs' align='center'>
+                  <TextInput
+                    placeholder={`Tema ${index + 1}`}
+                    value={song}
+                    onChange={(e) => updateClosingSong(index, e.target.value)}
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => deleteClosingSong(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Flex>
+              ))}
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={addClosingSong}
+              >
+                Agregar tema
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+
         {/* Música de preferencia */}
         <Accordion.Item value='preferencias'>
           <Accordion.Control>Música de preferencia</Accordion.Control>
@@ -818,7 +879,7 @@ const MusicForm = ({
                 Error cargando géneros: {genresError}
               </Alert>
             ) : (
-              <div className={styles.ratingContainer}>
+              <Flex wrap='wrap' gap='xl' align='flex-start' justify='center'>
                 {musicData?.music.genres.map((genre: GenreType, index: number) => {
                   const options = [
                     { label: 'Mucho', value: 4, color: '#51cf66' },
@@ -828,57 +889,58 @@ const MusicForm = ({
                   ];
 
                   return (
-                    <div
-                      className='eachRating'
-                      key={genre.genre}
-                      style={{ maxWidth: '100%' }}
-                    >
-                      <p style={{ marginBottom: '12px', fontWeight: 500 }}>
-                        {genre.genre}
-                      </p>
-                      <Flex gap='sm' align='flex-start'>
-                        {options.map((option) => (
-                          <Flex
-                            key={option.value}
-                            direction='column'
-                            align='center'
-                            gap='4px'
-                            style={{ flex: 1, maxWidth: '70px' }}
-                          >
-                            <UnstyledButton
-                              onClick={() => rateGenre(option.value, index)}
-                              style={{
-                                width: '25px',
-                                height: '25px',
-                                borderRadius: '50%',
-                                border:
-                                  genre.value === option.value
-                                    ? `3px solid ${option.color}`
-                                    : '2px solid rgba(255, 255, 255, 0.2)',
-                                backgroundColor:
-                                  genre.value === option.value
-                                    ? option.color
-                                    : 'transparent',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                              }}
-                              title={option.label}
-                            />
-                            <Text
-                              size='10px'
-                              c='dimmed'
-                              ta='center'
-                              style={{ lineHeight: 1.2 }}
+                    <Flex key={genre.genre} align='flex-start' gap='lg'>
+                      <Box style={{ minWidth: '180px' }}>
+                        <p style={{ marginBottom: '12px', fontWeight: 500 }}>
+                          {genre.genre}
+                        </p>
+                        <Flex gap='sm' align='flex-start'>
+                          {options.map((option) => (
+                            <Flex
+                              key={option.value}
+                              direction='column'
+                              align='center'
+                              gap='4px'
+                              style={{ flex: 1, maxWidth: '70px' }}
                             >
-                              {option.label}
-                            </Text>
-                          </Flex>
-                        ))}
-                      </Flex>
-                    </div>
+                              <UnstyledButton
+                                onClick={() => rateGenre(option.value, index)}
+                                style={{
+                                  width: '25px',
+                                  height: '25px',
+                                  borderRadius: '50%',
+                                  border:
+                                    genre.value === option.value
+                                      ? `3px solid ${option.color}`
+                                      : '2px solid rgba(255, 255, 255, 0.2)',
+                                  backgroundColor:
+                                    genre.value === option.value
+                                      ? option.color
+                                      : 'transparent',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                title={option.label}
+                              />
+                              <Text
+                                size='10px'
+                                c='dimmed'
+                                ta='center'
+                                style={{ lineHeight: 1.2 }}
+                              >
+                                {option.label}
+                              </Text>
+                            </Flex>
+                          ))}
+                        </Flex>
+                      </Box>
+                      {index < musicData.music.genres.length - 1 && (
+                        <Divider orientation='vertical' size='xs' />
+                      )}
+                    </Flex>
                   );
                 })}
-              </div>
+              </Flex>
             )}
 
             <Divider my='md' />

@@ -787,6 +787,14 @@ const MusicInformation = ({
 }) => {
   if (!selectedEvent) return null;
 
+  // Helper function to check if a ceremony has any content
+  const hasCeremonyContent = (ceremony: any) => {
+    if (!ceremony) return false;
+    const hasMainFields = ceremony.ingreso || ceremony.firmas || ceremony.salida;
+    const hasOtros = ceremony.otros && ceremony.otros.length > 0;
+    return hasMainFields || hasOtros;
+  };
+
   return (
     <Flex direction='column' gap='8px' mt='8px'>
       {/* Canciones de ingreso */}
@@ -826,7 +834,7 @@ const MusicInformation = ({
       )}
 
       {/* Ceremonia Civil */}
-      {selectedEvent.ceremoniaCivil && (
+      {selectedEvent.ceremoniaCivil && hasCeremonyContent(selectedEvent.ceremoniaCivil) && (
         <Box>
           <Text fw={500} size='sm' mb='xs' c='dimmed'>
             Ceremonia Civil
@@ -887,7 +895,7 @@ const MusicInformation = ({
       )}
 
       {/* Ceremonia Extra */}
-      {selectedEvent.ceremoniaExtra && (
+      {selectedEvent.ceremoniaExtra && hasCeremonyContent(selectedEvent.ceremoniaExtra) && (
         <Box>
           <Text fw={500} size='sm' mb='xs' c='dimmed'>
             Ceremonia Extra
@@ -977,6 +985,24 @@ const MusicInformation = ({
             title='Canción apertura pista'
             value={selectedEvent.openingPartySong}
           />
+        </Box>
+      )}
+
+      {/* Canciones de cierre */}
+            {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
+        <Box>
+          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            Canciones de cierre
+          </Text>
+          {selectedEvent.closingSongs.map((song, index) => (
+            <EditableData
+              key={`closing-${index}`}
+              type='text'
+              property={`closingSongs[${index}]`}
+              title={`Tema ${index + 1}`}
+              value={song}
+            />
+          ))}
         </Box>
       )}
 
