@@ -68,8 +68,18 @@ export default withPageAuthRequired(function CalendarPage() {
 
   const { setSelectedEvent, allEvents } = useDeganoCtx();
 
+  // Mapeo de vistas español <-> inglés
+  const viewMapping: { [key: string]: string } = {
+    'mes': 'month',
+    'semana': 'week',
+    'dia': 'day',
+    'month': 'mes',
+    'week': 'semana',
+    'day': 'dia'
+  };
+
   // Inicializar vista y fecha desde URL si existen
-  const viewParam = searchParams.get('view') as 'month' | 'week' | 'day' | null;
+  const viewParam = searchParams.get('view') as 'mes' | 'semana' | 'dia' | null;
   const dateParam = searchParams.get('date');
 
   const [date, setDate] = useState(() => {
@@ -80,8 +90,9 @@ export default withPageAuthRequired(function CalendarPage() {
   });
 
   const [view, setView] = useState(() => {
-    if (viewParam && ['month', 'week', 'day'].includes(viewParam)) {
-      return Views[viewParam.toUpperCase() as 'MONTH' | 'WEEK' | 'DAY'];
+    if (viewParam && ['mes', 'semana', 'dia'].includes(viewParam)) {
+      const englishView = viewMapping[viewParam];
+      return Views[englishView.toUpperCase() as 'MONTH' | 'WEEK' | 'DAY'];
     }
     return Views.MONTH;
   });
@@ -138,8 +149,8 @@ export default withPageAuthRequired(function CalendarPage() {
         body: JSON.stringify({
           accessToken: token,
           calendarIds: calendarIds,
-          timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 días atrás
-          timeMax: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 días adelante
+          timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias atrás
+          timeMax: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 dias adelante
         })
       });
 
@@ -256,8 +267,70 @@ export default withPageAuthRequired(function CalendarPage() {
     return events;
   }, [internalEvents, googleEvents, showInternalEvents, showGoogleEvents]);
 
+  // Función para determinar el estado temporal del evento
+  const getEventStatus = (event: any) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Normalizar a medianoche para comparar solo fechas
+
+    const startDate = new Date(event.start);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(event.end);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Evento pasado: terminó antes de hoy
+    if (endDate < now) {
+      return 'past';
+    }
+
+    // Evento actual: está sucediendo hoy
+    if (startDate <= now && endDate >= now) {
+      return 'current';
+    }
+
+    // Evento futuro: comienza después de hoy
+    return 'future';
+  };
+
   // Función para aplicar estilos a los eventos
   const eventStyleGetter = (event: any) => {
+    // Solo aplicar colores según fecha a eventos internos
+    if (event.source === 'internal') {
+      const status = getEventStatus(event);
+
+      let backgroundColor, borderColor;
+
+      switch (status) {
+        case 'past':
+          // Gris apagado para eventos pasados
+          backgroundColor = '#2f3d29ff';
+          borderColor = '#343a40';
+          break;
+        case 'current':
+          // Verde brillante para evento actual
+          backgroundColor = '#37b24d';
+          borderColor = '#2b8a3e';
+          break;
+        case 'future':
+          // Verde más oscuro/pastel para eventos futuros
+          backgroundColor = '#237332ff';
+          borderColor = '#2b8a3e';
+          break;
+        default:
+          backgroundColor = '#37b24d';
+          borderColor = '#2b8a3e';
+      }
+
+      return {
+        style: {
+          backgroundColor,
+          borderColor,
+          color: '#ffffff'
+        }
+      };
+    }
+
+    // Para eventos de Google, usar su estilo original
     return {
       style: event.style || {}
     };
@@ -287,8 +360,11 @@ export default withPageAuthRequired(function CalendarPage() {
       (key) => Views[key as keyof typeof Views] === currentView
     )?.toLowerCase() || 'month';
 
+    // Convertir a español para la URL
+    const spanishViewName = viewMapping[viewName] || 'mes';
+
     const params = new URLSearchParams();
-    params.set('view', viewName);
+    params.set('view', spanishViewName);
     params.set('date', currentDate.toISOString());
 
     router.push(`/calendar?${params.toString()}`, { scroll: false });
@@ -359,6 +435,15 @@ export default withPageAuthRequired(function CalendarPage() {
           views={['month', 'week', 'day']}
           selectable={true}
           eventPropGetter={eventStyleGetter}
+          messages={{
+            month: 'Mes',
+            week: 'Semana',
+            day: 'Día',
+            today: 'Hoy',
+            previous: 'Anterior',
+            next: 'Siguiente',
+            showMore: (total) => `+${total} más`
+          }}
           style={{
             height: 'calc(100vh - 80px)',
             width: '100%'

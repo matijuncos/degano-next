@@ -348,6 +348,7 @@ export default function ContentPanel({
     mutate('/api/categories');
     mutate('/api/equipment');
     mutate('/api/treeData');
+    mutate('/api/categoryTreeData');
     onCancel?.(true);
   };
 

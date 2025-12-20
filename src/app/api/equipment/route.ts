@@ -7,6 +7,37 @@ import { isDateBetweenInclusive } from '@/utils/dateUtils';
 import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } from '@/utils/equipmentHistoryUtils';
 import { getSession } from '@auth0/nextjs-auth0';
 
+// Función para actualizar el stock de todas las categorías padre
+async function updateParentCategoriesStock(
+  db: any,
+  categoryId: string,
+  totalStockDelta: number,
+  availableStockDelta: number
+) {
+  let currentCategoryId: string | null = categoryId;
+
+  while (currentCategoryId) {
+    // Actualizar la categoría actual
+    await db.collection('categories').updateOne(
+      { _id: new ObjectId(currentCategoryId) },
+      {
+        $inc: {
+          totalStock: totalStockDelta,
+          availableStock: availableStockDelta
+        }
+      }
+    );
+
+    // Buscar el padre de la categoría actual
+    const category = await db
+      .collection('categories')
+      .findOne({ _id: new ObjectId(currentCategoryId) });
+
+    // Si la categoría tiene un padre, continuar; si no, terminar
+    currentCategoryId = category?.parentId || null;
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const eventStartDate = searchParams.get('eventStartDate');
@@ -156,14 +187,12 @@ export async function POST(req: Request) {
   const newEq = await db.collection('equipment').insertOne(body);
 
   const deltaAvailable = body.outOfService?.isOut ? 0 : 1;
-  await db.collection('categories').updateOne(
-    { _id: new ObjectId(String(body.categoryId)) },
-    {
-      $inc: {
-        totalStock: 1,
-        availableStock: deltaAvailable
-      }
-    }
+  // Actualizar toda la jerarquía de categorías padre
+  await updateParentCategoriesStock(
+    db,
+    body.categoryId,
+    1, // Incrementar totalStock
+    deltaAvailable // Incrementar availableStock (0 si está fuera de servicio)
   );
 
   // Registrar creación en historial
@@ -200,11 +229,12 @@ export async function PUT(req: Request) {
   }
 
   if (deltaAvailable !== 0) {
-    await db.collection('categories').updateOne(
-      { _id: new ObjectId(String(rest.categoryId)) },
-      {
-        $inc: { availableStock: deltaAvailable }
-      }
+    // Actualizar toda la jerarquía de categorías padre
+    await updateParentCategoriesStock(
+      db,
+      rest.categoryId,
+      0, // No cambia totalStock en una edición
+      deltaAvailable // Solo cambia availableStock si cambió el estado
     );
   }
 
@@ -274,14 +304,12 @@ export async function DELETE(req: Request) {
     .findOne({ _id: new ObjectId(id) });
   if (equipment) {
     const deltaAvailable = equipment.outOfService?.isOut ? 0 : -1;
-    await db.collection('categories').updateOne(
-      { _id: new ObjectId(String(equipment.categoryId)) },
-      {
-        $inc: {
-          totalStock: -1,
-          availableStock: deltaAvailable
-        }
-      }
+    // Actualizar toda la jerarquía de categorías padre
+    await updateParentCategoriesStock(
+      db,
+      equipment.categoryId,
+      -1, // Decrementar totalStock
+      deltaAvailable // Decrementar availableStock (0 si estaba fuera de servicio)
     );
   }
 

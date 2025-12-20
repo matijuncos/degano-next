@@ -2,7 +2,7 @@
 'use client';
 import useSWR from 'swr';
 import { useState, useEffect } from 'react';
-import { Button, Divider, Input, CloseButton } from '@mantine/core';
+import { Button, Divider, Input, CloseButton, Loader, Flex } from '@mantine/core';
 import {
   IconFolder,
   IconFolderPlus,
@@ -216,7 +216,7 @@ export default function TreeView({
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: treeNodes = [] } = useSWR<CategoryNode[]>(
+  const { data: treeNodes = [], isLoading: isLoadingTree } = useSWR<CategoryNode[]>(
     '/api/categoryTreeData',
     fetcher
   );
@@ -226,7 +226,9 @@ export default function TreeView({
     ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
     : '/api/equipment';
 
-  const { data: equipmentFullData = [] } = useSWR(equipmentUrl, fetcher);
+  const { data: equipmentFullData = [], isLoading: isLoadingEquipment } = useSWR(equipmentUrl, fetcher);
+
+  const isLoading = isLoadingTree || isLoadingEquipment;
 
   const buildTree = (
     nodes: CategoryNode[],
@@ -363,20 +365,26 @@ export default function TreeView({
           paddingBottom: '10px'
         }}
       >
-        <div style={{ minWidth: 'max-content' }}>
-          {filteredTree.map((node) => (
-            <TreeNode
-              key={node._id}
-              node={node}
-              onSelect={(n) => onSelect?.(n)}
-              selectedId={selectedCategory?._id}
-              equipmentData={equipmentFullData}
-              onEdit={onEdit}
-              forceExpanded={!!searchTerm.trim()}
-              disableEditOnSelect={disableEditOnSelect}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <Flex justify="center" align="center" style={{ padding: '2rem' }}>
+            <Loader color="green" size="sm" mt="50%"/>
+          </Flex>
+        ) : (
+          <div style={{ minWidth: 'max-content' }}>
+            {filteredTree.map((node) => (
+              <TreeNode
+                key={node._id}
+                node={node}
+                onSelect={(n) => onSelect?.(n)}
+                selectedId={selectedCategory?._id}
+                equipmentData={equipmentFullData}
+                onEdit={onEdit}
+                forceExpanded={!!searchTerm.trim()}
+                disableEditOnSelect={disableEditOnSelect}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
