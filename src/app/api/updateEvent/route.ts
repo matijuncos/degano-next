@@ -32,11 +32,20 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
       .collection('events')
       .findOne({ _id: new ObjectId(eventId) });
 
+    // Preparar datos para actualizar
+    const { createdAt, updatedAt, ...updateData } = body;
+
+    // Asegurar que updatedAt sea un timestamp y no sobrescribir createdAt
     const event = await db
       .collection('events')
       .findOneAndUpdate(
         { _id: new ObjectId(eventId) },
-        { $set: body },
+        {
+          $set: {
+            ...updateData,
+            updatedAt: new Date()
+          }
+        },
         { returnDocument: 'after' }
       );
 

@@ -29,7 +29,7 @@ async function updateParentCategoriesStock(
     );
 
     // Buscar el padre de la categoría actual
-    const category = await db
+    const category: { parentId?: string | null } | null = await db
       .collection('categories')
       .findOne({ _id: new ObjectId(currentCategoryId) });
 

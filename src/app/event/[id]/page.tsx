@@ -39,13 +39,15 @@ import {
   IconPlus
 } from '@tabler/icons-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 import BandList from '@/components/BandManager/BandList';
 import EditableBand from '@/components/BandManager/EditableBand';
+import MissingFieldsModal from '@/components/MissingFieldsModal/MissingFieldsModal';
 import useNotification from '@/hooks/useNotification';
+import { detectMissingFields } from '@/utils/fieldUtils';
 import useSWR from 'swr';
 
 const AccordionSet = ({
@@ -100,6 +102,8 @@ const MainInformation = ({
   const [validateExtra, setValidateExtra] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isMissingFieldsModalOpen, setIsMissingFieldsModalOpen] =
+    useState(false);
   const { setSelectedEvent } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
@@ -129,6 +133,13 @@ const MainInformation = ({
       setEndTimeOnly(toTimeString(new Date(selectedEvent.endDate)));
     }
   }, [selectedEvent?.date, selectedEvent?.endDate]);
+
+  // Calcular campos faltantes
+  const missingFields = useMemo(
+    () => detectMissingFields(selectedEvent),
+    [selectedEvent]
+  );
+  const missingFieldsCount = missingFields.length;
 
   // Función para actualizar el evento
   const updateEventData = async (updates: Partial<EventModel>) => {
@@ -285,6 +296,19 @@ const MainInformation = ({
   if (!selectedEvent) return null;
   return (
     <Flex direction='column' gap='8px' mt='8px'>
+      {/* Botón para agregar campos faltantes */}
+      {missingFieldsCount > 0 && (
+        <Button
+          variant='light'
+          color='blue'
+          leftSection={<IconPlus size={16} />}
+          onClick={() => setIsMissingFieldsModalOpen(true)}
+          mb='md'
+        >
+          Agregar campos ({missingFieldsCount} campos incompletos)
+        </Button>
+      )}
+
       {/* SECCIÓN: DATOS DEL EVENTO */}
       <Text size='lg' fw={700} mb='md'>
         Datos del evento
@@ -399,12 +423,14 @@ const MainInformation = ({
           value={selectedEvent.company}
         />
       )}
+      {selectedEvent.guests && (
       <EditableData
         type='text'
         property='guests'
         title='Cantidad de Invitados'
         value={selectedEvent.guests}
       />
+      )}
 
       <Divider my='md' />
 
@@ -776,6 +802,14 @@ const MainInformation = ({
           </Group>
         </Card>
       )}
+
+      {/* Modal para agregar campos faltantes */}
+      <MissingFieldsModal
+        opened={isMissingFieldsModalOpen}
+        onClose={() => setIsMissingFieldsModalOpen(false)}
+        selectedEvent={selectedEvent}
+        onSave={updateEventData}
+      />
       {/* </Grid.Col> */}
     </Flex>
   );

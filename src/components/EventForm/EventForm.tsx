@@ -175,9 +175,7 @@ const EventForm = ({
           existingSalon.city !== eventData.eventCity ||
           existingSalon.address !== eventData.eventAddress ||
           existingSalon.contactName !== eventData.venueContactName ||
-          existingSalon.contactPhone !== eventData.venueContactPhone ||
-          // Retrocompatibilidad: comparar con venueContact si los nuevos campos no existen
-          (!eventData.venueContactName && !eventData.venueContactPhone && existingSalon.contact !== eventData.venueContact);
+          existingSalon.contactPhone !== eventData.venueContactPhone;
 
         if (hasChanges) {
           const response = await fetch('/api/salons', {
@@ -329,7 +327,7 @@ const EventForm = ({
                 eventAddress: selectedSalon.address || '',
                 // Siempre usar los datos del salón (aunque sean vacíos)
                 venueContactName: selectedSalon.contactName || '',
-                venueContactPhone: selectedSalon.contactPhone || selectedSalon.contact || ''
+                venueContactPhone: selectedSalon.contactPhone || ''
               };
             } else {
               // Si no es un salón existente (nuevo), limpiar los campos
