@@ -16,18 +16,18 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const { _id, bands, equipment, ...bodyWithoutId } = body;
+    const { _id, bands, equipment, createdAt, updatedAt, ...restBody } = body;
     const db = client.db('degano-app');
     const timestamp = new Date();
     const bandsWithIds = (bands || []).map((b: any) => ({
       ...b,
-      _id: new ObjectId()
+      _id: new ObjectId(b._id)
     }));
     const document = {
-      ...(!_id ? bodyWithoutId : body),
+      ...restBody,
       bands: bandsWithIds,
       equipment,
-      createdAt: !_id ? timestamp : undefined,
+      ...(!_id && { createdAt: timestamp }),
       updatedAt: timestamp
     };
     const event = await db.collection('events').insertOne(document);

@@ -146,8 +146,13 @@ const EditableBand = ({
         body: JSON.stringify(bandPayload)
       });
       if (!res.ok) throw new Error('Error saving band');
-      // Guardamos la banda con los horarios en el evento pero no usamos el de la db porque le quitamos los horarios.
-      onSave(bandPayload);
+
+      const savedBand = await res.json();
+      // Guardamos la banda con los horarios del evento, pero con el _id de la DB
+      onSave({
+        ...bandPayload,
+        _id: savedBand._id
+      });
       setBandData({
         _id: '',
         bandName: '',
@@ -159,7 +164,9 @@ const EditableBand = ({
         type: 'band'
       });
       setOriginalFileNames(new Map());
-      bandData._id && notify({ message: 'Banda creada exitosamente'});
+      notify({
+        message: bandData._id ? 'Banda actualizada exitosamente' : 'Banda creada exitosamente'
+      });
     } catch (error) {
       console.error('handleSave error', error);
       notify({ type: 'defaultError' });
