@@ -19,7 +19,7 @@ export const PUT = async function handler(req: Request, res: NextApiResponse) {
     const eventId = body._id;
     const bandsWithIds = (body.bands || []).map((b: any) => ({
       ...b,
-      _id: new ObjectId(),
+      _id: new ObjectId(b._id)
     }));
 
     if (!eventId || !bandsWithIds) {

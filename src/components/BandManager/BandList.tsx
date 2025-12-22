@@ -183,18 +183,24 @@ const BandList = ({
                       ))}
                     </div>
                   )}
-                  <span>
-                    <strong>{b.bandName}</strong>{' '}
-                    {b.contacts.length > 0 &&
-                      `${
-                        b.contacts[0].name
-                          ? `- Contacto: ${b.contacts[0].name}`
-                          : ''
-                      } ${
-                        b.contacts[0].rol ? `- Rol: ${b.contacts[0].rol}` : ''
-                      }`}
-                    {b.bandInfo ? `- ${b.bandInfo}` : ''}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div>
+                      <strong>{b.bandName}</strong>
+                      {b.contacts.length > 0 &&
+                        ` - ${
+                          b.contacts[0].name
+                            ? `Contacto: ${b.contacts[0].name}`
+                            : ''
+                        }${
+                          b.contacts[0].rol ? ` - Rol: ${b.contacts[0].rol}` : ''
+                        }`}
+                    </div>
+                    {b.bandInfo && (
+                      <div style={{ fontSize: '0.9em', color: '#666' }}>
+                        Info adicional: {b.bandInfo}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <IconEdit
