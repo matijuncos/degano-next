@@ -35,6 +35,7 @@ import { formatPrice } from '@/utils/priceUtils';
 import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { format24Hour } from '@/utils/dateUtils';
+import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 
 interface FileItem {
   id: string;
@@ -152,6 +153,7 @@ const DrawerContent = () => {
 
     const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
     const isPdf = /\.pdf$/i.test(fileUrl);
+    const cleanName = getCleanFileName(fileUrl);
 
     return (
       <Box
@@ -160,8 +162,10 @@ const DrawerContent = () => {
           flexDirection: 'column',
           alignItems: 'center',
           cursor: 'pointer',
+          maxWidth: '80px',
+          gap: '4px'
         }}
-        onClick={() => window.open(fileUrl, '_blank')}
+        onClick={() => window.open(getFileViewerUrl(fileUrl), '_blank')}
       >
         <Card
           withBorder
@@ -196,6 +200,17 @@ const DrawerContent = () => {
             <IconFile size={32} color="#888888" />
           )}
         </Card>
+        <Text
+          size="xs"
+          style={{
+            textAlign: 'center',
+            wordBreak: 'break-word',
+            fontSize: '10px',
+            lineHeight: '1.2'
+          }}
+        >
+          {cleanName}
+        </Text>
       </Box>
     );
   };
@@ -304,6 +319,8 @@ const DrawerContent = () => {
       setLoadingCursor(false);
     }
   };
+
+  console.log('selectedEvent:', selectedEvent);
 
   // Group equipment by main category
   const groupedEquipment = selectedEvent?.equipment?.reduce((acc: any, eq: any) => {
@@ -429,9 +446,12 @@ const DrawerContent = () => {
           <Text size='sm'>
             {selectedEvent?.fullName}: {selectedEvent?.phoneNumber}
           </Text>
+          <Text size='sm'>
+            Rol: {selectedEvent?.rol}
+          </Text>
           {selectedEvent?.email && (
             <Text size='sm' c='dimmed'>
-              Rol: {selectedEvent.rol} - Mail: {selectedEvent.email}
+              Mail: {selectedEvent.email}
             </Text>
           )}
 
@@ -538,6 +558,23 @@ const DrawerContent = () => {
                 {formatPrice(Number(payment.amount))}
               </Text>
             ))}
+
+          <Divider
+            variant='dashed'
+            size='sm'
+            my='md'
+            style={{ borderColor: '#C9C9C9' }}
+          />
+
+          <Text size='sm' fw={500}>
+            Falta pagar: {formatPrice(
+              Number(selectedEvent?.payment.totalToPay) -
+              ((selectedEvent?.payment.subsequentPayments?.reduce(
+                (sum: number, payment: any) => sum + Number(payment.amount),
+                0
+              ) || 0) + Number(selectedEvent?.payment.upfrontAmount))
+            )}
+          </Text>
         </Box>
 
         <Divider />

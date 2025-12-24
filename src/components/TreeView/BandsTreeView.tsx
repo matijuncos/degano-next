@@ -146,23 +146,14 @@ export default function BandsTreeView({
 
     const lowerTerm = term.toLowerCase();
 
-    return bands.reduce<Band[]>((acc, band) => {
-      const bandMatches = band.bandName.toLowerCase().includes(lowerTerm);
-      const contactsMatch = band.contacts?.filter(contact =>
-        contact.name.toLowerCase().includes(lowerTerm)
-      ) || [];
-
-      if (bandMatches || contactsMatch.length > 0) {
-        acc.push({
-          ...band,
-          contacts: bandMatches ? band.contacts : contactsMatch
-        });
-      }
-      return acc;
-    }, []);
+    return bands.filter(band =>
+      band.bandName.toLowerCase().includes(lowerTerm)
+    );
   };
 
-  const filteredBands = filterBands(bandsData, searchTerm);
+  const filteredBands = filterBands(bandsData, searchTerm).sort((a, b) =>
+    a.bandName.localeCompare(b.bandName, 'es', { sensitivity: 'base' })
+  );
 
   const handleCreateBand = () => {
     onSelect?.({
@@ -205,7 +196,7 @@ export default function BandsTreeView({
       </div>
       <Divider my='sm' />
       <Input
-        placeholder="Buscar banda o contacto..."
+        placeholder="Buscar banda..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.currentTarget.value)}
         leftSection={<IconSearch size={16} />}

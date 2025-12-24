@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { EventModel } from '@/context/types';
 import { Button, Select, Stack, Text, Card, Group, ActionIcon } from '@mantine/core';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { EVENT_TABS } from '@/context/config';
 
 interface StaffMember {
@@ -57,20 +57,11 @@ const StaffForm = ({
     setEventData((prev) => ({ ...prev, staff: staffMembers }));
   }, [staffMembers]);
 
-  const handleAddStaff = () => {
-    if (!selectedEmployee) return;
+  const handleAddStaff = (employeeId: string | null) => {
+    if (!employeeId) return;
 
-    const employee = employees.find((emp) => emp._id === selectedEmployee);
+    const employee = employees.find((emp) => emp._id === employeeId);
     if (!employee) return;
-
-    // Check if already added
-    const alreadyAdded = staffMembers.some(
-      (member) => member.employeeId === employee._id
-    );
-    if (alreadyAdded) {
-      alert('Este empleado ya está en el staff');
-      return;
-    }
 
     const newStaffMember: StaffMember = {
       employeeId: employee._id,
@@ -103,26 +94,19 @@ const StaffForm = ({
   return (
     <>
       <Stack gap='md'>
-        <Group>
-          <Select
-            placeholder='Seleccionar empleado'
-            data={employees.map((emp) => ({
+        <Select
+          placeholder='Seleccionar empleado'
+          data={employees
+            .filter((emp) => !staffMembers.some((member) => member.employeeId === emp._id))
+            .sort((a, b) => a.fullName.localeCompare(b.fullName))
+            .map((emp) => ({
               value: emp._id,
               label: `${emp.fullName} - ${emp.rol || 'Sin rol'}`
             }))}
-            value={selectedEmployee}
-            onChange={setSelectedEmployee}
-            searchable
-            style={{ flex: 1 }}
-          />
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={handleAddStaff}
-            disabled={!selectedEmployee}
-          >
-            Agregar
-          </Button>
-        </Group>
+          value={selectedEmployee}
+          onChange={handleAddStaff}
+          searchable
+        />
 
         {staffMembers.length > 0 && (
           <Stack gap='xs'>

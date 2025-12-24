@@ -2,7 +2,7 @@
 import useSWR from 'swr';
 import { mutate } from 'swr';
 import { useState, useEffect } from 'react';
-import { IconTrash, IconEye } from '@tabler/icons-react';
+import { IconTrash, IconFile, IconFileTypePdf } from '@tabler/icons-react';
 import {
   Button,
   TextInput,
@@ -10,10 +10,15 @@ import {
   Textarea,
   Select,
   Modal,
-  FileButton
+  FileButton,
+  Card,
+  Image,
+  Box,
+  Text
 } from '@mantine/core';
 import useNotification from '@/hooks/useNotification';
 import { Band, ExtraContact } from '@/context/types';
+import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 
 type BandNode = Band | ExtraContact;
 
@@ -199,21 +204,123 @@ export default function BandsCreationPanel({
   const handleDeleteFile = async (fileUrl: string) => {
     if (!fileUrl) return;
     setWaitingAws(true);
+    notify({ loading: true });
     try {
+      // Eliminar de S3
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: fileUrl, bucket: 'bands' })
       });
+
+      // Actualizar el array de archivos
+      const updatedFileUrls = (formData.fileUrls || []).filter(url => url !== fileUrl);
+
+      // Actualizar el estado local
       setFormData((prev: Band) => ({
         ...prev,
-        fileUrls: (prev.fileUrls || []).filter(url => url !== fileUrl)
+        fileUrls: updatedFileUrls
       }));
+
+      // IMPORTANTE: Actualizar en la base de datos si la banda ya existe
+      if (formData._id && formData.type === 'band') {
+        const res = await fetch('/api/bands', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            fileUrls: updatedFileUrls
+          })
+        });
+        if (!res.ok) throw new Error('Error updating band in database');
+        await mutate('/api/bands');
+      }
+
+      notify({ message: 'Archivo eliminado correctamente' });
     } catch (error) {
       console.error('Delete error:', error);
+      notify({ type: 'defaultError' });
     } finally {
       setWaitingAws(false);
     }
+  };
+
+  const getFilePreview = (fileUrl: string) => {
+    if (!fileUrl) return null;
+
+    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
+    const isPdf = /\.pdf$/i.test(fileUrl);
+    const cleanName = getCleanFileName(fileUrl);
+
+    return (
+      <Box
+        key={fileUrl}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          position: 'relative',
+          maxWidth: '120px'
+        }}
+      >
+        <Card
+          withBorder
+          padding="xs"
+          style={{
+            width: '100px',
+            height: '100px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+          }}
+          onClick={() => window.open(getFileViewerUrl(fileUrl), '_blank')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '';
+          }}
+        >
+          {isImage ? (
+            <Image
+              src={fileUrl}
+              alt="Band file"
+              fit="cover"
+              style={{ width: '100%', height: '100%', borderRadius: '4px' }}
+            />
+          ) : isPdf ? (
+            <IconFileTypePdf size={48} color="#FF0000" />
+          ) : (
+            <IconFile size={48} color="#888888" />
+          )}
+        </Card>
+        <Text
+          size="xs"
+          style={{
+            textAlign: 'center',
+            wordBreak: 'break-word',
+            maxWidth: '100%'
+          }}
+        >
+          {cleanName}
+        </Text>
+        <Button
+          color='red'
+          variant='light'
+          loading={waitingAws}
+          onClick={() => handleDeleteFile(fileUrl)}
+          size='xs'
+          style={{ marginTop: '4px' }}
+        >
+          <IconTrash size={14} />
+        </Button>
+      </Box>
+    );
   };
 
   if (!newEntity && !editItem) return null;
@@ -243,42 +350,25 @@ export default function BandsCreationPanel({
               onChange={(e) => handleInput('bandInfo', e.currentTarget.value)}
             />
             <div style={{ margin: 'auto' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center', marginBottom: '16px' }}>
                 {formData.fileUrls && formData.fileUrls.length > 0 &&
-                  formData.fileUrls.map((fileUrl: string, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <a
-                        href={fileUrl}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                      >
-                        <Button variant='light' size='xs'>
-                          <IconEye size={16} />
-                        </Button>
-                      </a>
-                      <Button
-                        color='red'
-                        variant='light'
-                        size='xs'
-                        loading={waitingAws}
-                        onClick={() => handleDeleteFile(fileUrl)}
-                      >
-                        <IconTrash size={16} />
-                      </Button>
-                    </div>
-                  ))
+                  formData.fileUrls.map((fileUrl: string) =>
+                    getFilePreview(fileUrl)
+                  )
                 }
               </div>
-              <FileButton
-                onChange={handleUpload}
-                accept='image/*,.pdf,.doc,.docx'
-              >
-                {(props) => (
-                  <Button {...props} loading={waitingAws} variant='outline'>
-                    {formData.fileUrls && formData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
-                  </Button>
-                )}
-              </FileButton>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <FileButton
+                  onChange={handleUpload}
+                  accept='image/*,.pdf,.doc,.docx'
+                >
+                  {(props) => (
+                    <Button {...props} loading={waitingAws} variant='outline'>
+                      {formData.fileUrls && formData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
+                    </Button>
+                  )}
+                </FileButton>
+              </div>
             </div>
             {formData.contacts && formData.contacts.length > 0 && (
               <div style={{ marginTop: '1rem', overflowX: 'auto' }}>

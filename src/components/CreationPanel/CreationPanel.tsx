@@ -325,7 +325,13 @@ export default function CreationPanel({
           />
           <Select
             label='Estado'
-            data={['Disponible', 'En Uso', 'Fuera de servicio']}
+            data={
+              // Si el equipo YA está en un evento (editando), mostrar "En Uso"
+              // Si se está creando nuevo, solo permitir "Disponible" o "Fuera de servicio"
+              isEditingEquipment && formData.isOut && formData.reason === 'En Evento'
+                ? ['Disponible', 'En Uso', 'Fuera de servicio']
+                : ['Disponible', 'Fuera de servicio']
+            }
             value={
               formData.isOut && formData.reason === 'En Evento'
                 ? 'En Uso'
@@ -338,6 +344,7 @@ export default function CreationPanel({
                 handleInput('isOut', false);
                 handleInput('reason', '');
               } else if (val === 'En Uso') {
+                // Solo permitir si ya estaba en uso (no debería llegar aquí al crear)
                 handleInput('isOut', true);
                 handleInput('reason', 'En Evento');
               } else if (val === 'Fuera de servicio') {

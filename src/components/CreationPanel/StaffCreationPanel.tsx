@@ -3,6 +3,7 @@
 import { mutate } from 'swr';
 import { useState, useEffect } from 'react';
 import { Button, TextInput, Select, Group, Textarea } from '@mantine/core';
+import { DateInput } from '@mantine/dates';
 import useNotification from '@/hooks/useNotification';
 
 export default function StaffCreationPanel({
@@ -20,7 +21,8 @@ export default function StaffCreationPanel({
     rol: '',
     license: 'NO',
     licenseType: '',
-    observations: ''
+    observations: '',
+    birthDate: null
   });
   const notify = useNotification();
   const newEmployee = selectedEmployee?._id === '';
@@ -35,7 +37,8 @@ export default function StaffCreationPanel({
         rol: editItem.rol,
         license: editItem.license,
         licenseType: editItem.licenseType,
-        observations: editItem.observations
+        observations: editItem.observations,
+        birthDate: editItem.birthDate ? new Date(editItem.birthDate) : null
       });
     }
   }, [editItem]);
@@ -94,6 +97,14 @@ export default function StaffCreationPanel({
           label='DNI'
           value={formData.cardId || ''}
           onChange={(e) => handleInput('cardId', e.currentTarget.value)}
+        />
+        <DateInput
+          label='Fecha de nacimiento'
+          placeholder='Seleccionar fecha'
+          value={formData.birthDate}
+          onChange={(date) => handleInput('birthDate', date)}
+          valueFormat='DD/MM/YYYY'
+          clearable
         />
         <TextInput
           label='Rol'

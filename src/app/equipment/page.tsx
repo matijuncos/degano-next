@@ -10,18 +10,30 @@ export default function EquipmentPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [disableCreateEquipment, setDisableCreateEquipment] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleEdit = (item: any) => {
     setEditItem(item);
   };
 
   const handleCancel = (wasCancelled: boolean, updatedItem?: any) => {
+    // Siempre limpiar el editItem
+    setEditItem(null);
+
     if (!wasCancelled && updatedItem) {
-      setSelectedCategory(updatedItem); // mantiene selección
-      setEditItem(null);
+      // Incrementar refreshTrigger para forzar actualización
+      setRefreshTrigger(prev => prev + 1);
+
+      // Si es una eliminación, deseleccionar en lugar de seleccionar el item
+      if (updatedItem._deleted) {
+        setSelectedCategory(null);
+      } else {
+        // Mantener o actualizar la selección
+        setSelectedCategory(updatedItem);
+      }
     } else {
-      setSelectedCategory(null); // se deselecciona
-      setEditItem(null);
+      // Si fue cancelado, deseleccionar
+      setSelectedCategory(null);
     }
   };
 
@@ -65,6 +77,7 @@ export default function EquipmentPage() {
           onEdit={handleEdit}
           onCancel={handleCancel}
           newEvent={false}
+          refreshTrigger={refreshTrigger}
         />
       </Box>
 

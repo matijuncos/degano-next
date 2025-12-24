@@ -15,6 +15,7 @@ import {
 import EditableContact from './EditableContact';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
+import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 
 const EditableBand = ({
   band,
@@ -243,17 +244,22 @@ const EditableBand = ({
   const handleDeleteFile = async (fileUrl: string) => {
     if (!fileUrl) return;
     setWaitingAws(true);
+    notify({ loading: true });
     try {
+      // Eliminar de S3
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: fileUrl, bucket: 'bands' })
       });
 
-      // Eliminar del array de archivos
+      // Actualizar el array de archivos
+      const updatedFileUrls = (bandData.fileUrls || []).filter(url => url !== fileUrl);
+
+      // Actualizar el estado local
       setBandData((prev) => ({
         ...prev,
-        fileUrls: (prev.fileUrls || []).filter(url => url !== fileUrl)
+        fileUrls: updatedFileUrls
       }));
 
       // Eliminar del mapa de nombres
@@ -262,8 +268,24 @@ const EditableBand = ({
         newMap.delete(fileUrl);
         return newMap;
       });
+
+      // IMPORTANTE: Actualizar en la base de datos si la banda ya existe
+      if (bandData._id) {
+        const res = await fetch('/api/bands', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...bandData,
+            fileUrls: updatedFileUrls
+          })
+        });
+        if (!res.ok) throw new Error('Error updating band in database');
+      }
+
+      notify({ message: 'Archivo eliminado correctamente' });
     } catch (error) {
       console.error('Delete error:', error);
+      notify({ type: 'defaultError' });
     } finally {
       setWaitingAws(false);
     }
@@ -274,6 +296,7 @@ const EditableBand = ({
 
     const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
     const isPdf = /\.pdf$/i.test(fileUrl);
+    const cleanName = getCleanFileName(fileUrl);
 
     return (
       <Box
@@ -283,7 +306,8 @@ const EditableBand = ({
           flexDirection: 'column',
           alignItems: 'center',
           gap: '8px',
-          position: 'relative'
+          position: 'relative',
+          maxWidth: '120px'
         }}
       >
         <Card
@@ -298,7 +322,7 @@ const EditableBand = ({
             cursor: 'pointer',
             transition: 'transform 0.2s, box-shadow 0.2s',
           }}
-          onClick={() => window.open(fileUrl, '_blank')}
+          onClick={() => window.open(getFileViewerUrl(fileUrl), '_blank')}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.05)';
             e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
@@ -321,6 +345,16 @@ const EditableBand = ({
             <IconFile size={48} color="#888888" />
           )}
         </Card>
+        <Text
+          size="xs"
+          style={{
+            textAlign: 'center',
+            wordBreak: 'break-word',
+            maxWidth: '100%'
+          }}
+        >
+          {cleanName}
+        </Text>
         <Button
           color='red'
           variant='light'
@@ -355,6 +389,7 @@ const EditableBand = ({
               data={
                 allBands
                   ?.filter((b) => b._id !== bandData._id)
+                  .sort((a, b) => a.bandName.localeCompare(b.bandName))
                   .map((b) => ({
                     value: b._id,
                     label: b.bandName

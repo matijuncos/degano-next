@@ -294,12 +294,15 @@ const ClientForm = ({
     .filter(
       (client) =>
         !extraClients.some((extra) => extra._id && extra._id === client._id)
-    );
+    )
+    .filter((client) => client.fullName && client.fullName.trim() !== '');
 
-  const clientOptions = filteredClients.map((client) => ({
-    value: client._id,
-    label: `${client.fullName} - ${client.phoneNumber}`
-  }));
+  const clientOptions = filteredClients
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .map((client) => ({
+      value: client._id,
+      label: `${client.fullName} - ${client.phoneNumber}`
+    }));
 
   const handleExtraClientSelect = (clientId: string | null) => {
     setSelectedExtraClientId(clientId);

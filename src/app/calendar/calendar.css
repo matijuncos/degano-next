@@ -290,3 +290,161 @@
 .rbc-time-content::-webkit-scrollbar-thumb:hover {
   background: #37b24d;
 }
+
+/* ========================================
+   TEMA CLARO (DÍA) - 7:00 AM - 8:00 PM
+   ======================================== */
+
+.calendar-light-theme .rbc-calendar {
+  background-color: #ffffff;
+  color: #212529;
+}
+
+.calendar-light-theme .rbc-header {
+  background-color: #f8f9fa;
+  color: #212529;
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-header + .rbc-header {
+  border-left-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-toolbar {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.calendar-light-theme .rbc-toolbar button {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  color: #495057;
+}
+
+.calendar-light-theme .rbc-toolbar button:hover {
+  background-color: #e9ecef;
+  color: #212529;
+}
+
+.calendar-light-theme .rbc-toolbar button:active,
+.calendar-light-theme .rbc-toolbar button.rbc-active {
+  background-color: #37b24d;
+  border-color: #37b24d;
+  color: #fff;
+}
+
+.calendar-light-theme .rbc-toolbar-label {
+  color: #212529;
+}
+
+.calendar-light-theme .rbc-day-bg {
+  background-color: #ffffff;
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-off-range-bg {
+  background-color: #f8f9fa;
+}
+
+.calendar-light-theme .rbc-today {
+  background-color: rgba(55, 178, 77, 0.08) !important;
+  border: 2px solid #37b24d !important;
+}
+
+.calendar-light-theme .rbc-date-cell > a {
+  color: #495057;
+}
+
+.calendar-light-theme .rbc-off-range .rbc-date-cell > a {
+  color: #adb5bd;
+}
+
+.calendar-light-theme .rbc-now .rbc-date-cell > a {
+  color: #37b24d;
+  font-weight: 700;
+}
+
+.calendar-light-theme .rbc-time-slot {
+  border-top-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-month-view {
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-month-row {
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #dee2e6;
+}
+
+.calendar-light-theme .rbc-time-view {
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-time-header {
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-time-content {
+  border-top-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-time-gutter {
+  background-color: #f8f9fa;
+  border-right-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-timeslot-group {
+  border-left-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-time-header-content {
+  border-left-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-label {
+  color: #6c757d;
+}
+
+.calendar-light-theme .rbc-overlay {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-light-theme .rbc-overlay-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  color: #212529;
+}
+
+.calendar-light-theme .rbc-agenda-view {
+  background-color: #ffffff;
+}
+
+.calendar-light-theme .rbc-agenda-table {
+  border-color: #dee2e6;
+}
+
+.calendar-light-theme .rbc-agenda-date-cell,
+.calendar-light-theme .rbc-agenda-time-cell,
+.calendar-light-theme .rbc-agenda-event-cell {
+  background-color: #ffffff;
+  border-color: #dee2e6;
+  color: #212529;
+}
+
+.calendar-light-theme .rbc-time-content::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+.calendar-light-theme .rbc-time-content::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+}
+
+.calendar-light-theme .rbc-time-content::-webkit-scrollbar-thumb:hover {
+  background: #37b24d;
+}

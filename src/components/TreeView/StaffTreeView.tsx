@@ -19,6 +19,7 @@ export type StaffNode = {
   rol?: string | null;
   license?: string;
   licenseType?: string;
+  birthDate?: string | Date | null;
 };
 
 function TreeNode({
@@ -181,11 +182,14 @@ export default function StaffTreeView({
 
   const { data: staffData = [] } = useSWR('/api/employees', fetcher);
 
-  const filteredStaff = searchTerm.trim()
+  const filteredStaff = (searchTerm.trim()
     ? staffData.filter((staff: StaffNode) =>
         staff.fullName.toLowerCase().includes(searchTerm.toLowerCase())
       )
-    : staffData;
+    : staffData
+  ).sort((a: StaffNode, b: StaffNode) =>
+    a.fullName.localeCompare(b.fullName, 'es', { sensitivity: 'base' })
+  );
 
   const handleCreateCategory = () => {
     onSelect?.({
