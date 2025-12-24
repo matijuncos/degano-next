@@ -254,7 +254,7 @@ const EditableBand = ({
       });
 
       // Actualizar el array de archivos
-      const updatedFileUrls = (bandData.fileUrls || []).filter(url => url !== fileUrl);
+      const updatedFileUrls = (bandData.fileUrls || []).filter((url: string) => url !== fileUrl);
 
       // Actualizar el estado local
       setBandData((prev) => ({

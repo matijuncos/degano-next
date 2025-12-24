@@ -214,7 +214,7 @@ export default function BandsCreationPanel({
       });
 
       // Actualizar el array de archivos
-      const updatedFileUrls = (formData.fileUrls || []).filter(url => url !== fileUrl);
+      const updatedFileUrls = (formData.fileUrls || []).filter((url: string) => url !== fileUrl);
 
       // Actualizar el estado local
       setFormData((prev: Band) => ({
