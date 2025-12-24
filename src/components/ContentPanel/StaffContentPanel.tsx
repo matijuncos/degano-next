@@ -46,11 +46,21 @@ export default function StaffContentPanel({
     return (
       <tr>
         <th>DNI</th>
+        <th>Fecha de nacimiento</th>
         <th>Rol</th>
         <th>Carnet</th>
         {selectedEmployee.licenseType && <th>Tipo de carnet</th>}
       </tr>
     );
+  };
+
+  const formatBirthDate = (date: string | Date | null | undefined) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
   };
 
   const renderRows = () => {
@@ -63,6 +73,7 @@ export default function StaffContentPanel({
         }}
       >
         <td>{item.cardId}</td>
+        <td>{formatBirthDate(item.birthDate)}</td>
         <td>{item.rol}</td>
         <td style={{ color: item.license === 'NO' ? 'red' : 'green' }}>
           {item.license}

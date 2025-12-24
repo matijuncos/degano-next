@@ -94,7 +94,9 @@ export default function ContentPanel({
     const fetchEquipment = async () => {
       setIsLoadingEquipment(true);
       try {
-        const response = await fetch(equipmentUrl, {
+        // Agregar timestamp para evitar caché del navegador
+        const cacheBuster = `${equipmentUrl}${equipmentUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+        const response = await fetch(cacheBuster, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -114,6 +116,7 @@ export default function ContentPanel({
   }, [equipmentUrl, refreshTrigger]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [equipmentToDelete, setEquipmentToDelete] = useState<any>(null);
 
   const children = categories.filter(
     (cat: any) => cat.parentId === selectedCategory?._id
@@ -176,6 +179,7 @@ export default function ContentPanel({
           <th>N° Serie</th>
           <th>Propiedad</th>
           <th>Estado</th>
+          {!newEvent && <th>Acciones</th>}
         </tr>
       );
     } else if (isItem) {
@@ -242,32 +246,50 @@ export default function ContentPanel({
           >
             {newEvent && (
               <td style={{ padding: '0 5px' }}>
-                {isSelected ? (
-                  <ActionIcon
-                    size='md'
-                    color='red'
-                    variant='light'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove?.(item._id);
-                    }}
-                  >
-                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
-                  </ActionIcon>
-                ) : (
-                  <ActionIcon
-                    size='md'
-                    color='green'
-                    variant='light'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit?.(item);
-                    }}
-                    disabled={item.outOfService?.isOut}
-                  >
-                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>
-                  </ActionIcon>
-                )}
+                <Group gap='xs' wrap='nowrap'>
+                  {isSelected ? (
+                    <ActionIcon
+                      size='md'
+                      color='red'
+                      variant='light'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove?.(item._id);
+                      }}
+                    >
+                      <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
+                    </ActionIcon>
+                  ) : (
+                    <ActionIcon
+                      size='md'
+                      color='green'
+                      variant='light'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit?.(item);
+                      }}
+                      disabled={item.outOfService?.isOut}
+                    >
+                      <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>
+                    </ActionIcon>
+                  )}
+                  {item.propiedad === 'Alquilado' && (
+                    <Tooltip label="Eliminar equipo alquilado">
+                      <ActionIcon
+                        size='sm'
+                        color='red'
+                        variant='subtle'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEquipmentToDelete(item);
+                          setShowDeleteModal(true);
+                        }}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </Group>
               </td>
             )}
             <td style={{ padding: '0 5px' }}>{item.name}</td>
@@ -286,6 +308,26 @@ export default function ContentPanel({
             >
               {displayStatus}
             </td>
+            {!newEvent && (
+              <td style={{ padding: '0 5px', textAlign: 'center' }}>
+                {item.propiedad === 'Alquilado' && (
+                  <Tooltip label="Eliminar equipo alquilado">
+                    <ActionIcon
+                      size='sm'
+                      color='red'
+                      variant='subtle'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEquipmentToDelete(item);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </td>
+            )}
           </tr>
         );
       });
@@ -333,23 +375,46 @@ export default function ContentPanel({
   };
 
   const confirmDelete = async () => {
-    if (!selectedCategory) return;
+    let wasEquipmentDeleted = false;
 
-    const isCategoryToDelete = categories.some(
-      (cat: any) => cat._id === selectedCategory._id
-    );
-    const endpoint = isCategoryToDelete ? '/api/categories' : '/api/equipment';
+    // Si hay un equipo específico para eliminar (desde botón en fila)
+    if (equipmentToDelete) {
+      await fetch(`/api/equipment?id=${equipmentToDelete._id}`, {
+        method: 'DELETE'
+      });
+      wasEquipmentDeleted = true;
+      setEquipmentToDelete(null);
+    }
+    // Si no, usar el selectedCategory (eliminación desde botón superior)
+    else if (selectedCategory) {
+      const isCategoryToDelete = categories.some(
+        (cat: any) => cat._id === selectedCategory._id
+      );
+      const endpoint = isCategoryToDelete ? '/api/categories' : '/api/equipment';
 
-    await fetch(`${endpoint}?id=${selectedCategory._id}`, {
-      method: 'DELETE'
-    });
+      await fetch(`${endpoint}?id=${selectedCategory._id}`, {
+        method: 'DELETE'
+      });
+
+      // Si se eliminó un equipo (no una categoría), marcar para refetch
+      if (!isCategoryToDelete) {
+        wasEquipmentDeleted = true;
+      }
+    }
 
     setShowDeleteModal(false);
     mutate('/api/categories');
     mutate('/api/equipment');
     mutate('/api/treeData');
     mutate('/api/categoryTreeData');
-    onCancel?.(true);
+
+    // Si se eliminó equipo, pasar false para que se incremente refreshTrigger
+    // Esto fuerza un refetch completo de los datos
+    if (wasEquipmentDeleted) {
+      onCancel?.(false, { _deleted: true });
+    } else {
+      onCancel?.(true);
+    }
   };
 
   const renderTitle = () => {
@@ -434,19 +499,36 @@ export default function ContentPanel({
 
       <Modal
         opened={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setEquipmentToDelete(null);
+        }}
         title={`¿Seguro que querés eliminar este ${
-          isItem ? 'equipamiento' : 'carpeta'
+          equipmentToDelete ? 'equipo alquilado' : isItem ? 'equipamiento' : 'carpeta'
         }?`}
         centered
       >
         <p>
-          {isItem
-            ? 'Esta acción eliminará el equipamiento permanentemente.'
-            : 'Esto eliminará la carpeta y todo su contenido.'}
+          {equipmentToDelete ? (
+            <>
+              Vas a eliminar el equipo: <strong>{equipmentToDelete.name}</strong>
+              <br />
+              Esta acción eliminará el equipamiento permanentemente de la base de datos.
+            </>
+          ) : isItem ? (
+            'Esta acción eliminará el equipamiento permanentemente.'
+          ) : (
+            'Esto eliminará la carpeta y todo su contenido.'
+          )}
         </p>
         <Group justify='flex-end' mt='md'>
-          <Button variant='default' onClick={() => setShowDeleteModal(false)}>
+          <Button
+            variant='default'
+            onClick={() => {
+              setShowDeleteModal(false);
+              setEquipmentToDelete(null);
+            }}
+          >
             Cancelar
           </Button>
           <Button color='red' onClick={confirmDelete}>

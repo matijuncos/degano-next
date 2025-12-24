@@ -17,7 +17,7 @@ import {
   TextInput,
   Divider
 } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { EventModel, CeremonyMusic, AmbienceMusicItem } from '@/context/types';
 import { IconX, IconAlertCircle, IconPlus, IconTrash } from '@tabler/icons-react';
 import styles from './MusicForm.module.css';
@@ -34,17 +34,25 @@ type SpotifyLink = {
   url: string;
 };
 
-const MusicForm = ({
-  event,
-  onNextTab,
-  onBackTab,
-  updateEvent
-}: {
+export interface MusicFormRef {
+  getData: () => { musicData: EventModel; spotifyLinks: { label: string; url: string }[] };
+}
+
+const MusicForm = forwardRef<MusicFormRef, {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
-}) => {
+  hideNavigation?: boolean;
+  hiddenSections?: string[];
+}>(({
+  event,
+  onNextTab,
+  onBackTab,
+  updateEvent,
+  hideNavigation = false,
+  hiddenSections = []
+}, ref) => {
   const {
     genres: dbGenres,
     loading: genresLoading,
@@ -57,7 +65,9 @@ const MusicForm = ({
       welcomeSongs: Array.isArray(event.welcomeSongs) ? event.welcomeSongs : [],
       walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
       vals: Array.isArray(event.vals) ? event.vals : [],
-      openingPartySong: event.openingPartySong || '',
+      openingPartySongs: Array.isArray(event.openingPartySongs)
+        ? event.openingPartySongs
+        : (event.openingPartySong ? [{ titulo: 'Apertura de pista', cancion: event.openingPartySong }] : []),
       closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
       ceremoniaCivil: event.ceremoniaCivil || {
         ingreso: '',
@@ -88,7 +98,9 @@ const MusicForm = ({
         welcomeSongs: Array.isArray(event.welcomeSongs) ? event.welcomeSongs : [],
         walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
         vals: Array.isArray(event.vals) ? event.vals : [],
-        openingPartySong: event.openingPartySong || '',
+        openingPartySongs: Array.isArray(event.openingPartySongs)
+          ? event.openingPartySongs
+          : (event.openingPartySong ? [{ titulo: 'Apertura de pista', cancion: event.openingPartySong }] : []),
         closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
         ceremoniaCivil: event.ceremoniaCivil || {
           ingreso: '',
@@ -128,6 +140,14 @@ const MusicForm = ({
       }));
     }
   }, [dbGenres, event.music.genres]);
+
+  // Expose getData function via ref
+  useImperativeHandle(ref, () => ({
+    getData: () => ({
+      musicData,
+      spotifyLinks
+    })
+  }));
 
   const handleForbidden = (e: any) => {
     const target = e.target as HTMLInputElement;
@@ -339,6 +359,37 @@ const MusicForm = ({
     }));
   };
 
+  // Apertura de pista handlers
+  const addOpeningSong = () => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      openingPartySongs: [
+        ...(prevData.openingPartySongs || []),
+        { titulo: '', cancion: '' }
+      ]
+    }));
+  };
+
+  const updateOpeningSong = (
+    index: number,
+    field: 'titulo' | 'cancion',
+    value: string
+  ) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      openingPartySongs: (prevData.openingPartySongs || []).map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const deleteOpeningSong = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      openingPartySongs: (prevData.openingPartySongs || []).filter((_, i) => i !== index)
+    }));
+  };
+
   // Ceremonia handlers
   const updateCeremony = (
     type: 'ceremoniaCivil' | 'ceremoniaExtra',
@@ -445,13 +496,19 @@ const MusicForm = ({
     }));
   };
 
+  // Helper para verificar si debe mostrar un acordeón
+  const shouldShowSection = (sectionId: string) => {
+    return !hiddenSections.includes(sectionId);
+  };
+
   return (
     <Box>
       <Accordion multiple>
         {/* Canciones de ingreso */}
-        <Accordion.Item value='ingreso'>
-          <Accordion.Control>Canciones de ingreso</Accordion.Control>
-          <Accordion.Panel>
+        {shouldShowSection('ingreso') && (
+          <Accordion.Item value='ingreso'>
+            <Accordion.Control>Canciones de ingreso</Accordion.Control>
+            <Accordion.Panel>
             <Stack gap='xs'>
               {(musicData.welcomeSongs || []).map((song, index) => (
                 <Flex key={index} gap='xs' align='center'>
@@ -482,9 +539,11 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Canción de rosas */}
-        <Accordion.Item value='rosas'>
+        {shouldShowSection('rosas') && (
+          <Accordion.Item value='rosas'>
           <Accordion.Control>Canción de rosas</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='xs'>
@@ -517,9 +576,11 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Ceremonia Civil */}
-        <Accordion.Item value='ceremonia-civil'>
+        {shouldShowSection('ceremonia-civil') && (
+          <Accordion.Item value='ceremonia-civil'>
           <Accordion.Control>Ceremonia Civil</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='xs'>
@@ -610,10 +671,12 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Ceremonia Extra */}
-        <Accordion.Item value='ceremonia-extra'>
-          <Accordion.Control>Ceremonia Extra</Accordion.Control>
+        {shouldShowSection('ceremonia-extra') && (
+          <Accordion.Item value='ceremonia-extra'>
+            <Accordion.Control>Ceremonia Extra</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='xs'>
               <TextInput
@@ -703,10 +766,12 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Vals */}
-        <Accordion.Item value='vals'>
-          <Accordion.Control>Vals</Accordion.Control>
+        {shouldShowSection('vals') && (
+          <Accordion.Item value='vals'>
+            <Accordion.Control>Vals</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='xs'>
               {(musicData.vals || []).map((song, index) => (
@@ -738,26 +803,105 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
-        {/* Inicio de fiesta */}
-        <Accordion.Item value='fiesta'>
-          <Accordion.Control>Inicio de fiesta (post cena)</Accordion.Control>
+        {/* Apertura de pista */}
+        {shouldShowSection('fiesta') && (
+          <Accordion.Item value='fiesta'>
+            <Accordion.Control>Apertura de pista</Accordion.Control>
           <Accordion.Panel>
-            <TextInput
-              label='Canción apertura pista'
-              placeholder='Nombre de la canción'
-              value={musicData.openingPartySong || ''}
-              onChange={(e) =>
-                setMusicData({ ...musicData, openingPartySong: e.target.value })
-              }
-              size='sm'
-            />
+            <Stack gap='xs'>
+              <Flex gap='xs' align='flex-end'>
+                <TextInput
+                  label='Título'
+                  placeholder='Ej: Apertura de pista'
+                  style={{ flex: 1 }}
+                  size='sm'
+                  id='new-opening-titulo'
+                />
+                <TextInput
+                  label='Canción'
+                  placeholder='Nombre de la canción'
+                  style={{ flex: 1 }}
+                  size='sm'
+                  id='new-opening-cancion'
+                />
+              </Flex>
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={() => {
+                  const tituloInput = document.getElementById('new-opening-titulo') as HTMLInputElement;
+                  const cancionInput = document.getElementById('new-opening-cancion') as HTMLInputElement;
+                  if (tituloInput?.value || cancionInput?.value) {
+                    setMusicData((prevData) => ({
+                      ...prevData,
+                      openingPartySongs: [
+                        ...(prevData.openingPartySongs || []),
+                        { titulo: tituloInput.value, cancion: cancionInput.value }
+                      ]
+                    }));
+                    tituloInput.value = '';
+                    cancionInput.value = '';
+                  }
+                }}
+              >
+                Agregar momento
+              </Button>
+            </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
+
+        {/* Momentos agregados de apertura de pista */}
+        {(musicData.openingPartySongs || []).map((item, index) => (
+          <Accordion.Item key={`opening-${index}`} value={`opening-${index}`}>
+            <Accordion.Control>
+              {item.titulo || `Momento ${index + 1}`}
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap='xs'>
+                <Flex gap='xs' align='flex-end'>
+                  <TextInput
+                    label='Título'
+                    placeholder='Ej: Apertura de pista'
+                    value={item.titulo}
+                    onChange={(e) =>
+                      updateOpeningSong(index, 'titulo', e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                  <TextInput
+                    label='Canción'
+                    placeholder='Nombre de la canción'
+                    value={item.cancion}
+                    onChange={(e) =>
+                      updateOpeningSong(index, 'cancion', e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                </Flex>
+                <Button
+                  variant='light'
+                  color='red'
+                  size='xs'
+                  leftSection={<IconTrash size={14} />}
+                  onClick={() => deleteOpeningSong(index)}
+                >
+                  Eliminar momento
+                </Button>
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        ))}
 
         {/* Música para ambientar */}
-        <Accordion.Item value='ambiente'>
-          <Accordion.Control>Música para ambientar</Accordion.Control>
+        {shouldShowSection('ambiente') && (
+          <Accordion.Item value='ambiente'>
+            <Accordion.Control>Música para ambientar</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='md'>
               {(musicData.ambienceMusic || []).map((category, categoryIndex) => (
@@ -829,10 +973,12 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Canciones de cierre */}
-        <Accordion.Item value='cierre'>
-          <Accordion.Control>Canciones para cierre</Accordion.Control>
+        {shouldShowSection('cierre') && (
+          <Accordion.Item value='cierre'>
+            <Accordion.Control>Canciones para cierre</Accordion.Control>
           <Accordion.Panel>
                         <Stack gap='xs'>
               {(musicData.closingSongs || []).map((song, index) => (
@@ -864,10 +1010,12 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Música de preferencia */}
-        <Accordion.Item value='preferencias'>
-          <Accordion.Control>Música de preferencia</Accordion.Control>
+        {shouldShowSection('preferencias') && (
+          <Accordion.Item value='preferencias'>
+            <Accordion.Control>Música de preferencia</Accordion.Control>
           <Accordion.Panel>
             {genresLoading ? (
               <Flex align='center' gap='sm'>
@@ -1003,10 +1151,12 @@ const MusicForm = ({
             </div>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
 
         {/* Spotify Playlists */}
-        <Accordion.Item value='spotify'>
-          <Accordion.Control>Spotify Playlists</Accordion.Control>
+        {shouldShowSection('spotify') && (
+          <Accordion.Item value='spotify'>
+            <Accordion.Control>Spotify Playlists</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='sm'>
               <Flex gap='xs'>
@@ -1069,18 +1219,23 @@ const MusicForm = ({
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
+        )}
       </Accordion>
 
-      <Flex direction='column' gap='xs' mt='lg'>
-        <Button onClick={back} >
-          Atrás
-        </Button>
-        <Button onClick={next} disabled={genresLoading}>
-          Siguiente
-        </Button>
-      </Flex>
+      {!hideNavigation && (
+        <Flex direction='column' gap='xs' mt='lg'>
+          <Button onClick={back}>
+            Atrás
+          </Button>
+          <Button onClick={next} disabled={genresLoading}>
+            Siguiente
+          </Button>
+        </Flex>
+      )}
     </Box>
   );
-};
+});
+
+MusicForm.displayName = 'MusicForm';
 
 export default MusicForm;

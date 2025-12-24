@@ -179,7 +179,7 @@ const TimingForm = ({
       {eventData.timing && eventData.timing.length > 0 ? (
         <Flex direction='column' gap='xs'>
           {eventData.timing.map((item, index) => (
-            <Card key={index} withBorder padding='sm'>
+            <Card key={index} withBorder style={{padding: '5px 10px'}}>
               {editingIndex === index ? (
                 // Modo edición
                 <form

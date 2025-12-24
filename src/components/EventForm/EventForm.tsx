@@ -55,7 +55,9 @@ const EventForm = ({
         const data = await response.json();
         if (data.salons) {
           setSalonObjects(data.salons); // Guardar objetos completos
-          const salonNames = data.salons.map((s: any) => s.name);
+          const salonNames = data.salons
+            .map((s: any) => s.name)
+            .sort((a: string, b: string) => a.localeCompare(b));
           setSalons(salonNames);
           setOriginalSalons(salonNames); // Guardar lista original
         }

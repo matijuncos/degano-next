@@ -46,6 +46,7 @@ import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 import BandList from '@/components/BandManager/BandList';
 import EditableBand from '@/components/BandManager/EditableBand';
 import MissingFieldsModal from '@/components/MissingFieldsModal/MissingFieldsModal';
+import MusicFieldsModal from '@/components/MusicFieldsModal/MusicFieldsModal';
 import useNotification from '@/hooks/useNotification';
 import { detectMissingFields } from '@/utils/fieldUtils';
 import useSWR from 'swr';
@@ -286,12 +287,15 @@ const MainInformation = ({
           (extra) => extra._id && extra._id === client._id
         )
     )
-    .filter((client) => client.fullName !== selectedEvent?.fullName);
+    .filter((client) => client.fullName !== selectedEvent?.fullName)
+    .filter((client) => client.fullName && client.fullName.trim() !== '');
 
-  const clientOptions = filteredClients.map((client) => ({
-    value: client._id,
-    label: `${client.fullName} - ${client.phoneNumber}`
-  }));
+  const clientOptions = filteredClients
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .map((client) => ({
+      value: client._id,
+      label: `${client.fullName} - ${client.phoneNumber}`
+    }));
 
   if (!selectedEvent) return null;
   return (
@@ -315,7 +319,12 @@ const MainInformation = ({
       </Text>
 
       {/* Fechas en una línea */}
-      <Group align='flex-start' gap='md' wrap='nowrap' style={{ width: '100%' }}>
+      <Group
+        align='flex-start'
+        gap='md'
+        wrap='nowrap'
+        style={{ width: '100%' }}
+      >
         <Box style={{ flex: 1 }}>
           <EditableData
             type='dateOnly'
@@ -371,7 +380,12 @@ const MainInformation = ({
       </Group>
 
       {/* Horarios en una línea */}
-      <Group align='flex-start' gap='md' wrap='nowrap' style={{ width: '100%' }}>
+      <Group
+        align='flex-start'
+        gap='md'
+        wrap='nowrap'
+        style={{ width: '100%' }}
+      >
         <Box style={{ flex: 1 }}>
           <EditableData
             type='timeOnly'
@@ -409,6 +423,35 @@ const MainInformation = ({
           </Box>
         )}
       </Group>
+      {selectedEvent.churchDate ||
+        (selectedEvent.civil && (
+          <Group
+            align='flex-start'
+            gap='md'
+            wrap='nowrap'
+            style={{ width: '100%' }}
+          >
+            {selectedEvent.churchDate && (
+              <Box style={{ flex: 1 }}>
+                <EditableData
+                  type='text'
+                  property='churchDate'
+                  title='Hora de iglesia'
+                  value={selectedEvent.churchDate}
+                />
+              </Box>
+            )}
+            {selectedEvent.civil && (
+              <EditableData
+                type='text'
+                property='civil'
+                title='Hora del civil'
+                value={selectedEvent.civil}
+              />
+            )}
+          </Group>
+        ))}
+
       <EditableData
         type='text'
         property='type'
@@ -424,12 +467,12 @@ const MainInformation = ({
         />
       )}
       {selectedEvent.guests && (
-      <EditableData
-        type='text'
-        property='guests'
-        title='Cantidad de Invitados'
-        value={selectedEvent.guests}
-      />
+        <EditableData
+          type='text'
+          property='guests'
+          title='Cantidad de Invitados'
+          value={selectedEvent.guests}
+        />
       )}
 
       <Divider my='md' />
@@ -474,45 +517,6 @@ const MainInformation = ({
           value={
             selectedEvent.venueContactPhone || selectedEvent.venueContact || ''
           }
-        />
-      )}
-
-      <Divider my='md' />
-
-      {/* SECCIÓN: HORARIOS */}
-      <Text size='lg' fw={700} mb='md'>
-        Horarios
-      </Text>
-      {selectedEvent.churchDate && (
-        <EditableData
-          type='text'
-          property='churchDate'
-          title='Hora de iglesia'
-          value={selectedEvent.churchDate}
-        />
-      )}
-      {selectedEvent.civil && (
-        <EditableData
-          type='text'
-          property='civil'
-          title='Hora del civil'
-          value={selectedEvent.civil}
-        />
-      )}
-      {selectedEvent.staffArrivalTime && (
-        <EditableData
-          type='text'
-          property='staffArrivalTime'
-          title='Horario llegada staff'
-          value={selectedEvent.staffArrivalTime}
-        />
-      )}
-      {selectedEvent.equipmentArrivalTime && (
-        <EditableData
-          type='text'
-          property='equipmentArrivalTime'
-          title='Horario llegada equipamiento'
-          value={selectedEvent.equipmentArrivalTime}
         />
       )}
 
@@ -803,6 +807,61 @@ const MainInformation = ({
         </Card>
       )}
 
+      <Divider my='md' />
+
+      {/* SECCIÓN: STAFF */}
+      {(selectedEvent.staff ||
+        selectedEvent.staffArrivalTime ||
+        selectedEvent.equipmentArrivalTime) && (
+        <>
+          <Text size='lg' fw={700} mb='md'>
+            Staff
+          </Text>
+          {selectedEvent.staff &&
+            selectedEvent.staff.map((staffMember, index) => (
+              <Group
+                align='flex-start'
+                gap='md'
+                wrap='nowrap'
+                style={{ width: '100%' }}
+                key={`staff-member-${index}`}
+              >
+                <Box style={{ flex: 1 }}>
+                  <EditableData
+                    type='text'
+                    property={`staff.${index}.employeeName`}
+                    title={`Miembro del staff ${index + 1}`}
+                    value={staffMember.employeeName}
+                  />
+                </Box>
+                <EditableData
+                  key={`staff-member-${index}`}
+                  type='text'
+                  property={`staff.${index}.rol`}
+                  title={`Miembro del staff ${index + 1}`}
+                  value={staffMember.rol}
+                />
+              </Group>
+            ))}
+          {selectedEvent.staffArrivalTime && (
+            <EditableData
+              type='text'
+              property='staffArrivalTime'
+              title='Horario llegada staff'
+              value={selectedEvent.staffArrivalTime}
+            />
+          )}
+          {selectedEvent.equipmentArrivalTime && (
+            <EditableData
+              type='text'
+              property='equipmentArrivalTime'
+              title='Horario llegada equipamiento'
+              value={selectedEvent.equipmentArrivalTime}
+            />
+          )}
+        </>
+      )}
+
       {/* Modal para agregar campos faltantes */}
       <MissingFieldsModal
         opened={isMissingFieldsModalOpen}
@@ -815,26 +874,40 @@ const MainInformation = ({
   );
 };
 const MusicInformation = ({
-  selectedEvent
+  selectedEvent,
+  onOpenMusicModal
 }: {
   selectedEvent: EventModel | null;
+  onOpenMusicModal: () => void;
 }) => {
   if (!selectedEvent) return null;
 
   // Helper function to check if a ceremony has any content
   const hasCeremonyContent = (ceremony: any) => {
     if (!ceremony) return false;
-    const hasMainFields = ceremony.ingreso || ceremony.firmas || ceremony.salida;
+    const hasMainFields =
+      ceremony.ingreso || ceremony.firmas || ceremony.salida;
     const hasOtros = ceremony.otros && ceremony.otros.length > 0;
     return hasMainFields || hasOtros;
   };
 
   return (
     <Flex direction='column' gap='8px' mt='8px'>
+      {/* Botón para agregar campos de música */}
+      <Button
+        variant='light'
+        size='sm'
+        mb='md'
+        leftSection={<IconPlus size={16} />}
+        onClick={onOpenMusicModal}
+      >
+        Agregar campos de música
+      </Button>
+
       {/* Canciones de ingreso */}
       {selectedEvent.welcomeSongs && selectedEvent.welcomeSongs.length > 0 && (
         <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+          <Text fw={700} size='m' mb='xs' c='dimmed'>
             Canciones de ingreso
           </Text>
           {selectedEvent.welcomeSongs.map((song, index) => (
@@ -852,7 +925,7 @@ const MusicInformation = ({
       {/* Canción de rosas */}
       {selectedEvent.walkIn && selectedEvent.walkIn.length > 0 && (
         <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+          <Text fw={700} size='m' mb='xs' c='dimmed'>
             Canción de rosas
           </Text>
           {selectedEvent.walkIn.map((song, index) => (
@@ -868,131 +941,133 @@ const MusicInformation = ({
       )}
 
       {/* Ceremonia Civil */}
-      {selectedEvent.ceremoniaCivil && hasCeremonyContent(selectedEvent.ceremoniaCivil) && (
-        <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
-            Ceremonia Civil
-          </Text>
-          {selectedEvent.ceremoniaCivil.ingreso && (
-            <EditableData
-              type='text'
-              property='ceremoniaCivil.ingreso'
-              title='Ingreso'
-              value={selectedEvent.ceremoniaCivil.ingreso}
-            />
-          )}
-          {selectedEvent.ceremoniaCivil.firmas && (
-            <EditableData
-              type='text'
-              property='ceremoniaCivil.firmas'
-              title='Firmas'
-              value={selectedEvent.ceremoniaCivil.firmas}
-            />
-          )}
-          {selectedEvent.ceremoniaCivil.salida && (
-            <EditableData
-              type='text'
-              property='ceremoniaCivil.salida'
-              title='Salida'
-              value={selectedEvent.ceremoniaCivil.salida}
-            />
-          )}
-          {selectedEvent.ceremoniaCivil.otros &&
-            selectedEvent.ceremoniaCivil.otros.length > 0 && (
-              <>
-                {selectedEvent.ceremoniaCivil.otros.map((item, index) => (
-                  <Box
-                    key={`civil-otro-${index}`}
-                    style={{
-                      borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
-                      paddingLeft: '12px',
-                      marginTop: '8px'
-                    }}
-                  >
-                    <EditableData
-                      type='text'
-                      property={`ceremoniaCivil.otros[${index}].titulo`}
-                      title='Título'
-                      value={item.titulo}
-                    />
-                    <EditableData
-                      type='text'
-                      property={`ceremoniaCivil.otros[${index}].cancion`}
-                      title='Canción'
-                      value={item.cancion}
-                    />
-                  </Box>
-                ))}
-              </>
+      {selectedEvent.ceremoniaCivil &&
+        hasCeremonyContent(selectedEvent.ceremoniaCivil) && (
+          <Box>
+            <Text fw={700} size='m' mb='xs' c='dimmed'>
+              Ceremonia Civil
+            </Text>
+            {selectedEvent.ceremoniaCivil.ingreso && (
+              <EditableData
+                type='text'
+                property='ceremoniaCivil.ingreso'
+                title='Ingreso'
+                value={selectedEvent.ceremoniaCivil.ingreso}
+              />
             )}
-        </Box>
-      )}
+            {selectedEvent.ceremoniaCivil.firmas && (
+              <EditableData
+                type='text'
+                property='ceremoniaCivil.firmas'
+                title='Firmas'
+                value={selectedEvent.ceremoniaCivil.firmas}
+              />
+            )}
+            {selectedEvent.ceremoniaCivil.salida && (
+              <EditableData
+                type='text'
+                property='ceremoniaCivil.salida'
+                title='Salida'
+                value={selectedEvent.ceremoniaCivil.salida}
+              />
+            )}
+            {selectedEvent.ceremoniaCivil.otros &&
+              selectedEvent.ceremoniaCivil.otros.length > 0 && (
+                <>
+                  {selectedEvent.ceremoniaCivil.otros.map((item, index) => (
+                    <Box
+                      key={`civil-otro-${index}`}
+                      style={{
+                        borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                        paddingLeft: '12px',
+                        marginTop: '8px'
+                      }}
+                    >
+                      <EditableData
+                        type='text'
+                        property={`ceremoniaCivil.otros[${index}].titulo`}
+                        title='Título'
+                        value={item.titulo}
+                      />
+                      <EditableData
+                        type='text'
+                        property={`ceremoniaCivil.otros[${index}].cancion`}
+                        title='Canción'
+                        value={item.cancion}
+                      />
+                    </Box>
+                  ))}
+                </>
+              )}
+          </Box>
+        )}
 
       {/* Ceremonia Extra */}
-      {selectedEvent.ceremoniaExtra && hasCeremonyContent(selectedEvent.ceremoniaExtra) && (
-        <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
-            Ceremonia Extra
-          </Text>
-          {selectedEvent.ceremoniaExtra.ingreso && (
-            <EditableData
-              type='text'
-              property='ceremoniaExtra.ingreso'
-              title='Ingreso'
-              value={selectedEvent.ceremoniaExtra.ingreso}
-            />
-          )}
-          {selectedEvent.ceremoniaExtra.firmas && (
-            <EditableData
-              type='text'
-              property='ceremoniaExtra.firmas'
-              title='Firmas'
-              value={selectedEvent.ceremoniaExtra.firmas}
-            />
-          )}
-          {selectedEvent.ceremoniaExtra.salida && (
-            <EditableData
-              type='text'
-              property='ceremoniaExtra.salida'
-              title='Salida'
-              value={selectedEvent.ceremoniaExtra.salida}
-            />
-          )}
-          {selectedEvent.ceremoniaExtra.otros &&
-            selectedEvent.ceremoniaExtra.otros.length > 0 && (
-              <>
-                {selectedEvent.ceremoniaExtra.otros.map((item, index) => (
-                  <Box
-                    key={`extra-otro-${index}`}
-                    style={{
-                      borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
-                      paddingLeft: '12px',
-                      marginTop: '8px'
-                    }}
-                  >
-                    <EditableData
-                      type='text'
-                      property={`ceremoniaExtra.otros[${index}].titulo`}
-                      title='Título'
-                      value={item.titulo}
-                    />
-                    <EditableData
-                      type='text'
-                      property={`ceremoniaExtra.otros[${index}].cancion`}
-                      title='Canción'
-                      value={item.cancion}
-                    />
-                  </Box>
-                ))}
-              </>
+      {selectedEvent.ceremoniaExtra &&
+        hasCeremonyContent(selectedEvent.ceremoniaExtra) && (
+          <Box>
+            <Text fw={700} size='m' mb='xs' c='dimmed'>
+              Ceremonia Extra
+            </Text>
+            {selectedEvent.ceremoniaExtra.ingreso && (
+              <EditableData
+                type='text'
+                property='ceremoniaExtra.ingreso'
+                title='Ingreso'
+                value={selectedEvent.ceremoniaExtra.ingreso}
+              />
             )}
-        </Box>
-      )}
+            {selectedEvent.ceremoniaExtra.firmas && (
+              <EditableData
+                type='text'
+                property='ceremoniaExtra.firmas'
+                title='Firmas'
+                value={selectedEvent.ceremoniaExtra.firmas}
+              />
+            )}
+            {selectedEvent.ceremoniaExtra.salida && (
+              <EditableData
+                type='text'
+                property='ceremoniaExtra.salida'
+                title='Salida'
+                value={selectedEvent.ceremoniaExtra.salida}
+              />
+            )}
+            {selectedEvent.ceremoniaExtra.otros &&
+              selectedEvent.ceremoniaExtra.otros.length > 0 && (
+                <>
+                  {selectedEvent.ceremoniaExtra.otros.map((item, index) => (
+                    <Box
+                      key={`extra-otro-${index}`}
+                      style={{
+                        borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                        paddingLeft: '12px',
+                        marginTop: '8px'
+                      }}
+                    >
+                      <EditableData
+                        type='text'
+                        property={`ceremoniaExtra.otros[${index}].titulo`}
+                        title='Título'
+                        value={item.titulo}
+                      />
+                      <EditableData
+                        type='text'
+                        property={`ceremoniaExtra.otros[${index}].cancion`}
+                        title='Canción'
+                        value={item.cancion}
+                      />
+                    </Box>
+                  ))}
+                </>
+              )}
+          </Box>
+        )}
 
       {/* Vals */}
       {selectedEvent.vals && selectedEvent.vals.length > 0 && (
         <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+          <Text fw={700} size='m' mb='xs' c='dimmed'>
             Vals
           </Text>
           {selectedEvent.vals.map((song, index) => (
@@ -1007,25 +1082,33 @@ const MusicInformation = ({
         </Box>
       )}
 
-      {/* Inicio de fiesta */}
-      {selectedEvent.openingPartySong && (
-        <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
-            Inicio de fiesta (post cena)
-          </Text>
-          <EditableData
-            type='text'
-            property='openingPartySong'
-            title='Canción apertura pista'
-            value={selectedEvent.openingPartySong}
-          />
-        </Box>
-      )}
+      {/* Apertura de pista - Momentos agregados */}
+      {selectedEvent.openingPartySongs && selectedEvent.openingPartySongs.length > 0 &&
+        selectedEvent.openingPartySongs.map((item: any, index: number) => (
+          <Box key={index} mb='md'>
+            <Text fw={700} size='m' mb='xs' c='dimmed'>
+              {item.titulo || `Momento ${index + 1}`}
+            </Text>
+            <EditableData
+              type='text'
+              property={`openingPartySongs[${index}].titulo`}
+              title='Título'
+              value={item.titulo}
+            />
+            <EditableData
+              type='text'
+              property={`openingPartySongs[${index}].cancion`}
+              title='Canción'
+              value={item.cancion}
+            />
+          </Box>
+        ))
+      }
 
       {/* Canciones de cierre */}
-            {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
+      {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
         <Box>
-          <Text fw={500} size='sm' mb='xs' c='dimmed'>
+          <Text fw={700} size='m' mb='xs' c='dimmed'>
             Canciones de cierre
           </Text>
           {selectedEvent.closingSongs.map((song, index) => (
@@ -1044,7 +1127,7 @@ const MusicInformation = ({
       {selectedEvent.ambienceMusic &&
         selectedEvent.ambienceMusic.length > 0 && (
           <Box>
-            <Text fw={500} size='sm' mb='xs' c='dimmed'>
+            <Text fw={700} size='m' mb='xs' c='dimmed'>
               Música para ambientar
             </Text>
             {selectedEvent.ambienceMusic.map((category, categoryIndex) => (
@@ -1089,7 +1172,7 @@ const MusicInformation = ({
 
       {/* Música de preferencia */}
       <Box>
-        <Text fw={500} size='sm' mb='xs' c='dimmed'>
+        <Text fw={700} size='m' mb='xs' c='dimmed'>
           Música de preferencia
         </Text>
         <EditableData
@@ -1107,16 +1190,6 @@ const MusicInformation = ({
           property='genres'
           value={selectedEvent.music.genres}
         />
-      </Box>
-
-      <Divider my='md' />
-
-      {/* Spotify Playlists */}
-      <Box>
-        <Text fw={500} size='sm' mb='xs' c='dimmed'>
-          Spotify Playlists
-        </Text>
-        <SpotifyTable />
       </Box>
     </Flex>
   );
@@ -1562,7 +1635,7 @@ const TimingInformation = ({
       {selectedEvent.timing && selectedEvent.timing.length > 0 ? (
         <Flex direction='column' gap='xs'>
           {selectedEvent.timing.map((item, index) => (
-            <Card key={index} withBorder padding='sm'>
+            <Card key={index} withBorder style={{ padding: '5px 10px' }}>
               {editingIndex === index ? (
                 // Modo edición
                 <form
@@ -1709,6 +1782,7 @@ const EventPage = () => {
   const [showPrintableComponent, setShowPrintableComponent] = useState(false);
   const [showTabsVersion, setShowTabsVersion] = useState(true);
   const [activeTab, setActiveTab] = useState<string | null>('main');
+  const [isMusicFieldsModalOpen, setIsMusicFieldsModalOpen] = useState(false);
   const notify = useNotification();
 
   // Obtener la ruta de origen si existe
@@ -1825,7 +1899,10 @@ const EventPage = () => {
             : undefined
         }
       >
-        <MusicInformation selectedEvent={selectedEvent} />
+        <MusicInformation
+          selectedEvent={selectedEvent}
+          onOpenMusicModal={() => setIsMusicFieldsModalOpen(true)}
+        />
       </PDFActions>
     ),
     timing: (
@@ -2085,6 +2162,69 @@ const EventPage = () => {
             </Box>
           )}
         </>
+      )}
+
+      {/* Modal para agregar campos de música */}
+      {selectedEvent && (
+        <MusicFieldsModal
+          opened={isMusicFieldsModalOpen}
+          onClose={() => setIsMusicFieldsModalOpen(false)}
+          selectedEvent={selectedEvent}
+          onSave={async (updates) => {
+            setLoadingCursor(true);
+            notify({ loading: true });
+            try {
+              const updatedEvent = { ...selectedEvent, ...updates };
+
+              console.log('Guardando música:', {
+                eventId: selectedEvent._id,
+                updates: updates
+              });
+
+              const response = await fetch(`/api/updateEvent?id=${Date.now()}`, {
+                method: 'PUT',
+                cache: 'no-store',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedEvent)
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Error response:', errorData);
+                throw new Error('Error al guardar los datos de música');
+              }
+
+              const result = await response.json();
+              console.log('Resultado del guardado:', result);
+
+              // Refetch el evento para asegurar que tenemos los datos más recientes
+              const refetchResponse = await fetch(`/api/getEvent?id=${selectedEvent._id}`, {
+                cache: 'no-store',
+                headers: {
+                  'Cache-Control': 'no-cache',
+                  Pragma: 'no-cache'
+                }
+              });
+
+              if (refetchResponse.ok) {
+                const { event } = await refetchResponse.json();
+                setSelectedEvent(event);
+              } else {
+                // Si falla el refetch, usar los datos locales
+                setSelectedEvent(updatedEvent);
+              }
+
+              notify({ message: 'Campos de música guardados exitosamente' });
+            } catch (error) {
+              console.error('Error saving music:', error);
+              notify({ type: 'defaultError' });
+            } finally {
+              setLoadingCursor(false);
+            }
+          }}
+        />
       )}
     </Container>
   ) : null;
