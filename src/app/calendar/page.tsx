@@ -8,7 +8,8 @@ import {
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './calendar.css';
 import 'moment/locale/es';
-import { Drawer, Button, Flex, Badge, Switch } from '@mantine/core';
+import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box } from '@mantine/core';
+import { IconSearch, IconX } from '@tabler/icons-react';
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
@@ -24,6 +25,8 @@ export default withPageAuthRequired(function CalendarPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState<string | null>(null);
 
   const locales = {
     es
@@ -62,6 +65,17 @@ export default withPageAuthRequired(function CalendarPage() {
 
   // Determinar qué tema usar (manual tiene prioridad sobre automático)
   const isLightTheme = isManualTheme ? manualThemeValue : isDaytime;
+
+  // Aplicar clase al body para controlar el tema globalmente
+  useEffect(() => {
+    if (isLightTheme) {
+      document.body.classList.add('calendar-light-mode');
+      document.body.classList.remove('calendar-dark-mode');
+    } else {
+      document.body.classList.add('calendar-dark-mode');
+      document.body.classList.remove('calendar-light-mode');
+    }
+  }, [isLightTheme]);
 
   // Mapeo de vistas español <-> inglés
   const viewMapping: { [key: string]: string } = {
@@ -230,6 +244,51 @@ export default withPageAuthRequired(function CalendarPage() {
     router.push(`/calendar?${params.toString()}`, { scroll: false });
   };
 
+  // Crear opciones de búsqueda
+  const searchOptions = useMemo(() => {
+    // Usar un Map para evitar duplicados
+    const optionsMap = new Map();
+
+    allEvents.forEach(event => {
+      // Solo agregar eventos con _id válido
+      if (!event._id) return;
+
+      // Crear lista de nombres de clientes
+      const clientNames = [event.fullName];
+      if (event.extraClients && event.extraClients.length > 0) {
+        event.extraClients.forEach(client => {
+          if (client.fullName) {
+            clientNames.push(client.fullName);
+          }
+        });
+      }
+
+      // Formato: "Type - FullName, cliente extra fullName"
+      const label = `${event.type} - ${clientNames.join(', ')}`;
+
+      // Solo agregar si no existe ya (evita duplicados)
+      if (!optionsMap.has(event._id)) {
+        optionsMap.set(event._id, {
+          value: event._id,
+          label: label,
+          searchText: `${event.type} ${clientNames.join(' ')}`.toLowerCase()
+        });
+      }
+    });
+
+    // Convertir el Map a array y ordenar alfabéticamente por label
+    return Array.from(optionsMap.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, 'es', { sensitivity: 'base' })
+    );
+  }, [allEvents]);
+
+  // Función para navegar al evento seleccionado
+  const handleEventSelect = (eventId: string | null) => {
+    if (eventId) {
+      router.push(`/event/${eventId}?from=/calendar`);
+    }
+  };
+
   return (
     <>
       <Flex
@@ -253,6 +312,59 @@ export default withPageAuthRequired(function CalendarPage() {
             <Badge color='green' variant='filled'>
               {internalEvents.length} eventos
             </Badge>
+
+            {/* Búsqueda de eventos */}
+            {!searchOpen ? (
+              <ActionIcon
+                variant='subtle'
+                onClick={() => setSearchOpen(true)}
+                size='lg'
+              >
+                <IconSearch size={20} style={{color: '#228be6'}}/>
+              </ActionIcon>
+            ) : (
+              <Flex gap='xs' align='center'>
+                <Select
+                  placeholder='Buscar por tipo o cliente...'
+                  data={searchOptions}
+                  value={searchValue}
+                  onChange={(value) => {
+                    setSearchValue(value);
+                    handleEventSelect(value);
+                  }}
+                  searchable
+                  clearable
+                  nothingFoundMessage='No se encontraron eventos'
+                  style={{ minWidth: '300px' }}
+                  size='sm'
+                  comboboxProps={{ withinPortal: false }}
+                  styles={{
+                    input: {
+                      backgroundColor: isLightTheme ? '#ffffff' : '#25262b',
+                      borderColor: isLightTheme ? '#dee2e6' : '#373a40',
+                      color: isLightTheme ? '#000000' : '#ffffff'
+                    },
+                    dropdown: {
+                      backgroundColor: isLightTheme ? '#ffffff' : '#25262b',
+                      borderColor: isLightTheme ? '#dee2e6' : '#373a40'
+                    },
+                    option: {
+                      color: isLightTheme ? '#000000' : '#ffffff'
+                    }
+                  }}
+                />
+                <ActionIcon
+                  variant='subtle'
+                  onClick={() => {
+                    setSearchOpen(false);
+                    setSearchValue(null);
+                  }}
+                  size='lg'
+                >
+                  <IconX size={20} />
+                </ActionIcon>
+              </Flex>
+            )}
           </Flex>
           <Flex gap='sm' align='center'>
             <Switch

@@ -448,3 +448,20 @@
 .calendar-light-theme .rbc-time-content::-webkit-scrollbar-thumb:hover {
   background: #37b24d;
 }
+
+/* ========================================
+   ESTILOS PARA EL SELECT DE BÚSQUEDA
+   ======================================== */
+
+/* Tema oscuro - input, dropdown y opciones */
+@media (hover: hover) {
+  :where([data-mantine-color-scheme='dark']) [data-combobox-option]:hover:where(:not([data-combobox-selected], [data-combobox-disabled])) {
+    background-color: #495057 !important;
+  }
+}
+
+body.calendar-light-mode [data-combobox-option]:hover:where(:not([data-combobox-selected], [data-combobox-disabled])),
+.calendar-light-theme [data-combobox-option]:hover:where(:not([data-combobox-selected], [data-combobox-disabled])),
+.calendar-light-theme :where([data-mantine-color-scheme]) [data-combobox-option]:hover:where(:not([data-combobox-selected], [data-combobox-disabled])) {
+  background-color: #e9ecef !important;
+}

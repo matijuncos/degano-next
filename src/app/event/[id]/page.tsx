@@ -29,14 +29,16 @@ import {
   Select,
   Input,
   Group,
-  Textarea
+  Textarea,
+  ActionIcon
 } from '@mantine/core';
 import {
   IconUserPlus,
   IconUserCheck,
   IconSearch,
   IconArrowLeft,
-  IconPlus
+  IconPlus,
+  IconTrash
 } from '@tabler/icons-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -1082,28 +1084,37 @@ const MusicInformation = ({
         </Box>
       )}
 
-      {/* Apertura de pista - Momentos agregados */}
-      {selectedEvent.openingPartySongs && selectedEvent.openingPartySongs.length > 0 &&
-        selectedEvent.openingPartySongs.map((item: any, index: number) => (
-          <Box key={index} mb='md'>
-            <Text fw={700} size='m' mb='xs' c='dimmed'>
-              {item.titulo || `Momento ${index + 1}`}
-            </Text>
-            <EditableData
-              type='text'
-              property={`openingPartySongs[${index}].titulo`}
-              title='Título'
-              value={item.titulo}
-            />
-            <EditableData
-              type='text'
-              property={`openingPartySongs[${index}].cancion`}
-              title='Canción'
-              value={item.cancion}
-            />
-          </Box>
-        ))
-      }
+      {/* Apertura de pista */}
+      {selectedEvent.openingPartySongs && selectedEvent.openingPartySongs.length > 0 && (
+        <Box>
+          <Text fw={700} size='m' mb='xs' c='dimmed'>
+            Apertura de pista
+          </Text>
+          {selectedEvent.openingPartySongs.map((item: any, index: number) => (
+            <Box
+              key={`opening-${index}`}
+              style={{
+                borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                paddingLeft: '12px',
+                marginBottom: '12px'
+              }}
+            >
+              <EditableData
+                type='text'
+                property={`openingPartySongs[${index}].titulo`}
+                title='Título'
+                value={item.titulo}
+              />
+              <EditableData
+                type='text'
+                property={`openingPartySongs[${index}].cancion`}
+                title='Canción'
+                value={item.cancion}
+              />
+            </Box>
+          ))}
+        </Box>
+      )}
 
       {/* Canciones de cierre */}
       {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
@@ -1119,6 +1130,38 @@ const MusicInformation = ({
               title={`Tema ${index + 1}`}
               value={song}
             />
+          ))}
+        </Box>
+      )}
+
+      {/* Momentos personalizados */}
+      {selectedEvent.customMoments && selectedEvent.customMoments.length > 0 && (
+        <Box>
+          <Text fw={700} size='m' mb='xs' c='dimmed'>
+            Momentos
+          </Text>
+          {selectedEvent.customMoments.map((item: any, index: number) => (
+            <Box
+              key={`custom-${index}`}
+              style={{
+                borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                paddingLeft: '12px',
+                marginBottom: '12px'
+              }}
+            >
+              <EditableData
+                type='text'
+                property={`customMoments[${index}].titulo`}
+                title='Título'
+                value={item.titulo}
+              />
+              <EditableData
+                type='text'
+                property={`customMoments[${index}].cancion`}
+                title='Canción'
+                value={item.cancion}
+              />
+            </Box>
           ))}
         </Box>
       )}
@@ -1190,6 +1233,16 @@ const MusicInformation = ({
           property='genres'
           value={selectedEvent.music.genres}
         />
+      </Box>
+
+      <Divider my='md' />
+
+      {/* Spotify Playlists */}
+      <Box>
+        <Text fw={700} size='m' mb='xs' c='dimmed'>
+          Spotify Playlists
+        </Text>
+        <SpotifyTable />
       </Box>
     </Flex>
   );
