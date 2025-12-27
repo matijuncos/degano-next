@@ -69,6 +69,7 @@ const MusicForm = forwardRef<MusicFormRef, {
         ? event.openingPartySongs
         : (event.openingPartySong ? [{ titulo: 'Apertura de pista', cancion: event.openingPartySong }] : []),
       closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
+      customMoments: Array.isArray(event.customMoments) ? event.customMoments : [],
       ceremoniaCivil: event.ceremoniaCivil || {
         ingreso: '',
         firmas: '',
@@ -102,6 +103,7 @@ const MusicForm = forwardRef<MusicFormRef, {
           ? event.openingPartySongs
           : (event.openingPartySong ? [{ titulo: 'Apertura de pista', cancion: event.openingPartySong }] : []),
         closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
+        customMoments: Array.isArray(event.customMoments) ? event.customMoments : [],
         ceremoniaCivil: event.ceremoniaCivil || {
           ingreso: '',
           firmas: '',
@@ -312,6 +314,37 @@ const MusicForm = forwardRef<MusicFormRef, {
     setMusicData((prevData) => ({
       ...prevData,
       closingSongs: (prevData.closingSongs || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Momentos personalizados handlers
+  const addCustomMoment = () => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      customMoments: [
+        ...(prevData.customMoments || []),
+        { titulo: '', cancion: '' }
+      ]
+    }));
+  };
+
+  const updateCustomMoment = (
+    index: number,
+    field: 'titulo' | 'cancion',
+    value: string
+  ) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      customMoments: (prevData.customMoments || []).map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const deleteCustomMoment = (index: number) => {
+    setMusicData((prevData) => ({
+      ...prevData,
+      customMoments: (prevData.customMoments || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -847,7 +880,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   }
                 }}
               >
-                Agregar momento
+                Agregar otro momento
               </Button>
             </Stack>
           </Accordion.Panel>
@@ -1006,6 +1039,63 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onClick={addClosingSong}
               >
                 Agregar tema
+              </Button>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+        )}
+
+        {/* Agregar momentos - Nueva sección */}
+        {shouldShowSection('momentos') && (
+          <Accordion.Item value='momentos'>
+            <Accordion.Control>Agregar momentos</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap='xs'>
+              {(musicData.customMoments || []).length > 0 && (
+                <Divider label='Momentos agregados' labelPosition='center' />
+              )}
+
+              {(musicData.customMoments || []).map((item, index) => (
+                <Card key={index} withBorder p='xs'>
+                  <Flex gap='xs' align='flex-end'>
+                    <TextInput
+                      label='Título'
+                      placeholder='Ej: Entrada de padrinos'
+                      value={item.titulo}
+                      onChange={(e) =>
+                        updateCustomMoment(index, 'titulo', e.target.value)
+                      }
+                      style={{ flex: 1 }}
+                      size='sm'
+                    />
+                    <TextInput
+                      label='Canción'
+                      placeholder='Nombre de la canción'
+                      value={item.cancion}
+                      onChange={(e) =>
+                        updateCustomMoment(index, 'cancion', e.target.value)
+                      }
+                      style={{ flex: 1 }}
+                      size='sm'
+                    />
+                    <ActionIcon
+                      color='red'
+                      variant='subtle'
+                      onClick={() => deleteCustomMoment(index)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Flex>
+                </Card>
+              ))}
+
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={addCustomMoment}
+              >
+                Agregar momento
               </Button>
             </Stack>
           </Accordion.Panel>

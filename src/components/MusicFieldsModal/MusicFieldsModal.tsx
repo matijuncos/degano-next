@@ -55,6 +55,7 @@ const MusicFieldsModal = ({
         vals: musicData.vals,
         openingPartySongs: musicData.openingPartySongs,
         closingSongs: musicData.closingSongs,
+        customMoments: musicData.customMoments,
         ceremoniaCivil: musicData.ceremoniaCivil,
         ceremoniaExtra: musicData.ceremoniaExtra,
         ambienceMusic: musicData.ambienceMusic,

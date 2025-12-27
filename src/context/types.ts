@@ -80,6 +80,7 @@ export interface EventModel {
   openingPartySong?: string; // LEGACY: Migrar a openingPartySongs
   openingPartySongs?: { titulo: string; cancion: string }[]; // Momentos de apertura de pista
   closingSongs?: string[]; // Canciones para cierre de evento - Tema 1, Tema 2, etc.
+  customMoments?: { titulo: string; cancion: string }[]; // Momentos personalizados del usuario
   ceremoniaCivil?: CeremonyMusic;
   ceremoniaExtra?: CeremonyMusic;
   ambienceMusic?: AmbienceMusicItem[];

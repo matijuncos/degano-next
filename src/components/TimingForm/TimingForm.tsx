@@ -54,7 +54,7 @@ const TimingForm = ({
     if (updateEvent) {
       updateEvent(eventData);
     }
-    onBackTab(EVENT_TABS.TIMING, eventData);
+    onBackTab(EVENT_TABS.MUSIC, eventData);
   };
 
   const handleAddTiming = () => {

@@ -83,7 +83,7 @@ const PaymentForm = ({
     if (updateEvent) {
       updateEvent(cleanedPayment);
     }
-    onBackTab(EVENT_TABS.FILES, cleanedPayment);
+    onBackTab(EVENT_TABS.STAFF, cleanedPayment);
   };
 
   const handleTotalToPayChange = (e: React.ChangeEvent<HTMLInputElement>) => {

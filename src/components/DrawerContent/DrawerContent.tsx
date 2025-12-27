@@ -134,7 +134,9 @@ const DrawerContent = () => {
     if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension || '')) {
       return <IconVideo size={size} />;
     }
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')) {
+    if (
+      ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')
+    ) {
       return <IconPhoto size={size} />;
     }
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) {
@@ -169,14 +171,14 @@ const DrawerContent = () => {
       >
         <Card
           withBorder
-          padding="xs"
+          padding='xs'
           style={{
             width: '60px',
             height: '60px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'transform 0.2s, box-shadow 0.2s',
+            transition: 'transform 0.2s, box-shadow 0.2s'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.05)';
@@ -190,18 +192,18 @@ const DrawerContent = () => {
           {isImage ? (
             <Image
               src={fileUrl}
-              alt="Band file"
-              fit="cover"
+              alt='Band file'
+              fit='cover'
               style={{ width: '100%', height: '100%', borderRadius: '4px' }}
             />
           ) : isPdf ? (
-            <IconFileTypePdf size={32} color="#FF0000" />
+            <IconFileTypePdf size={32} color='#FF0000' />
           ) : (
-            <IconFile size={32} color="#888888" />
+            <IconFile size={32} color='#888888' />
           )}
         </Card>
         <Text
-          size="xs"
+          size='xs'
           style={{
             textAlign: 'center',
             wordBreak: 'break-word',
@@ -244,7 +246,10 @@ const DrawerContent = () => {
 
   const handleAddStaff = async () => {
     if (!selectedEmployee) {
-      notify({ type: 'defaultError', message: 'Por favor selecciona un empleado' });
+      notify({
+        type: 'defaultError',
+        message: 'Por favor selecciona un empleado'
+      });
       return;
     }
 
@@ -256,7 +261,10 @@ const DrawerContent = () => {
       (member) => member.employeeId === employee._id
     );
     if (alreadyAdded) {
-      notify({ type: 'defaultError', message: 'Este empleado ya está en el staff' });
+      notify({
+        type: 'defaultError',
+        message: 'Este empleado ya está en el staff'
+      });
       return;
     }
 
@@ -323,33 +331,39 @@ const DrawerContent = () => {
   console.log('selectedEvent:', selectedEvent);
 
   // Group equipment by main category
-  const groupedEquipment = selectedEvent?.equipment?.reduce((acc: any, eq: any) => {
-    let mainCategoryName = eq.mainCategoryName;
+  const groupedEquipment =
+    selectedEvent?.equipment?.reduce((acc: any, eq: any) => {
+      let mainCategoryName = eq.mainCategoryName;
 
-    // Si no tiene mainCategoryName, calcularlo usando la función recursiva
-    if (!mainCategoryName && eq.categoryId && categories.length > 0) {
-      const mainCategory = findMainCategorySync(eq.categoryId, categories);
-      mainCategoryName = mainCategory?.name || 'Sin categoría';
-    }
+      // Si no tiene mainCategoryName, calcularlo usando la función recursiva
+      if (!mainCategoryName && eq.categoryId && categories.length > 0) {
+        const mainCategory = findMainCategorySync(eq.categoryId, categories);
+        mainCategoryName = mainCategory?.name || 'Sin categoría';
+      }
 
-    // Fallback si aún no hay nombre
-    if (!mainCategoryName) {
-      mainCategoryName = 'Sin categoría';
-    }
+      // Fallback si aún no hay nombre
+      if (!mainCategoryName) {
+        mainCategoryName = 'Sin categoría';
+      }
 
-    if (!acc[mainCategoryName]) {
-      acc[mainCategoryName] = [];
-    }
-    acc[mainCategoryName].push(eq);
-    return acc;
-  }, {}) || {};
+      if (!acc[mainCategoryName]) {
+        acc[mainCategoryName] = [];
+      }
+      acc[mainCategoryName].push(eq);
+      return acc;
+    }, {}) || {};
 
   return (
     <>
       {/* HEADER PRINCIPAL */}
       <DrawerHeader>
         <Title order={2}>
-          {selectedEvent?.type} - {selectedEvent?.lugar}
+          {selectedEvent?.type} - {selectedEvent?.lugar} <br />
+          {selectedEvent?.company ? (
+            <Text size='xl' mt='10px'>Empresa: {selectedEvent.company}</Text>
+          ) : (
+            ''
+          )}
         </Title>
       </DrawerHeader>
 
@@ -395,14 +409,16 @@ const DrawerContent = () => {
             {/* Horario de civil */}
             {selectedEvent?.civil && (
               <Text size='sm'>
-                <strong>Horario de civil:</strong> {format24Hour(selectedEvent.civil)}
+                <strong>Horario de civil:</strong>{' '}
+                {format24Hour(selectedEvent.civil)}
               </Text>
             )}
 
             {/* Horario de Iglesia */}
             {selectedEvent?.churchDate && (
               <Text size='sm'>
-                <strong>Horario de Iglesia:</strong> {format24Hour(selectedEvent.churchDate)}
+                <strong>Horario de Iglesia:</strong>{' '}
+                {format24Hour(selectedEvent.churchDate)}
               </Text>
             )}
 
@@ -431,9 +447,7 @@ const DrawerContent = () => {
           <Text fw={700} size='md' mb='sm'>
             Cantidad de personas
           </Text>
-          <Text size='sm'>
-            {selectedEvent?.guests || '-'}
-          </Text>
+          <Text size='sm'>{selectedEvent?.guests || '-'}</Text>
         </Box>
 
         <Divider />
@@ -446,9 +460,7 @@ const DrawerContent = () => {
           <Text size='sm'>
             {selectedEvent?.fullName}: {selectedEvent?.phoneNumber}
           </Text>
-          <Text size='sm'>
-            Rol: {selectedEvent?.rol}
-          </Text>
+          <Text size='sm'>Rol: {selectedEvent?.rol}</Text>
           {selectedEvent?.email && (
             <Text size='sm' c='dimmed'>
               Mail: {selectedEvent.email}
@@ -552,12 +564,14 @@ const DrawerContent = () => {
             </Text>
           )}
           {selectedEvent?.payment?.subsequentPayments &&
-            selectedEvent.payment.subsequentPayments.map((payment: any, idx: number) => (
-              <Text key={idx} size='sm' pl='md'>
-                - {payment.description || 'Pago'}:{' '}
-                {formatPrice(Number(payment.amount))}
-              </Text>
-            ))}
+            selectedEvent.payment.subsequentPayments.map(
+              (payment: any, idx: number) => (
+                <Text key={idx} size='sm' pl='md'>
+                  - {payment.description || 'Pago'}:{' '}
+                  {formatPrice(Number(payment.amount))}
+                </Text>
+              )
+            )}
 
           <Divider
             variant='dashed'
@@ -567,12 +581,14 @@ const DrawerContent = () => {
           />
 
           <Text size='sm' fw={500}>
-            Falta pagar: {formatPrice(
+            Falta pagar:{' '}
+            {formatPrice(
               Number(selectedEvent?.payment.totalToPay) -
-              ((selectedEvent?.payment.subsequentPayments?.reduce(
-                (sum: number, payment: any) => sum + Number(payment.amount),
-                0
-              ) || 0) + Number(selectedEvent?.payment.upfrontAmount))
+                ((selectedEvent?.payment.subsequentPayments?.reduce(
+                  (sum: number, payment: any) => sum + Number(payment.amount),
+                  0
+                ) || 0) +
+                  Number(selectedEvent?.payment.upfrontAmount))
             )}
           </Text>
         </Box>
@@ -627,50 +643,51 @@ const DrawerContent = () => {
                 const uniqueFiles = [...new Set(allFiles)];
 
                 return (
-                <Card key={index} withBorder padding='sm'>
-                  <Group align='flex-start' gap='md' wrap='nowrap'>
-                    {uniqueFiles.length > 0 && (
-                      <Group gap='xs'>
-                        {uniqueFiles.map((fileUrl, idx) => (
-                          <div key={idx}>{getBandFilePreview(fileUrl)}</div>
-                        ))}
-                      </Group>
-                    )}
-                    <Box style={{ flex: 1 }}>
-                      <Text fw={500} mb='xs'>
-                        {band.bandName}
-                      </Text>
-                      {band.showTime && (
-                        <Text size='sm' c='dimmed' mb='xs'>
-                          Horario: {band.showTime}
-                        </Text>
-                      )}
-                      {band.testTime && (
-                        <Text size='sm' c='dimmed' mb='xs'>
-                          Prueba de sonido: {band.testTime}
-                        </Text>
-                      )}
-                      {band.bandInfo && (
-                        <Text size='sm' mb='xs'>
-                          {band.bandInfo}
-                        </Text>
-                      )}
-                      {band.contacts && band.contacts.length > 0 && (
-                        <Box mt='xs'>
-                          <Text size='xs' fw={500}>
-                            Contactos:
-                          </Text>
-                          {band.contacts.map((contact, idx) => (
-                            <Text key={idx} size='xs'>
-                              • {contact.name} - {contact.rol} - {contact.phone}
-                            </Text>
+                  <Card key={index} withBorder padding='sm'>
+                    <Group align='flex-start' gap='md' wrap='nowrap'>
+                      {uniqueFiles.length > 0 && (
+                        <Group gap='xs'>
+                          {uniqueFiles.map((fileUrl, idx) => (
+                            <div key={idx}>{getBandFilePreview(fileUrl)}</div>
                           ))}
-                        </Box>
+                        </Group>
                       )}
-                    </Box>
-                  </Group>
-                </Card>
-              );
+                      <Box style={{ flex: 1 }}>
+                        <Text fw={500} mb='xs'>
+                          {band.bandName}
+                        </Text>
+                        {band.showTime && (
+                          <Text size='sm' c='dimmed' mb='xs'>
+                            Horario: {band.showTime}
+                          </Text>
+                        )}
+                        {band.testTime && (
+                          <Text size='sm' c='dimmed' mb='xs'>
+                            Prueba de sonido: {band.testTime}
+                          </Text>
+                        )}
+                        {band.bandInfo && (
+                          <Text size='sm' mb='xs'>
+                            {band.bandInfo}
+                          </Text>
+                        )}
+                        {band.contacts && band.contacts.length > 0 && (
+                          <Box mt='xs'>
+                            <Text size='xs' fw={500}>
+                              Contactos:
+                            </Text>
+                            {band.contacts.map((contact, idx) => (
+                              <Text key={idx} size='xs'>
+                                • {contact.name} - {contact.rol} -{' '}
+                                {contact.phone}
+                              </Text>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </Group>
+                  </Card>
+                );
               })}
             </Stack>
           ) : (
@@ -710,7 +727,8 @@ const DrawerContent = () => {
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                    e.currentTarget.style.boxShadow =
+                      '0 4px 8px rgba(0,0,0,0.1)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'scale(1)';
@@ -754,7 +772,11 @@ const DrawerContent = () => {
             const currentPath = window.location.pathname;
             const currentSearch = window.location.search;
             const fullPath = currentPath + currentSearch;
-            router.push(`/event/${selectedEvent?._id}?from=${encodeURIComponent(fullPath)}`);
+            router.push(
+              `/event/${selectedEvent?._id}?from=${encodeURIComponent(
+                fullPath
+              )}`
+            );
           }}
         >
           Ver Evento Completo
@@ -783,7 +805,8 @@ const DrawerContent = () => {
             searchable
           />
           <Text size='sm' c='dimmed'>
-            El rol se asignará automáticamente según el rol del empleado en la base de datos.
+            El rol se asignará automáticamente según el rol del empleado en la
+            base de datos.
           </Text>
           <Group justify='flex-end'>
             <Button
