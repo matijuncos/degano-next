@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Button, Group } from '@mantine/core';
-import { IconPrinter, IconDownload } from '@tabler/icons-react';
-import { pdf, BlobProvider } from '@react-pdf/renderer';
+import { IconPrinter } from '@tabler/icons-react';
+import { pdf } from '@react-pdf/renderer';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import {
   PrintableMainSection,
@@ -13,17 +13,22 @@ import {
   PrintablePaymentsSection,
   PrintableTimingSection
 } from '../PrintableSections';
+import PrintableFullEventSection from '../PrintableSections/PrintableFullEventSection';
 
 interface PDFActionsProps {
   sectionKey: string;
   children: React.ReactNode;
   eventTitle?: string;
+  showFullEventButton?: boolean;
+  isAdmin?: boolean;
 }
 
 const PDFActions: React.FC<PDFActionsProps> = ({
   sectionKey,
   children,
-  eventTitle
+  eventTitle,
+  showFullEventButton = false,
+  isAdmin = false
 }) => {
   const { selectedEvent } = useDeganoCtx();
 
@@ -44,42 +49,25 @@ const PDFActions: React.FC<PDFActionsProps> = ({
     return components[sectionKey as keyof typeof components] || null;
   };
 
-  const getSectionTitle = (sectionKey: string): string => {
-    const titles: Record<string, string> = {
-      main: 'Información Principal',
-      bands: 'Show en vivo',
-      music: 'Música',
-      moreInfo: 'Más Información',
-      equipment: 'Equipos',
-      files: 'Archivos',
-      payments: 'Historial de Pagos',
-      timing: 'Cronograma'
-    };
-
-    return titles[sectionKey] || sectionKey;
-  };
-
   const handlePrint = async () => {
     const component = getPrintableComponent();
     if (component) {
       const blob = await pdf(component).toBlob();
       const url = URL.createObjectURL(blob);
-      const printWindow = window.open(url);
-
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
+      window.open(url);
     }
   };
 
-  const getFilename = () => {
-    const sectionTitle = getSectionTitle(sectionKey);
-    const baseFilename = eventTitle
-      ? `${eventTitle}_${sectionTitle}`.replace(/[^a-zA-Z0-9]/g, '_')
-      : sectionTitle.replace(/[^a-zA-Z0-9]/g, '_');
-    return `${baseFilename}.pdf`;
+  const handlePrintFullEvent = async () => {
+    if (!selectedEvent) return;
+
+    const fullEventComponent = (
+      <PrintableFullEventSection event={selectedEvent} />
+    );
+
+    const blob = await pdf(fullEventComponent).toBlob();
+    const url = URL.createObjectURL(blob);
+    window.open(url);
   };
 
   const printableComponent = getPrintableComponent();
@@ -87,6 +75,18 @@ const PDFActions: React.FC<PDFActionsProps> = ({
   return (
     <div>
       <Group justify='flex-end' my='md'>
+        {showFullEventButton && (
+          <Button
+            variant='filled'
+            color='green'
+            size='xs'
+            leftSection={<IconPrinter size={16} />}
+            onClick={handlePrintFullEvent}
+            disabled={!selectedEvent}
+          >
+            Imprimir evento completo
+          </Button>
+        )}
         <Button
           variant='outline'
           size='xs'
@@ -94,34 +94,8 @@ const PDFActions: React.FC<PDFActionsProps> = ({
           onClick={handlePrint}
           disabled={!printableComponent}
         >
-          Imprimir
+          Imprimir hoja
         </Button>
-        {printableComponent && (
-          <BlobProvider document={printableComponent}>
-            {({ url, loading }) =>
-              loading ? (
-                <Button
-                  variant='outline'
-                  size='xs'
-                  leftSection={<IconDownload size={16} />}
-                  disabled
-                >
-                  Cargando...
-                </Button>
-              ) : (
-                <a href={url!} download={getFilename()}>
-                  <Button
-                    variant='outline'
-                    size='xs'
-                    leftSection={<IconDownload size={16} />}
-                  >
-                    Guardar PDF
-                  </Button>
-                </a>
-              )
-            }
-          </BlobProvider>
-        )}
       </Group>
       <div>{children}</div>
     </div>

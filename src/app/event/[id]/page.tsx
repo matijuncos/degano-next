@@ -4,7 +4,6 @@ import EditableData from '@/components/EditableData/EditableData';
 import EditablePayments from '@/components/EditablePayments/EditablePayments';
 import EquipmentTable from '@/components/EquipmentTable/EquipmentTable';
 import Loader from '@/components/Loader/Loader';
-import PrintableEvent from '@/components/PrintableEvent/PrintableEvent';
 import PDFActions from '@/components/PDFActions/PDFActions';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useDeganoCtx } from '@/context/DeganoContext';
@@ -845,21 +844,30 @@ const MainInformation = ({
                 />
               </Group>
             ))}
-          {selectedEvent.staffArrivalTime && (
-            <EditableData
-              type='text'
-              property='staffArrivalTime'
-              title='Horario llegada staff'
-              value={selectedEvent.staffArrivalTime}
-            />
-          )}
-          {selectedEvent.equipmentArrivalTime && (
-            <EditableData
-              type='text'
-              property='equipmentArrivalTime'
-              title='Horario llegada equipamiento'
-              value={selectedEvent.equipmentArrivalTime}
-            />
+          {(selectedEvent.staffArrivalTime ||
+            selectedEvent.equipmentArrivalTime) && (
+            <Grid>
+              {selectedEvent.staffArrivalTime && (
+                <Grid.Col span={6}>
+                  <EditableData
+                    type='text'
+                    property='staffArrivalTime'
+                    title='Horario llegada staff'
+                    value={selectedEvent.staffArrivalTime}
+                  />
+                </Grid.Col>
+              )}
+              {selectedEvent.equipmentArrivalTime && (
+                <Grid.Col span={6}>
+                  <EditableData
+                    type='text'
+                    property='equipmentArrivalTime'
+                    title='Horario llegada equipamiento'
+                    value={selectedEvent.equipmentArrivalTime}
+                  />
+                </Grid.Col>
+              )}
+            </Grid>
           )}
         </>
       )}
@@ -1085,36 +1093,37 @@ const MusicInformation = ({
       )}
 
       {/* Apertura de pista */}
-      {selectedEvent.openingPartySongs && selectedEvent.openingPartySongs.length > 0 && (
-        <Box>
-          <Text fw={700} size='m' mb='xs' c='dimmed'>
-            Apertura de pista
-          </Text>
-          {selectedEvent.openingPartySongs.map((item: any, index: number) => (
-            <Box
-              key={`opening-${index}`}
-              style={{
-                borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
-                paddingLeft: '12px',
-                marginBottom: '12px'
-              }}
-            >
-              <EditableData
-                type='text'
-                property={`openingPartySongs[${index}].titulo`}
-                title='Título'
-                value={item.titulo}
-              />
-              <EditableData
-                type='text'
-                property={`openingPartySongs[${index}].cancion`}
-                title='Canción'
-                value={item.cancion}
-              />
-            </Box>
-          ))}
-        </Box>
-      )}
+      {selectedEvent.openingPartySongs &&
+        selectedEvent.openingPartySongs.length > 0 && (
+          <Box>
+            <Text fw={700} size='m' mb='xs' c='dimmed'>
+              Apertura de pista
+            </Text>
+            {selectedEvent.openingPartySongs.map((item: any, index: number) => (
+              <Box
+                key={`opening-${index}`}
+                style={{
+                  borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                  paddingLeft: '12px',
+                  marginBottom: '12px'
+                }}
+              >
+                <EditableData
+                  type='text'
+                  property={`openingPartySongs[${index}].titulo`}
+                  title='Título'
+                  value={item.titulo}
+                />
+                <EditableData
+                  type='text'
+                  property={`openingPartySongs[${index}].cancion`}
+                  title='Canción'
+                  value={item.cancion}
+                />
+              </Box>
+            ))}
+          </Box>
+        )}
 
       {/* Canciones de cierre */}
       {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
@@ -1135,36 +1144,37 @@ const MusicInformation = ({
       )}
 
       {/* Momentos personalizados */}
-      {selectedEvent.customMoments && selectedEvent.customMoments.length > 0 && (
-        <Box>
-          <Text fw={700} size='m' mb='xs' c='dimmed'>
-            Momentos
-          </Text>
-          {selectedEvent.customMoments.map((item: any, index: number) => (
-            <Box
-              key={`custom-${index}`}
-              style={{
-                borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
-                paddingLeft: '12px',
-                marginBottom: '12px'
-              }}
-            >
-              <EditableData
-                type='text'
-                property={`customMoments[${index}].titulo`}
-                title='Título'
-                value={item.titulo}
-              />
-              <EditableData
-                type='text'
-                property={`customMoments[${index}].cancion`}
-                title='Canción'
-                value={item.cancion}
-              />
-            </Box>
-          ))}
-        </Box>
-      )}
+      {selectedEvent.customMoments &&
+        selectedEvent.customMoments.length > 0 && (
+          <Box>
+            <Text fw={700} size='m' mb='xs' c='dimmed'>
+              Momentos
+            </Text>
+            {selectedEvent.customMoments.map((item: any, index: number) => (
+              <Box
+                key={`custom-${index}`}
+                style={{
+                  borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
+                  paddingLeft: '12px',
+                  marginBottom: '12px'
+                }}
+              >
+                <EditableData
+                  type='text'
+                  property={`customMoments[${index}].titulo`}
+                  title='Título'
+                  value={item.titulo}
+                />
+                <EditableData
+                  type='text'
+                  property={`customMoments[${index}].cancion`}
+                  title='Canción'
+                  value={item.cancion}
+                />
+              </Box>
+            ))}
+          </Box>
+        )}
 
       {/* Música para ambientar */}
       {selectedEvent.ambienceMusic &&
@@ -1832,7 +1842,6 @@ const EventPage = () => {
   const searchParams = useSearchParams();
   const setLoadingCursor = useLoadingCursor();
   const [dateString, setDateString] = useState('');
-  const [showPrintableComponent, setShowPrintableComponent] = useState(false);
   const [showTabsVersion, setShowTabsVersion] = useState(true);
   const [activeTab, setActiveTab] = useState<string | null>('main');
   const [isMusicFieldsModalOpen, setIsMusicFieldsModalOpen] = useState(false);
@@ -1919,6 +1928,8 @@ const EventPage = () => {
     main: (
       <PDFActions
         sectionKey='main'
+        showFullEventButton={true}
+        isAdmin={isAdmin}
         eventTitle={
           dateString
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
@@ -1931,6 +1942,7 @@ const EventPage = () => {
     bands: (
       <PDFActions
         sectionKey='bands'
+        isAdmin={isAdmin}
         eventTitle={
           dateString
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
@@ -1946,6 +1958,7 @@ const EventPage = () => {
     music: (
       <PDFActions
         sectionKey='music'
+        isAdmin={isAdmin}
         eventTitle={
           dateString
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
@@ -1959,13 +1972,14 @@ const EventPage = () => {
       </PDFActions>
     ),
     timing: (
-      <PDFActions sectionKey='timing'>
+      <PDFActions sectionKey='timing' isAdmin={isAdmin}>
         <TimingInformation selectedEvent={selectedEvent} />
       </PDFActions>
     ),
     moreInfo: (
       <PDFActions
         sectionKey='moreInfo'
+        isAdmin={isAdmin}
         eventTitle={
           dateString
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
@@ -1978,6 +1992,7 @@ const EventPage = () => {
     equipment: (
       <PDFActions
         sectionKey='equipment'
+        isAdmin={isAdmin}
         eventTitle={
           dateString
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
@@ -1991,6 +2006,7 @@ const EventPage = () => {
     payments: (
       <PDFActions
         sectionKey='payments'
+        isAdmin={isAdmin}
         eventTitle={
           dateString
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
@@ -2191,30 +2207,24 @@ const EventPage = () => {
       {loading ? (
         <Loader />
       ) : (
-        <>
-          {showPrintableComponent ? (
-            <PrintableEvent />
-          ) : (
-            <Box>
-              {/* Botón de volver si viene desde el calendario */}
-              {fromPath && fromPath.includes('/calendar') && (
-                <Button
-                  variant='subtle'
-                  leftSection={<IconArrowLeft size={16} />}
-                  onClick={() => router.push(fromPath)}
-                  mb='md'
-                  size='sm'
-                >
-                  Volver al calendario
-                </Button>
-              )}
-              <Title mb='16px'>
-                {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
-              </Title>
-              {showTabsVersion ? <TabsVersion /> : <AllAccordions />}
-            </Box>
+        <Box>
+          {/* Botón de volver si viene desde el calendario */}
+          {fromPath && fromPath.includes('/calendar') && (
+            <Button
+              variant='subtle'
+              leftSection={<IconArrowLeft size={16} />}
+              onClick={() => router.push(fromPath)}
+              mb='md'
+              size='sm'
+            >
+              Volver al calendario
+            </Button>
           )}
-        </>
+          <Title mb='16px'>
+            {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
+          </Title>
+          {showTabsVersion ? <TabsVersion /> : <AllAccordions />}
+        </Box>
       )}
 
       {/* Modal para agregar campos de música */}
@@ -2234,14 +2244,17 @@ const EventPage = () => {
                 updates: updates
               });
 
-              const response = await fetch(`/api/updateEvent?id=${Date.now()}`, {
-                method: 'PUT',
-                cache: 'no-store',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(updatedEvent)
-              });
+              const response = await fetch(
+                `/api/updateEvent?id=${Date.now()}`,
+                {
+                  method: 'PUT',
+                  cache: 'no-store',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(updatedEvent)
+                }
+              );
 
               if (!response.ok) {
                 const errorData = await response.json();
@@ -2253,13 +2266,16 @@ const EventPage = () => {
               console.log('Resultado del guardado:', result);
 
               // Refetch el evento para asegurar que tenemos los datos más recientes
-              const refetchResponse = await fetch(`/api/getEvent?id=${selectedEvent._id}`, {
-                cache: 'no-store',
-                headers: {
-                  'Cache-Control': 'no-cache',
-                  Pragma: 'no-cache'
+              const refetchResponse = await fetch(
+                `/api/getEvent?id=${selectedEvent._id}`,
+                {
+                  cache: 'no-store',
+                  headers: {
+                    'Cache-Control': 'no-cache',
+                    Pragma: 'no-cache'
+                  }
                 }
-              });
+              );
 
               if (refetchResponse.ok) {
                 const { event } = await refetchResponse.json();
