@@ -1,63 +1,115 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { EventModel, Band } from '@/context/types';
 
 const styles = StyleSheet.create({
-  page: { padding: 24, fontSize: 12 },
+  page: { padding: 30, fontSize: 11 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  logo: { width: 220, height: 60 },
+  sectionHeader: {
+    backgroundColor: '#6aa74f',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    marginBottom: 16,
+    borderRadius: 4
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    backgroundColor: '#6aa74f',
+    textTransform: 'uppercase'
+  },
+  subsectionHeader: {
+    backgroundColor: '#6aa74f',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 3
+  },
+  subsectionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    backgroundColor: '#6aa74f',
+    textTransform: 'uppercase'
+  },
   section: { marginBottom: 12 },
-  label: { fontWeight: 'bold', marginRight: 8 },
-  row: { flexDirection: 'row', marginBottom: 4 },
-  bandSection: { marginBottom: 16 },
-  bandTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
-  bandInfo: { marginLeft: 12, marginBottom: 4 }
+  bandSection: { marginBottom: 12 },
+  fieldRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+    alignItems: 'center'
+  },
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginRight: 4,
+    textTransform: 'uppercase'
+  },
+  fieldValue: {
+    fontSize: 10,
+    borderBottom: '0.5px solid #333',
+    paddingBottom: 1,
+    flex: 1
+  }
 });
 
 interface PrintableBandsSectionProps {
   event: EventModel;
 }
 
+// Exportar contenido interno para reutilización en PrintableFullEventSection
+export const PrintableBandsContent: React.FC<PrintableBandsSectionProps> = ({
+  event
+}) => (
+  <View style={styles.section}>
+    {event.bands && event.bands.length > 0 ? (
+      event.bands.map((band: Band, index: number) => (
+        <View key={index} style={styles.bandSection} wrap={false}>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>Banda {index + 1}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>NOMBRE:</Text>
+            <Text style={styles.fieldValue}>{band.bandName}</Text>
+          </View>
+          {band.showTime && (
+            <View style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>HORA DEL SHOW:</Text>
+              <Text style={styles.fieldValue}>{band.showTime}</Text>
+            </View>
+          )}
+          {band.bandInfo && (
+            <View style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>INFORMACIÓN:</Text>
+              <Text style={styles.fieldValue}>{band.bandInfo}</Text>
+            </View>
+          )}
+        </View>
+      ))
+    ) : (
+      <Text style={{ fontStyle: 'italic', color: '#666' }}>
+        No hay bandas registradas para este evento.
+      </Text>
+    )}
+  </View>
+);
+
+// Componente principal con logo y header verde
 const PrintableBandsSection: React.FC<PrintableBandsSectionProps> = ({
   event
 }) => (
   <Document>
     <Page size='A4' style={styles.page}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>
-        Show en vivo
-      </Text>
-      <View style={styles.section}>
-        {event.bands && event.bands.length > 0 ? (
-          event.bands.map((band: Band, index: number) => (
-            <View key={index} style={styles.bandSection}>
-              <Text style={styles.bandTitle}>Banda {index + 1}</Text>
-              <View style={styles.bandInfo}>
-                <Text>Nombre: {band.bandName}</Text>
-              </View>
-              {/* {band.manager && (
-                <View style={styles.bandInfo}>
-                  <Text>Manager: {band.manager}</Text>
-                </View>
-              )}
-              {band.managerPhone && (
-                <View style={styles.bandInfo}>
-                  <Text>Teléfono Manager: {band.managerPhone}</Text>
-                </View>
-              )} */}
-              {band.showTime && (
-                <View style={styles.bandInfo}>
-                  <Text>Hora del show: {band.showTime}</Text>
-                </View>
-              )}
-              {band.bandInfo && (
-                <View style={styles.bandInfo}>
-                  <Text>Información: {band.bandInfo}</Text>
-                </View>
-              )}
-            </View>
-          ))
-        ) : (
-          <Text>No hay bandas registradas para este evento.</Text>
-        )}
+      <View style={styles.header}>
+        <Image src="/degano-logo-imp.png" style={styles.logo} />
       </View>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Show en vivo</Text>
+      </View>
+      <PrintableBandsContent event={event} />
     </Page>
   </Document>
 );

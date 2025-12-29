@@ -6,3 +6,4 @@ export { default as PrintableEquipmentSection } from './PrintableEquipmentSectio
 export { default as PrintableFilesSection } from './PrintableFilesSection';
 export { default as PrintablePaymentsSection } from './PrintablePaymentsSection';
 export { default as PrintableTimingSection } from './PrintableTimingSection';
+export { default as PrintableFullEventSection } from './PrintableFullEventSection';
