@@ -78,7 +78,7 @@ export interface EventModel {
   walkIn?: string[]; // Canción de rosas - Tema 1, Tema 2, etc.
   vals?: string[]; // Vals 1, Vals 2, etc.
   openingPartySong?: string; // LEGACY: Migrar a openingPartySongs
-  openingPartySongs?: { titulo: string; cancion: string }[]; // Momentos de apertura de pista
+  openingPartySongs?: string[]; // Apertura de pista - Tema 1, Tema 2, etc.
   closingSongs?: string[]; // Canciones para cierre de evento - Tema 1, Tema 2, etc.
   customMoments?: { titulo: string; cancion: string }[]; // Momentos personalizados del usuario
   ceremoniaCivil?: CeremonyMusic;

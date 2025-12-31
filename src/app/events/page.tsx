@@ -107,7 +107,7 @@ export default withPageAuthRequired(function EventPage() {
       console.error(error);
     } finally {
       setLoading(false);
-      setLoadingCursor(true);
+      setLoadingCursor(false); // ← ARREGLADO: era true, debe ser false
     }
   };
 

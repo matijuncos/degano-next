@@ -65,9 +65,7 @@ const MusicForm = forwardRef<MusicFormRef, {
       welcomeSongs: Array.isArray(event.welcomeSongs) ? event.welcomeSongs : [],
       walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
       vals: Array.isArray(event.vals) ? event.vals : [],
-      openingPartySongs: Array.isArray(event.openingPartySongs)
-        ? event.openingPartySongs
-        : (event.openingPartySong ? [{ titulo: 'Apertura de pista', cancion: event.openingPartySong }] : []),
+      openingPartySongs: Array.isArray(event.openingPartySongs) ? event.openingPartySongs : [],
       closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
       customMoments: Array.isArray(event.customMoments) ? event.customMoments : [],
       ceremoniaCivil: event.ceremoniaCivil || {
@@ -99,9 +97,7 @@ const MusicForm = forwardRef<MusicFormRef, {
         welcomeSongs: Array.isArray(event.welcomeSongs) ? event.welcomeSongs : [],
         walkIn: Array.isArray(event.walkIn) ? event.walkIn : [],
         vals: Array.isArray(event.vals) ? event.vals : [],
-        openingPartySongs: Array.isArray(event.openingPartySongs)
-          ? event.openingPartySongs
-          : (event.openingPartySong ? [{ titulo: 'Apertura de pista', cancion: event.openingPartySong }] : []),
+        openingPartySongs: Array.isArray(event.openingPartySongs) ? event.openingPartySongs : [],
         closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
         customMoments: Array.isArray(event.customMoments) ? event.customMoments : [],
         ceremoniaCivil: event.ceremoniaCivil || {
@@ -392,27 +388,18 @@ const MusicForm = forwardRef<MusicFormRef, {
     }));
   };
 
-  // Apertura de pista handlers
+  // Apertura de pista handlers (ahora funciona como Vals)
   const addOpeningSong = () => {
     setMusicData((prevData) => ({
       ...prevData,
-      openingPartySongs: [
-        ...(prevData.openingPartySongs || []),
-        { titulo: '', cancion: '' }
-      ]
+      openingPartySongs: [...(prevData.openingPartySongs || []), '']
     }));
   };
 
-  const updateOpeningSong = (
-    index: number,
-    field: 'titulo' | 'cancion',
-    value: string
-  ) => {
+  const updateOpeningSong = (index: number, value: string) => {
     setMusicData((prevData) => ({
       ...prevData,
-      openingPartySongs: (prevData.openingPartySongs || []).map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
+      openingPartySongs: (prevData.openingPartySongs || []).map((song, i) => (i === index ? value : song))
     }));
   };
 
@@ -844,92 +831,36 @@ const MusicForm = forwardRef<MusicFormRef, {
             <Accordion.Control>Apertura de pista</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='xs'>
-              <Flex gap='xs' align='flex-end'>
-                <TextInput
-                  label='Título'
-                  placeholder='Ej: Apertura de pista'
-                  style={{ flex: 1 }}
-                  size='sm'
-                  id='new-opening-titulo'
-                />
-                <TextInput
-                  label='Canción'
-                  placeholder='Nombre de la canción'
-                  style={{ flex: 1 }}
-                  size='sm'
-                  id='new-opening-cancion'
-                />
-              </Flex>
+              {(musicData.openingPartySongs || []).map((song, index) => (
+                <Flex key={index} gap='xs' align='center'>
+                  <TextInput
+                    placeholder={`Apertura de pista ${index + 1}`}
+                    value={song}
+                    onChange={(e) => updateOpeningSong(index, e.target.value)}
+                    style={{ flex: 1 }}
+                    size='sm'
+                  />
+                  <ActionIcon
+                    color='red'
+                    variant='subtle'
+                    onClick={() => deleteOpeningSong(index)}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Flex>
+              ))}
               <Button
                 variant='light'
                 size='xs'
                 leftSection={<IconPlus size={14} />}
-                onClick={() => {
-                  const tituloInput = document.getElementById('new-opening-titulo') as HTMLInputElement;
-                  const cancionInput = document.getElementById('new-opening-cancion') as HTMLInputElement;
-                  if (tituloInput?.value || cancionInput?.value) {
-                    setMusicData((prevData) => ({
-                      ...prevData,
-                      openingPartySongs: [
-                        ...(prevData.openingPartySongs || []),
-                        { titulo: tituloInput.value, cancion: cancionInput.value }
-                      ]
-                    }));
-                    tituloInput.value = '';
-                    cancionInput.value = '';
-                  }
-                }}
+                onClick={addOpeningSong}
               >
-                Agregar otro momento
+                Agregar apertura de pista
               </Button>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
         )}
-
-        {/* Momentos agregados de apertura de pista */}
-        {(musicData.openingPartySongs || []).map((item, index) => (
-          <Accordion.Item key={`opening-${index}`} value={`opening-${index}`}>
-            <Accordion.Control>
-              {item.titulo || `Momento ${index + 1}`}
-            </Accordion.Control>
-            <Accordion.Panel>
-              <Stack gap='xs'>
-                <Flex gap='xs' align='flex-end'>
-                  <TextInput
-                    label='Título'
-                    placeholder='Ej: Apertura de pista'
-                    value={item.titulo}
-                    onChange={(e) =>
-                      updateOpeningSong(index, 'titulo', e.target.value)
-                    }
-                    style={{ flex: 1 }}
-                    size='sm'
-                  />
-                  <TextInput
-                    label='Canción'
-                    placeholder='Nombre de la canción'
-                    value={item.cancion}
-                    onChange={(e) =>
-                      updateOpeningSong(index, 'cancion', e.target.value)
-                    }
-                    style={{ flex: 1 }}
-                    size='sm'
-                  />
-                </Flex>
-                <Button
-                  variant='light'
-                  color='red'
-                  size='xs'
-                  leftSection={<IconTrash size={14} />}
-                  onClick={() => deleteOpeningSong(index)}
-                >
-                  Eliminar momento
-                </Button>
-              </Stack>
-            </Accordion.Panel>
-          </Accordion.Item>
-        ))}
 
         {/* Música para ambientar */}
         {shouldShowSection('ambiente') && (
@@ -966,7 +897,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                         Géneros/Estilos:
                       </Text>
                       <Flex wrap='wrap' gap='xs' mb='xs'>
-                        {category.generos.map((genre, genreIndex) => (
+                        {(category.generos || []).map((genre, genreIndex) => (
                           <Chip
                             key={genreIndex}
                             checked={false}

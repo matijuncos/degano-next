@@ -1099,28 +1099,14 @@ const MusicInformation = ({
             <Text fw={700} size='m' mb='xs' c='dimmed'>
               Apertura de pista
             </Text>
-            {selectedEvent.openingPartySongs.map((item: any, index: number) => (
-              <Box
+            {selectedEvent.openingPartySongs.map((song, index) => (
+              <EditableData
                 key={`opening-${index}`}
-                style={{
-                  borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
-                  paddingLeft: '12px',
-                  marginBottom: '12px'
-                }}
-              >
-                <EditableData
-                  type='text'
-                  property={`openingPartySongs[${index}].titulo`}
-                  title='Título'
-                  value={item.titulo}
-                />
-                <EditableData
-                  type='text'
-                  property={`openingPartySongs[${index}].cancion`}
-                  title='Canción'
-                  value={item.cancion}
-                />
-              </Box>
+                type='text'
+                property={`openingPartySongs[${index}]`}
+                title={`Apertura de pista ${index + 1}`}
+                value={song}
+              />
             ))}
           </Box>
         )}

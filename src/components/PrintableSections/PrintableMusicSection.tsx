@@ -118,7 +118,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Canción de Rosas */}
     {event.walkIn && event.walkIn.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Canción de Rosas</Text>
         </View>
@@ -163,8 +163,8 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
           <>
             {event.ceremoniaCivil.otros.map((momento, index) => (
               <View key={index} style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>{momento.titulo.toUpperCase()}:</Text>
-                <Text style={styles.fieldValue}>{momento.cancion}</Text>
+                <Text style={styles.fieldLabel}>{momento.titulo?.toUpperCase() || 'SIN TÍTULO'}:</Text>
+                <Text style={styles.fieldValue}>{momento.cancion || ''}</Text>
               </View>
             ))}
           </>
@@ -178,7 +178,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
       event.ceremoniaExtra.firmas ||
       event.ceremoniaExtra.salida ||
       (event.ceremoniaExtra.otros && event.ceremoniaExtra.otros.length > 0)) && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Ceremonia Extra</Text>
         </View>
@@ -204,8 +204,8 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
           <>
             {event.ceremoniaExtra.otros.map((momento, index) => (
               <View key={index} style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>{momento.titulo.toUpperCase()}:</Text>
-                <Text style={styles.fieldValue}>{momento.cancion}</Text>
+                <Text style={styles.fieldLabel}>{momento.titulo?.toUpperCase() || 'SIN TÍTULO'}:</Text>
+                <Text style={styles.fieldValue}>{momento.cancion || ''}</Text>
               </View>
             ))}
           </>
@@ -215,7 +215,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Vals */}
     {event.vals && event.vals.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Vals</Text>
         </View>
@@ -230,14 +230,14 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Apertura de Pista */}
     {event.openingPartySongs && event.openingPartySongs.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Apertura de Pista</Text>
         </View>
-        {event.openingPartySongs.map((item, index) => (
+        {event.openingPartySongs.map((song, index) => (
           <View key={index} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>{item.titulo.toUpperCase()}:</Text>
-            <Text style={styles.fieldValue}>{item.cancion}</Text>
+            <Text style={styles.fieldLabel}>TEMA {index + 1}:</Text>
+            <Text style={styles.fieldValue}>{song}</Text>
           </View>
         ))}
       </View>
@@ -245,7 +245,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Canciones de Cierre */}
     {event.closingSongs && event.closingSongs.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Canciones de Cierre</Text>
         </View>
@@ -260,14 +260,14 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Momentos Personalizados */}
     {event.customMoments && event.customMoments.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Momentos Personalizados</Text>
         </View>
         {event.customMoments.map((item, index) => (
           <View key={index} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>{item.titulo.toUpperCase()}:</Text>
-            <Text style={styles.fieldValue}>{item.cancion}</Text>
+            <Text style={styles.fieldLabel}>{item.titulo?.toUpperCase() || 'SIN TÍTULO'}:</Text>
+            <Text style={styles.fieldValue}>{item.cancion || ''}</Text>
           </View>
         ))}
       </View>
@@ -275,14 +275,14 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Música para Ambientar */}
     {event.ambienceMusic && event.ambienceMusic.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Música para Ambientar</Text>
         </View>
         {event.ambienceMusic.map((item, index) => (
           <View key={index} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>{item.descripcion.toUpperCase()}:</Text>
-            <Text style={styles.fieldValue}>{item.generos.join(', ')}</Text>
+            <Text style={styles.fieldLabel}>{item.descripcion?.toUpperCase() || 'SIN DESCRIPCIÓN'}:</Text>
+            <Text style={styles.fieldValue}>{item.generos?.join(', ') || ''}</Text>
           </View>
         ))}
       </View>
@@ -357,14 +357,14 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Playlists de Spotify */}
     {event.playlist && event.playlist.length > 0 && (
-      <View style={styles.subsection}>
+      <View style={styles.subsection} wrap={false}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Playlists de Spotify</Text>
         </View>
         {event.playlist.map((item, index) => (
           <View key={index} style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>{item.label.toUpperCase()}:</Text>
-            <Text style={styles.fieldValue}>{item.url}</Text>
+            <Text style={styles.fieldLabel}>{item.label?.toUpperCase() || 'SIN ETIQUETA'}:</Text>
+            <Text style={styles.fieldValue}>{item.url || ''}</Text>
           </View>
         ))}
       </View>
