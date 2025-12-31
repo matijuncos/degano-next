@@ -67,7 +67,18 @@ const PDFActions: React.FC<PDFActionsProps> = ({
 
     const blob = await pdf(fullEventComponent).toBlob();
     const url = URL.createObjectURL(blob);
-    window.open(url);
+
+    // Abrir el PDF directamente en una nueva ventana
+    const printWindow = window.open(url, '_blank');
+
+    if (printWindow) {
+      // Intentar disparar la impresión automáticamente cuando la ventana se cargue
+      printWindow.onload = function() {
+        setTimeout(function() {
+          printWindow.print();
+        }, 1000);
+      };
+    }
   };
 
   const printableComponent = getPrintableComponent();
