@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { useState, useEffect } from 'react';
-import { Select, Card, Image, Box, Text } from '@mantine/core';
+import { Select, Card, Image, Box, Text, Textarea } from '@mantine/core';
 import { Input, Button, FileButton } from '@mantine/core';
 import { Band, ExtraContact } from '@/context/types';
 import { TimePicker } from '@mantine/dates';
@@ -99,7 +99,7 @@ const EditableBand = ({
   const [waitingAws, setWaitingAws] = useState(false);
   const [originalFileNames, setOriginalFileNames] = useState<Map<string, string>>(new Map());
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setBandData({ ...bandData, [e.target.name]: e.target.value });
   };
 
@@ -466,13 +466,15 @@ const EditableBand = ({
               flex: 1
             }}
           >
-            <Input
-              type='text'
+            <Textarea
               name='bandInfo'
               onChange={handleChange}
-              placeholder='Otros datos'
+              placeholder='Otros datos (presiona Enter para nueva línea)'
               value={bandData.bandInfo}
               autoComplete='off'
+              autosize
+              minRows={1}
+              maxRows={10}
               style={{ width: '100%' }}
             />
           </div>

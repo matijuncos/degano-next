@@ -10,7 +10,7 @@ import {
   Group,
   Divider
 } from '@mantine/core';
-import { TimePicker } from '@mantine/dates';
+import { TimePicker, DatePickerInput, DateValue } from '@mantine/dates';
 import { useState } from 'react';
 import {
   detectMissingFields,
@@ -33,6 +33,7 @@ const MissingFieldsModal = ({
   onSave
 }: MissingFieldsModalProps) => {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const [dateValues, setDateValues] = useState<Record<string, DateValue>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
@@ -48,13 +49,21 @@ const MissingFieldsModal = ({
     }));
   };
 
+  const handleDateChange = (key: string, value: DateValue) => {
+    setDateValues((prev) => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
   const handleSubmit = async () => {
     // Verificar si hay al menos un campo con valor
-    const hasValues = Object.values(formValues).some(
+    const hasTextValues = Object.values(formValues).some(
       (value) => value && value.trim() !== ''
     );
+    const hasDateValues = Object.values(dateValues).some((value) => value !== null);
 
-    if (!hasValues) {
+    if (!hasTextValues && !hasDateValues) {
       notify({
         type: 'error',
         message: 'Por favor completa al menos un campo'
@@ -77,10 +86,18 @@ const MissingFieldsModal = ({
         {} as Partial<EventModel>
       );
 
+      // Agregar los valores de fecha
+      Object.entries(dateValues).forEach(([key, value]) => {
+        if (value) {
+          updates[key as keyof EventModel] = value as any;
+        }
+      });
+
       await onSave(updates);
 
       // Limpiar formulario y cerrar modal
       setFormValues({});
+      setDateValues({});
       onClose();
     } catch (error) {
       console.error('Error saving missing fields:', error);
@@ -93,11 +110,13 @@ const MissingFieldsModal = ({
 
   const handleClose = () => {
     setFormValues({});
+    setDateValues({});
     onClose();
   };
 
   const renderField = (field: FieldConfig) => {
     const value = formValues[field.key] || '';
+    const dateValue = dateValues[field.key] || null;
 
     if (field.type === 'time') {
       return (
@@ -108,6 +127,21 @@ const MissingFieldsModal = ({
           <TimePicker
             value={value}
             onChange={(val) => handleInputChange(field.key, val || '')}
+          />
+        </div>
+      );
+    }
+
+    if (field.type === 'date') {
+      return (
+        <div key={field.key}>
+          <DatePickerInput
+            label={field.label}
+            placeholder={field.placeholder}
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={dateValue}
+            onChange={(val) => handleDateChange(field.key, val)}
           />
         </div>
       );

@@ -94,7 +94,9 @@ export interface EventModel {
     employeeName: string;
     rol: string;
   }[];
+  staffArrivalDate?: string | Date;
   staffArrivalTime?: string;
+  equipmentArrivalDate?: string | Date;
   equipmentArrivalTime?: string;
 }
 export interface SelectedEventType extends EventModel {

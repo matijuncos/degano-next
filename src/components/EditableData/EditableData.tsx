@@ -32,7 +32,7 @@ const EditableData = ({
   onSave
 }: {
   title?: string;
-  value: string | any[] | Date;
+  value: string | any[] | Date | null;
   property: string;
   type: string;
   style?: React.CSSProperties;
@@ -566,7 +566,7 @@ const EditableData = ({
             style={{
               position: 'absolute',
               right: '12px',
-              top: '12px'
+              top: '8px'
             }}
           />
         )}
@@ -583,7 +583,7 @@ const EditableData = ({
               transition: 'opacity 0.2s ease',
               position: 'absolute',
               right: '12px',
-              top: '12px'
+              top: '8px'
             }}
           >
             <IconEdit

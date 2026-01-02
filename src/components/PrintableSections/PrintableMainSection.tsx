@@ -300,6 +300,8 @@ export const PrintableMainContent: React.FC<PrintableMainSectionProps> = ({
 
       {/* SUBSECCIÓN: STAFF */}
       {((event.staff && event.staff.length > 0) ||
+        event.staffArrivalDate ||
+        event.equipmentArrivalDate ||
         event.staffArrivalTime ||
         event.equipmentArrivalTime) && (
         <>
@@ -313,18 +315,39 @@ export const PrintableMainContent: React.FC<PrintableMainSectionProps> = ({
               <View key={`staff-${index}`} style={styles.twoColumns}>
                 <View style={styles.column}>
                   <Text style={styles.fieldLabel}>
-                    MIEMBRO DEL STAFF {index + 1}:
+                    MIEMBRO STAFF {index + 1}:
                   </Text>
                   <Text style={styles.fieldValue}>
                     {staffMember.employeeName}
                   </Text>
                 </View>
                 <View style={styles.column}>
-                  <Text style={styles.fieldLabel}>ROL:</Text>
+                  <Text style={styles.fieldLabel}>ROL MIEMBRO STAFF {index + 1}:</Text>
                   <Text style={styles.fieldValue}>{staffMember.rol}</Text>
                 </View>
               </View>
             ))}
+
+          {(event.staffArrivalDate || event.equipmentArrivalDate) && (
+            <View style={styles.twoColumns}>
+              {event.staffArrivalDate && (
+                <View style={styles.column}>
+                  <Text style={styles.fieldLabel}>FECHA LLEGADA STAFF:</Text>
+                  <Text style={styles.fieldValue}>{formatDate(event.staffArrivalDate)}</Text>
+                </View>
+              )}
+              {event.equipmentArrivalDate && (
+                <View style={styles.column}>
+                  <Text style={styles.fieldLabel}>
+                    FECHA LLEGADA EQUIPAMIENTO:
+                  </Text>
+                  <Text style={styles.fieldValue}>
+                    {formatDate(event.equipmentArrivalDate)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {(event.staffArrivalTime || event.equipmentArrivalTime) && (
             <View style={styles.twoColumns}>
