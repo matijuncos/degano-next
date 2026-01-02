@@ -80,6 +80,22 @@ const MainInformation = ({
 }: {
   selectedEvent: EventModel | null;
 }) => {
+  // Función para parsear fechas ISO sin conversión de zona horaria
+  const parseISODate = (dateString: string | Date | null | undefined): Date | null => {
+    if (!dateString) return null;
+    if (dateString instanceof Date) return dateString;
+
+    // Si es un string ISO (YYYY-MM-DD), parsearlo sin zona horaria
+    const isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    // Fallback a conversión normal
+    return new Date(dateString);
+  };
+
   const [addingExtraClient, setAddingExtraClient] = useState(false);
   const [isNewExtraClient, setIsNewExtraClient] = useState(false);
   const [selectedExtraClientId, setSelectedExtraClientId] = useState<
@@ -123,6 +139,12 @@ const MainInformation = ({
   const [endTimeOnly, setEndTimeOnly] = useState<string>(
     selectedEvent?.endDate ? toTimeString(new Date(selectedEvent.endDate)) : ''
   );
+  const [staffArrivalDateOnly, setStaffArrivalDateOnly] = useState<DateValue>(
+    parseISODate(selectedEvent?.staffArrivalDate)
+  );
+  const [equipmentArrivalDateOnly, setEquipmentArrivalDateOnly] = useState<DateValue>(
+    parseISODate(selectedEvent?.equipmentArrivalDate)
+  );
 
   // Sincronizar estados cuando cambia selectedEvent
   useEffect(() => {
@@ -134,7 +156,16 @@ const MainInformation = ({
       setEndDateOnly(new Date(selectedEvent.endDate));
       setEndTimeOnly(toTimeString(new Date(selectedEvent.endDate)));
     }
-  }, [selectedEvent?.date, selectedEvent?.endDate]);
+    // Usar parseISODate para evitar problemas de zona horaria
+    const staffDate = parseISODate(selectedEvent?.staffArrivalDate);
+    if (staffDate) {
+      setStaffArrivalDateOnly(staffDate);
+    }
+    const equipmentDate = parseISODate(selectedEvent?.equipmentArrivalDate);
+    if (equipmentDate) {
+      setEquipmentArrivalDateOnly(equipmentDate);
+    }
+  }, [selectedEvent?.date, selectedEvent?.endDate, selectedEvent?.staffArrivalDate, selectedEvent?.equipmentArrivalDate]);
 
   // Calcular campos faltantes
   const missingFields = useMemo(
@@ -331,15 +362,7 @@ const MainInformation = ({
             type='dateOnly'
             property='date'
             title='Fecha de evento'
-            value={
-              dateOnly
-                ? new Date(dateOnly).toLocaleDateString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })
-                : 'Sin fecha'
-            }
+            value={dateOnly}
             onSave={(value) => {
               setDateOnly(value);
               if (value && timeOnly && selectedEvent) {
@@ -357,15 +380,7 @@ const MainInformation = ({
               type='dateOnly'
               property='endDate'
               title='Fecha finalización'
-              value={
-                endDateOnly
-                  ? new Date(endDateOnly).toLocaleDateString('es-AR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
-                    })
-                  : 'Sin fecha'
-              }
+              value={endDateOnly}
               onSave={(value) => {
                 setEndDateOnly(value);
                 if (value && endTimeOnly && selectedEvent) {
@@ -424,34 +439,37 @@ const MainInformation = ({
           </Box>
         )}
       </Group>
-      {selectedEvent.churchDate ||
-        (selectedEvent.civil && (
-          <Group
-            align='flex-start'
-            gap='md'
-            wrap='nowrap'
-            style={{ width: '100%' }}
-          >
-            {selectedEvent.churchDate && (
-              <Box style={{ flex: 1 }}>
-                <EditableData
-                  type='text'
-                  property='churchDate'
-                  title='Hora de iglesia'
-                  value={selectedEvent.churchDate}
-                />
-              </Box>
-            )}
-            {selectedEvent.civil && (
+
+      {/* Horarios Iglesia y Civil */}
+      {(selectedEvent.churchDate || selectedEvent.civil) && (
+        <Group
+          align='flex-start'
+          gap='md'
+          wrap='nowrap'
+          style={{ width: '100%' }}
+        >
+          {selectedEvent.churchDate && (
+            <Box style={{ flex: 1 }}>
+              <EditableData
+                type='text'
+                property='churchDate'
+                title='Hora de iglesia'
+                value={selectedEvent.churchDate}
+              />
+            </Box>
+          )}
+          {selectedEvent.civil && (
+            <Box style={{ flex: 1 }}>
               <EditableData
                 type='text'
                 property='civil'
                 title='Hora del civil'
                 value={selectedEvent.civil}
               />
-            )}
-          </Group>
-        ))}
+            </Box>
+          )}
+        </Group>
+      )}
 
       <EditableData
         type='text'
@@ -831,19 +849,56 @@ const MainInformation = ({
                   <EditableData
                     type='text'
                     property={`staff.${index}.employeeName`}
-                    title={`Miembro del staff ${index + 1}`}
+                    title={`Miembro staff ${index + 1}`}
                     value={staffMember.employeeName}
                   />
                 </Box>
-                <EditableData
-                  key={`staff-member-${index}`}
-                  type='text'
-                  property={`staff.${index}.rol`}
-                  title={`Miembro del staff ${index + 1}`}
-                  value={staffMember.rol}
-                />
+                <Box style={{ flex: 1 }}>
+                  <EditableData
+                    type='text'
+                    property={`staff.${index}.rol`}
+                    title={`Rol miembro staff ${index + 1}`}
+                    value={staffMember.rol}
+                  />
+                </Box>
               </Group>
             ))}
+          {(staffArrivalDateOnly || equipmentArrivalDateOnly) && (
+            <Grid>
+              {staffArrivalDateOnly && (
+                <Grid.Col span={6}>
+                  <EditableData
+                    type='dateOnly'
+                    property='staffArrivalDate'
+                    title='Fecha llegada staff'
+                    value={staffArrivalDateOnly}
+                    onSave={(value) => {
+                      setStaffArrivalDateOnly(value);
+                      if (value) {
+                        updateEventData({ staffArrivalDate: value });
+                      }
+                    }}
+                  />
+                </Grid.Col>
+              )}
+              {equipmentArrivalDateOnly && (
+                <Grid.Col span={6}>
+                  <EditableData
+                    type='dateOnly'
+                    property='equipmentArrivalDate'
+                    title='Fecha llegada equipamiento'
+                    value={equipmentArrivalDateOnly}
+                    onSave={(value) => {
+                      setEquipmentArrivalDateOnly(value);
+                      if (value) {
+                        updateEventData({ equipmentArrivalDate: value });
+                      }
+                    }}
+                  />
+                </Grid.Col>
+              )}
+            </Grid>
+          )}
           {(selectedEvent.staffArrivalTime ||
             selectedEvent.equipmentArrivalTime) && (
             <Grid>

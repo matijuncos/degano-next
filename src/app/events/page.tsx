@@ -25,7 +25,7 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<any>>({
-    columnAccessor: 'name',
+    columnAccessor: 'date',
     direction: 'asc'
   });
   const [records, setRecords] = useState(sortBy(allEvents, 'date'));

@@ -21,6 +21,22 @@ const EventForm = ({
   setValidate: Function;
   updateEvent?: Function;
 }) => {
+  // Función para parsear fechas ISO sin conversión de zona horaria
+  const parseISODate = (dateString: string | Date | null | undefined): Date | null => {
+    if (!dateString) return null;
+    if (dateString instanceof Date) return dateString;
+
+    // Si es un string ISO (YYYY-MM-DD), parsearlo sin zona horaria
+    const isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    // Fallback a conversión normal
+    return new Date(dateString);
+  };
+
   const initialEvent: EventModel = {
     ...event,
     churchDate: typeof event.churchDate === 'string' ? event.churchDate : '',
@@ -38,6 +54,12 @@ const EventForm = ({
   );
   const [endTimeOnly, setEndTimeOnly] = useState<string>(
     event.endDate ? toTimeString(new Date(event.endDate)) : ''
+  );
+  const [staffArrivalDateOnly, setStaffArrivalDateOnly] = useState<DateValue>(
+    parseISODate(event.staffArrivalDate)
+  );
+  const [equipmentArrivalDateOnly, setEquipmentArrivalDateOnly] = useState<DateValue>(
+    parseISODate(event.equipmentArrivalDate)
   );
   const [salons, setSalons] = useState<string[]>([]);
   const [salonObjects, setSalonObjects] = useState<any[]>([]); // Objetos completos de salones
@@ -95,6 +117,16 @@ const EventForm = ({
         setEndDateOnly(new Date(event.endDate));
         setEndTimeOnly(toTimeString(new Date(event.endDate)));
       }
+
+      // Actualizar fechas de llegada usando parseISODate
+      const staffDate = parseISODate(event.staffArrivalDate);
+      if (staffDate) {
+        setStaffArrivalDateOnly(staffDate);
+      }
+      const equipmentDate = parseISODate(event.equipmentArrivalDate);
+      if (equipmentDate) {
+        setEquipmentArrivalDateOnly(equipmentDate);
+      }
     }
   }, [event]);
 
@@ -125,6 +157,34 @@ const EventForm = ({
       }
     }
   }, [endDateOnly, endTimeOnly]);
+
+  // Sincronizar staffArrivalDateOnly con eventData
+  useEffect(() => {
+    if (staffArrivalDateOnly !== null) {
+      const updatedData = { ...eventData, staffArrivalDate: staffArrivalDateOnly };
+      setEventData(updatedData);
+
+      // Guardar para que persista al cambiar de tab
+      if (updateEvent) {
+        skipSyncRef.current = true;
+        updateEvent(updatedData);
+      }
+    }
+  }, [staffArrivalDateOnly]);
+
+  // Sincronizar equipmentArrivalDateOnly con eventData
+  useEffect(() => {
+    if (equipmentArrivalDateOnly !== null) {
+      const updatedData = { ...eventData, equipmentArrivalDate: equipmentArrivalDateOnly };
+      setEventData(updatedData);
+
+      // Guardar para que persista al cambiar de tab
+      if (updateEvent) {
+        skipSyncRef.current = true;
+        updateEvent(updatedData);
+      }
+    }
+  }, [equipmentArrivalDateOnly]);
 
   const requiredFields: (keyof EventModel)[] = [
     'date',
@@ -456,6 +516,26 @@ const EventForm = ({
           onChange={(value: string) =>
             setEventData((prev) => ({ ...prev, civil: value }))
           }
+        />
+
+        <DatePickerInput
+          label='Fecha llegada staff'
+          placeholder='Fecha llegada staff'
+          name='staffArrivalDate'
+          locale='es'
+          valueFormat='DD/MM/YYYY'
+          value={staffArrivalDateOnly}
+          onChange={setStaffArrivalDateOnly}
+        />
+
+        <DatePickerInput
+          label='Fecha llegada equipamiento'
+          placeholder='Fecha llegada equipamiento'
+          name='equipmentArrivalDate'
+          locale='es'
+          valueFormat='DD/MM/YYYY'
+          value={equipmentArrivalDateOnly}
+          onChange={setEquipmentArrivalDateOnly}
         />
 
         <TimePicker

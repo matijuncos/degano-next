@@ -4,7 +4,7 @@ export interface FieldConfig {
   key: keyof EventModel;
   label: string;
   section: 'event' | 'location' | 'schedule' | 'client';
-  type: 'text' | 'time';
+  type: 'text' | 'time' | 'date';
   placeholder?: string;
 }
 
@@ -62,6 +62,20 @@ export const OPTIONAL_FIELDS: FieldConfig[] = [
     section: 'schedule',
     type: 'time',
     placeholder: '00:00'
+  },
+  {
+    key: 'staffArrivalDate',
+    label: 'Fecha llegada staff',
+    section: 'schedule',
+    type: 'date',
+    placeholder: 'DD/MM/AAAA'
+  },
+  {
+    key: 'equipmentArrivalDate',
+    label: 'Fecha llegada equipamiento',
+    section: 'schedule',
+    type: 'date',
+    placeholder: 'DD/MM/AAAA'
   },
   {
     key: 'staffArrivalTime',
