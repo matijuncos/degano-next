@@ -1,21 +1,13 @@
 import clientPromise from '@/lib/mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
 import { MongoClient } from 'mongodb';
 import { NextResponse } from 'next/server';
+import { withAdminAuth, AuthContext } from '@/lib/withAuth';
 
-export async function DELETE(
+export const DELETE = withAdminAuth(async (
+  context: AuthContext,
   request: Request,
   { params }: { params: { id: string } }
-) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user;
-  const isAdmin = user && user.role === 'admin';
-  if (!isAdmin) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+) => {
   const eventId = params.id;
   if (!eventId) {
     return NextResponse.json(
@@ -42,4 +34,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

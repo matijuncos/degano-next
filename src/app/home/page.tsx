@@ -18,8 +18,20 @@ import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import { useUser } from '@auth0/nextjs-auth0/client';
+  import { usePermissions } from '@/hooks/usePermissions';
 
-const Home = () => {
+  
+  const Home = () => {
+  const { role, isAdmin, can } = usePermissions();
+  const { user } = useUser();
+console.log('Usuario completo:', user);
+console.log('Rol:', user?.['https://degano.vercel.app/role']);
+  console.log('Mi rol:', role);           // Debería ser "admin"
+  console.log('Soy admin:', isAdmin);      // Debería ser true
+  console.log('Puedo eliminar:', can('canDeleteEvents')); // Debería ser true
+
+
   const setLoadingCursor = useLoadingCursor();
   const tiles = [
     {
