@@ -7,7 +7,8 @@ import {
   Group,
   Tooltip,
   Modal,
-  Button
+  Button,
+  Box
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { IconPlus } from '@tabler/icons-react';
@@ -476,25 +477,27 @@ export default function ContentPanel({
   };
 
   return (
-    <div style={{ padding: '1rem', width: '100%', overflowX: 'auto' }}>
+    <Box p="md" w="100%">
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
-        <Table
-          striped
-          highlightOnHover
-          withColumnBorders
-          withRowBorders
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            minWidth: '600px'
-          }}
-        >
-          <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-            {renderHeader()}
-          </thead>
-          <tbody>{renderRows()}</tbody>
-        </Table>
+        <Box style={{ overflowX: 'auto', width: '100%' }}>
+          <Table
+            striped
+            highlightOnHover
+            withColumnBorders
+            withRowBorders
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              minWidth: '600px'
+            }}
+          >
+            <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+              {renderHeader()}
+            </thead>
+            <tbody>{renderRows()}</tbody>
+          </Table>
+        </Box>
       )}
 
       <Modal
@@ -536,6 +539,6 @@ export default function ContentPanel({
           </Button>
         </Group>
       </Modal>
-    </div>
+    </Box>
   );
 }

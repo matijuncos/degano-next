@@ -1,6 +1,7 @@
 import { EventModel } from '@/context/types';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
+import { useResponsive } from '@/hooks/useResponsive';
 import {
   Modal,
   Stack,
@@ -37,6 +38,7 @@ const MissingFieldsModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
+  const { isMobile } = useResponsive();
 
   // Detectar campos faltantes
   const missingFields = detectMissingFields(selectedEvent);
@@ -171,6 +173,7 @@ const MissingFieldsModal = ({
       onClose={handleClose}
       title='Agregar campos faltantes'
       size='lg'
+      fullScreen={isMobile}
     >
       {missingFields.length === 0 ? (
         <Text c='dimmed' ta='center' py='xl'>

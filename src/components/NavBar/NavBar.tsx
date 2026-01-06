@@ -18,6 +18,7 @@ import { useDeganoCtx } from '@/context/DeganoContext';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useEffect } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface NavbarLinkProps {
   icon: typeof IconHome2;
@@ -52,6 +53,7 @@ const linksList = [
 function Navbar() {
   const router = useRouter();
   const { user } = useUser();
+  const { can } = usePermissions();
   const { activeNavTab } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const pathname = usePathname();
@@ -73,8 +75,20 @@ function Navbar() {
     }
   };
 
+  // Filtrar links según permisos
+  const filteredLinksList = linksList.filter(link => {
+    if (link.path === '/clients') {
+      return can('canViewClients');
+    }
+    if (link.path === '/new-event') {
+      return can('canCreateEvents');
+    }
+    // Todos los demás links son accesibles para todos
+    return true;
+  });
+
   const links = user ? (
-    linksList.map((link, index) => (
+    filteredLinksList.map((link, index) => (
       <NavbarLink
         {...link}
         key={link.label}

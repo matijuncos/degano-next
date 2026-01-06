@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { UserProvider } from '@auth0/nextjs-auth0/client';
-import { ColorSchemeScript, Flex, MantineProvider } from '@mantine/core';
+import { ColorSchemeScript, Flex, MantineProvider, Box } from '@mantine/core';
 import '@mantine/core/styles.css';
 import 'mantine-datatable/styles.layer.css';
 import '@mantine/dates/styles.css';
@@ -18,7 +18,13 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Degano',
-  description: 'Gestión de eventos'
+  description: 'Gestión de eventos',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  }
 };
 
 export default function RootLayout({
@@ -44,47 +50,28 @@ export default function RootLayout({
                   position: 'relative'
                 }}
               >
-                <div className='navbar-to-hide'>
+                {/* Sidebar - hide on mobile/tablet (<1024px), show on desktop */}
+                <Box display={{ base: 'none', md: 'block' }}>
                   <Navbar />
-                </div>
-                <div
-                  className='everything-container'
+                </Box>
+
+                {/* Content area - full width on mobile/tablet, calc on desktop */}
+                <Box
+                  w={{ base: '100%', md: 'calc(100% - 80px)' }}
                   style={{
-                    width: 'calc(100vw - 80px)',
                     padding: '16px',
                     marginLeft: 'auto'
                   }}
+                  pb={{ base: '80px', md: '16px' }}
                 >
                   {children}
-                </div>
+                </Box>
               </div>
-              <div className='navbar-to-show'>
+
+              {/* Bottom nav - show on mobile/tablet (<1024px), hide on desktop */}
+              <Box display={{ base: 'block', md: 'none' }}>
                 <BottomNavBar />
-              </div>
-              {/*  <div
-                style={{
-                  display: 'flex',
-                  width: '100%',
-                  minHeight: '100vh',
-                  position: 'relative'
-                }}
-              >
-                <div className='navbar-to-hide'>
-                  <Navbar />
-                </div>
-                <div className='navbar-to-show'>
-                  <BottomNavBar />
-                </div>
-                <div
-                  className='everything-container'
-                  style={{
-                    width: '100%',
-                    padding: '16px'
-                  }}
-                >
-                  <Suspense fallback={'Loading....'}>{children}</Suspense>
-                </div>
-              </div> */}
+              </Box>
             </UserProvider>
           </DeganoProvider>
         </MantineProvider>

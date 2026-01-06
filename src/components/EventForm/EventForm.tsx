@@ -2,7 +2,7 @@ import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
 import { useEffect, useState, useRef } from 'react';
 import { EventModel } from '@/context/types';
-import { Button, Input, Divider, Text, Select, ComboboxItem } from '@mantine/core';
+import { Button, Input, Divider, Text, Select, ComboboxItem, Grid } from '@mantine/core';
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import { combineDateAndTime, toTimeString } from '@/utils/dateUtils';
 
@@ -316,108 +316,103 @@ const EventForm = ({
     <>
       {/* SECCIÓN: DATOS DEL EVENTO */}
       <Text size='lg' fw={700} mb='md'>Datos del evento</Text>
-      <div className='inputs-grid'>
-        <DatePickerInput
-          placeholder='Fecha de evento *'
-          name='dateOnly'
-          locale='es'
-          valueFormat='DD/MM/YYYY'
-          value={dateOnly}
-          onChange={setDateOnly}
-          error={validate && !dateOnly}
-        />
-        <DatePickerInput
-          placeholder='Fecha finalización del evento *'
-          name='endDateOnly'
-          locale='es'
-          valueFormat='DD/MM/YYYY'
-          value={endDateOnly}
-          onChange={setEndDateOnly}
-          defaultDate={dateOnly ? new Date(dateOnly) : undefined}
-          key={dateOnly ? dateOnly.toString() : 'no-date'}
-          error={validate && !endDateOnly}
-        />
-        <Input
-          type='text'
-          placeholder='Tipo de evento *'
-          name='type'
-          onChange={handleInputChange}
-          autoComplete='off'
-          value={eventData.type}
-          error={validate && !eventData.type}
-        />
-        <Input
-          type='text'
-          placeholder='Empresa'
-          name='company'
-          onChange={handleInputChange}
-          autoComplete='off'
-          value={eventData.company || ''}
-        />
-        <Input
-          placeholder='Cantidad de Invitados'
-          type='text'
-          name='guests'
-          onChange={handleInputChange}
-          autoComplete='off'
-          value={eventData.guests}
-        />
-      </div>
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <DatePickerInput
+            placeholder='Fecha de evento *'
+            name='dateOnly'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={dateOnly}
+            onChange={setDateOnly}
+            error={validate && !dateOnly}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <DatePickerInput
+            placeholder='Fecha finalización del evento *'
+            name='endDateOnly'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={endDateOnly}
+            onChange={setEndDateOnly}
+            defaultDate={dateOnly ? new Date(dateOnly) : undefined}
+            key={dateOnly ? dateOnly.toString() : 'no-date'}
+            error={validate && !endDateOnly}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Tipo de evento *'
+            name='type'
+            onChange={handleInputChange}
+            autoComplete='off'
+            value={eventData.type}
+            error={validate && !eventData.type}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Empresa'
+            name='company'
+            onChange={handleInputChange}
+            autoComplete='off'
+            value={eventData.company || ''}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            placeholder='Cantidad de Invitados'
+            type='text'
+            name='guests'
+            onChange={handleInputChange}
+            autoComplete='off'
+            value={eventData.guests}
+          />
+        </Grid.Col>
+      </Grid>
 
       <Divider my='xl' />
 
       {/* SECCIÓN: UBICACIÓN */}
       <Text size='lg' fw={700} mb='md'>Ubicación</Text>
-      <div className='inputs-grid'>
-        <Select
-          placeholder='Lugar *'
-          name='lugar'
-          data={salons}
-          value={eventData.lugar}
-          onChange={(value) => {
-            // Buscar si el salón seleccionado existe en la BD
-            const selectedSalon = salonObjects.find(s => s.name === value);
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Select
+            placeholder='Lugar *'
+            name='lugar'
+            data={salons}
+            value={eventData.lugar}
+            onChange={(value) => {
+              // Buscar si el salón seleccionado existe en la BD
+              const selectedSalon = salonObjects.find(s => s.name === value);
 
-            let updatedData = { ...eventData, lugar: value || '' };
+              let updatedData = { ...eventData, lugar: value || '' };
 
-            // Si es un salón existente, autocompletar los campos con los datos del salón
-            // Si el salón no tiene esos datos, blanquearlos
-            if (selectedSalon) {
-              updatedData = {
-                ...updatedData,
-                eventCity: selectedSalon.city || '',
-                eventAddress: selectedSalon.address || '',
-                // Siempre usar los datos del salón (aunque sean vacíos)
-                venueContactName: selectedSalon.contactName || '',
-                venueContactPhone: selectedSalon.contactPhone || ''
-              };
-            } else {
-              // Si no es un salón existente (nuevo), limpiar los campos
-              updatedData = {
-                ...updatedData,
-                eventCity: '',
-                eventAddress: '',
-                venueContactName: '',
-                venueContactPhone: ''
-              };
-            }
+              // Si es un salón existente, autocompletar los campos con los datos del salón
+              // Si el salón no tiene esos datos, blanquearlos
+              if (selectedSalon) {
+                updatedData = {
+                  ...updatedData,
+                  eventCity: selectedSalon.city || '',
+                  eventAddress: selectedSalon.address || '',
+                  // Siempre usar los datos del salón (aunque sean vacíos)
+                  venueContactName: selectedSalon.contactName || '',
+                  venueContactPhone: selectedSalon.contactPhone || ''
+                };
+              } else {
+                // Si no es un salón existente (nuevo), limpiar los campos
+                updatedData = {
+                  ...updatedData,
+                  eventCity: '',
+                  eventAddress: '',
+                  venueContactName: '',
+                  venueContactPhone: ''
+                };
+              }
 
-            setEventData(updatedData);
-            setSearchValue('');
-            // Guardar en el padre inmediatamente
-            if (updateEvent) {
-              skipSyncRef.current = true;
-              updateEvent(updatedData);
-            }
-          }}
-          searchable
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && searchValue.trim() && !salons.includes(searchValue.trim())) {
-              // Agregar el nuevo salón a la lista local
-              setSalons((current) => [...current, searchValue.trim()]);
-              const updatedData = { ...eventData, lugar: searchValue.trim() };
               setEventData(updatedData);
               setSearchValue('');
               // Guardar en el padre inmediatamente
@@ -425,137 +420,178 @@ const EventForm = ({
                 skipSyncRef.current = true;
                 updateEvent(updatedData);
               }
-            }
-          }}
-          onBlur={() => {
-            // Si hay un valor escrito que no está en la lista, agregarlo
-            if (searchValue.trim() && !salons.includes(searchValue.trim())) {
-              setSalons((current) => [...current, searchValue.trim()]);
-              const updatedData = { ...eventData, lugar: searchValue.trim() };
-              setEventData(updatedData);
-              setSearchValue('');
-              // Guardar en el padre inmediatamente
-              if (updateEvent) {
-                skipSyncRef.current = true;
-                updateEvent(updatedData);
+            }}
+            searchable
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchValue.trim() && !salons.includes(searchValue.trim())) {
+                // Agregar el nuevo salón a la lista local
+                setSalons((current) => [...current, searchValue.trim()]);
+                const updatedData = { ...eventData, lugar: searchValue.trim() };
+                setEventData(updatedData);
+                setSearchValue('');
+                // Guardar en el padre inmediatamente
+                if (updateEvent) {
+                  skipSyncRef.current = true;
+                  updateEvent(updatedData);
+                }
               }
-            }
-          }}
-          error={validate && !eventData.lugar}
-          disabled={loadingSalons}
-        />
-        <Input
-          type='text'
-          placeholder='Localidad *'
-          name='eventCity'
-          value={eventData.eventCity}
-          onChange={handleInputChange}
-          autoComplete='off'
-          error={validate && !eventData.eventCity}
-        />
-        <Input
-          type='text'
-          placeholder='Dirección'
-          name='eventAddress'
-          value={eventData.eventAddress}
-          onChange={handleInputChange}
-          autoComplete='off'
-        />
-        <Input
-          type='text'
-          placeholder='Nombre contacto del lugar'
-          name='venueContactName'
-          value={eventData.venueContactName || ''}
-          onChange={handleInputChange}
-          autoComplete='off'
-        />
-        <Input
-          type='text'
-          placeholder='Teléfono de contacto'
-          name='venueContactPhone'
-          value={eventData.venueContactPhone || ''}
-          onChange={handleInputChange}
-          autoComplete='off'
-        />
-      </div>
+            }}
+            onBlur={() => {
+              // Si hay un valor escrito que no está en la lista, agregarlo
+              if (searchValue.trim() && !salons.includes(searchValue.trim())) {
+                setSalons((current) => [...current, searchValue.trim()]);
+                const updatedData = { ...eventData, lugar: searchValue.trim() };
+                setEventData(updatedData);
+                setSearchValue('');
+                // Guardar en el padre inmediatamente
+                if (updateEvent) {
+                  skipSyncRef.current = true;
+                  updateEvent(updatedData);
+                }
+              }
+            }}
+            error={validate && !eventData.lugar}
+            disabled={loadingSalons}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Localidad *'
+            name='eventCity'
+            value={eventData.eventCity}
+            onChange={handleInputChange}
+            autoComplete='off'
+            error={validate && !eventData.eventCity}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Dirección'
+            name='eventAddress'
+            value={eventData.eventAddress}
+            onChange={handleInputChange}
+            autoComplete='off'
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Nombre contacto del lugar'
+            name='venueContactName'
+            value={eventData.venueContactName || ''}
+            onChange={handleInputChange}
+            autoComplete='off'
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Teléfono de contacto'
+            name='venueContactPhone'
+            value={eventData.venueContactPhone || ''}
+            onChange={handleInputChange}
+            autoComplete='off'
+          />
+        </Grid.Col>
+      </Grid>
 
       <Divider my='xl' />
 
       {/* SECCIÓN: HORARIOS */}
       <Text size='lg' fw={700} mb='md'>Horarios</Text>
-      <div className='inputs-grid'>
-        <TimePicker
-          label='Hora de inicio *'
-          name='timeOnly'
-          value={timeOnly}
-          onChange={(value: string) => setTimeOnly(value)}
-          error={validate && !timeOnly}
-        />
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <TimePicker
+            label='Hora de inicio *'
+            name='timeOnly'
+            value={timeOnly}
+            onChange={(value: string) => setTimeOnly(value)}
+            error={validate && !timeOnly}
+          />
+        </Grid.Col>
 
-        <TimePicker
-          label='Hora de Finalización *'
-          name='endTimeOnly'
-          value={endTimeOnly}
-          onChange={(value: string) => setEndTimeOnly(value)}
-          error={validate && !endTimeOnly}
-        />
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <TimePicker
+            label='Hora de Finalización *'
+            name='endTimeOnly'
+            value={endTimeOnly}
+            onChange={(value: string) => setEndTimeOnly(value)}
+            error={validate && !endTimeOnly}
+          />
+        </Grid.Col>
 
-        <TimePicker
-          label='Hora de iglesia'
-          name='churchDate'
-          value={eventData.churchDate || ''}
-          onChange={(value: string) =>
-            setEventData((prev) => ({ ...prev, churchDate: value }))
-          }
-        />
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <TimePicker
+            label='Hora de iglesia'
+            name='churchDate'
+            value={eventData.churchDate || ''}
+            onChange={(value: string) =>
+              setEventData((prev) => ({ ...prev, churchDate: value }))
+            }
+          />
+        </Grid.Col>
 
-        <TimePicker
-          label='Hora del civil'
-          name='civil'
-          value={eventData.civil || ''}
-          onChange={(value: string) =>
-            setEventData((prev) => ({ ...prev, civil: value }))
-          }
-        />
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <TimePicker
+            label='Hora del civil'
+            name='civil'
+            value={eventData.civil || ''}
+            onChange={(value: string) =>
+              setEventData((prev) => ({ ...prev, civil: value }))
+            }
+          />
+        </Grid.Col>
 
-        <DatePickerInput
-          label='Fecha llegada staff'
-          placeholder='Fecha llegada staff'
-          name='staffArrivalDate'
-          locale='es'
-          valueFormat='DD/MM/YYYY'
-          value={staffArrivalDateOnly}
-          onChange={setStaffArrivalDateOnly}
-        />
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <DatePickerInput
+            label='Fecha llegada staff'
+            placeholder='Fecha llegada staff'
+            name='staffArrivalDate'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={staffArrivalDateOnly}
+            onChange={setStaffArrivalDateOnly}
+          />
+        </Grid.Col>
 
-        <DatePickerInput
-          label='Fecha llegada equipamiento'
-          placeholder='Fecha llegada equipamiento'
-          name='equipmentArrivalDate'
-          locale='es'
-          valueFormat='DD/MM/YYYY'
-          value={equipmentArrivalDateOnly}
-          onChange={setEquipmentArrivalDateOnly}
-        />
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <DatePickerInput
+            label='Fecha llegada equipamiento'
+            placeholder='Fecha llegada equipamiento'
+            name='equipmentArrivalDate'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            value={equipmentArrivalDateOnly}
+            onChange={setEquipmentArrivalDateOnly}
+          />
+        </Grid.Col>
 
-        <TimePicker
-          label='Horario llegada staff'
-          name='staffArrivalTime'
-          value={eventData.staffArrivalTime || ''}
-          onChange={(value: string) =>
-            setEventData((prev) => ({ ...prev, staffArrivalTime: value }))
-          }
-        />
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <TimePicker
+            label='Horario llegada staff'
+            name='staffArrivalTime'
+            value={eventData.staffArrivalTime || ''}
+            onChange={(value: string) =>
+              setEventData((prev) => ({ ...prev, staffArrivalTime: value }))
+            }
+          />
+        </Grid.Col>
 
-        <TimePicker
-          label='Horario llegada equipamiento'
-          name='equipmentArrivalTime'
-          value={eventData.equipmentArrivalTime || ''}
-          onChange={(value: string) =>
-            setEventData((prev) => ({ ...prev, equipmentArrivalTime: value }))
-          }
-        />
-      </div>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <TimePicker
+            label='Horario llegada equipamiento'
+            name='equipmentArrivalTime'
+            value={eventData.equipmentArrivalTime || ''}
+            onChange={(value: string) =>
+              setEventData((prev) => ({ ...prev, equipmentArrivalTime: value }))
+            }
+          />
+        </Grid.Col>
+      </Grid>
 
       <div
         style={{

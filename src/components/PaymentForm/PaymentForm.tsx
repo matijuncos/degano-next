@@ -1,6 +1,6 @@
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Button, Input, Box, Text, Tooltip } from '@mantine/core';
+import { Button, Input, Box, Text, Tooltip, Grid } from '@mantine/core';
 import { DateValue, DateInput } from '@mantine/dates';
 import { useState, useMemo, useEffect } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
@@ -160,22 +160,26 @@ const PaymentForm = ({
         value={formattedTotalToPay}
         mb='16px'
       />
-      <div className='inputs-grid'>
-        <Input
-          type='text'
-          placeholder='Monto del pago inicial ($)'
-          onChange={handleUpfrontAmountChange}
-          name='upfrontAmount'
-          value={formattedUpfrontAmount}
-        />
-        <DateInput
-          name='partialPaymentDate'
-          locale='es'
-          valueFormat='DD/MM/YYYY'
-          placeholder='Fecha de pago inicial'
-          onChange={(value) => handleDates(value, 'partialPaymentDate')}
-        />
-      </div>
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Monto del pago inicial ($)'
+            onChange={handleUpfrontAmountChange}
+            name='upfrontAmount'
+            value={formattedUpfrontAmount}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <DateInput
+            name='partialPaymentDate'
+            locale='es'
+            valueFormat='DD/MM/YYYY'
+            placeholder='Fecha de pago inicial'
+            onChange={(value) => handleDates(value, 'partialPaymentDate')}
+          />
+        </Grid.Col>
+      </Grid>
       <div
         style={{
           display: 'flex',

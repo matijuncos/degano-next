@@ -1,6 +1,7 @@
 import { EventModel } from '@/context/types';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
+import { useResponsive } from '@/hooks/useResponsive';
 import { Modal, Button, Group, Text } from '@mantine/core';
 import { useState, useRef } from 'react';
 import MusicForm, { MusicFormRef } from '@/components/MusicForm/MusicForm';
@@ -22,6 +23,7 @@ const MusicFieldsModal = ({
   const formRef = useRef<MusicFormRef>(null);
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
+  const { isMobile } = useResponsive();
 
   const handleSubmit = async () => {
     if (!selectedEvent) {
@@ -87,6 +89,7 @@ const MusicFieldsModal = ({
       onClose={handleClose}
       title='Agregar campos de música'
       size='xl'
+      fullScreen={isMobile}
       styles={{
         body: {
           maxHeight: '70vh',

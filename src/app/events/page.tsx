@@ -21,6 +21,7 @@ import Loader from '@/components/Loader/Loader';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useNotification from '@/hooks/useNotification';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
@@ -38,6 +39,7 @@ export default withPageAuthRequired(function EventPage() {
   const [salons, setSalons] = useState<string[]>([]);
   const notify = useNotification();
   const setLoadingCursor = useLoadingCursor();
+  const { isMobile } = useResponsive();
 
   // Fetch salons from API
   useEffect(() => {
@@ -137,6 +139,8 @@ export default withPageAuthRequired(function EventPage() {
         opened={showConfirmationModal}
         onClose={() => setShowConfirmationModal(false)}
         title='¿Seguro que quiere eliminar este evento?'
+        size='md'
+        fullScreen={isMobile}
       >
         <Flex direction='column' align='center' gap='16px'>
           <IconAlertTriangle size={80} />
@@ -159,8 +163,17 @@ export default withPageAuthRequired(function EventPage() {
           <Text size='xl' fw={700}>
             Eventos
           </Text>
-          <Flex justify='space-between' mb='md'>
-            <Flex gap='md' mb='md'>
+          <Flex
+            direction={{ base: 'column', sm: 'row' }}
+            justify='space-between'
+            mb='md'
+            gap='md'
+          >
+            <Flex
+              gap='md'
+              direction={{ base: 'column', sm: 'row' }}
+              w={{ base: '100%', sm: 'auto' }}
+            >
               <Select
                 placeholder='Filtrar por cliente'
                 value={clientFilter}
@@ -174,6 +187,7 @@ export default withPageAuthRequired(function EventPage() {
                 ]}
                 clearable
                 searchable
+                style={{ minWidth: '200px' }}
               />
               <Select
                 placeholder='Filtrar por Lugar'
@@ -188,9 +202,10 @@ export default withPageAuthRequired(function EventPage() {
                 ]}
                 clearable
                 searchable
+                style={{ minWidth: '200px' }}
               />
             </Flex>
-            <Flex align='flex-end' mb='18px' gap='12px'>
+            <Flex align='flex-end' gap='12px'>
               <Flex align='center' gap='6px'>
                 Futuros{'  '}{' '}
                 <Box
@@ -214,7 +229,9 @@ export default withPageAuthRequired(function EventPage() {
           <Box
             style={{
               maxHeight: 'calc(100vh - 200px)',
-              overflow: 'auto'
+              overflow: 'auto',
+              overflowX: 'auto',
+              width: '100%'
             }}
           >
             <DataTable

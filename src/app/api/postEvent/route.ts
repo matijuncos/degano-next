@@ -2,15 +2,12 @@ import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
-import { getSession } from '@auth0/nextjs-auth0';
+import { withAuth, AuthContext } from '@/lib/withAuth';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 
-export const POST = async function handler(req: Request, res: NextApiResponse) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+// Todos pueden crear eventos según especificación
+export const POST = withAuth(async (context: AuthContext, req: Request, res: NextApiResponse) => {
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
@@ -93,7 +90,7 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
           equipmentName: eq.name,
           equipmentCode: eq.code,
           action: 'uso_evento',
-          userId: session?.user?.sub,
+          userId: context.user?.sub,
           eventId: newEvent._id.toString(),
           eventName: document.type,
           eventDate: eventStart,
@@ -187,4 +184,4 @@ export const POST = async function handler(req: Request, res: NextApiResponse) {
       { status: 500 }
     );
   }
-};
+}, { requiredPermission: 'canCreateEvents' });

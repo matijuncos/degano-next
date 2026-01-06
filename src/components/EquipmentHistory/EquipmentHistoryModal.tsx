@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-react';
 import useSWR from 'swr';
 import { EquipmentHistoryEntry } from '@/types/equipmentHistory';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface EquipmentHistoryModalProps {
   opened: boolean;
@@ -25,6 +26,7 @@ export default function EquipmentHistoryModal({
   equipmentId,
   equipmentName
 }: EquipmentHistoryModalProps) {
+  const { isMobile } = useResponsive();
   const { data: history, error, isLoading } = useSWR<EquipmentHistoryEntry[]>(
     opened ? `/api/equipmentHistory?equipmentId=${equipmentId}` : null,
     fetcher
@@ -158,7 +160,8 @@ export default function EquipmentHistoryModal({
       opened={opened}
       onClose={onClose}
       title={`Historial de ${equipmentName}`}
-      size="lg"
+      size='lg'
+      fullScreen={isMobile}
     >
       {isLoading && (
         <Box

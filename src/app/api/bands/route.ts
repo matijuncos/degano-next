@@ -2,11 +2,12 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 
 export const dynamic = 'force-dynamic';
 
 // GET todas las bandas
-export async function GET() {
+export const GET = withAuth(async (context: AuthContext) => {
   try {
     const client = await clientPromise;
     const db = client.db('degano-app');
@@ -19,10 +20,10 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
 
 // POST nueva banda
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const body = await req.json();
     const { _id, showTime, testTime, ...rest } = body;
@@ -35,10 +36,10 @@ export async function POST(req: Request) {
     console.error('Error POST band:', error);
     return NextResponse.json({ error: 'Error creating band' }, { status: 500 });
   }
-}
+});
 
 // PUT actualizar banda
-export async function PUT(req: Request) {
+export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const body = await req.json();
     if (!body._id) {
@@ -59,9 +60,9 @@ export async function PUT(req: Request) {
     console.error('Error PUT band:', error);
     return NextResponse.json({ error: 'Error updating band' }, { status: 500 });
   }
-}
+}, { requiredPermission: 'canEditShows' });
 
-export async function PATCH(req: Request) {
+export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const body = await req.json();
     const { bandId, contact, removeContactId } = body;
@@ -108,10 +109,10 @@ export async function PATCH(req: Request) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: 'canEditShows' });
 
 // DELETE banda
-export async function DELETE(req: Request) {
+export const DELETE = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const { _id } = await req.json();
     if (!_id) {
@@ -127,4 +128,4 @@ export async function DELETE(req: Request) {
     console.error('Error DELETE band:', error);
     return NextResponse.json({ error: 'Error deleting band' }, { status: 500 });
   }
-}
+}, { requiredPermission: 'canDeleteShows' });

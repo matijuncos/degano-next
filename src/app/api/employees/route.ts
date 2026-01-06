@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ async function listAllEmployees() {
   return db.collection('employees').find().toArray();
 }
 
-export async function GET() {
+export const GET = withAuth(async (context: AuthContext) => {
   try {
     const employees = await listAllEmployees();
     return NextResponse.json(employees);
@@ -21,9 +22,9 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const client = await clientPromise;
     const db = client.db('degano-app');
@@ -38,9 +39,9 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function PUT(req: Request) {
+export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const client = await clientPromise;
     const db = client.db('degano-app');
@@ -71,9 +72,9 @@ export async function PUT(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(req: Request) {
+export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) => {
   const client = await clientPromise;
   const db = client.db('degano-app');
   const { searchParams } = new URL(req.url);
@@ -106,4 +107,4 @@ export async function DELETE(req: Request) {
       { status: 500 }
     );
   }
-}
+});

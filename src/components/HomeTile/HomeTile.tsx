@@ -8,6 +8,7 @@ import NoAccessTile from '../NoAccessTile/NoAccessTile';
 import { Box } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const HomeTile = ({
   label,
@@ -20,6 +21,7 @@ const HomeTile = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const { user } = useUser();
+  const { can } = usePermissions();
   const router = useRouter();
   const setLoadingCursor = useLoadingCursor();
   const itemVariants = {
@@ -33,10 +35,16 @@ const HomeTile = ({
     }
   };
 
-  const restrictedPaths = ['/clients', '/equipment-stock-v2'];
+  // Verificar permiso según path
+  const hasPermission = (() => {
+    if (path === '/clients') return can('canViewClients');
+    if (path === '/equipment-stock-v2') return can('canEditEquipment');
+    if (path === '/new-event') return can('canCreateEvents');
+    // Otros paths son accesibles para todos
+    return true;
+  })();
 
-  const isForbidden =
-    isHovered && user?.role !== 'admin' && restrictedPaths.includes(path);
+  const isForbidden = isHovered && !hasPermission;
 
   const navigate = (path: string) => {
     setLoadingCursor(true);

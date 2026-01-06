@@ -5,13 +5,13 @@ import {
   createHistoryEntry,
   getEquipmentHistory
 } from '@/utils/equipmentHistoryUtils';
-import { getSession } from '@auth0/nextjs-auth0';
+import { withAuth, AuthContext } from '@/lib/withAuth';
 
 /**
  * GET: Obtener historial de un equipamiento
  * Query params: equipmentId (requerido)
  */
-export async function GET(req: Request) {
+export const GET = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
     const equipmentId = searchParams.get('equipmentId');
@@ -36,15 +36,14 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST: Crear entrada de historial manualmente
  * Body: CreateHistoryEntryParams
  */
-export async function POST(req: Request) {
+export const POST = withAuth(async (context: AuthContext, req: Request) => {
   try {
-    const session = await getSession();
     const body = await req.json();
 
     const client = await clientPromise;
@@ -52,7 +51,7 @@ export async function POST(req: Request) {
 
     await createHistoryEntry(db, {
       ...body,
-      userId: session?.user?.sub
+      userId: context.user?.sub
     });
 
     return NextResponse.json({ success: true }, { status: 201 });
@@ -63,4 +62,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: 'canEditEquipment' });
