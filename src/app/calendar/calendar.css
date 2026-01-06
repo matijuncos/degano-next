@@ -107,11 +107,6 @@
   border-left: 3px solid #2b8a3e;
 }
 
-/* Eventos de Google - mantener su color original pero con mejor contraste */
-.rbc-event:not([style*="background-color: rgb(55, 178, 77)"]) {
-  opacity: 0.9;
-}
-
 .rbc-event:hover {
   opacity: 1;
   filter: brightness(1.1);

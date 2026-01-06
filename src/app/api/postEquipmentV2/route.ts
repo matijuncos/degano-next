@@ -1,15 +1,12 @@
 import clientPromise from '@/lib/mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
 import { MongoClient } from 'mongodb';
 import { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
+import { withAdminAuth, AuthContext } from '@/lib/withAuth';
 
-export const POST = async function handler(req: any, res: NextApiResponse) {
+// Solo admin puede crear equipamiento
+export const POST = withAdminAuth(async (context: AuthContext, req: any, res: NextApiResponse) => {
   const body = await req.json();
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;
   const client = await typedClientPromise;
@@ -26,4 +23,4 @@ export const POST = async function handler(req: any, res: NextApiResponse) {
       status: 201
     }
   );
-};
+});

@@ -107,11 +107,8 @@ export default withPageAuthRequired(function CalendarPage() {
   });
 
   const handleSelectedSlot = (value: any) => {
-    // Solo abrir drawer para eventos internos
-    if (value.source === 'internal') {
-      setSelectedEvent({ ...value });
-      setIsOpen(true);
-    }
+    setSelectedEvent({ ...value });
+    setIsOpen(true);
   };
 
   const { defaultDate } = useMemo(
@@ -168,45 +165,37 @@ export default withPageAuthRequired(function CalendarPage() {
 
   // Función para aplicar estilos a los eventos
   const eventStyleGetter = (event: any) => {
-    // Solo aplicar colores según fecha a eventos internos
-    if (event.source === 'internal') {
-      const status = getEventStatus(event);
+    const status = getEventStatus(event);
 
-      let backgroundColor, borderColor;
+    let backgroundColor, borderColor;
 
-      switch (status) {
-        case 'past':
-          // Gris apagado para eventos pasados
-          backgroundColor = '#2f3d29ff';
-          borderColor = '#343a40';
-          break;
-        case 'current':
-          // Verde brillante para evento actual
-          backgroundColor = '#37b24d';
-          borderColor = '#2b8a3e';
-          break;
-        case 'future':
-          // Verde más oscuro/pastel para eventos futuros
-          backgroundColor = '#237332ff';
-          borderColor = '#2b8a3e';
-          break;
-        default:
-          backgroundColor = '#37b24d';
-          borderColor = '#2b8a3e';
-      }
-
-      return {
-        style: {
-          backgroundColor,
-          borderColor,
-          color: '#ffffff'
-        }
-      };
+    switch (status) {
+      case 'past':
+        // Gris apagado para eventos pasados
+        backgroundColor = '#2f3d29ff';
+        borderColor = '#343a40';
+        break;
+      case 'current':
+        // Verde brillante para evento actual
+        backgroundColor = '#37b24d';
+        borderColor = '#2b8a3e';
+        break;
+      case 'future':
+        // Verde más oscuro/pastel para eventos futuros
+        backgroundColor = '#237332ff';
+        borderColor = '#2b8a3e';
+        break;
+      default:
+        backgroundColor = '#37b24d';
+        borderColor = '#2b8a3e';
     }
 
-    // Para eventos de Google, usar su estilo original
     return {
-      style: event.style || {}
+      style: {
+        backgroundColor,
+        borderColor,
+        color: '#ffffff'
+      }
     };
   };
 
@@ -300,15 +289,17 @@ export default withPageAuthRequired(function CalendarPage() {
         }}
       >
         <Flex
+          direction={{ base: 'column', sm: 'row' }}
           justify='space-between'
-          align='center'
+          align={{ base: 'stretch', sm: 'center' }}
+          gap='md'
           p='md'
           style={{
             borderBottom: isLightTheme ? '1px solid #dee2e6' : '1px solid #373a40',
             backgroundColor: isLightTheme ? '#f8f9fa' : '#25262b'
           }}
         >
-          <Flex gap='md' align='center'>
+          <Flex gap='md' align='center' wrap='wrap'>
             <Badge color='green' variant='filled'>
               {internalEvents.length} eventos
             </Badge>

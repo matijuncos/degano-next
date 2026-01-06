@@ -36,19 +36,12 @@
     height: 98.5%;
     grid-column: span 2
   }
-  @media (max-width: 768px) {
+  /* Mobile: <768px */
+  @media (max-width: 767px) {
     .grid_layout {
       display: flex;
       flex-direction: column;
-      grid-template-rows: auto; 
-      grid-template-columns: 1fr;
-    }
-  }
-  @media (max-width: 645px) {
-    .grid_layout {
-      display: flex;
-      flex-direction: column;
-      grid-template-rows: auto; 
+      grid-template-rows: auto;
       grid-template-columns: 1fr;
     }
     .page_container {

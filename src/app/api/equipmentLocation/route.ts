@@ -1,10 +1,11 @@
 // src/app/api/equipmentLocation/route.ts
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export const GET = withAuth(async (context: AuthContext) => {
   try {
     const client = await clientPromise;
     const db = client.db('degano-app');
@@ -15,10 +16,10 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({ error: 'Error al obtener localizaciones' }, { status: 500 });
   }
-}
+});
 
 
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const body = await req.json();
     const { name } = body;
@@ -39,4 +40,4 @@ export async function POST(req: Request) {
   } catch (error) {
     return NextResponse.json({ error: 'Error al guardar localización' }, { status: 500 });
   }
-}
+});

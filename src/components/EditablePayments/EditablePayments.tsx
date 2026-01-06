@@ -6,10 +6,13 @@ import { DateTimePicker } from '@mantine/dates';
 import { IconCheck, IconTrash } from '@tabler/icons-react';
 import React, { useState, useMemo } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
+import { usePermissions } from '@/hooks/usePermissions';
+import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 
 const EditablePayments = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
   const notify = useNotification();
+  const { can, permissions } = usePermissions();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedTotalToPay, setEditedTotalToPay] = useState(
@@ -189,9 +192,11 @@ const EditablePayments = () => {
               </Text>
             )}
           </Flex>
-          <Button onClick={handleEdit}>
-            {isEditing ? 'Guardar' : 'Editar'}
-          </Button>
+          <ProtectedAction requiredPermission='canViewPayments'>
+            <Button onClick={handleEdit}>
+              {isEditing ? 'Guardar' : 'Editar'}
+            </Button>
+          </ProtectedAction>
         </Flex>
       </Box>
       <Box
@@ -288,7 +293,9 @@ const EditablePayments = () => {
         </Text>
       </Box>
       {!subsequentPayments.length && (
-        <Button onClick={addPayment}>Agregar pago</Button>
+        <ProtectedAction requiredPermission='canViewPayments'>
+          <Button onClick={addPayment}>Agregar pago</Button>
+        </ProtectedAction>
       )}
     </>
   );

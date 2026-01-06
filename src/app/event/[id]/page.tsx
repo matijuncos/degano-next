@@ -51,6 +51,8 @@ import MusicFieldsModal from '@/components/MusicFieldsModal/MusicFieldsModal';
 import useNotification from '@/hooks/useNotification';
 import { detectMissingFields } from '@/utils/fieldUtils';
 import useSWR from 'swr';
+import { usePermissions } from '@/hooks/usePermissions';
+import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 
 const AccordionSet = ({
   children,
@@ -354,10 +356,10 @@ const MainInformation = ({
       <Group
         align='flex-start'
         gap='md'
-        wrap='nowrap'
+        wrap='wrap'
         style={{ width: '100%' }}
       >
-        <Box style={{ flex: 1 }}>
+        <Box style={{ flex: 1, minWidth: '250px' }}>
           <EditableData
             type='dateOnly'
             property='date'
@@ -375,7 +377,7 @@ const MainInformation = ({
           />
         </Box>
         {selectedEvent.endDate && (
-          <Box style={{ flex: 1 }}>
+          <Box style={{ flex: 1, minWidth: '250px' }}>
             <EditableData
               type='dateOnly'
               property='endDate'
@@ -399,10 +401,10 @@ const MainInformation = ({
       <Group
         align='flex-start'
         gap='md'
-        wrap='nowrap'
+        wrap='wrap'
         style={{ width: '100%' }}
       >
-        <Box style={{ flex: 1 }}>
+        <Box style={{ flex: 1, minWidth: '250px' }}>
           <EditableData
             type='timeOnly'
             property='date'
@@ -420,7 +422,7 @@ const MainInformation = ({
           />
         </Box>
         {selectedEvent.endDate && (
-          <Box style={{ flex: 1 }}>
+          <Box style={{ flex: 1, minWidth: '250px' }}>
             <EditableData
               type='timeOnly'
               property='endDate'
@@ -445,11 +447,11 @@ const MainInformation = ({
         <Group
           align='flex-start'
           gap='md'
-          wrap='nowrap'
+          wrap='wrap'
           style={{ width: '100%' }}
         >
           {selectedEvent.churchDate && (
-            <Box style={{ flex: 1 }}>
+            <Box style={{ flex: 1, minWidth: '250px' }}>
               <EditableData
                 type='text'
                 property='churchDate'
@@ -459,7 +461,7 @@ const MainInformation = ({
             </Box>
           )}
           {selectedEvent.civil && (
-            <Box style={{ flex: 1 }}>
+            <Box style={{ flex: 1, minWidth: '250px' }}>
               <EditableData
                 type='text'
                 property='civil'
@@ -642,27 +644,29 @@ const MainInformation = ({
         ))}
 
       {/* Botón para agregar cliente extra */}
-      <Button
-        variant='light'
-        leftSection={<IconUserPlus size={16} />}
-        onClick={() => {
-          setAddingExtraClient(true);
-          setSelectedExtraClientId(null);
-          setIsNewExtraClient(false);
-          setExtraClientData({
-            fullName: '',
-            phoneNumber: '',
-            email: '',
-            age: '',
-            address: '',
-            rol: ''
-          });
-          setValidateExtra(false);
-        }}
-        mt='md'
-      >
-        Agregar cliente extra
-      </Button>
+      <ProtectedAction requiredPermission='canEditEvents'>
+        <Button
+          variant='light'
+          leftSection={<IconUserPlus size={16} />}
+          onClick={() => {
+            setAddingExtraClient(true);
+            setSelectedExtraClientId(null);
+            setIsNewExtraClient(false);
+            setExtraClientData({
+              fullName: '',
+              phoneNumber: '',
+              email: '',
+              age: '',
+              address: '',
+              rol: ''
+            });
+            setValidateExtra(false);
+          }}
+          mt='md'
+        >
+          Agregar cliente extra
+        </Button>
+      </ProtectedAction>
 
       {/* Formulario para agregar cliente extra */}
       {addingExtraClient && (
@@ -841,11 +845,11 @@ const MainInformation = ({
               <Group
                 align='flex-start'
                 gap='md'
-                wrap='nowrap'
+                wrap='wrap'
                 style={{ width: '100%' }}
                 key={`staff-member-${index}`}
               >
-                <Box style={{ flex: 1 }}>
+                <Box style={{ flex: 1, minWidth: '250px' }}>
                   <EditableData
                     type='text'
                     property={`staff.${index}.employeeName`}
@@ -853,7 +857,7 @@ const MainInformation = ({
                     value={staffMember.employeeName}
                   />
                 </Box>
-                <Box style={{ flex: 1 }}>
+                <Box style={{ flex: 1, minWidth: '250px' }}>
                   <EditableData
                     type='text'
                     property={`staff.${index}.rol`}
@@ -1402,17 +1406,19 @@ const ShowInformation = ({
       <Flex justify='space-between' align='center' mb='md'>
         <Title order={3}>Shows Agregados</Title>
         {!showEditableBand && (
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={() => {
-              setSelectedBand(null);
-              setShowEditableBand(true);
-            }}
-            color='green'
-            size='sm'
-          >
-            Agregar Show
-          </Button>
+          <ProtectedAction requiredPermission='canEditShows'>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => {
+                setSelectedBand(null);
+                setShowEditableBand(true);
+              }}
+              color='green'
+              size='sm'
+            >
+              Agregar Show
+            </Button>
+          </ProtectedAction>
         )}
       </Flex>
 
@@ -1439,22 +1445,26 @@ const ShowInformation = ({
                     Show: {band.bandName}
                   </Text>
                   <Group gap='xs' onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      size='xs'
-                      variant='light'
-                      color='blue'
-                      onClick={() => handleEditBand(band)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      size='xs'
-                      variant='light'
-                      color='red'
-                      onClick={() => handleDeleteBand(index)}
-                    >
-                      Eliminar
-                    </Button>
+                    <ProtectedAction requiredPermission='canEditShows'>
+                      <Button
+                        size='xs'
+                        variant='light'
+                        color='blue'
+                        onClick={() => handleEditBand(band)}
+                      >
+                        Editar
+                      </Button>
+                    </ProtectedAction>
+                    <ProtectedAction requiredPermission='canDeleteShows'>
+                      <Button
+                        size='xs'
+                        variant='light'
+                        color='red'
+                        onClick={() => handleDeleteBand(index)}
+                      >
+                        Eliminar
+                      </Button>
+                    </ProtectedAction>
                   </Group>
                 </Flex>
               </Accordion.Control>
@@ -1656,13 +1666,15 @@ const TimingInformation = ({
       <Flex justify='space-between' align='center' mb='md'>
         <Title order={3}>Cronograma del Evento</Title>
         {!isAdding && (
-          <Button
-            leftSection={<IconPlus size={16} />}
-            variant='outline'
-            onClick={() => setIsAdding(true)}
-          >
-            Agregar Evento al Cronograma
-          </Button>
+          <ProtectedAction requiredPermission='canEditEvents'>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              variant='outline'
+              onClick={() => setIsAdding(true)}
+            >
+              Agregar Evento al Cronograma
+            </Button>
+          </ProtectedAction>
         )}
       </Flex>
 
@@ -1824,22 +1836,26 @@ const TimingInformation = ({
                     )}
                   </Flex>
                   <Group gap='xs'>
-                    <Button
-                      size='xs'
-                      variant='light'
-                      color='blue'
-                      onClick={() => handleEditTiming(index)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      size='xs'
-                      variant='light'
-                      color='red'
-                      onClick={() => handleDeleteTiming(index)}
-                    >
-                      Eliminar
-                    </Button>
+                    <ProtectedAction requiredPermission='canEditEvents'>
+                      <Button
+                        size='xs'
+                        variant='light'
+                        color='blue'
+                        onClick={() => handleEditTiming(index)}
+                      >
+                        Editar
+                      </Button>
+                    </ProtectedAction>
+                    <ProtectedAction requiredPermission='canEditEvents'>
+                      <Button
+                        size='xs'
+                        variant='light'
+                        color='red'
+                        onClick={() => handleDeleteTiming(index)}
+                      >
+                        Eliminar
+                      </Button>
+                    </ProtectedAction>
                   </Group>
                 </Flex>
               )}
@@ -1875,8 +1891,7 @@ const EventPage = () => {
   const { setSelectedEvent, selectedEvent, loading, setFolderName } =
     useDeganoCtx();
   const { user } = useUser();
-
-  const isAdmin = user?.role === 'admin';
+  const { can, permissions, role, isAdmin } = usePermissions();
 
   const { id } = useParams();
   const router = useRouter();

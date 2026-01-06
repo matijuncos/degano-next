@@ -1,14 +1,18 @@
 'use client';
 import { useState } from 'react';
-import { Text, Box } from '@mantine/core';
+import { Text, Box, Tabs, Flex } from '@mantine/core';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import BandsSidebar from '@/components/Sidebar/BandsSidebar';
 import BandsContentPanel from '@/components/ContentPanel/BandsContentPanel';
 import BandsCreationPanel from '@/components/CreationPanel/BandsCreationPanel';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export default withPageAuthRequired(function BandsPage() {
   const [selectedBand, setselectedBand] = useState(null);
   const [editItem, setEditItem] = useState(null);
+  const [mobileView, setMobileView] = useState<'sidebar' | 'content' | 'creation'>('sidebar');
+
+  const { isMobile, isTablet } = useResponsive();
 
   const handleEdit = (item: any) => {
     setEditItem(item);
@@ -24,19 +28,58 @@ export default withPageAuthRequired(function BandsPage() {
     }
   };
 
+  // Vista móvil/tablet: Tabs
+  if (isMobile || isTablet) {
+    return (
+      <Box p="md">
+        <Text size='xl' fw={700} mb="md">
+          Bandas
+        </Text>
+        <Tabs value={mobileView} onChange={(value) => setMobileView(value as any)}>
+          <Tabs.List>
+            <Tabs.Tab value="sidebar">Lista</Tabs.Tab>
+            <Tabs.Tab value="content">Detalle</Tabs.Tab>
+            <Tabs.Tab value="creation">Crear</Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="sidebar" pt="md">
+            <BandsSidebar
+              onSelect={setselectedBand}
+              selectedBand={selectedBand}
+              onEdit={handleEdit}
+            />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="content" pt="md">
+            <BandsContentPanel
+              selectedBand={selectedBand}
+              onEdit={handleEdit}
+              onCancel={handleCancel}
+            />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="creation" pt="md">
+            <BandsCreationPanel
+              selectedBand={selectedBand}
+              editItem={editItem}
+              onCancel={handleCancel}
+            />
+          </Tabs.Panel>
+        </Tabs>
+      </Box>
+    );
+  }
+
+  // Vista desktop: 3 columnas
   return (
     <>
       <Text size='xl' fw={700}>
         Bandas
       </Text>
-      <div
-        className='flex'
-        style={{ height: '100vh', minHeight: '100vh', overflow: 'hidden' }}
-      >
-        {/* Sidebar - 20% */}
+      <Flex style={{ height: '100vh', overflow: 'hidden' }}>
         <Box
+          w={{ md: '30%', lg: '25%' }}
           style={{
-            width: '25%',
             borderRight: '1px solid rgba(255, 255, 255, 0.15)',
             height: '100vh',
             display: 'flex',
@@ -50,10 +93,9 @@ export default withPageAuthRequired(function BandsPage() {
           />
         </Box>
 
-        {/* BandsBandsContentPanel - 60% */}
         <Box
+          w={{ md: '70%', lg: '55%' }}
           style={{
-            width: '55%',
             borderRight: '1px solid rgba(255, 255, 255, 0.15)',
             height: '100vh',
             display: 'flex',
@@ -68,10 +110,10 @@ export default withPageAuthRequired(function BandsPage() {
         </Box>
 
         <Box
+          w="20%"
+          display={{ md: 'none', lg: 'flex' }}
           style={{
-            width: '20%',
             height: '100vh',
-            display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto'
           }}
@@ -82,7 +124,7 @@ export default withPageAuthRequired(function BandsPage() {
             onCancel={handleCancel}
           />
         </Box>
-      </div>
+      </Flex>
     </>
   );
 });

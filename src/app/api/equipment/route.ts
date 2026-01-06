@@ -5,7 +5,8 @@ import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { isDateBetweenInclusive } from '@/utils/dateUtils';
 import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } from '@/utils/equipmentHistoryUtils';
-import { getSession } from '@auth0/nextjs-auth0';
+import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
+import { getPermissions } from '@/utils/roleUtils';
 
 // Función para actualizar el stock de todas las categorías padre
 async function updateParentCategoriesStock(
@@ -38,7 +39,7 @@ async function updateParentCategoriesStock(
   }
 }
 
-export async function GET(req: Request) {
+export const GET = withAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
   const eventStartDate = searchParams.get('eventStartDate');
   const eventEndDate = searchParams.get('eventEndDate');
@@ -58,8 +59,6 @@ export async function GET(req: Request) {
         scheduledUses: { $exists: true, $ne: [] }
       })
       .toArray();
-
-    const session = await getSession();
 
     for (const eq of equipmentWithScheduled) {
       const scheduledUses = eq.scheduledUses || [];
@@ -112,7 +111,7 @@ export async function GET(req: Request) {
             equipmentName: eq.name,
             equipmentCode: eq.code,
             action: 'cambio_estado',
-            userId: session?.user?.sub || 'SYSTEM',
+            userId: context.user?.sub || 'SYSTEM',
             fromValue: 'En Evento',
             toValue: 'Disponible',
             details: `Liberado automáticamente - evento finalizado`
@@ -176,13 +175,12 @@ export async function GET(req: Request) {
       'Expires': '0'
     }
   });
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
   const client = await clientPromise;
   const db = client.db('degano-app');
-  const session = await getSession();
 
   const newEq = await db.collection('equipment').insertOne(body);
 
@@ -201,18 +199,17 @@ export async function POST(req: Request) {
     equipmentName: body.name,
     equipmentCode: body.code,
     action: 'creacion',
-    userId: session?.user?.sub,
+    userId: context.user?.sub,
     details: `Equipamiento creado: ${body.brand} ${body.model}`
   });
 
   return NextResponse.json({ ...body, _id: newEq.insertedId });
-}
+});
 
-export async function PUT(req: Request) {
+export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
   const client = await clientPromise;
   const db = client.db('degano-app');
-  const session = await getSession();
 
   const { _id, ...rest } = body;
   const objectId = new ObjectId(String(_id));
@@ -253,7 +250,7 @@ export async function PUT(req: Request) {
           equipmentName: rest.name,
           equipmentCode: rest.code,
           action: 'traslado',
-          userId: session?.user?.sub,
+          userId: context.user?.sub,
           fromValue: locationChange?.oldValue,
           toValue: locationChange?.newValue,
           details: `Trasladado de ${locationChange?.oldValue || 'sin ubicación'} a ${locationChange?.newValue}`
@@ -266,7 +263,7 @@ export async function PUT(req: Request) {
           equipmentName: rest.name,
           equipmentCode: rest.code,
           action: 'cambio_estado',
-          userId: session?.user?.sub,
+          userId: context.user?.sub,
           fromValue: stateChange?.oldValue ? 'Fuera de servicio' : 'Disponible',
           toValue: stateChange?.newValue ? 'Fuera de servicio' : 'Disponible',
           details: rest.outOfService?.reason || 'Sin motivo especificado'
@@ -278,7 +275,7 @@ export async function PUT(req: Request) {
           equipmentName: rest.name,
           equipmentCode: rest.code,
           action: 'edicion',
-          userId: session?.user?.sub,
+          userId: context.user?.sub,
           changes: changes
         });
       }
@@ -289,9 +286,9 @@ export async function PUT(req: Request) {
     .collection('equipment')
     .findOne({ _id: objectId });
   return NextResponse.json(updatedItem);
-}
+}, { requiredPermission: 'canEditEquipment' });
 
-export async function DELETE(req: Request) {
+export const DELETE = withAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -316,4 +313,4 @@ export async function DELETE(req: Request) {
   await db.collection('equipment').deleteOne({ _id: new ObjectId(id) });
 
   return NextResponse.json({ success: true });
-}
+}, { requiredPermission: 'canDeleteEquipment' });

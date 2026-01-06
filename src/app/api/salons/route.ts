@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
+import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
+import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request) {
+export const GET = withAuth(async (context: AuthContext, req: Request) => {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const client = await clientPromise;
     const db = client.db('degano-app');
 
@@ -38,15 +34,10 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await req.json();
     const { name, city, address, contactName, contactPhone } = body;
 
@@ -95,15 +86,10 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function PUT(req: Request) {
+export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await req.json();
     const { _id, name, city, address, contactName, contactPhone } = body;
 
@@ -126,7 +112,7 @@ export async function PUT(req: Request) {
 
     // Actualizar el salón
     const result = await db.collection('salons').updateOne(
-      { _id: new (await import('mongodb')).ObjectId(_id) },
+      { _id: new ObjectId(_id) },
       {
         $set: {
           name,
@@ -160,4 +146,4 @@ export async function PUT(req: Request) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: 'canEditSalons' });

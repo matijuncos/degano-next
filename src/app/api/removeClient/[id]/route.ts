@@ -1,24 +1,14 @@
 import clientPromise from '@/lib/mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
 import { MongoClient } from 'mongodb';
 import { NextResponse } from 'next/server';
+import { withAuth, AuthContext } from '@/lib/withAuth';
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const eventId = params.id;
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+// Solo admin y manager pueden eliminar clientes
+export const DELETE = withAuth(
+  async (context: AuthContext, request: Request, { params }: { params: { id: string } }) => {
+    const eventId = params.id;
 
-  const isAdmin = session?.user?.role === 'admin';
-  if (!isAdmin) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (!eventId) {
+    if (!eventId) {
     return NextResponse.json(
       { message: 'Event ID is missing', success: false },
       { status: 400 }
@@ -37,11 +27,13 @@ export async function DELETE(
       message: 'Client deleted successfully',
       success: true
     });
-  } catch (error) {
-    console.log(error);
-    return NextResponse.json(
-      { message: error, success: false },
-      { status: 500 }
-    );
-  }
-}
+    } catch (error) {
+      console.log(error);
+      return NextResponse.json(
+        { message: error, success: false },
+        { status: 500 }
+      );
+    }
+  },
+  { requiredPermission: 'canDeleteClients' }
+);

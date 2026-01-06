@@ -150,26 +150,84 @@ a {
   cursor: pointer;
 }
 
-@media(max-width: 740px) {
-  .inputs-grid,.equipment-inputs {
-    grid-template-columns:  1fr;
-  }
-}
+/* ======================
+   RESPONSIVE BREAKPOINTS
+   Mobile: <768px
+   Tablet: 768-1023px
+   Desktop: 1024px+
+   ====================== */
 
-@media(max-width: 460px) {
- html {
-  padding-bottom: 60px;
- }
+/* Mobile: <768px */
+@media(max-width: 767px) {
+  html {
+    padding-bottom: 80px;
+  }
+
   .navbar-to-hide {
     display: none;
   }
+
   .navbar-to-show {
     display: block;
-    position: absolute;
+    position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
     z-index: 333;
+  }
+
+  .everything-container {
+    width: 100% !important;
+    padding-bottom: 80px;
+  }
+
+  .inputs-grid,
+  .equipment-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet: 768px-1023px */
+@media(min-width: 768px) and (max-width: 1023px) {
+  .inputs-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .equipment-inputs {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Tablet también usa bottom nav */
+  .navbar-to-hide {
+    display: none;
+  }
+
+  .navbar-to-show {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 333;
+  }
+}
+
+/* Desktop: 1024px+ */
+@media(min-width: 1024px) {
+  .navbar-to-hide {
+    display: block;
+  }
+
+  .navbar-to-show {
+    display: none;
+  }
+
+  .inputs-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .equipment-inputs {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 body.loading {
