@@ -5,24 +5,31 @@ import {
   IconListCheck,
   IconMusic,
   IconPlus,
-  IconUser
+  IconUser,
+  IconLogout
 } from '@tabler/icons-react';
 import styles from './BottomNavBar.module.css';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { usePermissions } from '@/hooks/usePermissions';
+
 const BottomNavBar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { activeNavTab } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
+  const { user } = useUser();
+  const { can } = usePermissions();
 
   // Desactivar loading cuando cambia la ruta
   useEffect(() => {
     setLoadingCursor(false);
   }, [pathname]);
-  const tiles: { label: string; path: string; Icon: JSX.Element }[] = [
+
+  const allTiles: { label: string; path: string; Icon: JSX.Element }[] = [
     {
       label: 'Inicio',
       path: '/home',
@@ -38,7 +45,6 @@ const BottomNavBar = () => {
       path: '/events',
       Icon: <IconListCheck color='white' />
     },
-
     { label: 'Clientes', path: '/clients', Icon: <IconUser color='white' /> },
     {
       label: 'Crear Evento',
@@ -49,8 +55,25 @@ const BottomNavBar = () => {
       label: 'Géneros de música',
       path: '/genres',
       Icon: <IconMusic color='white' />
+    },
+    {
+      label: 'Cerrar sesión',
+      path: '/api/auth/logout',
+      Icon: <IconLogout color='white' />
     }
   ];
+
+  // Filtrar tiles según permisos
+  const tiles = user ? allTiles.filter(tile => {
+    if (tile.path === '/clients') {
+      return can('canViewClients');
+    }
+    if (tile.path === '/new-event') {
+      return can('canCreateEvents');
+    }
+    // Todos los demás tiles son accesibles para todos
+    return true;
+  }) : [];
 
   const handleButtonClick = (path: string): void => {
     setLoadingCursor(true);

@@ -12,6 +12,7 @@ import {
 import { IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import useNotification from '@/hooks/useNotification';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function StaffContentPanel({
   selectedEmployee,
@@ -25,6 +26,7 @@ export default function StaffContentPanel({
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
 }) {
   const notify = useNotification();
+  const { can } = usePermissions();
   // const fetcher = (url: string) => fetch(url).then((res) => res.json());
   // const { data: categories = [] } = useSWR('/api/categories', fetcher);
   // const { data: equipment = [] } = useSWR('/api/equipment', fetcher);
@@ -114,11 +116,13 @@ export default function StaffContentPanel({
           {selectedEmployee.fullName}
         </h2>
         <Group gap='xs'>
-          <Tooltip label='Eliminar'>
-            <ActionIcon color='red' variant='light' onClick={handleDeleteClick}>
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Tooltip>
+          {can('canDeleteEmployees') && (
+            <Tooltip label='Eliminar'>
+              <ActionIcon color='red' variant='light' onClick={handleDeleteClick}>
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Group>
       </Group>
     );

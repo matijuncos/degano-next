@@ -16,6 +16,7 @@ import EditableContact from './EditableContact';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const EditableBand = ({
   band,
@@ -28,6 +29,8 @@ const EditableBand = ({
   onSave: (band: Band) => void;
   onCancel: () => void;
 }) => {
+  const { can } = usePermissions();
+  const canEditShows = can('canEditShows');
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -355,16 +358,18 @@ const EditableBand = ({
         >
           {cleanName}
         </Text>
-        <Button
-          color='red'
-          variant='light'
-          loading={waitingAws}
-          onClick={() => handleDeleteFile(fileUrl)}
-          size='xs'
-          style={{ marginTop: '4px' }}
-        >
-          <IconTrash size={14} />
-        </Button>
+        {canEditShows && (
+          <Button
+            color='red'
+            variant='light'
+            loading={waitingAws}
+            onClick={() => handleDeleteFile(fileUrl)}
+            size='xs'
+            style={{ marginTop: '4px' }}
+          >
+            <IconTrash size={14} />
+          </Button>
+        )}
       </Box>
     );
   };
@@ -503,9 +508,10 @@ const EditableBand = ({
           <FileButton
             onChange={handleUpload}
             accept='image/*,.pdf,.doc,.docx'
+            disabled={!canEditShows}
           >
             {(props) => (
-              <Button {...props} loading={waitingAws} variant='outline'>
+              <Button {...props} loading={waitingAws} variant='outline' disabled={!canEditShows}>
                 {bandData.fileUrls && bandData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
               </Button>
             )}
@@ -523,7 +529,7 @@ const EditableBand = ({
         <Button style={{ width: '20%' }} onClick={cancelEdit} color='red'>
           Cancelar
         </Button>
-        <Button style={{ width: '20%' }} onClick={handleSave} color='green'>
+        <Button style={{ width: '20%' }} onClick={handleSave} color='green' disabled={!canEditShows}>
           Guardar
         </Button>
       </div>

@@ -250,29 +250,35 @@ const EditablePayments = () => {
                 updatePayment(payment.id, 'amount', e.target.value)
               }
               style={{ width: '180px' }}
+              disabled={!can('canEditPayments')}
             />
             <DateTimePicker
               placeholder='Fecha de pago'
               value={new Date(payment.date)}
               onChange={(date) => updatePayment(payment.id, 'date', date)}
               style={{ width: '200px' }}
+              disabled={!can('canEditPayments')}
             />
-            <Button
-              onClick={() => removePayment(subsequentPayments.indexOf(payment))}
-              variant='outline'
-              color='red'
-              size='sm'
-            >
-              <IconTrash size={16} />
-            </Button>
-            <Button
-              onClick={() => savePaymentData()}
-              variant='outline'
-              color='green'
-              size='sm'
-            >
-              <IconCheck size={16} />
-            </Button>
+            {can('canDeletePayments') && (
+              <Button
+                onClick={() => removePayment(subsequentPayments.indexOf(payment))}
+                variant='outline'
+                color='red'
+                size='sm'
+              >
+                <IconTrash size={16} />
+              </Button>
+            )}
+            {can('canCreatePayments') && (
+              <Button
+                onClick={() => savePaymentData()}
+                variant='outline'
+                color='green'
+                size='sm'
+              >
+                <IconCheck size={16} />
+              </Button>
+            )}
           </Group>
         </Box>
       ))}

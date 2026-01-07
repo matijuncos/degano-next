@@ -14,6 +14,7 @@ import { IconUpload, IconFile, IconHistory } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { formatPrice } from '@/utils/priceUtils';
 import EquipmentHistoryModal from '@/components/EquipmentHistory/EquipmentHistoryModal';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function CreationPanel({
   selectedCategory,
@@ -24,6 +25,10 @@ export default function CreationPanel({
   editItem: any;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
 }) {
+  const { can } = usePermissions();
+  const canViewPrices = can('canViewEquipmentPrices');
+  const canEditEquipment = can('canEditEquipment');
+  const canCreateEquipment = can('canCreateEquipment');
   const [formData, setFormData] = useState<any>({ isOut: false });
   const [customLocation, setCustomLocation] = useState<string>('');
   const { data: locations = [] } = useSWR('/api/equipmentLocation', (url) =>
@@ -256,39 +261,43 @@ export default function CreationPanel({
             value={formData.serialNumber || ''}
             onChange={(e) => handleInput('serialNumber', e.currentTarget.value)}
           />
-          <TextInput
-            label='Precio de renta (ARS)'
-            value={formData.rentalPriceFormatted || ''}
-            onChange={(e) => {
-              const rawValue = e.currentTarget.value.replace(/\D/g, '');
-              const formattedValue = rawValue
-                ? formatPrice(Number(rawValue))
-                : '';
-              setFormData((prev: any) => ({
-                ...prev,
-                rentalPrice: rawValue ? Number(rawValue) : 0,
-                rentalPriceFormatted: formattedValue
-              }));
-            }}
-            placeholder='$ 0'
-          />
+          {canViewPrices && (
+            <>
+              <TextInput
+                label='Precio de renta (ARS)'
+                value={formData.rentalPriceFormatted || ''}
+                onChange={(e) => {
+                  const rawValue = e.currentTarget.value.replace(/\D/g, '');
+                  const formattedValue = rawValue
+                    ? formatPrice(Number(rawValue))
+                    : '';
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    rentalPrice: rawValue ? Number(rawValue) : 0,
+                    rentalPriceFormatted: formattedValue
+                  }));
+                }}
+                placeholder='$ 0'
+              />
 
-          <TextInput
-            label='Precio de inversión (USD)'
-            value={formData.investmentPriceFormatted || ''}
-            onChange={(e) => {
-              const rawValue = e.currentTarget.value.replace(/\D/g, '');
-              const formattedValue = rawValue
-                ? `$ ${new Intl.NumberFormat('en-US').format(Number(rawValue))}`
-                : '';
-              setFormData((prev: any) => ({
-                ...prev,
-                investmentPrice: rawValue ? Number(rawValue) : 0,
-                investmentPriceFormatted: formattedValue
-              }));
-            }}
-            placeholder='$ 0'
-          />
+              <TextInput
+                label='Precio de inversión (USD)'
+                value={formData.investmentPriceFormatted || ''}
+                onChange={(e) => {
+                  const rawValue = e.currentTarget.value.replace(/\D/g, '');
+                  const formattedValue = rawValue
+                    ? `$ ${new Intl.NumberFormat('en-US').format(Number(rawValue))}`
+                    : '';
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    investmentPrice: rawValue ? Number(rawValue) : 0,
+                    investmentPriceFormatted: formattedValue
+                  }));
+                }}
+                placeholder='$ 0'
+              />
+            </>
+          )}
           <NumberInput
             label='Peso (kg)'
             value={formData.weight || 0}
@@ -545,7 +554,14 @@ export default function CreationPanel({
       )}
 
       <Group mt='md' style={{ paddingBottom: 10 }}>
-        <Button onClick={handleSubmit}>
+        <Button
+          onClick={handleSubmit}
+          disabled={
+            (isCreatingCategory || isCreatingEquipment)
+              ? !canCreateEquipment
+              : !canEditEquipment
+          }
+        >
           {isCreatingCategory || isCreatingEquipment
             ? 'Finalizar carga'
             : 'Actualizar'}

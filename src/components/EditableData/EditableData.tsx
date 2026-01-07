@@ -29,7 +29,8 @@ const EditableData = ({
   property,
   type,
   style,
-  onSave
+  onSave,
+  disabled = false
 }: {
   title?: string;
   value: string | any[] | Date | null;
@@ -37,6 +38,7 @@ const EditableData = ({
   type: string;
   style?: React.CSSProperties;
   onSave?: (value: any) => void;
+  disabled?: boolean;
 }) => {
   const { selectedEvent } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
@@ -276,7 +278,7 @@ const EditableData = ({
           </>
         )}
       </Flex>
-      {!editState.showInput && (
+      {!editState.showInput && !disabled && (
         <div
           style={{
             display: textHover ? 'flex' : 'none',
@@ -354,12 +356,14 @@ const EditableData = ({
             onClick={() => toggleEdit('showEditableChips', 'save')}
           />
         ) : (
-          <IconEdit
-            cursor='pointer'
-            style={{ marginLeft: '12px' }}
-            size={22}
-            onClick={() => toggleEdit('showEditableChips', 'open')}
-          />
+          !disabled && (
+            <IconEdit
+              cursor='pointer'
+              style={{ marginLeft: '12px' }}
+              size={22}
+              onClick={() => toggleEdit('showEditableChips', 'open')}
+            />
+          )
         )}
       </Flex>
     </>
@@ -447,11 +451,13 @@ const EditableData = ({
           <>
             <Flex mt='2rem' gap='8px' align='center'>
               <Text fw='600'>Editar Géneros</Text>
-              <IconEdit
-                size='22'
-                cursor='pointer'
-                onClick={() => toggleEdit('showEditableRating', 'open')}
-              />
+              {!disabled && (
+                <IconEdit
+                  size='22'
+                  cursor='pointer'
+                  onClick={() => toggleEdit('showEditableRating', 'open')}
+                />
+              )}
             </Flex>
             <Box>
               {Array.isArray(editState.inputValue) &&
@@ -570,7 +576,7 @@ const EditableData = ({
             }}
           />
         )}
-        {!editState.showInput && (
+        {!editState.showInput && !disabled && (
           <div
             style={{
               display: 'flex',
@@ -685,7 +691,7 @@ const EditableData = ({
           </>
         )}
       </Flex>
-      {!editState.showEditableDate && (
+      {!editState.showEditableDate && !disabled && (
         <div
           style={{
             display: textHover ? 'flex' : 'none',
@@ -820,28 +826,30 @@ const EditableData = ({
           }}
         />
       ) : (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '24px',
-            height: '24px',
-            borderRadius: '4px',
-            backgroundColor: '#495057',
-            transition: 'opacity 0.2s ease',
-            position: 'absolute',
-            right: '12px',
-            top: '12px'
-          }}
-        >
-          <IconEdit
-            cursor='pointer'
-            size={14}
-            color='white'
-            onClick={() => toggleEdit('showEditableStringArray', 'open')}
-          />
-        </div>
+        !disabled && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              borderRadius: '4px',
+              backgroundColor: '#495057',
+              transition: 'opacity 0.2s ease',
+              position: 'absolute',
+              right: '12px',
+              top: '12px'
+            }}
+          >
+            <IconEdit
+              cursor='pointer'
+              size={14}
+              color='white'
+              onClick={() => toggleEdit('showEditableStringArray', 'open')}
+            />
+          </div>
+        )
       )}
     </Box>
   );
@@ -932,7 +940,7 @@ const EditableData = ({
           </>
         )}
       </Flex>
-      {!editState.showEditableDate && (
+      {!editState.showEditableDate && !disabled && (
         <div
           style={{
             display: textHover ? 'flex' : 'none',
@@ -1035,7 +1043,7 @@ const EditableData = ({
           </>
         )}
       </Flex>
-      {!editState.showInput && (
+      {!editState.showInput && !disabled && (
         <div
           style={{
             display: textHover ? 'flex' : 'none',

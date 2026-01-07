@@ -14,6 +14,7 @@ import {
 import { TimePicker } from '@mantine/dates';
 import { IconPlus } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const TimingForm = ({
   event,
@@ -26,6 +27,8 @@ const TimingForm = ({
   onBackTab: Function;
   updateEvent?: Function;
 }) => {
+  const { can } = usePermissions();
+  const canEditEvents = can('canEditEvents');
   const [eventData, setEventData] = useState<EventModel>(event);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<{
@@ -100,6 +103,7 @@ const TimingForm = ({
             leftSection={<IconPlus size={16} />}
             variant='outline'
             onClick={() => setIsAdding(true)}
+            disabled={!canEditEvents}
           >
             Agregar Evento al Cronograma
           </Button>
@@ -124,6 +128,7 @@ const TimingForm = ({
                 value={newItem.time}
                 onChange={(value) => setNewItem({ ...newItem, time: value })}
                 style={{ flex: 1 }}
+                disabled={!canEditEvents}
               />
               <Box style={{ flex: 2 }}>
                 <Text size='sm' fw={500} mb='4px'>
@@ -135,6 +140,7 @@ const TimingForm = ({
                   onChange={(e) =>
                     setNewItem({ ...newItem, title: e.target.value })
                   }
+                  disabled={!canEditEvents}
                 />
               </Box>
             </Flex>
@@ -149,6 +155,7 @@ const TimingForm = ({
               }
               minRows={2}
               mb='sm'
+              disabled={!canEditEvents}
             />
             <Group gap='xs'>
               <Button
@@ -200,6 +207,7 @@ const TimingForm = ({
                           setEditingItem({ ...editingItem!, time: value })
                         }
                         style={{ flex: 1 }}
+                        disabled={!canEditEvents}
                       />
                       <Box style={{ flex: 2 }}>
                         <Text size='sm' fw={500} mb='4px'>
@@ -214,6 +222,7 @@ const TimingForm = ({
                               title: e.target.value
                             })
                           }
+                          disabled={!canEditEvents}
                         />
                       </Box>
                     </Flex>
@@ -228,6 +237,7 @@ const TimingForm = ({
                       }
                       minRows={2}
                       mb='sm'
+                      disabled={!canEditEvents}
                     />
                     <Group gap='xs'>
                       <Button
@@ -274,6 +284,7 @@ const TimingForm = ({
                       variant='light'
                       color='blue'
                       onClick={() => handleEditTiming(index)}
+                      disabled={!canEditEvents}
                     >
                       Editar
                     </Button>
@@ -282,6 +293,7 @@ const TimingForm = ({
                       variant='light'
                       color='red'
                       onClick={() => handleDeleteTiming(index)}
+                      disabled={!canEditEvents}
                     >
                       Eliminar
                     </Button>

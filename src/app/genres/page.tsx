@@ -18,6 +18,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Genre {
   _id: string;
@@ -33,6 +34,7 @@ const GenresPage = () => {
   const [opened, { open, close }] = useDisclosure(false);
   const [editOpened, { open: openEdit, close: closeEdit }] =
     useDisclosure(false);
+  const { can } = usePermissions();
 
   // Fetch genres
   const fetchGenres = async () => {
@@ -142,13 +144,15 @@ const GenresPage = () => {
         {/* Header */}
         <Flex justify='space-between' align='center'>
           <Title order={1}>Gestión de Géneros</Title>
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={open}
-            loading={loading}
-          >
-            Agregar Géneros
-          </Button>
+          {can('canCreateShows') && (
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={open}
+              loading={loading}
+            >
+              Agregar Géneros
+            </Button>
+          )}
         </Flex>
 
         {/* Genres Grid */}
@@ -172,22 +176,26 @@ const GenresPage = () => {
                       {genre.name}
                     </Text>
                     <Group gap='xs'>
-                      <ActionIcon
-                        variant='subtle'
-                        color='blue'
-                        onClick={() => handleEdit(genre)}
-                        disabled={loading}
-                      >
-                        <IconEdit size={16} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant='subtle'
-                        color='red'
-                        onClick={() => deleteGenre(genre._id)}
-                        disabled={loading}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
+                      {can('canEditShows') && (
+                        <ActionIcon
+                          variant='subtle'
+                          color='blue'
+                          onClick={() => handleEdit(genre)}
+                          disabled={loading}
+                        >
+                          <IconEdit size={16} />
+                        </ActionIcon>
+                      )}
+                      {can('canDeleteShows') && (
+                        <ActionIcon
+                          variant='subtle'
+                          color='red'
+                          onClick={() => deleteGenre(genre._id)}
+                          disabled={loading}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      )}
                     </Group>
                   </Flex>
                 </Card>

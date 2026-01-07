@@ -11,6 +11,7 @@ import {
   IconDeviceFloppy,
   IconSearch
 } from '@tabler/icons-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export type StaffNode = {
   _id: string;
@@ -179,6 +180,7 @@ export default function StaffTreeView({
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const [searchTerm, setSearchTerm] = useState('');
+  const { can } = usePermissions();
 
   const { data: staffData = [] } = useSWR('/api/employees', fetcher);
 
@@ -237,14 +239,16 @@ export default function StaffTreeView({
           margin: '0 0.75rem'
         }}
       >
-        <Button
-          variant='light'
-          size='xs'
-          leftSection={<IconFolderPlus size={16} />}
-          onClick={handleCreateCategory}
-        >
-          Cargar empleado
-        </Button>
+        {can('canCreateEmployees') && (
+          <Button
+            variant='light'
+            size='xs'
+            leftSection={<IconFolderPlus size={16} />}
+            onClick={handleCreateCategory}
+          >
+            Cargar empleado
+          </Button>
+        )}
       </div>
       <Divider my='sm' />
       <Input

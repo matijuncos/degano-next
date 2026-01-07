@@ -36,6 +36,8 @@ import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { format24Hour } from '@/utils/dateUtils';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
+import { usePermissions } from '@/hooks/usePermissions';
+import { obfuscatePhone } from '@/utils/roleUtils';
 
 interface FileItem {
   id: string;
@@ -56,6 +58,8 @@ const DrawerContent = () => {
   const router = useRouter();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
+  const { can, role } = usePermissions();
+  const canViewPayments = can('canViewPayments');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
@@ -458,7 +462,7 @@ const DrawerContent = () => {
             Cliente
           </Text>
           <Text size='sm'>
-            {selectedEvent?.fullName}: {selectedEvent?.phoneNumber}
+            {selectedEvent?.fullName}: {obfuscatePhone(selectedEvent?.phoneNumber, role, 'client')}
           </Text>
           <Text size='sm'>Rol: {selectedEvent?.rol}</Text>
           {selectedEvent?.email && (
@@ -474,7 +478,7 @@ const DrawerContent = () => {
                 {selectedEvent.extraClients.map((client, index) => (
                   <Box key={index}>
                     <Text size='sm'>
-                      {client.fullName}: {client.phoneNumber}
+                      {client.fullName}: {obfuscatePhone(client.phoneNumber, role, 'client')}
                     </Text>
                     <Text size='xs' c='dimmed'>
                       Rol: {client.rol}
@@ -493,14 +497,16 @@ const DrawerContent = () => {
             <Text fw={700} size='md'>
               Staff
             </Text>
-            <Button
-              variant='light'
-              size='xs'
-              leftSection={<IconPlus size={14} />}
-              onClick={() => setIsStaffModalOpen(true)}
-            >
-              Agregar
-            </Button>
+            {can('canEditEvents') && (
+              <Button
+                variant='light'
+                size='xs'
+                leftSection={<IconPlus size={14} />}
+                onClick={() => setIsStaffModalOpen(true)}
+              >
+                Agregar
+              </Button>
+            )}
           </Group>
           {staffMembers.length > 0 ? (
             <Stack gap='xs'>
@@ -511,13 +517,15 @@ const DrawerContent = () => {
                       {member.rol} - {member.employeeName}
                     </Text>
                   </Box>
-                  <ActionIcon
-                    color='red'
-                    variant='subtle'
-                    onClick={() => handleRemoveStaff(index)}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
+                  {can('canEditEvents') && (
+                    <ActionIcon
+                      color='red'
+                      variant='subtle'
+                      onClick={() => handleRemoveStaff(index)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  )}
                 </Group>
               ))}
             </Stack>
@@ -531,69 +539,73 @@ const DrawerContent = () => {
         <Divider />
 
         {/* SECCIÓN: PRESUPUESTO */}
-        <Box>
-          <Text fw={700} size='md' mb='sm'>
-            Presupuesto
-          </Text>
-          {selectedEvent?.payment?.totalToPay != null && (
-            <Text size='sm' mb='xs'>
-              Total a pagar:{' '}
-              {formatPrice(Number(selectedEvent.payment.totalToPay))}
-            </Text>
-          )}
-          {selectedEvent?.equipmentPrice != null && (
-            <Text size='sm' mb='xs'>
-              Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
-            </Text>
-          )}
-
-          <Divider
-            variant='dashed'
-            size='sm'
-            my='md'
-            style={{ borderColor: '#C9C9C9' }}
-          />
-
-          <Text size='sm' fw={500} mb='xs'>
-            Pagos realizados:
-          </Text>
-          {selectedEvent?.payment?.upfrontAmount && (
-            <Text size='sm' pl='md'>
-              - Adelanto:{' '}
-              {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
-            </Text>
-          )}
-          {selectedEvent?.payment?.subsequentPayments &&
-            selectedEvent.payment.subsequentPayments.map(
-              (payment: any, idx: number) => (
-                <Text key={idx} size='sm' pl='md'>
-                  - {payment.description || 'Pago'}:{' '}
-                  {formatPrice(Number(payment.amount))}
+        {canViewPayments && (
+          <>
+            <Box>
+              <Text fw={700} size='md' mb='sm'>
+                Presupuesto
+              </Text>
+              {selectedEvent?.payment?.totalToPay != null && (
+                <Text size='sm' mb='xs'>
+                  Total a pagar:{' '}
+                  {formatPrice(Number(selectedEvent.payment.totalToPay))}
                 </Text>
-              )
-            )}
+              )}
+              {selectedEvent?.equipmentPrice != null && (
+                <Text size='sm' mb='xs'>
+                  Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
+                </Text>
+              )}
 
-          <Divider
-            variant='dashed'
-            size='sm'
-            my='md'
-            style={{ borderColor: '#C9C9C9' }}
-          />
+              <Divider
+                variant='dashed'
+                size='sm'
+                my='md'
+                style={{ borderColor: '#C9C9C9' }}
+              />
 
-          <Text size='sm' fw={500}>
-            Falta pagar:{' '}
-            {formatPrice(
-              Number(selectedEvent?.payment.totalToPay) -
-                ((selectedEvent?.payment.subsequentPayments?.reduce(
-                  (sum: number, payment: any) => sum + Number(payment.amount),
-                  0
-                ) || 0) +
-                  Number(selectedEvent?.payment.upfrontAmount))
-            )}
-          </Text>
-        </Box>
+              <Text size='sm' fw={500} mb='xs'>
+                Pagos realizados:
+              </Text>
+              {selectedEvent?.payment?.upfrontAmount && (
+                <Text size='sm' pl='md'>
+                  - Adelanto:{' '}
+                  {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
+                </Text>
+              )}
+              {selectedEvent?.payment?.subsequentPayments &&
+                selectedEvent.payment.subsequentPayments.map(
+                  (payment: any, idx: number) => (
+                    <Text key={idx} size='sm' pl='md'>
+                      - {payment.description || 'Pago'}:{' '}
+                      {formatPrice(Number(payment.amount))}
+                    </Text>
+                  )
+                )}
 
-        <Divider />
+              <Divider
+                variant='dashed'
+                size='sm'
+                my='md'
+                style={{ borderColor: '#C9C9C9' }}
+              />
+
+              <Text size='sm' fw={500}>
+                Falta pagar:{' '}
+                {formatPrice(
+                  Number(selectedEvent?.payment.totalToPay) -
+                    ((selectedEvent?.payment.subsequentPayments?.reduce(
+                      (sum: number, payment: any) => sum + Number(payment.amount),
+                      0
+                    ) || 0) +
+                      Number(selectedEvent?.payment.upfrontAmount))
+                )}
+              </Text>
+            </Box>
+
+            <Divider />
+          </>
+        )}
 
         {/* SECCIÓN: EQUIPAMIENTO */}
         <Box>
@@ -679,7 +691,7 @@ const DrawerContent = () => {
                             {band.contacts.map((contact, idx) => (
                               <Text key={idx} size='xs'>
                                 • {contact.name} - {contact.rol} -{' '}
-                                {contact.phone}
+                                {obfuscatePhone(contact.phone, role, 'show')}
                               </Text>
                             ))}
                           </Box>

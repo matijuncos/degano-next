@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Button, TextInput, Select, Group, Textarea } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import useNotification from '@/hooks/useNotification';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function StaffCreationPanel({
   selectedEmployee,
@@ -25,6 +26,7 @@ export default function StaffCreationPanel({
     birthDate: null
   });
   const notify = useNotification();
+  const { can } = usePermissions();
   const newEmployee = selectedEmployee?._id === '';
   const editingEmployee = selectedEmployee && selectedEmployee?._id !== '';
 
@@ -135,9 +137,11 @@ export default function StaffCreationPanel({
         />
       </div>
       <Group mt='md' style={{ paddingBottom: 10 }}>
-        <Button onClick={handleSubmit}>
-          {newEmployee ? 'Finalizar carga' : 'Actualizar'}
-        </Button>
+        {can('canEditEmployees') && (
+          <Button onClick={handleSubmit}>
+            {newEmployee ? 'Finalizar carga' : 'Actualizar'}
+          </Button>
+        )}
         <Button variant='default' color='gray' onClick={handleCancel}>
           Cancelar
         </Button>

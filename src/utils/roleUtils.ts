@@ -63,7 +63,7 @@ export function getUserRole(user: any): UserRole {
   if (user.role && isValidRole(user.role)) {
     return user.role as UserRole;
   }
-
+  console.log('user', user )
   // Default: viewer
   console.warn('[WARNING] Usuario sin rol asignado, usando viewer por defecto');
   return 'viewer';

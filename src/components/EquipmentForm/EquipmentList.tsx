@@ -7,6 +7,7 @@ import { NewEquipment } from '../equipmentStockTable/types';
 import { EventModel } from '@/context/types';
 import { formatPrice } from '@/utils/priceUtils';
 import { findMainCategorySync } from '@/utils/categoryUtils';
+import { usePermissions } from '@/hooks/usePermissions';
 
 type EquipmentListProps = {
   equipmentList: NewEquipment[];
@@ -23,6 +24,8 @@ export default function EquipmentList({
   allowSave = false,
   onSave
 }: EquipmentListProps) {
+  const { can } = usePermissions();
+  const canViewPrices = can('canViewEquipmentPrices');
   const [categories, setCategories] = useState<any[]>([]);
 
   // Cargar categorías
@@ -124,9 +127,11 @@ export default function EquipmentList({
                     </Text>
                   </Stack>
                   <Group gap='4px' style={{ flexShrink: 0 }}>
-                    <Text size='xs' c='green' fw={600}>
-                      {formatPrice(eq.rentalPrice || 0)}
-                    </Text>
+                    {canViewPrices && (
+                      <Text size='xs' c='green' fw={600}>
+                        {formatPrice(eq.rentalPrice || 0)}
+                      </Text>
+                    )}
                     <ActionIcon
                       size='xs'
                       color='red'
@@ -147,10 +152,12 @@ export default function EquipmentList({
       <Divider my='xs' />
 
       {/* Total */}
-      <Group justify='space-between' px='xs'>
-        <Text fw={500}>Total:</Text>
-        <Text fw={600}>{formatPrice(total)}</Text>
-      </Group>
+      {canViewPrices && (
+        <Group justify='space-between' px='xs'>
+          <Text fw={500}>Total:</Text>
+          <Text fw={600}>{formatPrice(total)}</Text>
+        </Group>
+      )}
       {allowSave && (
         <Group justify='center' px='xs' onClick={onSave}>
           <Button>Guardar Cambios</Button>
