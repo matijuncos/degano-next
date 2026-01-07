@@ -15,6 +15,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import useNotification from '@/hooks/useNotification';
+import { usePermissions } from '@/hooks/usePermissions';
+import { obfuscatePhone } from '@/utils/roleUtils';
+
 interface Client {
   fullName: string;
   phoneNumber: string;
@@ -25,6 +28,7 @@ interface Client {
 export default withPageAuthRequired(function ClientsPage() {
   const router = useRouter();
   const notify = useNotification();
+  const { can, role } = usePermissions();
 
   const [clientsList, setClientsList] = useState<Client[]>([]);
 
@@ -71,12 +75,15 @@ export default withPageAuthRequired(function ClientsPage() {
             <TableTr key={client.email}>
               <TableTd>{client.fullName}</TableTd>
               <TableTd>{client.email}</TableTd>
-              <TableTd>{client.phoneNumber}</TableTd>
+              <TableTd>{obfuscatePhone(client.phoneNumber, role, 'client')}</TableTd>
               <TableTd>
-                <IconTrash
-                  color='red'
-                  onClick={() => handleRemoveClient(client._id)}
-                />
+                {can('canDeleteClients') && (
+                  <IconTrash
+                    color='red'
+                    onClick={() => handleRemoveClient(client._id)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                )}
               </TableTd>
             </TableTr>
           ))

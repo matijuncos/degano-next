@@ -23,6 +23,7 @@ import { IconX, IconAlertCircle, IconPlus, IconTrash } from '@tabler/icons-react
 import styles from './MusicForm.module.css';
 import { EVENT_TABS } from '@/context/config';
 import { useGenres, transformGenresForMusic } from '@/hooks/useGenres';
+import { usePermissions } from '@/hooks/usePermissions';
 
 type GenreType = {
   genre: string;
@@ -53,6 +54,8 @@ const MusicForm = forwardRef<MusicFormRef, {
   hideNavigation = false,
   hiddenSections = []
 }, ref) => {
+  const { can } = usePermissions();
+  const canEditEvents = can('canEditEvents');
   const {
     genres: dbGenres,
     loading: genresLoading,
@@ -538,11 +541,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                     onChange={(e) => updateWelcomeSong(index, e.target.value)}
                     style={{ flex: 1 }}
                     size='sm'
+                    disabled={!canEditEvents}
                   />
                   <ActionIcon
                     color='red'
                     variant='subtle'
                     onClick={() => deleteWelcomeSong(index)}
+                    disabled={!canEditEvents}
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
@@ -553,6 +558,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addWelcomeSong}
+                disabled={!canEditEvents}
               >
                 Agregar tema
               </Button>
@@ -575,11 +581,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                     onChange={(e) => updateWalkIn(index, e.target.value)}
                     style={{ flex: 1 }}
                     size='sm'
+                    disabled={!canEditEvents}
                   />
                   <ActionIcon
                     color='red'
                     variant='subtle'
                     onClick={() => deleteWalkIn(index)}
+                    disabled={!canEditEvents}
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
@@ -590,6 +598,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addWalkIn}
+                disabled={!canEditEvents}
               >
                 Agregar tema
               </Button>
@@ -612,6 +621,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   updateCeremony('ceremoniaCivil', 'ingreso', e.target.value)
                 }
                 size='sm'
+                disabled={!canEditEvents}
               />
               <TextInput
                 label='Firmas'
@@ -621,6 +631,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   updateCeremony('ceremoniaCivil', 'firmas', e.target.value)
                 }
                 size='sm'
+                disabled={!canEditEvents}
               />
               <TextInput
                 label='Salida'
@@ -630,6 +641,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   updateCeremony('ceremoniaCivil', 'salida', e.target.value)
                 }
                 size='sm'
+                disabled={!canEditEvents}
               />
 
               {(musicData.ceremoniaCivil?.otros || []).length > 0 && (
@@ -653,6 +665,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       }
                       style={{ flex: 1 }}
                       size='sm'
+                      disabled={!canEditEvents}
                     />
                     <TextInput
                       label='Canción'
@@ -668,11 +681,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                       }
                       style={{ flex: 1 }}
                       size='sm'
+                      disabled={!canEditEvents}
                     />
                     <ActionIcon
                       color='red'
                       variant='subtle'
                       onClick={() => deleteCeremonyOtro('ceremoniaCivil', index)}
+                      disabled={!canEditEvents}
                     >
                       <IconTrash size={16} />
                     </ActionIcon>
@@ -685,6 +700,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={() => addCeremonyOtro('ceremoniaCivil')}
+                disabled={!canEditEvents}
               >
                 Agregar otro momento
               </Button>
@@ -707,6 +723,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   updateCeremony('ceremoniaExtra', 'ingreso', e.target.value)
                 }
                 size='sm'
+                disabled={!canEditEvents}
               />
               <TextInput
                 label='Firmas'
@@ -716,6 +733,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   updateCeremony('ceremoniaExtra', 'firmas', e.target.value)
                 }
                 size='sm'
+                disabled={!canEditEvents}
               />
               <TextInput
                 label='Salida'
@@ -725,6 +743,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   updateCeremony('ceremoniaExtra', 'salida', e.target.value)
                 }
                 size='sm'
+                disabled={!canEditEvents}
               />
 
               {(musicData.ceremoniaExtra?.otros || []).length > 0 && (
@@ -748,6 +767,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       }
                       style={{ flex: 1 }}
                       size='sm'
+                      disabled={!canEditEvents}
                     />
                     <TextInput
                       label='Canción'
@@ -763,11 +783,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                       }
                       style={{ flex: 1 }}
                       size='sm'
+                      disabled={!canEditEvents}
                     />
                     <ActionIcon
                       color='red'
                       variant='subtle'
                       onClick={() => deleteCeremonyOtro('ceremoniaExtra', index)}
+                      disabled={!canEditEvents}
                     >
                       <IconTrash size={16} />
                     </ActionIcon>
@@ -780,6 +802,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={() => addCeremonyOtro('ceremoniaExtra')}
+                disabled={!canEditEvents}
               >
                 Agregar otro momento
               </Button>
@@ -802,11 +825,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                     onChange={(e) => updateVals(index, e.target.value)}
                     style={{ flex: 1 }}
                     size='sm'
+                    disabled={!canEditEvents}
                   />
                   <ActionIcon
                     color='red'
                     variant='subtle'
                     onClick={() => deleteVals(index)}
+                    disabled={!canEditEvents}
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
@@ -817,6 +842,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addVals}
+                disabled={!canEditEvents}
               >
                 Agregar vals
               </Button>
@@ -839,11 +865,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                     onChange={(e) => updateOpeningSong(index, e.target.value)}
                     style={{ flex: 1 }}
                     size='sm'
+                    disabled={!canEditEvents}
                   />
                   <ActionIcon
                     color='red'
                     variant='subtle'
                     onClick={() => deleteOpeningSong(index)}
+                    disabled={!canEditEvents}
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
@@ -854,6 +882,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addOpeningSong}
+                disabled={!canEditEvents}
               >
                 Agregar apertura de pista
               </Button>
@@ -881,12 +910,14 @@ const MusicForm = forwardRef<MusicFormRef, {
                         }
                         style={{ flex: 1 }}
                         size='sm'
+                        disabled={!canEditEvents}
                       />
                       <ActionIcon
                         color='red'
                         variant='subtle'
                         onClick={() => deleteAmbienceCategory(categoryIndex)}
                         mt='xl'
+                        disabled={!canEditEvents}
                       >
                         <IconTrash size={16} />
                       </ActionIcon>
@@ -914,6 +945,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       <TextInput
                         placeholder='Agregar género/estilo (Enter para agregar)'
                         size='xs'
+                        disabled={!canEditEvents}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             const value = e.currentTarget.value;
@@ -931,6 +963,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addAmbienceCategory}
+                disabled={!canEditEvents}
               >
                 Agregar categoría
               </Button>
@@ -953,11 +986,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                     onChange={(e) => updateClosingSong(index, e.target.value)}
                     style={{ flex: 1 }}
                     size='sm'
+                    disabled={!canEditEvents}
                   />
                   <ActionIcon
                     color='red'
                     variant='subtle'
                     onClick={() => deleteClosingSong(index)}
+                    disabled={!canEditEvents}
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
@@ -968,6 +1003,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addClosingSong}
+                disabled={!canEditEvents}
               >
                 Agregar tema
               </Button>
@@ -998,6 +1034,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       }
                       style={{ flex: 1 }}
                       size='sm'
+                      disabled={!canEditEvents}
                     />
                     <TextInput
                       label='Canción'
@@ -1008,11 +1045,13 @@ const MusicForm = forwardRef<MusicFormRef, {
                       }
                       style={{ flex: 1 }}
                       size='sm'
+                      disabled={!canEditEvents}
                     />
                     <ActionIcon
                       color='red'
                       variant='subtle'
                       onClick={() => deleteCustomMoment(index)}
+                      disabled={!canEditEvents}
                     >
                       <IconTrash size={16} />
                     </ActionIcon>
@@ -1025,6 +1064,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 size='xs'
                 leftSection={<IconPlus size={14} />}
                 onClick={addCustomMoment}
+                disabled={!canEditEvents}
               >
                 Agregar momento
               </Button>
@@ -1074,6 +1114,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                             >
                               <UnstyledButton
                                 onClick={() => rateGenre(option.value, index)}
+                                disabled={!canEditEvents}
                                 style={{
                                   width: '25px',
                                   height: '25px',
@@ -1121,6 +1162,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onChange={(e) => handleForbidden(e)}
                 onKeyDown={handleForbidden}
                 size='sm'
+                disabled={!canEditEvents}
               />
               <Input
                 className={styles.input}
@@ -1128,6 +1170,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onChange={(e) => handleRequired(e)}
                 onKeyDown={handleRequired}
                 size='sm'
+                disabled={!canEditEvents}
               />
             </div>
             <div className={styles.inputPair}>
@@ -1187,6 +1230,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   onChange={(e) => setSpotifyLabelInputValue(e.target.value)}
                   style={{ flex: 1 }}
                   size='sm'
+                  disabled={!canEditEvents}
                 />
                 <TextInput
                   placeholder='Spotify playlist URL'
@@ -1195,8 +1239,9 @@ const MusicForm = forwardRef<MusicFormRef, {
                   onKeyDown={handleSpotifyLinks}
                   style={{ flex: 2 }}
                   size='sm'
+                  disabled={!canEditEvents}
                 />
-                <Button size='sm' onClick={addSpotifyLinkButton}>
+                <Button size='sm' onClick={addSpotifyLinkButton} disabled={!canEditEvents}>
                   Agregar
                 </Button>
               </Flex>
@@ -1232,6 +1277,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     onClick={() => {
                       setSpotifyLinks((links) => links.filter((_, i) => i !== index));
                     }}
+                    disabled={!canEditEvents}
                   >
                     <IconX size={16} />
                   </ActionIcon>

@@ -1,6 +1,5 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
 import React, { useEffect, useState } from 'react';
-import { useUser } from '@auth0/nextjs-auth0/client';
 import useNotification from '@/hooks/useNotification';
 import { isEqual } from 'lodash';
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
@@ -11,12 +10,12 @@ import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
 import { mutate } from 'swr';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
   const notify = useNotification();
-  const { user } = useUser();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);

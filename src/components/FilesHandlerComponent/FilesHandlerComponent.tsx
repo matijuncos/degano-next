@@ -18,6 +18,7 @@ import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import useNotification from '@/hooks/useNotification';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface FileItem {
   id: string;
@@ -34,6 +35,9 @@ interface LoadingState {
 }
 
 export default function FilesHandlerComponent() {
+  const { can } = usePermissions();
+  const canUploadFiles = can('canUploadFiles');
+  const canDeleteFiles = can('canDeleteFiles');
   const { folderName } = useDeganoCtx();
   const notify = useNotification();
   const [allFiles, setAllfiles] = useState<File[]>([]);
@@ -155,15 +159,17 @@ export default function FilesHandlerComponent() {
     <>
       {typeof window !== 'undefined' && (
         <>
-          <Button
-            onClick={() => setShowUploadSection((prev) => !prev)}
-            w='100%'
-            my='18px'
-          >
-            {showUploadSection
-              ? 'Ocultar sección de carga de archivos'
-              : 'Mostrar sección de carga de archivos'}
-          </Button>
+          {canUploadFiles && (
+            <Button
+              onClick={() => setShowUploadSection((prev) => !prev)}
+              w='100%'
+              my='18px'
+            >
+              {showUploadSection
+                ? 'Ocultar sección de carga de archivos'
+                : 'Mostrar sección de carga de archivos'}
+            </Button>
+          )}
 
           {showUploadSection && (
             <>
@@ -289,14 +295,16 @@ export default function FilesHandlerComponent() {
                           >
                             <>{file.name}</>
                           </div>
-                          <IconTrash
-                            color='red'
-                            onClick={() =>
-                              setAllfiles((prev) =>
-                                prev.filter((f) => f.name !== file.name)
-                              )
-                            }
-                          />
+                          {canDeleteFiles && (
+                            <IconTrash
+                              color='red'
+                              onClick={() =>
+                                setAllfiles((prev) =>
+                                  prev.filter((f) => f.name !== file.name)
+                                )
+                              }
+                            />
+                          )}
                         </Flex>
                       );
                     })}

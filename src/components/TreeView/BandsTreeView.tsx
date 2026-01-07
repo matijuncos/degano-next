@@ -10,6 +10,7 @@ import {
   IconSearch
 } from '@tabler/icons-react';
 import { Band, ExtraContact } from '@/context/types';
+import { usePermissions } from '@/hooks/usePermissions';
 
 type BandNode = Band | ExtraContact;
 
@@ -140,6 +141,7 @@ export default function BandsTreeView({
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const [searchTerm, setSearchTerm] = useState('');
   const { data: bandsData = [] } = useSWR<Band[]>('/api/bands', fetcher);
+  const { can } = usePermissions();
 
   const filterBands = (bands: Band[], term: string): Band[] => {
     if (!term.trim()) return bands;
@@ -185,14 +187,16 @@ export default function BandsTreeView({
           margin: '0 0.75rem'
         }}
       >
-        <Button
-          variant='light'
-          size='xs'
-          leftSection={<IconFolderPlus size={16} />}
-          onClick={handleCreateBand}
-        >
-          Cargar banda
-        </Button>
+        {can('canCreateShows') && (
+          <Button
+            variant='light'
+            size='xs'
+            leftSection={<IconFolderPlus size={16} />}
+            onClick={handleCreateBand}
+          >
+            Cargar banda
+          </Button>
+        )}
       </div>
       <Divider my='sm' />
       <Input

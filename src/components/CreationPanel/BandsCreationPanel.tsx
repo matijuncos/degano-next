@@ -19,6 +19,7 @@ import {
 import useNotification from '@/hooks/useNotification';
 import { Band, ExtraContact } from '@/context/types';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
+import { usePermissions } from '@/hooks/usePermissions';
 
 type BandNode = Band | ExtraContact;
 
@@ -42,6 +43,7 @@ export default function BandsCreationPanel({
     null
   );
   const [waitingAws, setWaitingAws] = useState(false);
+  const { can } = usePermissions();
 
   const [formData, setFormData] = useState<any>({});
   const newEntity = formData?._id === '';
@@ -309,16 +311,18 @@ export default function BandsCreationPanel({
         >
           {cleanName}
         </Text>
-        <Button
-          color='red'
-          variant='light'
-          loading={waitingAws}
-          onClick={() => handleDeleteFile(fileUrl)}
-          size='xs'
-          style={{ marginTop: '4px' }}
-        >
-          <IconTrash size={14} />
-        </Button>
+        {can('canDeleteFiles') && (
+          <Button
+            color='red'
+            variant='light'
+            loading={waitingAws}
+            onClick={() => handleDeleteFile(fileUrl)}
+            size='xs'
+            style={{ marginTop: '4px' }}
+          >
+            <IconTrash size={14} />
+          </Button>
+        )}
       </Box>
     );
   };
@@ -357,18 +361,20 @@ export default function BandsCreationPanel({
                   )
                 }
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <FileButton
-                  onChange={handleUpload}
-                  accept='image/*,.pdf,.doc,.docx'
-                >
-                  {(props) => (
-                    <Button {...props} loading={waitingAws} variant='outline'>
-                      {formData.fileUrls && formData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
-                    </Button>
-                  )}
-                </FileButton>
-              </div>
+              {can('canUploadFiles') && (
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <FileButton
+                    onChange={handleUpload}
+                    accept='image/*,.pdf,.doc,.docx'
+                  >
+                    {(props) => (
+                      <Button {...props} loading={waitingAws} variant='outline'>
+                        {formData.fileUrls && formData.fileUrls.length > 0 ? 'Agregar otro archivo' : 'Subir archivo'}
+                      </Button>
+                    )}
+                  </FileButton>
+                </div>
+              )}
             </div>
             {formData.contacts && formData.contacts.length > 0 && (
               <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
@@ -468,22 +474,26 @@ export default function BandsCreationPanel({
         mt='md'
         style={{ paddingBottom: 10, justifyContent: 'space-around' }}
       >
-        <Button onClick={handleSubmit}>
-          {newEntity ? 'Finalizar carga' : 'Actualizar'}
-        </Button>
+        {can('canEditShows') && (
+          <Button onClick={handleSubmit}>
+            {newEntity ? 'Finalizar carga' : 'Actualizar'}
+          </Button>
+        )}
         <Button variant='default' color='gray' onClick={handleCancel}>
           Cancelar
         </Button>
-        <Button
-          color='red'
-          variant='light'
-          onClick={() => {
-            setContactToDelete(formData);
-            setDeleteModalOpen(true);
-          }}
-        >
-          <IconTrash size={16} />
-        </Button>
+        {can('canDeleteShows') && (
+          <Button
+            color='red'
+            variant='light'
+            onClick={() => {
+              setContactToDelete(formData);
+              setDeleteModalOpen(true);
+            }}
+          >
+            <IconTrash size={16} />
+          </Button>
+        )}
       </Group>
       <Modal
         opened={deleteModalOpen}

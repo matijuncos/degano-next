@@ -192,7 +192,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
 
     // Clientes - Viewer ve teléfonos como ****
     canViewClients: true,
-    canViewClientPhones: true,   // ✅ SÍ ve teléfonos (como ****)
+    canViewClientPhones: false,  // ❌ NO ve teléfonos reales (se ofuscan como ****)
     canCreateClients: false,     // ❌ NO crea
     canEditClients: false,       // ❌ NO edita
     canDeleteClients: false,     // ❌ NO elimina

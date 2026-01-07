@@ -18,9 +18,11 @@ import styles from './HomePage.module.css';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const Home = () => {
   const setLoadingCursor = useLoadingCursor();
+  const { role, permissions, isAdmin, isManager, isViewer } = usePermissions();
   const tiles = [
     {
       label: 'Calendario',
@@ -82,7 +84,12 @@ const Home = () => {
 
   useEffect(() => {
     setLoadingCursor(false);
-  }, []);
+    console.log('🔐 ROL DEL USUARIO:', role);
+    console.log('📋 Permisos:', permissions);
+    console.log('👤 Es Admin:', isAdmin);
+    console.log('👤 Es Manager:', isManager);
+    console.log('👤 Es Viewer:', isViewer);
+  }, [role, permissions, isAdmin, isManager, isViewer]);
 
   return (
     <>

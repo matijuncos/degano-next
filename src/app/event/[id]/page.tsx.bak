@@ -53,7 +53,6 @@ import { detectMissingFields } from '@/utils/fieldUtils';
 import useSWR from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
-import { obfuscatePhone } from '@/utils/roleUtils';
 
 const AccordionSet = ({
   children,
@@ -79,13 +78,9 @@ const AccordionSet = ({
 };
 
 const MainInformation = ({
-  selectedEvent,
-  canEditEvents,
-  role
+  selectedEvent
 }: {
   selectedEvent: EventModel | null;
-  canEditEvents: boolean;
-  role: any;
 }) => {
   // Función para parsear fechas ISO sin conversión de zona horaria
   const parseISODate = (dateString: string | Date | null | undefined): Date | null => {
@@ -333,14 +328,14 @@ const MainInformation = ({
     .sort((a, b) => a.fullName.localeCompare(b.fullName))
     .map((client) => ({
       value: client._id,
-      label: `${client.fullName} - ${obfuscatePhone(client.phoneNumber, role, 'client')}`
+      label: `${client.fullName} - ${client.phoneNumber}`
     }));
 
   if (!selectedEvent) return null;
   return (
     <Flex direction='column' gap='8px' mt='8px'>
       {/* Botón para agregar campos faltantes */}
-      {missingFieldsCount > 0 && canEditEvents && (
+      {missingFieldsCount > 0 && (
         <Button
           variant='light'
           color='blue'
@@ -365,7 +360,7 @@ const MainInformation = ({
         style={{ width: '100%' }}
       >
         <Box style={{ flex: 1, minWidth: '250px' }}>
-          <EditableData disabled={!canEditEvents}
+          <EditableData
             type='dateOnly'
             property='date'
             title='Fecha de evento'
@@ -383,7 +378,7 @@ const MainInformation = ({
         </Box>
         {selectedEvent.endDate && (
           <Box style={{ flex: 1, minWidth: '250px' }}>
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               type='dateOnly'
               property='endDate'
               title='Fecha finalización'
@@ -410,7 +405,7 @@ const MainInformation = ({
         style={{ width: '100%' }}
       >
         <Box style={{ flex: 1, minWidth: '250px' }}>
-          <EditableData disabled={!canEditEvents}
+          <EditableData
             type='timeOnly'
             property='date'
             title='Hora de inicio'
@@ -428,7 +423,7 @@ const MainInformation = ({
         </Box>
         {selectedEvent.endDate && (
           <Box style={{ flex: 1, minWidth: '250px' }}>
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               type='timeOnly'
               property='endDate'
               title='Hora de finalización'
@@ -457,7 +452,7 @@ const MainInformation = ({
         >
           {selectedEvent.churchDate && (
             <Box style={{ flex: 1, minWidth: '250px' }}>
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='churchDate'
                 title='Hora de iglesia'
@@ -467,7 +462,7 @@ const MainInformation = ({
           )}
           {selectedEvent.civil && (
             <Box style={{ flex: 1, minWidth: '250px' }}>
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='civil'
                 title='Hora del civil'
@@ -478,14 +473,14 @@ const MainInformation = ({
         </Group>
       )}
 
-      <EditableData disabled={!canEditEvents}
+      <EditableData
         type='text'
         property='type'
         title='Tipo de evento'
         value={selectedEvent.type}
       />
       {selectedEvent.company && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='company'
           title='Empresa'
@@ -493,7 +488,7 @@ const MainInformation = ({
         />
       )}
       {selectedEvent.guests && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='guests'
           title='Cantidad de Invitados'
@@ -507,20 +502,20 @@ const MainInformation = ({
       <Text size='lg' fw={700} mb='md'>
         Ubicación
       </Text>
-      <EditableData disabled={!canEditEvents}
+      <EditableData
         type='text'
         property='lugar'
         title='Lugar'
         value={selectedEvent.lugar}
       />
-      <EditableData disabled={!canEditEvents}
+      <EditableData
         type='text'
         property='eventCity'
         title='Localidad'
         value={selectedEvent.eventCity}
       />
       {selectedEvent.eventAddress && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='eventAddress'
           title='Dirección'
@@ -528,7 +523,7 @@ const MainInformation = ({
         />
       )}
       {(selectedEvent.venueContactName || selectedEvent.venueContact) && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='venueContactName'
           title='Nombre contacto del lugar'
@@ -536,15 +531,13 @@ const MainInformation = ({
         />
       )}
       {(selectedEvent.venueContactPhone || selectedEvent.venueContact) && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='venueContactPhone'
           title='Teléfono de contacto'
-          value={obfuscatePhone(
-            selectedEvent.venueContactPhone || selectedEvent.venueContact || '',
-            role,
-            'show'
-          )}
+          value={
+            selectedEvent.venueContactPhone || selectedEvent.venueContact || ''
+          }
         />
       )}
 
@@ -554,20 +547,20 @@ const MainInformation = ({
       <Text size='lg' fw={700} mb='md'>
         Cliente
       </Text>
-      <EditableData disabled={!canEditEvents}
+      <EditableData
         type='text'
         property='fullName'
         title='Nombre Cliente'
         value={selectedEvent.fullName}
       />
-      <EditableData disabled={!canEditEvents}
+      <EditableData
         type='text'
         property='phoneNumber'
         title='Teléfono'
-        value={obfuscatePhone(selectedEvent.phoneNumber, role, 'client')}
+        value={selectedEvent.phoneNumber}
       />
       {selectedEvent.email && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='email'
           title='Email'
@@ -575,7 +568,7 @@ const MainInformation = ({
         />
       )}
       {selectedEvent.rol && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='rol'
           title='Rol en el evento'
@@ -583,7 +576,7 @@ const MainInformation = ({
         />
       )}
       {selectedEvent.age && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='age'
           title='Edad'
@@ -591,7 +584,7 @@ const MainInformation = ({
         />
       )}
       {selectedEvent.address && (
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='text'
           property='address'
           title='Dirección'
@@ -603,20 +596,20 @@ const MainInformation = ({
       {selectedEvent.extraClients.length > 0 &&
         selectedEvent.extraClients.map((client, index) => (
           <React.Fragment key={`extra-client-${index}`}>
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               type='text'
               property={`extraClients.${index}.fullName`}
               title={`Nombre Cliente Extra ${index + 1}`}
               value={client.fullName}
             />
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               type='text'
               property={`extraClients.${index}.phoneNumber`}
               title={`Teléfono Cliente Extra ${index + 1}`}
-              value={obfuscatePhone(client.phoneNumber, role, 'client')}
+              value={client.phoneNumber}
             />
             {client.email && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property={`extraClients.${index}.email`}
                 title={`Email Cliente Extra ${index + 1}`}
@@ -624,7 +617,7 @@ const MainInformation = ({
               />
             )}
             {client.rol && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property={`extraClients.${index}.rol`}
                 title={`Rol Cliente Extra ${index + 1}`}
@@ -632,7 +625,7 @@ const MainInformation = ({
               />
             )}
             {client.age && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property={`extraClients.${index}.age`}
                 title={`Edad Cliente Extra ${index + 1}`}
@@ -640,7 +633,7 @@ const MainInformation = ({
               />
             )}
             {client.address && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property={`extraClients.${index}.address`}
                 title={`Dirección Cliente Extra ${index + 1}`}
@@ -721,7 +714,7 @@ const MainInformation = ({
                     <Box pl='md'>
                       <Text fw={500}>{extraClientData.fullName}</Text>
                       <Text size='sm'>
-                        Teléfono: {obfuscatePhone(extraClientData.phoneNumber, role, 'client')}
+                        Teléfono: {extraClientData.phoneNumber}
                       </Text>
                     </Box>
                   </Card>
@@ -857,7 +850,7 @@ const MainInformation = ({
                 key={`staff-member-${index}`}
               >
                 <Box style={{ flex: 1, minWidth: '250px' }}>
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='text'
                     property={`staff.${index}.employeeName`}
                     title={`Miembro staff ${index + 1}`}
@@ -865,7 +858,7 @@ const MainInformation = ({
                   />
                 </Box>
                 <Box style={{ flex: 1, minWidth: '250px' }}>
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='text'
                     property={`staff.${index}.rol`}
                     title={`Rol miembro staff ${index + 1}`}
@@ -878,7 +871,7 @@ const MainInformation = ({
             <Grid>
               {staffArrivalDateOnly && (
                 <Grid.Col span={6}>
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='dateOnly'
                     property='staffArrivalDate'
                     title='Fecha llegada staff'
@@ -894,7 +887,7 @@ const MainInformation = ({
               )}
               {equipmentArrivalDateOnly && (
                 <Grid.Col span={6}>
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='dateOnly'
                     property='equipmentArrivalDate'
                     title='Fecha llegada equipamiento'
@@ -915,7 +908,7 @@ const MainInformation = ({
             <Grid>
               {selectedEvent.staffArrivalTime && (
                 <Grid.Col span={6}>
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='text'
                     property='staffArrivalTime'
                     title='Horario llegada staff'
@@ -925,7 +918,7 @@ const MainInformation = ({
               )}
               {selectedEvent.equipmentArrivalTime && (
                 <Grid.Col span={6}>
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='text'
                     property='equipmentArrivalTime'
                     title='Horario llegada equipamiento'
@@ -951,12 +944,10 @@ const MainInformation = ({
 };
 const MusicInformation = ({
   selectedEvent,
-  onOpenMusicModal,
-  canEditEvents
+  onOpenMusicModal
 }: {
   selectedEvent: EventModel | null;
   onOpenMusicModal: () => void;
-  canEditEvents: boolean;
 }) => {
   if (!selectedEvent) return null;
 
@@ -972,17 +963,15 @@ const MusicInformation = ({
   return (
     <Flex direction='column' gap='8px' mt='8px'>
       {/* Botón para agregar campos de música */}
-      {canEditEvents && (
-        <Button
-          variant='light'
-          size='sm'
-          mb='md'
-          leftSection={<IconPlus size={16} />}
-          onClick={onOpenMusicModal}
-        >
-          Agregar campos de música
-        </Button>
-      )}
+      <Button
+        variant='light'
+        size='sm'
+        mb='md'
+        leftSection={<IconPlus size={16} />}
+        onClick={onOpenMusicModal}
+      >
+        Agregar campos de música
+      </Button>
 
       {/* Canciones de ingreso */}
       {selectedEvent.welcomeSongs && selectedEvent.welcomeSongs.length > 0 && (
@@ -991,7 +980,7 @@ const MusicInformation = ({
             Canciones de ingreso
           </Text>
           {selectedEvent.welcomeSongs.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               key={`welcome-${index}`}
               type='text'
               property={`welcomeSongs[${index}]`}
@@ -1009,7 +998,7 @@ const MusicInformation = ({
             Canción de rosas
           </Text>
           {selectedEvent.walkIn.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               key={`walkin-${index}`}
               type='text'
               property={`walkIn[${index}]`}
@@ -1028,7 +1017,7 @@ const MusicInformation = ({
               Ceremonia Civil
             </Text>
             {selectedEvent.ceremoniaCivil.ingreso && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='ceremoniaCivil.ingreso'
                 title='Ingreso'
@@ -1036,7 +1025,7 @@ const MusicInformation = ({
               />
             )}
             {selectedEvent.ceremoniaCivil.firmas && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='ceremoniaCivil.firmas'
                 title='Firmas'
@@ -1044,7 +1033,7 @@ const MusicInformation = ({
               />
             )}
             {selectedEvent.ceremoniaCivil.salida && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='ceremoniaCivil.salida'
                 title='Salida'
@@ -1063,13 +1052,13 @@ const MusicInformation = ({
                         marginTop: '8px'
                       }}
                     >
-                      <EditableData disabled={!canEditEvents}
+                      <EditableData
                         type='text'
                         property={`ceremoniaCivil.otros[${index}].titulo`}
                         title='Título'
                         value={item.titulo}
                       />
-                      <EditableData disabled={!canEditEvents}
+                      <EditableData
                         type='text'
                         property={`ceremoniaCivil.otros[${index}].cancion`}
                         title='Canción'
@@ -1090,7 +1079,7 @@ const MusicInformation = ({
               Ceremonia Extra
             </Text>
             {selectedEvent.ceremoniaExtra.ingreso && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='ceremoniaExtra.ingreso'
                 title='Ingreso'
@@ -1098,7 +1087,7 @@ const MusicInformation = ({
               />
             )}
             {selectedEvent.ceremoniaExtra.firmas && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='ceremoniaExtra.firmas'
                 title='Firmas'
@@ -1106,7 +1095,7 @@ const MusicInformation = ({
               />
             )}
             {selectedEvent.ceremoniaExtra.salida && (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='text'
                 property='ceremoniaExtra.salida'
                 title='Salida'
@@ -1125,13 +1114,13 @@ const MusicInformation = ({
                         marginTop: '8px'
                       }}
                     >
-                      <EditableData disabled={!canEditEvents}
+                      <EditableData
                         type='text'
                         property={`ceremoniaExtra.otros[${index}].titulo`}
                         title='Título'
                         value={item.titulo}
                       />
-                      <EditableData disabled={!canEditEvents}
+                      <EditableData
                         type='text'
                         property={`ceremoniaExtra.otros[${index}].cancion`}
                         title='Canción'
@@ -1151,7 +1140,7 @@ const MusicInformation = ({
             Vals
           </Text>
           {selectedEvent.vals.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               key={`vals-${index}`}
               type='text'
               property={`vals[${index}]`}
@@ -1170,7 +1159,7 @@ const MusicInformation = ({
               Apertura de pista
             </Text>
             {selectedEvent.openingPartySongs.map((song, index) => (
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 key={`opening-${index}`}
                 type='text'
                 property={`openingPartySongs[${index}]`}
@@ -1188,7 +1177,7 @@ const MusicInformation = ({
             Canciones de cierre
           </Text>
           {selectedEvent.closingSongs.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               key={`closing-${index}`}
               type='text'
               property={`closingSongs[${index}]`}
@@ -1215,13 +1204,13 @@ const MusicInformation = ({
                   marginBottom: '12px'
                 }}
               >
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property={`customMoments[${index}].titulo`}
                   title='Título'
                   value={item.titulo}
                 />
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property={`customMoments[${index}].cancion`}
                   title='Canción'
@@ -1248,7 +1237,7 @@ const MusicInformation = ({
                   marginBottom: '12px'
                 }}
               >
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property={`ambienceMusic[${categoryIndex}].descripcion`}
                   title='Momento/Descripción'
@@ -1284,17 +1273,17 @@ const MusicInformation = ({
         <Text fw={700} size='m' mb='xs' c='dimmed'>
           Música de preferencia
         </Text>
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='chips'
           value={selectedEvent.music.forbidden}
           property='forbidden'
         />
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='chips'
           value={selectedEvent.music.required}
           property='required'
         />
-        <EditableData disabled={!canEditEvents}
+        <EditableData
           type='rate'
           property='genres'
           value={selectedEvent.music.genres}
@@ -1316,14 +1305,10 @@ const MusicInformation = ({
 
 const ShowInformation = ({
   selectedEvent,
-  handleBandsChange,
-  canEditEvents,
-  role
+  handleBandsChange
 }: {
   selectedEvent: EventModel | null;
   handleBandsChange: (bands: Band[]) => void;
-  canEditEvents: boolean;
-  role: any;
 }) => {
   const [showEditableBand, setShowEditableBand] = useState<boolean>(false);
   const [selectedBand, setSelectedBand] = useState<Band | null>(null);
@@ -1505,7 +1490,7 @@ const ShowInformation = ({
                             <Text component='span' fw={600}>
                               Tel:
                             </Text>{' '}
-                            {obfuscatePhone(contact.phone, role, 'show')}
+                            {contact.phone}
                           </Text>
                         </Box>
                       ))}
@@ -1524,7 +1509,7 @@ const ShowInformation = ({
                       </Text>
 
                       {band.bandInfo && (
-                        <EditableData disabled={!canEditEvents}
+                        <EditableData
                           type='textarea'
                           property={`bands[${index}].bandInfo`}
                           title='Información adicional'
@@ -1533,7 +1518,7 @@ const ShowInformation = ({
                       )}
 
                       {band.showTime && (
-                        <EditableData disabled={!canEditEvents}
+                        <EditableData
                           type='text'
                           property={`bands[${index}].showTime`}
                           title='Hora de presentación'
@@ -1542,7 +1527,7 @@ const ShowInformation = ({
                       )}
 
                       {band.testTime && (
-                        <EditableData disabled={!canEditEvents}
+                        <EditableData
                           type='text'
                           property={`bands[${index}].testTime`}
                           title='Hora de prueba de sonido'
@@ -1888,15 +1873,13 @@ const TimingInformation = ({
   );
 };
 const MoreInfoInformation = ({
-  selectedEvent,
-  canEditEvents
+  selectedEvent
 }: {
   selectedEvent: EventModel | null;
-  canEditEvents: boolean;
 }) => {
   if (!selectedEvent) return null;
   return (
-    <EditableData disabled={!canEditEvents}
+    <EditableData
       type='textarea'
       property='moreData'
       value={selectedEvent.moreData}
@@ -2010,7 +1993,7 @@ const EventPage = () => {
             : undefined
         }
       >
-        <MainInformation selectedEvent={selectedEvent} canEditEvents={canEditEvents} role={role} />
+        <MainInformation selectedEvent={selectedEvent} />
       </PDFActions>
     ),
     bands: (
@@ -2026,8 +2009,6 @@ const EventPage = () => {
         <ShowInformation
           selectedEvent={selectedEvent}
           handleBandsChange={handleBandsChange}
-          canEditEvents={canEditEvents}
-          role={role}
         />
       </PDFActions>
     ),
@@ -2044,7 +2025,6 @@ const EventPage = () => {
         <MusicInformation
           selectedEvent={selectedEvent}
           onOpenMusicModal={() => setIsMusicFieldsModalOpen(true)}
-          canEditEvents={canEditEvents}
         />
       </PDFActions>
     ),
@@ -2063,7 +2043,7 @@ const EventPage = () => {
             : undefined
         }
       >
-        <MoreInfoInformation selectedEvent={selectedEvent} canEditEvents={canEditEvents} />
+        <MoreInfoInformation selectedEvent={selectedEvent} />
       </PDFActions>
     ),
     equipment: (
@@ -2105,33 +2085,33 @@ const EventPage = () => {
   };
 
   const AllAccordions = () => {
-    if (!selectedEvent || !role) return null;
+    if (!selectedEvent) return null;
     return (
       <>
         <Flex direction='column' gap='8px'>
           <AccordionSet value='Información Principal'>
             <Grid gutter='xl'>
               <Grid.Col span={5.5}>
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='phoneNumber'
                   title='Teléfono'
-                  value={obfuscatePhone(selectedEvent.phoneNumber, role, 'client')}
+                  value={selectedEvent.phoneNumber}
                 />
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='type'
                   title='Tipo de evento'
                   value={selectedEvent.type}
                 />
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='date'
                   property='date'
                   title='Fecha'
                   value={new Date(selectedEvent.date)}
                 />
                 {selectedEvent.endDate ? (
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='date'
                     property='endDate'
                     title='Fecha Finalizacion'
@@ -2140,25 +2120,25 @@ const EventPage = () => {
                 ) : (
                   <></>
                 )}
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='lugar'
                   title='Lugar'
                   value={selectedEvent.lugar}
                 />
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='eventAddress'
                   title='Dirección'
                   value={selectedEvent.eventAddress}
                 />
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='eventCity'
                   title='Localidad'
                   value={selectedEvent.eventCity}
                 />
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='guests'
                   title='Cantidad de invitados'
@@ -2172,21 +2152,21 @@ const EventPage = () => {
                 <Divider orientation='vertical' />
               </Grid.Col>
               <Grid.Col span={5.5}>
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='age'
                   title='Edad'
                   value={selectedEvent.age}
                 />
                 {selectedEvent.email && (
-                  <EditableData disabled={!canEditEvents}
+                  <EditableData
                     type='text'
                     property='email'
                     title='Email'
                     value={selectedEvent.email}
                   />
                 )}
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='text'
                   property='guests'
                   title='Invitados'
@@ -2204,14 +2184,14 @@ const EventPage = () => {
           </AccordionSet>
           <AccordionSet value='Música'>
             <AccordionSet value='Prohibidos'>
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='chips'
                 value={selectedEvent.music.forbidden}
                 property='forbidden'
               />
             </AccordionSet>
             <AccordionSet value='Requeridos'>
-              <EditableData disabled={!canEditEvents}
+              <EditableData
                 type='chips'
                 value={selectedEvent.music.required}
                 property='required'
@@ -2225,7 +2205,7 @@ const EventPage = () => {
                   gap: '6px'
                 }}
               >
-                <EditableData disabled={!canEditEvents}
+                <EditableData
                   type='rate'
                   property='genres'
                   value={selectedEvent.music.genres}
@@ -2237,7 +2217,7 @@ const EventPage = () => {
             </AccordionSet>
           </AccordionSet>
           <AccordionSet value='Más Información'>
-            <EditableData disabled={!canEditEvents}
+            <EditableData
               type='textarea'
               property='moreData'
               value={selectedEvent.moreData}
