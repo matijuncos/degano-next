@@ -371,7 +371,7 @@ const DrawerContent = () => {
         </Title>
       </DrawerHeader>
 
-      <Stack gap='xl' style={{ padding: '0 16px', marginBottom: '20px' }}>
+      <Stack gap='xl' style={{ padding: '0 16px', marginBottom: '20px', paddingBottom: '50px' }}>
         {/* FECHA */}
         <Text size='sm' c='dimmed'>
           {selectedEvent?.start

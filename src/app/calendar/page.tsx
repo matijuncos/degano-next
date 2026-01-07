@@ -409,7 +409,20 @@ export default withPageAuthRequired(function CalendarPage() {
           }}
         />
       </Flex>
-      <Drawer position='right' opened={isOpen} onClose={() => setIsOpen(false)}>
+      <Drawer
+        position='right'
+        opened={isOpen}
+        onClose={() => setIsOpen(false)}
+        styles={{
+          close: {
+            position: 'fixed',
+            zIndex: 1001,
+            backgroundColor: '#1a1b1e',
+            right: '16px',
+            left: 'auto'
+          }
+        }}
+      >
         <DrawerContent />
       </Drawer>
     </>
