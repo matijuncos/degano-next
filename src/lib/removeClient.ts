@@ -1,6 +1,5 @@
-'use server';
 export async function removeClient(id: string) {
-  const res = await fetch(process.env.URL + `/api/removeClient/${id}`, {
+  const res = await fetch(`/api/removeClient/${id}`, {
     method: 'DELETE',
     cache: 'no-store'
   });

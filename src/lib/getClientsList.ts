@@ -1,11 +1,7 @@
-'use server';
-
-import { Session } from '@auth0/nextjs-auth0';
-
 export async function getClientsList() {
   const timestamp = Date.parse(new Date().toString());
 
-  const res = await fetch(process.env.URL + `/api/getClients?id=${timestamp}`, {
+  const res = await fetch(`/api/getClients?id=${timestamp}`, {
     cache: 'no-store'
   });
 

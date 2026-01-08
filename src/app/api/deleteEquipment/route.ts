@@ -5,8 +5,7 @@ import { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
 
 export const DELETE = async function handler(
-  req: Request,
-  res: NextApiResponse
+  req: Request
 ) {
   const body = await req.json();
   const session = await getSession();

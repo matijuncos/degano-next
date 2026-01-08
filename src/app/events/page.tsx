@@ -22,6 +22,7 @@ import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useNotification from '@/hooks/useNotification';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useResponsive } from '@/hooks/useResponsive';
+import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 
 export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
@@ -272,16 +273,23 @@ export default withPageAuthRequired(function EventPage() {
                         <IconEye size={16} />
                       </ActionIcon>
 
-                      <ActionIcon
-                        size='sm'
-                        variant='subtle'
-                        color='red'
-                        onClick={() =>
-                          handleEvent({ event, action: actions.remove })
-                        }
+                      <ProtectedAction
+                        requiredPermission='canDeleteEvents'
+                        disableInsteadOfHide={true}
+                        showTooltip={true}
+                        tooltipMessage='No tienes permisos para eliminar eventos'
                       >
-                        <IconTrash size={16} />
-                      </ActionIcon>
+                        <ActionIcon
+                          size='sm'
+                          variant='subtle'
+                          color='red'
+                          onClick={() =>
+                            handleEvent({ event, action: actions.remove })
+                          }
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </ProtectedAction>
                     </Group>
                   )
                 }

@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 import { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
 
-export const POST = async function handler(req: any, res: NextApiResponse) {
+export const POST = async function handler(req: any) {
   const body = await req.json();
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;

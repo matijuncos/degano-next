@@ -7,7 +7,7 @@ import { getPermissions, obfuscatePhone, obfuscatePrices } from '@/utils/roleUti
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withAuth(async (context: AuthContext, req: NextRequest, res: NextApiResponse) => {
+export const GET = withAuth(async (context: AuthContext, req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

@@ -4,7 +4,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
 
-export const PUT = async function handler(req: Request, res: NextApiResponse) {
+export const PUT = async function handler(req: Request) {
   const body = await req.json();
   const session = await getSession();
 

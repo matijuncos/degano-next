@@ -44,22 +44,24 @@ const HomeTile = ({
     return true;
   })();
 
-  const isForbidden = isHovered && !hasPermission;
+  const showNoAccessOverlay = isHovered && !hasPermission;
 
   const navigate = (path: string) => {
+    if (!hasPermission) return; // Bloquear navegación si no tiene permiso
     setLoadingCursor(true);
     router.push(path);
   };
 
   return (
     <motion.div
-      className={`${styles.home_tile} ${isForbidden ? styles.blurry : ''}`}
+      className={`${styles.home_tile} ${showNoAccessOverlay ? styles.blurry : ''}`}
       variants={itemVariants}
       onMouseLeave={() => setIsHovered(false)}
       onMouseEnter={() => setIsHovered(true)}
-      onClick={isForbidden ? undefined : () => navigate(path)}
+      onClick={() => navigate(path)}
+      style={{ cursor: hasPermission ? 'pointer' : 'not-allowed' }}
     >
-      {isForbidden && (
+      {showNoAccessOverlay && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -7,7 +7,7 @@ import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 
 // Solo admin y manager pueden editar eventos
-export const PUT = withAuth(async (context: AuthContext, req: Request, res: NextApiResponse) => {
+export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;

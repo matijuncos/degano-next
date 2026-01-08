@@ -1,8 +1,7 @@
-'use server';
 export async function getEquipmentStock() {
   const timestamp = Date.parse(new Date().toString());
   const res = await fetch(
-    process.env.URL + `/api/getEquipment?id=${timestamp}`,
+    `/api/getEquipment?id=${timestamp}`,
     {
       cache: 'no-store'
     }

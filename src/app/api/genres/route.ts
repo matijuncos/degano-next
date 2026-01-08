@@ -5,8 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const GET = async function handler(
-  req: NextRequest,
-  res: NextApiResponse
+  req: NextRequest
 ) {
   try {
     const typedClientPromise: Promise<MongoClient> =
@@ -33,8 +32,7 @@ export const GET = async function handler(
 };
 
 export const POST = async function handler(
-  req: NextRequest,
-  res: NextApiResponse
+  req: NextRequest
 ) {
   try {
     const body = await req.json();
@@ -62,8 +60,7 @@ export const POST = async function handler(
 };
 
 export const DELETE = async function handler(
-  req: NextRequest,
-  res: NextApiResponse
+  req: NextRequest
 ) {
   try {
     const { searchParams } = new URL(req.url);
@@ -97,8 +94,7 @@ export const DELETE = async function handler(
 };
 
 export const PUT = async function handler(
-  req: NextRequest,
-  res: NextApiResponse
+  req: NextRequest
 ) {
   try {
     const body = await req.json();

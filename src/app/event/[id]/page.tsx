@@ -877,7 +877,7 @@ const MainInformation = ({
           {(staffArrivalDateOnly || equipmentArrivalDateOnly) && (
             <Grid>
               {staffArrivalDateOnly && (
-                <Grid.Col span={6}>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
                   <EditableData disabled={!canEditEvents}
                     type='dateOnly'
                     property='staffArrivalDate'
@@ -893,7 +893,7 @@ const MainInformation = ({
                 </Grid.Col>
               )}
               {equipmentArrivalDateOnly && (
-                <Grid.Col span={6}>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
                   <EditableData disabled={!canEditEvents}
                     type='dateOnly'
                     property='equipmentArrivalDate'
@@ -914,7 +914,7 @@ const MainInformation = ({
             selectedEvent.equipmentArrivalTime) && (
             <Grid>
               {selectedEvent.staffArrivalTime && (
-                <Grid.Col span={6}>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
                   <EditableData disabled={!canEditEvents}
                     type='text'
                     property='staffArrivalTime'
@@ -924,7 +924,7 @@ const MainInformation = ({
                 </Grid.Col>
               )}
               {selectedEvent.equipmentArrivalTime && (
-                <Grid.Col span={6}>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
                   <EditableData disabled={!canEditEvents}
                     type='text'
                     property='equipmentArrivalTime'

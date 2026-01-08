@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 
-export const PUT = withAuth(async (context: AuthContext, req: Request, res: NextApiResponse) => {
+export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;

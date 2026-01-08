@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { withAdminAuth, AuthContext } from '@/lib/withAuth';
 
 // Solo admin puede crear equipamiento
-export const POST = withAdminAuth(async (context: AuthContext, req: any, res: NextApiResponse) => {
+export const POST = withAdminAuth(async (context: AuthContext, req: any) => {
   const body = await req.json();
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;

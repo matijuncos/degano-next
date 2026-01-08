@@ -87,6 +87,7 @@ export default function ProtectedAction({
           opacity: 0.5,
           pointerEvents: 'none',
           cursor: 'not-allowed',
+          filter: 'grayscale(100%)',
         }}
       >
         {children}

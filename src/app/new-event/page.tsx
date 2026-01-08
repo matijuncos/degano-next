@@ -19,8 +19,9 @@ import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
-import { Tabs, Button } from '@mantine/core';
+import { Tabs, Button, Text, Center } from '@mantine/core';
 import { mutate } from 'swr';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const NewEventPage = () => {
   const {
@@ -35,6 +36,7 @@ const NewEventPage = () => {
   const [event, setEvent] = useState<EventModel>(INITIAL_EVENT_STATE);
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
+  const { can, isLoading } = usePermissions();
 
   const updateEvent = (data: EventModel) => {
     setEvent(data);
@@ -298,6 +300,23 @@ const NewEventPage = () => {
         break;
     }
   };
+
+  // Verificar permisos
+  if (isLoading) {
+    return <Center h="100vh"><Text>Cargando...</Text></Center>;
+  }
+
+  if (!can('canCreateEvents')) {
+    return (
+      <Center h="100vh">
+        <div style={{ textAlign: 'center' }}>
+          <Text size="xl" fw={700} mb="md">No tienes acceso</Text>
+          <Text mb="xl">No tienes permisos para crear eventos</Text>
+          <Button onClick={() => router.push('/home')}>Volver al inicio</Button>
+        </div>
+      </Center>
+    );
+  }
 
   return (
     <div>

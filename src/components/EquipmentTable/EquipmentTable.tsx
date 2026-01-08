@@ -5,18 +5,20 @@ import { isEqual } from 'lodash';
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
-import { Box, Modal } from '@mantine/core';
+import { Box, Modal, Tabs } from '@mantine/core';
 import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
 import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
   const notify = useNotification();
   const { isAdmin } = usePermissions();
+  const { isMobile, isTablet } = useResponsive();
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
@@ -28,6 +30,7 @@ const EquipmentTable = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [modalOpened, setModalOpened] = useState(false);
   const [previousSelection, setPreviousSelection] = useState(null);
+  const [mobileView, setMobileView] = useState<'categories' | 'equipment' | 'selected'>('categories');
 
   useEffect(() => {
     setEventEquipment((prev) => ({ ...prev, equipmentPrice: total }));
@@ -142,6 +145,82 @@ const EquipmentTable = () => {
     }
   };
 
+  // Vista móvil/tablet: Tabs
+  if (isMobile || isTablet) {
+    return (
+      <>
+        <Box p="md">
+          <Tabs value={mobileView} onChange={(value) => setMobileView(value as any)}>
+            <Tabs.List>
+              <Tabs.Tab value="categories">Categorías</Tabs.Tab>
+              <Tabs.Tab value="equipment">Equipos</Tabs.Tab>
+              <Tabs.Tab value="selected">Seleccionados</Tabs.Tab>
+            </Tabs.List>
+
+            <Tabs.Panel value="categories" pt="md">
+              <Sidebar
+                onSelect={setSelectedCategory}
+                selectedCategory={selectedCategory}
+                onEdit={handleEdit}
+                onOpenModal={handleOpenModal}
+                newEvent={true}
+                eventStartDate={selectedEvent?.date}
+                eventEndDate={selectedEvent?.endDate}
+                disableEditOnSelect={true}
+              />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="equipment" pt="md">
+              <ContentPanel
+                selectedCategory={selectedCategory}
+                setDisableCreateEquipment={() => {}}
+                onEdit={handleEquipmentSelection}
+                onRemove={(equipmentId: string) => {
+                  setEventEquipment((prev) => ({
+                    ...prev,
+                    equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+                  }));
+                }}
+                onCancel={handleCancel}
+                newEvent={true}
+                eventStartDate={selectedEvent?.date}
+                eventEndDate={selectedEvent?.endDate}
+                selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+                refreshTrigger={refreshTrigger}
+              />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="selected" pt="md">
+              <EquipmentList
+                equipmentList={eventEquipment.equipment}
+                setEventEquipment={setEventEquipment}
+                setTotal={setTotal}
+                allowSave={hasChanges}
+                onSave={updateEvent}
+              />
+            </Tabs.Panel>
+          </Tabs>
+        </Box>
+
+        {/* Modal para crear/editar equipos y categorías */}
+        <Modal
+          opened={modalOpened}
+          onClose={() => setModalOpened(false)}
+          title={editItem ? 'Editar' : selectedCategory ? 'Crear equipamiento' : 'Crear categoría'}
+          size="lg"
+          centered
+        >
+          <CreationPanel
+            selectedCategory={selectedCategory}
+            editItem={editItem}
+            onCancel={handleCancel}
+          />
+        </Modal>
+      </>
+    );
+  }
+
+  // Vista desktop: 3 columnas resizables
   return (
     <>
       <PanelGroup direction="horizontal" style={{ overflow: 'hidden' }}>

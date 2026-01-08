@@ -8,7 +8,9 @@ import {
   TableTd,
   TableTh,
   TableThead,
-  TableTr
+  TableTr,
+  Box,
+  Text
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
@@ -17,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
 import { obfuscatePhone } from '@/utils/roleUtils';
+import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 
 interface Client {
   fullName: string;
@@ -60,41 +63,60 @@ export default withPageAuthRequired(function ClientsPage() {
   };
 
   return (
-    <Table>
-      <TableThead>
-        <TableTr>
-          <TableTh>Nombre</TableTh>
-          <TableTh>Email</TableTh>
-          <TableTh>Telefono</TableTh>
-          <TableTh>Acciones</TableTh>
-        </TableTr>
-      </TableThead>
-      <TableTbody>
-        {clientsList.length ? (
-          clientsList.map((client) => (
-            <TableTr key={client.email}>
-              <TableTd>{client.fullName}</TableTd>
-              <TableTd>{client.email}</TableTd>
-              <TableTd>{obfuscatePhone(client.phoneNumber, role, 'client')}</TableTd>
-              <TableTd>
-                {can('canDeleteClients') && (
-                  <IconTrash
-                    color='red'
-                    onClick={() => handleRemoveClient(client._id)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                )}
-              </TableTd>
+    <Box style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Text size='xl' fw={700} mb='md'>
+        Clientes
+      </Text>
+      <Box
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          overflowX: 'auto',
+          width: '100%'
+        }}
+      >
+        <Table>
+          <TableThead>
+            <TableTr>
+              <TableTh>Nombre</TableTh>
+              <TableTh>Email</TableTh>
+              <TableTh>Telefono</TableTh>
+              <TableTh>Acciones</TableTh>
             </TableTr>
-          ))
-        ) : (
-          <TableTr>
-            <TableTd colSpan={4} align='center'>
-              No hay clientes guardados
-            </TableTd>
-          </TableTr>
-        )}
-      </TableTbody>
-    </Table>
+          </TableThead>
+          <TableTbody>
+            {clientsList.length ? (
+              clientsList.map((client) => (
+                <TableTr key={client.email}>
+                  <TableTd>{client.fullName}</TableTd>
+                  <TableTd>{client.email}</TableTd>
+                  <TableTd>{obfuscatePhone(client.phoneNumber, role, 'client')}</TableTd>
+                  <TableTd style={{ textAlign: 'center' }}>
+                    <ProtectedAction
+                      requiredPermission='canDeleteClients'
+                      disableInsteadOfHide={true}
+                      showTooltip={true}
+                      tooltipMessage='No tienes permisos para eliminar clientes'
+                    >
+                      <IconTrash
+                        color='red'
+                        onClick={() => handleRemoveClient(client._id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </ProtectedAction>
+                  </TableTd>
+                </TableTr>
+              ))
+            ) : (
+              <TableTr>
+                <TableTd colSpan={4} align='center'>
+                  No hay clientes guardados
+                </TableTd>
+              </TableTr>
+            )}
+          </TableTbody>
+        </Table>
+      </Box>
+    </Box>
   );
 });

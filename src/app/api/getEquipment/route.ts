@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 
-export const GET = async function handler(req: NextRequest, res: NextApiResponse) {
+export const GET = async function handler(req: NextRequest) {
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { getPermissions, obfuscatePhone } from '@/utils/roleUtils';
 
-export const GET = withAuth(async (context: AuthContext, req: NextRequest, res: NextApiResponse) => {
+export const GET = withAuth(async (context: AuthContext, req: NextRequest) => {
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
