@@ -19,7 +19,7 @@ import {
   IconX
 } from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 
@@ -54,6 +54,12 @@ const EditableData = ({
   });
   const [textHover, setTextHover] = useState(false);
   //  const [textareaHover, setTextareaHover] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  // Detectar dispositivo táctil
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   const notify = useNotification();
 
@@ -281,7 +287,7 @@ const EditableData = ({
       {!editState.showInput && !disabled && (
         <div
           style={{
-            display: textHover ? 'flex' : 'none',
+            display: (textHover || isTouchDevice) ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
             width: '24px',
@@ -694,7 +700,7 @@ const EditableData = ({
       {!editState.showEditableDate && !disabled && (
         <div
           style={{
-            display: textHover ? 'flex' : 'none',
+            display: (textHover || isTouchDevice) ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
             width: '24px',
@@ -943,7 +949,7 @@ const EditableData = ({
       {!editState.showEditableDate && !disabled && (
         <div
           style={{
-            display: textHover ? 'flex' : 'none',
+            display: (textHover || isTouchDevice) ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
             width: '24px',
@@ -1046,7 +1052,7 @@ const EditableData = ({
       {!editState.showInput && !disabled && (
         <div
           style={{
-            display: textHover ? 'flex' : 'none',
+            display: (textHover || isTouchDevice) ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
             width: '24px',

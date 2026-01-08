@@ -6,6 +6,7 @@ import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import { Box, Tabs, Flex } from '@mantine/core';
 import { useResponsive } from '@/hooks/useResponsive';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 export default function EquipmentPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -85,64 +86,73 @@ export default function EquipmentPage() {
     );
   }
 
-  // Vista desktop: 3 columnas
+  // Vista desktop: 3 columnas resizables
   return (
-    <Flex style={{ height: '100vh', overflow: 'hidden' }}>
-      {/* Sidebar - 25% */}
-      <Box
-        w={{ md: '30%', lg: '25%' }}
-        style={{
-          borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <Sidebar
-          onSelect={setSelectedCategory}
-          selectedCategory={selectedCategory}
-          onEdit={handleEdit}
-          newEvent={false}
-        />
-      </Box>
+    <PanelGroup direction="horizontal" style={{ height: '100vh' }}>
+      {/* Sidebar - 25% inicial */}
+      <Panel defaultSize={25} minSize={10} maxSize={50}>
+        <Box
+          style={{
+            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Sidebar
+            onSelect={setSelectedCategory}
+            selectedCategory={selectedCategory}
+            onEdit={handleEdit}
+            newEvent={false}
+          />
+        </Box>
+      </Panel>
 
-      {/* ContentPanel - 55% */}
-      <Box
-        w={{ md: '70%', lg: '55%' }}
-        style={{
-          borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <ContentPanel
-          selectedCategory={selectedCategory}
-          setDisableCreateEquipment={setDisableCreateEquipment}
-          onSelect={setSelectedCategory}
-          onEdit={handleEdit}
-          onCancel={handleCancel}
-          newEvent={false}
-          refreshTrigger={refreshTrigger}
-        />
-      </Box>
+      {/* Divisor arrastrable */}
+      <PanelResizeHandle style={{ width: '2px', background: 'rgba(255,255,255,0.15)' }} />
 
-      {/* CreationPanel - 20% (solo en desktop grande) */}
-      <Box
-        w="20%"
-        display={{ md: 'none', lg: 'flex' }}
-        style={{
-          height: '100vh',
-          flexDirection: 'column',
-          overflowY: 'auto'
-        }}
-      >
-        <CreationPanel
-          selectedCategory={selectedCategory}
-          editItem={editItem}
-          onCancel={handleCancel}
-        />
-      </Box>
-    </Flex>
+      {/* ContentPanel - 55% inicial */}
+      <Panel defaultSize={55} minSize={20} maxSize={80}>
+        <Box
+          style={{
+            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <ContentPanel
+            selectedCategory={selectedCategory}
+            setDisableCreateEquipment={setDisableCreateEquipment}
+            onSelect={setSelectedCategory}
+            onEdit={handleEdit}
+            onCancel={handleCancel}
+            newEvent={false}
+            refreshTrigger={refreshTrigger}
+          />
+        </Box>
+      </Panel>
+
+      {/* Divisor arrastrable */}
+      <PanelResizeHandle style={{ width: '2px', background: 'rgba(255,255,255,0.15)', }}/>
+
+      {/* CreationPanel - 20% inicial */}
+      <Panel defaultSize={20} minSize={10} maxSize={50}>
+        <Box
+          style={{
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto'
+          }}
+        >
+          <CreationPanel
+            selectedCategory={selectedCategory}
+            editItem={editItem}
+            onCancel={handleCancel}
+          />
+        </Box>
+      </Panel>
+    </PanelGroup>
   );
 }

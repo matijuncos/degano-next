@@ -339,7 +339,7 @@ export default function TreeView({
           Cargar equipamiento
         </Button>
       </div>
-      <Divider my='sm' />
+      <Divider my='sm' size={2}/>
       <Input
         placeholder="Buscar equipamiento..."
         value={searchTerm}

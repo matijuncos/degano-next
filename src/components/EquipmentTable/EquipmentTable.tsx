@@ -11,6 +11,7 @@ import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
 import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
@@ -143,74 +144,86 @@ const EquipmentTable = () => {
 
   return (
     <>
-      <div className='flex' style={{ overflow: 'hidden' }}>
-        {/* Sidebar - Categorías */}
-        <Box
-          style={{
-            width: '25%',
-            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <Sidebar
-            onSelect={setSelectedCategory}
-            selectedCategory={selectedCategory}
-            onEdit={handleEdit}
-            onOpenModal={handleOpenModal}
-            newEvent={true}
-            eventStartDate={selectedEvent?.date}
-            eventEndDate={selectedEvent?.endDate}
-            disableEditOnSelect={true}
-          />
-        </Box>
-
-        {/* ContentPanel - Lista de equipos */}
-        <Box
-          style={{
-            width: '55%',
-            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <ContentPanel
-            selectedCategory={selectedCategory}
-            setDisableCreateEquipment={() => {}}
-            onEdit={handleEquipmentSelection}
-            onRemove={(equipmentId: string) => {
-              setEventEquipment((prev) => ({
-                ...prev,
-                equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
-              }));
+      <PanelGroup direction="horizontal" style={{ overflow: 'hidden' }}>
+        {/* Sidebar - Categorías - 25% inicial */}
+        <Panel defaultSize={25} minSize={10} maxSize={50}>
+          <Box
+            style={{
+              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%'
             }}
-            onCancel={handleCancel}
-            newEvent={true}
-            eventStartDate={selectedEvent?.date}
-            eventEndDate={selectedEvent?.endDate}
-            selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
-            refreshTrigger={refreshTrigger}
-          />
-        </Box>
+          >
+            <Sidebar
+              onSelect={setSelectedCategory}
+              selectedCategory={selectedCategory}
+              onEdit={handleEdit}
+              onOpenModal={handleOpenModal}
+              newEvent={true}
+              eventStartDate={selectedEvent?.date}
+              eventEndDate={selectedEvent?.endDate}
+              disableEditOnSelect={true}
+            />
+          </Box>
+        </Panel>
 
-        {/* EquipmentList - Equipos agregados al evento */}
-        <Box
-          style={{
-            width: '20%',
-            display: 'flex',
-            flexDirection: 'column',
-            overflowY: 'auto'
-          }}
-        >
-          <EquipmentList
-            equipmentList={eventEquipment.equipment}
-            setEventEquipment={setEventEquipment}
-            setTotal={setTotal}
-            allowSave={hasChanges}
-            onSave={updateEvent}
-          />
-        </Box>
-      </div>
+        {/* Divisor arrastrable */}
+        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+        {/* ContentPanel - Lista de equipos - 55% inicial */}
+        <Panel defaultSize={55} minSize={20} maxSize={80}>
+          <Box
+            style={{
+              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%'
+            }}
+          >
+            <ContentPanel
+              selectedCategory={selectedCategory}
+              setDisableCreateEquipment={() => {}}
+              onEdit={handleEquipmentSelection}
+              onRemove={(equipmentId: string) => {
+                setEventEquipment((prev) => ({
+                  ...prev,
+                  equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+                }));
+              }}
+              onCancel={handleCancel}
+              newEvent={true}
+              eventStartDate={selectedEvent?.date}
+              eventEndDate={selectedEvent?.endDate}
+              selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+              refreshTrigger={refreshTrigger}
+            />
+          </Box>
+        </Panel>
+
+        {/* Divisor arrastrable */}
+        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+        {/* EquipmentList - Equipos agregados al evento - 20% inicial */}
+        <Panel defaultSize={20} minSize={10} maxSize={50}>
+          <Box
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto',
+              height: '100%'
+            }}
+          >
+            <EquipmentList
+              equipmentList={eventEquipment.equipment}
+              setEventEquipment={setEventEquipment}
+              setTotal={setTotal}
+              allowSave={hasChanges}
+              onSave={updateEvent}
+            />
+          </Box>
+        </Panel>
+      </PanelGroup>
 
       {/* Modal para crear/editar equipos y categorías */}
       <Modal

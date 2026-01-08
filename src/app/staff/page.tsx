@@ -6,6 +6,7 @@ import StaffSidebar from '@/components/Sidebar/StaffSidebar';
 import StaffContentPanel from '@/components/ContentPanel/StaffContentPanel';
 import StaffCreationPanel from '@/components/CreationPanel/StaffCreationPanel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 export default withPageAuthRequired(function StaffPage() {
   const [selectedEmployee, setselectedEmployee] = useState(null);
@@ -72,62 +73,74 @@ export default withPageAuthRequired(function StaffPage() {
     );
   }
 
-  // Vista desktop: 3 columnas
+  // Vista desktop: 3 columnas resizables
   return (
     <>
       <Text size='xl' fw={700}>
         Empleados
       </Text>
-      <Flex style={{ height: '100vh', overflow: 'hidden' }}>
-        <Box
-          w={{ md: '30%', lg: '25%' }}
-          style={{
-            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <StaffSidebar
-            onSelect={setselectedEmployee}
-            selectedEmployee={selectedEmployee}
-            onEdit={handleEdit}
-          />
-        </Box>
+      <PanelGroup direction="horizontal" style={{ height: '100vh' }}>
+        {/* StaffSidebar - 25% inicial */}
+        <Panel defaultSize={25} minSize={10} maxSize={50}>
+          <Box
+            style={{
+              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <StaffSidebar
+              onSelect={setselectedEmployee}
+              selectedEmployee={selectedEmployee}
+              onEdit={handleEdit}
+            />
+          </Box>
+        </Panel>
 
-        <Box
-          w={{ md: '70%', lg: '55%' }}
-          style={{
-            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <StaffContentPanel
-            selectedEmployee={selectedEmployee}
-            setDisableCreateEquipment={setDisableCreateEquipment}
-            onEdit={handleEdit}
-            onCancel={handleCancel}
-          />
-        </Box>
+        {/* Divisor arrastrable */}
+        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
-        <Box
-          w="20%"
-          display={{ md: 'none', lg: 'flex' }}
-          style={{
-            height: '100vh',
-            flexDirection: 'column',
-            overflowY: 'auto'
-          }}
-        >
-          <StaffCreationPanel
-            selectedEmployee={selectedEmployee}
-            editItem={editItem}
-            onCancel={handleCancel}
-          />
-        </Box>
-      </Flex>
+        {/* StaffContentPanel - 55% inicial */}
+        <Panel defaultSize={55} minSize={20} maxSize={80}>
+          <Box
+            style={{
+              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <StaffContentPanel
+              selectedEmployee={selectedEmployee}
+              setDisableCreateEquipment={setDisableCreateEquipment}
+              onEdit={handleEdit}
+              onCancel={handleCancel}
+            />
+          </Box>
+        </Panel>
+
+        {/* Divisor arrastrable */}
+        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+        {/* StaffCreationPanel - 20% inicial */}
+        <Panel defaultSize={20} minSize={10} maxSize={50}>
+          <Box
+            style={{
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto'
+            }}
+          >
+            <StaffCreationPanel
+              selectedEmployee={selectedEmployee}
+              editItem={editItem}
+              onCancel={handleCancel}
+            />
+          </Box>
+        </Panel>
+      </PanelGroup>
     </>
   );
 });

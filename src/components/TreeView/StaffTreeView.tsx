@@ -250,7 +250,7 @@ export default function StaffTreeView({
           </Button>
         )}
       </div>
-      <Divider my='sm' />
+      <Divider my='sm' size={2}/>
       <Input
         placeholder="Buscar empleado..."
         value={searchTerm}

@@ -6,6 +6,7 @@ import BandsSidebar from '@/components/Sidebar/BandsSidebar';
 import BandsContentPanel from '@/components/ContentPanel/BandsContentPanel';
 import BandsCreationPanel from '@/components/CreationPanel/BandsCreationPanel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 export default withPageAuthRequired(function BandsPage() {
   const [selectedBand, setselectedBand] = useState(null);
@@ -70,61 +71,73 @@ export default withPageAuthRequired(function BandsPage() {
     );
   }
 
-  // Vista desktop: 3 columnas
+  // Vista desktop: 3 columnas resizables
   return (
     <>
       <Text size='xl' fw={700}>
         Bandas
       </Text>
-      <Flex style={{ height: '100vh', overflow: 'hidden' }}>
-        <Box
-          w={{ md: '30%', lg: '25%' }}
-          style={{
-            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <BandsSidebar
-            onSelect={setselectedBand}
-            selectedBand={selectedBand}
-            onEdit={handleEdit}
-          />
-        </Box>
+      <PanelGroup direction="horizontal" style={{ height: '100vh' }}>
+        {/* BandsSidebar - 25% inicial */}
+        <Panel defaultSize={25} minSize={10} maxSize={50}>
+          <Box
+            style={{
+              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <BandsSidebar
+              onSelect={setselectedBand}
+              selectedBand={selectedBand}
+              onEdit={handleEdit}
+            />
+          </Box>
+        </Panel>
 
-        <Box
-          w={{ md: '70%', lg: '55%' }}
-          style={{
-            borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <BandsContentPanel
-            selectedBand={selectedBand}
-            onEdit={handleEdit}
-            onCancel={handleCancel}
-          />
-        </Box>
+        {/* Divisor arrastrable */}
+        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
-        <Box
-          w="20%"
-          display={{ md: 'none', lg: 'flex' }}
-          style={{
-            height: '100vh',
-            flexDirection: 'column',
-            overflowY: 'auto'
-          }}
-        >
-          <BandsCreationPanel
-            selectedBand={selectedBand}
-            editItem={editItem}
-            onCancel={handleCancel}
-          />
-        </Box>
-      </Flex>
+        {/* BandsContentPanel - 55% inicial */}
+        <Panel defaultSize={55} minSize={20} maxSize={80}>
+          <Box
+            style={{
+              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <BandsContentPanel
+              selectedBand={selectedBand}
+              onEdit={handleEdit}
+              onCancel={handleCancel}
+            />
+          </Box>
+        </Panel>
+
+        {/* Divisor arrastrable */}
+        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+        {/* BandsCreationPanel - 20% inicial */}
+        <Panel defaultSize={20} minSize={10} maxSize={50}>
+          <Box
+            style={{
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto'
+            }}
+          >
+            <BandsCreationPanel
+              selectedBand={selectedBand}
+              editItem={editItem}
+              onCancel={handleCancel}
+            />
+          </Box>
+        </Panel>
+      </PanelGroup>
     </>
   );
 });

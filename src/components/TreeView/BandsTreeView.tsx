@@ -198,7 +198,7 @@ export default function BandsTreeView({
           </Button>
         )}
       </div>
-      <Divider my='sm' />
+      <Divider my='sm' size={2}/>
       <Input
         placeholder="Buscar banda..."
         value={searchTerm}
