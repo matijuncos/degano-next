@@ -65,13 +65,7 @@ export default function ContentPanel({
       return { label: 'No Disponible', color: 'red' };
     }
 
-    // Verificar si está en uso por ubicación (prestado, en traslado, etc.)
-    const locationLower = item.location?.trim().toLowerCase() || '';
-    if (locationLower && locationLower !== 'deposito') {
-      return { label: 'En Uso', color: '#fbbf24' };
-    }
-
-    // Disponible: en Deposito y no fuera de servicio
+    // Disponible: no está fuera de servicio
     return { label: 'Disponible', color: 'green' };
   };
 
