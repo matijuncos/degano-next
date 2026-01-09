@@ -29,7 +29,11 @@ export default function CreationPanel({
   const canViewPrices = can('canViewEquipmentPrices');
   const canEditEquipment = can('canEditEquipment');
   const canCreateEquipment = can('canCreateEquipment');
-  const [formData, setFormData] = useState<any>({ isOut: false });
+  const [formData, setFormData] = useState<any>({
+    isOut: false,
+    location: 'Deposito',
+    propiedad: 'Degano'
+  });
   const [customLocation, setCustomLocation] = useState<string>('');
   const { data: locations = [] } = useSWR('/api/equipmentLocation', (url) =>
     fetch(url).then((res) => res.json())
@@ -80,7 +84,11 @@ export default function CreationPanel({
         });
       }
     } else {
-      setFormData({ isOut: false });
+      setFormData({
+        isOut: false,
+        location: 'Deposito',
+        propiedad: 'Degano'
+      });
     }
   }, [editItem]);
 
@@ -186,7 +194,11 @@ export default function CreationPanel({
       body: JSON.stringify({ ...payload, _id: id })
     });
 
-    setFormData({});
+    setFormData({
+      isOut: false,
+      location: 'Deposito',
+      propiedad: 'Degano'
+    });
     setCustomLocation('');
     const updatedItem = await res.json();
 
@@ -206,7 +218,11 @@ export default function CreationPanel({
   };
 
   const handleCancel = () => {
-    setFormData({});
+    setFormData({
+      isOut: false,
+      location: 'Deposito',
+      propiedad: 'Degano'
+    });
     setCustomLocation('');
     onCancel?.(true);
   };

@@ -127,10 +127,11 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   }
 
   // PASO 2: Obtener equipos actualizados
+  // Ordenar por createdAt (más recientes primero) y luego alfabéticamente por nombre
   const equipments = await db
     .collection('equipment')
     .find()
-    .sort({ name: 1 })
+    .sort({ createdAt: -1, name: 1 })
     .toArray();
 
   // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara basada en scheduledUses
@@ -182,7 +183,13 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  const newEq = await db.collection('equipment').insertOne(body);
+  // Agregar timestamp de creación
+  const equipmentData = {
+    ...body,
+    createdAt: new Date()
+  };
+
+  const newEq = await db.collection('equipment').insertOne(equipmentData);
 
   const deltaAvailable = body.outOfService?.isOut ? 0 : 1;
   // Actualizar toda la jerarquía de categorías padre
@@ -203,7 +210,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     details: `Equipamiento creado: ${body.brand} ${body.model}`
   });
 
-  return NextResponse.json({ ...body, _id: newEq.insertedId });
+  return NextResponse.json({ ...equipmentData, _id: newEq.insertedId });
 });
 
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
