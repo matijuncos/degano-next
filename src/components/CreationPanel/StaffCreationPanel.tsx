@@ -25,6 +25,7 @@ export default function StaffCreationPanel({
     observations: '',
     birthDate: null
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const notify = useNotification();
   const { can } = usePermissions();
   const newEmployee = selectedEmployee?._id === '';
@@ -50,6 +51,7 @@ export default function StaffCreationPanel({
   };
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     notify({ loading: true });
     if (formData.license === 'NO') {
       delete formData.licenseType;
@@ -69,11 +71,13 @@ export default function StaffCreationPanel({
       notify({
         message: formData._id ? 'Empleado actualizado' : 'Empleado creado'
       });
+      onCancel?.(false);
     } catch (error) {
       console.error(error);
       notify({ type: 'defaultError' });
+    } finally {
+      setIsSubmitting(false);
     }
-    onCancel?.(false);
   };
 
   const handleCancel = () => {
@@ -138,11 +142,11 @@ export default function StaffCreationPanel({
       </div>
       <Group mt='md' style={{ paddingBottom: 10 }}>
         {can('canEditEmployees') && (
-          <Button onClick={handleSubmit}>
+          <Button onClick={handleSubmit} loading={isSubmitting} disabled={isSubmitting}>
             {newEmployee ? 'Finalizar carga' : 'Actualizar'}
           </Button>
         )}
-        <Button variant='default' color='gray' onClick={handleCancel}>
+        <Button variant='default' color='gray' onClick={handleCancel} disabled={isSubmitting}>
           Cancelar
         </Button>
       </Group>

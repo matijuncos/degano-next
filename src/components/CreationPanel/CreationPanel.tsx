@@ -42,6 +42,7 @@ export default function CreationPanel({
     historyModalOpened,
     { open: openHistory, close: closeHistory }
   ] = useDisclosure(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isCreatingCategory =
     selectedCategory?._id === '' && !selectedCategory?.parentIdOriginal;
@@ -129,92 +130,99 @@ export default function CreationPanel({
   };
 
   const handleSubmit = async () => {
-    const isEdit = !!editItem;
-    const endpoint =
-      isCreatingCategory || isEditingCategory
-        ? '/api/categories'
-        : '/api/equipment';
-    const method = isEdit ? 'PUT' : 'POST';
-    const id = editItem?._id;
+    setIsSubmitting(true);
+    try {
+      const isEdit = !!editItem;
+      const endpoint =
+        isCreatingCategory || isEditingCategory
+          ? '/api/categories'
+          : '/api/equipment';
+      const method = isEdit ? 'PUT' : 'POST';
+      const id = editItem?._id;
 
-    let locationValue = formData.location;
-    if (customLocation && !locations.includes(customLocation)) {
-      const res = await fetch('/api/equipmentLocation', {
-        method: 'POST',
+      let locationValue = formData.location;
+      if (customLocation && !locations.includes(customLocation)) {
+        const res = await fetch('/api/equipmentLocation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: customLocation })
+        });
+        const result = await res.json();
+        locationValue = result.name;
+      }
+
+      let imageUrl = formData.imageUrl;
+      if (formData.imageFile instanceof File) {
+        imageUrl = await uploadToS3(formData.imageFile);
+      }
+
+      let pdfUrl = formData.pdfUrl;
+      if (formData.pdfFile instanceof File) {
+        pdfUrl = await uploadToS3(formData.pdfFile);
+      }
+
+      const payload =
+        isCreatingCategory || isEditingCategory
+          ? {
+              name: formData.name,
+              parentId: editItem?.parentId || selectedCategory.parentId
+            }
+          : {
+              name: formData.name,
+              code: formData.code,
+              categoryId:
+                editItem?.categoryId || selectedCategory.parentIdOriginal,
+              outOfService: {
+                isOut: formData.isOut,
+                reason: formData.reason || ''
+              },
+              history: formData.history || '',
+              brand: formData.brand,
+              model: formData.model,
+              serialNumber: formData.serialNumber,
+              rentalPrice: formData.rentalPrice,
+              investmentPrice: formData.investmentPrice,
+              weight: formData.weight,
+              location: locationValue,
+              propiedad: formData.propiedad || 'Degano',
+              imageUrl,
+              pdfUrl,
+              pdfFileName:
+                formData.pdfFile?.name || `${formData.name} ${formData.model}.pdf`
+            };
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: customLocation })
+        body: JSON.stringify({ ...payload, _id: id })
       });
-      const result = await res.json();
-      locationValue = result.name;
+
+      setFormData({
+        isOut: false,
+        location: 'Deposito',
+        propiedad: 'Degano'
+      });
+      setCustomLocation('');
+      const updatedItem = await res.json();
+
+      // Invalidar todos los caches relevantes
+      await Promise.all([
+        mutate('/api/categories'),
+        mutate('/api/equipment'),
+        mutate('/api/treeData'),
+        mutate('/api/categoryTreeData'),
+        mutate('/api/equipmentLocation')
+      ]);
+
+      // Invalidar también los caches con filtros de fecha (si existen)
+      mutate((key) => typeof key === 'string' && key.startsWith('/api/equipment?'));
+
+      onCancel?.(false, updatedItem);
+    } catch (error) {
+      console.error('Error submitting:', error);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    let imageUrl = formData.imageUrl;
-    if (formData.imageFile instanceof File) {
-      imageUrl = await uploadToS3(formData.imageFile);
-    }
-
-    let pdfUrl = formData.pdfUrl;
-    if (formData.pdfFile instanceof File) {
-      pdfUrl = await uploadToS3(formData.pdfFile);
-    }
-
-    const payload =
-      isCreatingCategory || isEditingCategory
-        ? {
-            name: formData.name,
-            parentId: editItem?.parentId || selectedCategory.parentId
-          }
-        : {
-            name: formData.name,
-            code: formData.code,
-            categoryId:
-              editItem?.categoryId || selectedCategory.parentIdOriginal,
-            outOfService: {
-              isOut: formData.isOut,
-              reason: formData.reason || ''
-            },
-            history: formData.history || '',
-            brand: formData.brand,
-            model: formData.model,
-            serialNumber: formData.serialNumber,
-            rentalPrice: formData.rentalPrice,
-            investmentPrice: formData.investmentPrice,
-            weight: formData.weight,
-            location: locationValue,
-            propiedad: formData.propiedad || 'Degano',
-            imageUrl,
-            pdfUrl,
-            pdfFileName:
-              formData.pdfFile?.name || `${formData.name} ${formData.model}.pdf`
-          };
-
-    const res = await fetch(endpoint, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, _id: id })
-    });
-
-    setFormData({
-      isOut: false,
-      location: 'Deposito',
-      propiedad: 'Degano'
-    });
-    setCustomLocation('');
-    const updatedItem = await res.json();
-
-    // Invalidar todos los caches relevantes
-    await Promise.all([
-      mutate('/api/categories'),
-      mutate('/api/equipment'),
-      mutate('/api/treeData'),
-      mutate('/api/categoryTreeData'),
-      mutate('/api/equipmentLocation')
-    ]);
-
-    // Invalidar también los caches con filtros de fecha (si existen)
-    mutate((key) => typeof key === 'string' && key.startsWith('/api/equipment?'));
-
-    onCancel?.(false, updatedItem);
   };
 
   const handleCancel = () => {
@@ -572,17 +580,19 @@ export default function CreationPanel({
       <Group mt='md' style={{ paddingBottom: 10 }}>
         <Button
           onClick={handleSubmit}
+          loading={isSubmitting}
           disabled={
-            (isCreatingCategory || isCreatingEquipment)
+            isSubmitting ||
+            ((isCreatingCategory || isCreatingEquipment)
               ? !canCreateEquipment
-              : !canEditEquipment
+              : !canEditEquipment)
           }
         >
           {isCreatingCategory || isCreatingEquipment
             ? 'Finalizar carga'
             : 'Actualizar'}
         </Button>
-        <Button variant='default' color='gray' onClick={handleCancel}>
+        <Button variant='default' color='gray' onClick={handleCancel} disabled={isSubmitting}>
           Cancelar
         </Button>
       </Group>

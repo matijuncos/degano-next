@@ -43,6 +43,7 @@ export default function BandsCreationPanel({
     null
   );
   const [waitingAws, setWaitingAws] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { can } = usePermissions();
 
   const [formData, setFormData] = useState<any>({});
@@ -90,6 +91,7 @@ export default function BandsCreationPanel({
   };
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     notify({ loading: true });
     try {
       if (formData.type === 'band') {
@@ -136,6 +138,8 @@ export default function BandsCreationPanel({
     } catch (error) {
       console.error(error);
       notify({ type: 'defaultError' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -475,17 +479,18 @@ export default function BandsCreationPanel({
         style={{ paddingBottom: 10, justifyContent: 'space-around' }}
       >
         {can('canEditShows') && (
-          <Button onClick={handleSubmit}>
+          <Button onClick={handleSubmit} loading={isSubmitting} disabled={isSubmitting}>
             {newEntity ? 'Finalizar carga' : 'Actualizar'}
           </Button>
         )}
-        <Button variant='default' color='gray' onClick={handleCancel}>
+        <Button variant='default' color='gray' onClick={handleCancel} disabled={isSubmitting}>
           Cancelar
         </Button>
         {can('canDeleteShows') && (
           <Button
             color='red'
             variant='light'
+            disabled={isSubmitting}
             onClick={() => {
               setContactToDelete(formData);
               setDeleteModalOpen(true);
