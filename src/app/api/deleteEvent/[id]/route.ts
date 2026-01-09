@@ -47,7 +47,7 @@ export const DELETE = withAuth(
       await db.collection('equipment').updateMany(
         { _id: { $in: eventEquipmentIds.map((id: string) => new ObjectId(id)) } },
         {
-          $pull: { scheduledUses: { eventId: eventId } }
+          $pull: { scheduledUses: { eventId: eventId } } as any
         }
       );
 
@@ -96,6 +96,7 @@ export const DELETE = withAuth(
               toValue: 'Disponible',
               details: `Liberado automáticamente - evento "${event.type || event.name}" eliminado`
             });
+          }
         }
       }
     }
