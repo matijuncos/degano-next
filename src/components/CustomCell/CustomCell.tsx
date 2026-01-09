@@ -1,6 +1,6 @@
 import React from 'react';
 import { TableTd, Input, Text } from '@mantine/core';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 
 interface CustomCellProps {
   field: any;

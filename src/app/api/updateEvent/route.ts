@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
-import { NewEquipment } from '@/components/equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {

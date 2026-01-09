@@ -38,7 +38,6 @@ const HomeTile = ({
   // Verificar permiso según path
   const hasPermission = (() => {
     if (path === '/clients') return can('canViewClients');
-    if (path === '/equipment-stock-v2') return can('canEditEquipment');
     if (path === '/new-event') return can('canCreateEvents');
     // Otros paths son accesibles para todos
     return true;

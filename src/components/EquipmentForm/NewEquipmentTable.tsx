@@ -1,5 +1,5 @@
 import React from 'react';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 
 type inputProps = {
   newEquipment: NewEquipment;

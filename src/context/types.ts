@@ -1,4 +1,4 @@
-import { NewEquipment } from '@/components/equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 import { ReactNode } from 'react';
 
 export interface ExtraContact {

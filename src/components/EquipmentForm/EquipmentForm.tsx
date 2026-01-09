@@ -5,7 +5,7 @@ import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { Box, Button, Modal } from '@mantine/core';
 import { useEffect, useState } from 'react';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 import EquipmentList from './EquipmentList';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';

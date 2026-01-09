@@ -3,7 +3,7 @@ import { ActionIcon, Group, Text, Stack, Divider, Button, Box } from '@mantine/c
 import { useEffect, useState } from 'react';
 import { FaTrashAlt } from 'react-icons/fa';
 import React from 'react';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 import { EventModel } from '@/context/types';
 import { formatPrice } from '@/utils/priceUtils';
 import { findMainCategorySync } from '@/utils/categoryUtils';

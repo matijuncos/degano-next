@@ -8,7 +8,7 @@ import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import { Box, Modal, Tabs } from '@mantine/core';
 import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
-import { NewEquipment } from '../equipmentStockTable/types';
+import { NewEquipment } from '@/types/equipment';
 import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';

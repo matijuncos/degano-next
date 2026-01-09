@@ -248,7 +248,6 @@ export default function NavBar() {
       {/* Solo admin */}
       {isAdmin && (
         <>
-          <Link href="/equipment-stock">Stock</Link>
           <Link href="/payments">Pagos</Link>
         </>
       )}
@@ -276,7 +275,6 @@ export default function HomeTile({ path, title }: { path: string; title: string 
   // Verificar permiso según path
   const hasPermission = (() => {
     if (path === '/clients') return can('canViewClients');
-    if (path === '/equipment-stock-v2') return can('canManageEquipment');
     if (path === '/payments') return can('canViewPayments');
     return true;
   })();
