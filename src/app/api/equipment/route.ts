@@ -8,37 +8,6 @@ import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } fr
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { getPermissions } from '@/utils/roleUtils';
 
-// Función para actualizar el stock de todas las categorías padre
-async function updateParentCategoriesStock(
-  db: any,
-  categoryId: string,
-  totalStockDelta: number,
-  availableStockDelta: number
-) {
-  let currentCategoryId: string | null = categoryId;
-
-  while (currentCategoryId) {
-    // Actualizar la categoría actual
-    await db.collection('categories').updateOne(
-      { _id: new ObjectId(currentCategoryId) },
-      {
-        $inc: {
-          totalStock: totalStockDelta,
-          availableStock: availableStockDelta
-        }
-      }
-    );
-
-    // Buscar el padre de la categoría actual
-    const category: { parentId?: string | null } | null = await db
-      .collection('categories')
-      .findOne({ _id: new ObjectId(currentCategoryId) });
-
-    // Si la categoría tiene un padre, continuar; si no, terminar
-    currentCategoryId = category?.parentId || null;
-  }
-}
-
 export const GET = withAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
   const eventStartDate = searchParams.get('eventStartDate');
@@ -127,11 +96,11 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   }
 
   // PASO 2: Obtener equipos actualizados
-  // Ordenar por createdAt (más recientes primero) y luego alfabéticamente por nombre
+  // Ordenar por createdAt (más viejos primero) y luego alfabéticamente por nombre
   const equipments = await db
     .collection('equipment')
     .find()
-    .sort({ createdAt: -1, name: 1 })
+    .sort({ createdAt: 1, name: 1 })
     .toArray();
 
   // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara basada en scheduledUses
@@ -191,15 +160,6 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
 
   const newEq = await db.collection('equipment').insertOne(equipmentData);
 
-  const deltaAvailable = body.outOfService?.isOut ? 0 : 1;
-  // Actualizar toda la jerarquía de categorías padre
-  await updateParentCategoriesStock(
-    db,
-    body.categoryId,
-    1, // Incrementar totalStock
-    deltaAvailable // Incrementar availableStock (0 si está fuera de servicio)
-  );
-
   // Registrar creación en historial
   await createHistoryEntry(db, {
     equipmentId: newEq.insertedId.toString(),
@@ -222,25 +182,8 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   const objectId = new ObjectId(String(_id));
 
   const oldItem = await db.collection('equipment').findOne({ _id: objectId });
-  const wasOut = oldItem?.outOfService?.isOut;
-  const isOut = rest?.outOfService?.isOut;
 
   await db.collection('equipment').updateOne({ _id: objectId }, { $set: rest });
-
-  let deltaAvailable = 0;
-  if (wasOut !== isOut) {
-    deltaAvailable = wasOut && !isOut ? 1 : !wasOut && isOut ? -1 : 0;
-  }
-
-  if (deltaAvailable !== 0) {
-    // Actualizar toda la jerarquía de categorías padre
-    await updateParentCategoriesStock(
-      db,
-      rest.categoryId,
-      0, // No cambia totalStock en una edición
-      deltaAvailable // Solo cambia availableStock si cambió el estado
-    );
-  }
 
   // Detectar cambios y registrar en historial
   if (oldItem) {
@@ -302,20 +245,6 @@ export const DELETE = withAuth(async (context: AuthContext, req: Request) => {
 
   const client = await clientPromise;
   const db = client.db('degano-app');
-
-  const equipment = await db
-    .collection('equipment')
-    .findOne({ _id: new ObjectId(id) });
-  if (equipment) {
-    const deltaAvailable = equipment.outOfService?.isOut ? 0 : -1;
-    // Actualizar toda la jerarquía de categorías padre
-    await updateParentCategoriesStock(
-      db,
-      equipment.categoryId,
-      -1, // Decrementar totalStock
-      deltaAvailable // Decrementar availableStock (0 si estaba fuera de servicio)
-    );
-  }
 
   await db.collection('equipment').deleteOne({ _id: new ObjectId(id) });
 

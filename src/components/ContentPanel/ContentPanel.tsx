@@ -197,6 +197,10 @@ export default function ContentPanel({
     if (!selectedCategory) return null;
     if (children.length > 0) {
       return children.map((child: any, index: number) => {
+        // Calcular stock dinámicamente para cada subcategoría
+        const childEquipment = equipment.filter((eq: any) => eq.categoryId === child._id);
+        const childTotalStock = childEquipment.length;
+        const childAvailableStock = childEquipment.filter((eq: any) => !eq.outOfService?.isOut).length;
 
         return (
           <tr
@@ -211,12 +215,14 @@ export default function ContentPanel({
             onClick={() => onEdit?.(child)}
           >
             <td>{child.name}</td>
-            <td>{child.totalStock ?? '-'}</td>
-            <td>{child.availableStock ?? '-'}</td>
+            <td>{childTotalStock}</td>
+            <td>{childAvailableStock}</td>
           </tr>
         );
       });
     } else if (isCategory) {
+      // Calcular stock dinámicamente basado en los equipos reales
+      const dynamicTotalStock = items.length;
       const dynamicAvailableStock = items.filter(
         (item: any) => !item.outOfService?.isOut
       ).length;
@@ -288,7 +294,7 @@ export default function ContentPanel({
               </td>
             )}
             <td style={{ padding: '0 5px' }}>{item.name}</td>
-            <td style={{ padding: '0 5px' }}>{selectedCategory?.totalStock}</td>
+            <td style={{ padding: '0 5px' }}>{dynamicTotalStock}</td>
             <td style={{ padding: '0 5px' }}>{dynamicAvailableStock}</td>
             <td style={{ padding: '0 5px' }}>{item.code}</td>
             <td style={{ padding: '0 5px' }}>{item.brand}</td>

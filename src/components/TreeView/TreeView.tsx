@@ -18,8 +18,6 @@ export type CategoryNode = {
   parentId: string | null;
   parentIdOriginal?: string | null;
   categoryId?: string;
-  totalStock?: number;
-  availableStock?: number;
   children?: CategoryNode[];
 };
 
@@ -362,7 +360,7 @@ export default function TreeView({
         style={{
           overflowY: 'auto',
           overflowX: 'auto',
-          paddingBottom: '10px'
+          paddingBottom: '30px'
         }}
       >
         {isLoading ? (
