@@ -129,25 +129,27 @@ export default function StaffContentPanel({
   };
 
   return (
-    <div style={{ padding: '1rem', width: '100%', overflowX: 'auto' }}>
+    <div style={{ padding: '1rem', width: '100%' }}>
       {renderTitle()}
       {selectedEmployee && selectedEmployee._id && (
-        <Table
-          striped
-          highlightOnHover
-          withColumnBorders
-          withRowBorders
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            minWidth: '600px'
-          }}
-        >
-          <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-            {renderHeader()}
-          </thead>
-          <tbody>{renderRows()}</tbody>
-        </Table>
+        <div style={{ overflow: 'auto', maxHeight: '100vh', paddingBottom: '70px' }}>
+          <Table
+            striped
+            highlightOnHover
+            withColumnBorders
+            withRowBorders
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              minWidth: '600px'
+            }}
+          >
+            <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+              {renderHeader()}
+            </thead>
+            <tbody>{renderRows()}</tbody>
+          </Table>
+        </div>
       )}
 
       <Modal

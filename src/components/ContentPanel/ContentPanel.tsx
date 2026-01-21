@@ -480,7 +480,7 @@ export default function ContentPanel({
     <Box p="md" w="100%">
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
-        <Box style={{ overflowX: 'auto', width: '100%' }}>
+        <Box style={{ overflow: 'auto', maxHeight: '100vh', width: '100%', paddingBottom: '70px' }}>
           <Table
             striped
             highlightOnHover
