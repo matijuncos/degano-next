@@ -7,8 +7,8 @@ export async function GET() {
   const db = client.db('degano-app');
 
   const categories = await db.collection('categories').find().sort({name: 1}).toArray();
-  // Ordenar por createdAt (más recientes primero) y luego alfabéticamente por nombre
-  const equipment = await db.collection('equipment').find().sort({createdAt: -1, name: 1}).toArray();
+  // Ordenar por createdAt (más viejos primero) y luego alfabéticamente por nombre
+  const equipment = await db.collection('equipment').find().sort({createdAt: 1, name: 1}).toArray();
 
   const equipmentNodes = equipment.map(eq => ({
     _id: eq._id.toString(),
@@ -21,9 +21,7 @@ export async function GET() {
     ...categories.map(c => ({
       _id: c._id.toString(),
       name: c.name,
-      parentId: c.parentId,
-      totalStock: c?.totalStock,
-      availableStock: c?.availableStock
+      parentId: c.parentId
     })),
     ...equipmentNodes,
   ];

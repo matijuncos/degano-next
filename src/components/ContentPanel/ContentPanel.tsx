@@ -173,6 +173,7 @@ export default function ContentPanel({
           <th>Modelo</th>
           <th>N° Serie</th>
           <th>Propiedad</th>
+          <th>Ubicación</th>
           <th>Estado</th>
           {!newEvent && <th>Acciones</th>}
         </tr>
@@ -186,8 +187,8 @@ export default function ContentPanel({
           <th>Modelo</th>
           <th>N° Serie</th>
           <th>Propiedad</th>
+          <th>Ubicación</th>
           <th>Estado</th>
-          <th>Locación</th>
         </tr>
       );
     }
@@ -197,6 +198,10 @@ export default function ContentPanel({
     if (!selectedCategory) return null;
     if (children.length > 0) {
       return children.map((child: any, index: number) => {
+        // Calcular stock dinámicamente para cada subcategoría
+        const childEquipment = equipment.filter((eq: any) => eq.categoryId === child._id);
+        const childTotalStock = childEquipment.length;
+        const childAvailableStock = childEquipment.filter((eq: any) => !eq.outOfService?.isOut).length;
 
         return (
           <tr
@@ -211,12 +216,14 @@ export default function ContentPanel({
             onClick={() => onEdit?.(child)}
           >
             <td>{child.name}</td>
-            <td>{child.totalStock ?? '-'}</td>
-            <td>{child.availableStock ?? '-'}</td>
+            <td>{childTotalStock}</td>
+            <td>{childAvailableStock}</td>
           </tr>
         );
       });
     } else if (isCategory) {
+      // Calcular stock dinámicamente basado en los equipos reales
+      const dynamicTotalStock = items.length;
       const dynamicAvailableStock = items.filter(
         (item: any) => !item.outOfService?.isOut
       ).length;
@@ -288,13 +295,14 @@ export default function ContentPanel({
               </td>
             )}
             <td style={{ padding: '0 5px' }}>{item.name}</td>
-            <td style={{ padding: '0 5px' }}>{selectedCategory?.totalStock}</td>
+            <td style={{ padding: '0 5px' }}>{dynamicTotalStock}</td>
             <td style={{ padding: '0 5px' }}>{dynamicAvailableStock}</td>
             <td style={{ padding: '0 5px' }}>{item.code}</td>
             <td style={{ padding: '0 5px' }}>{item.brand}</td>
             <td style={{ padding: '0 5px' }}>{item.model}</td>
             <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
             <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
+            <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
             <td
               style={{
                 color: displayColor,
@@ -351,6 +359,7 @@ export default function ContentPanel({
           <td style={{ padding: '0 5px' }}>{item.model}</td>
           <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
           <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
+          <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
           <td
             style={{
               color: displayColor,
@@ -359,7 +368,6 @@ export default function ContentPanel({
           >
             {displayStatus}
           </td>
-          <td style={{ padding: '0 5px' }}>{item.location}</td>
         </tr>
       );
     }
@@ -474,7 +482,7 @@ export default function ContentPanel({
     <Box p="md" w="100%">
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
-        <Box style={{ overflowX: 'auto', width: '100%' }}>
+        <Box style={{ overflow: 'auto', maxHeight: '100vh', width: '100%', paddingBottom: '70px' }}>
           <Table
             striped
             highlightOnHover

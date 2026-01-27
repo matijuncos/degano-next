@@ -8,9 +8,14 @@ import {
   NumberInput,
   Select,
   Textarea,
-  Group
+  Group,
+  Modal,
+  ActionIcon,
+  Text,
+  Stack,
+  Box
 } from '@mantine/core';
-import { IconUpload, IconFile, IconHistory } from '@tabler/icons-react';
+import { IconUpload, IconFile, IconHistory, IconTrash } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { formatPrice } from '@/utils/priceUtils';
 import EquipmentHistoryModal from '@/components/EquipmentHistory/EquipmentHistoryModal';
@@ -43,6 +48,9 @@ export default function CreationPanel({
     { open: openHistory, close: closeHistory }
   ] = useDisclosure(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isCreatingCategory =
     selectedCategory?._id === '' && !selectedCategory?.parentIdOriginal;
@@ -235,6 +243,48 @@ export default function CreationPanel({
     onCancel?.(true);
   };
 
+  const handleDeleteLocation = async () => {
+    if (!locationToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/equipmentLocation?name=${encodeURIComponent(locationToDelete)}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Error al eliminar localización');
+        return;
+      }
+
+      // Actualizar cache de localizaciones
+      await mutate('/api/equipmentLocation');
+
+      // Si el equipo actual usaba esta localización, resetearla
+      if (formData.location === locationToDelete) {
+        setFormData({ ...formData, location: 'Deposito' });
+      }
+
+      setDeleteModalOpened(false);
+      setLocationToDelete(null);
+    } catch (error) {
+      console.error('Error deleting location:', error);
+      alert('Error al eliminar localización');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (locationName: string) => {
+    setLocationToDelete(locationName);
+    setDeleteModalOpened(true);
+  };
+
+  // Ordenar localizaciones alfabéticamente
+  const sortedLocations = [...locations].sort((a, b) => a.localeCompare(b));
+
   if (!isCreatingCategory && !isCreatingEquipment && !editItem) return null;
 
   return (
@@ -332,7 +382,7 @@ export default function CreationPanel({
           />
           <Select
             label='Localización'
-            data={[...locations, 'Otra...']}
+            data={[...sortedLocations, 'Otra...']}
             value={String(formData.location || '')}
             onChange={(val) => {
               if (val === 'Otra...') {
@@ -340,6 +390,32 @@ export default function CreationPanel({
               } else {
                 setFormData({ ...formData, location: val });
               }
+            }}
+            renderOption={({ option }) => {
+              // No mostrar tachito en "Otra..."
+              if (option.value === 'Otra...') {
+                return <Text size="sm">{option.value}</Text>;
+              }
+
+              return (
+                <Group justify="space-between" wrap="nowrap" style={{ width: '100%' }}>
+                  <Text size="sm" style={{ flex: 1 }}>{option.value}</Text>
+                  <ActionIcon
+                    size="xs"
+                    color="red"
+                    variant="subtle"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openDeleteModal(option.value);
+                    }}
+                    title="Eliminar localización"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <IconTrash size={12} />
+                  </ActionIcon>
+                </Group>
+              );
             }}
           />
           {formData.location === '' && (
@@ -619,6 +695,43 @@ export default function CreationPanel({
           />
         </>
       )}
+
+      {/* Modal de confirmación de eliminación de localización */}
+      <Modal
+        opened={deleteModalOpened}
+        onClose={() => {
+          setDeleteModalOpened(false);
+          setLocationToDelete(null);
+        }}
+        title="¿Eliminar localización?"
+        centered
+      >
+        <Text mb="md">
+          ¿Estás seguro que querés eliminar la localización "<strong>{locationToDelete}</strong>"?
+        </Text>
+        <Text size="sm" c="dimmed" mb="lg">
+          Esta acción no se puede deshacer. Solo se puede eliminar si no hay equipos asignados a esta localización.
+        </Text>
+        <Group justify="flex-end">
+          <Button
+            variant="default"
+            onClick={() => {
+              setDeleteModalOpened(false);
+              setLocationToDelete(null);
+            }}
+            disabled={isDeleting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="red"
+            onClick={handleDeleteLocation}
+            loading={isDeleting}
+          >
+            Eliminar
+          </Button>
+        </Group>
+      </Modal>
     </div>
   );
 }

@@ -241,3 +241,47 @@ body.loading * {
 .mantine-Checkbox-input {
   cursor: pointer !important;
 }
+
+/* Desactivar autocomplete del navegador en inputs (no afecta componentes Select/Autocomplete) */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+textarea {
+  /* Chrome ignora autocomplete: off en CSS, pero lo dejamos por otros navegadores */
+  -webkit-autocomplete: off;
+  autocomplete: off;
+}
+
+/* Ocultar dropdown de autocompletado de Chrome/Safari */
+input[type="text"]::-webkit-contacts-auto-fill-button,
+input[type="email"]::-webkit-contacts-auto-fill-button,
+input[type="tel"]::-webkit-contacts-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+/* Ocultar el ícono de autocompletar de Chrome */
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* Para navegadores que ignoran la propiedad CSS, usar atributo via JS */
+input[type="text"]:not([autocomplete]),
+input[type="email"]:not([autocomplete]),
+input[type="tel"]:not([autocomplete]),
+input[type="number"]:not([autocomplete]),
+input[type="search"]:not([autocomplete]),
+input[type="url"]:not([autocomplete]),
+textarea:not([autocomplete]) {
+  /* Safari específicamente necesita esta combinación */
+  -webkit-text-security: none;
+}
