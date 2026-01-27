@@ -173,6 +173,7 @@ export default function ContentPanel({
           <th>Modelo</th>
           <th>N° Serie</th>
           <th>Propiedad</th>
+          <th>Ubicación</th>
           <th>Estado</th>
           {!newEvent && <th>Acciones</th>}
         </tr>
@@ -186,8 +187,8 @@ export default function ContentPanel({
           <th>Modelo</th>
           <th>N° Serie</th>
           <th>Propiedad</th>
+          <th>Ubicación</th>
           <th>Estado</th>
-          <th>Locación</th>
         </tr>
       );
     }
@@ -301,6 +302,7 @@ export default function ContentPanel({
             <td style={{ padding: '0 5px' }}>{item.model}</td>
             <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
             <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
+            <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
             <td
               style={{
                 color: displayColor,
@@ -357,6 +359,7 @@ export default function ContentPanel({
           <td style={{ padding: '0 5px' }}>{item.model}</td>
           <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
           <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
+          <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
           <td
             style={{
               color: displayColor,
@@ -365,7 +368,6 @@ export default function ContentPanel({
           >
             {displayStatus}
           </td>
-          <td style={{ padding: '0 5px' }}>{item.location}</td>
         </tr>
       );
     }

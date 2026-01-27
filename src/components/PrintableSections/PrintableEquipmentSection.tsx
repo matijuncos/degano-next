@@ -77,54 +77,73 @@ interface PrintableEquipmentSectionProps {
 // Exportar contenido interno para reutilización en PrintableFullEventSection
 export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps> = ({
   event
-}) => (
-  <View style={styles.section}>
-    {event.equipment && event.equipment.length > 0 ? (
-      <View style={styles.equipmentTable}>
-        {/* Header de la tabla */}
-        <View style={styles.equipmentTableHeader}>
-          <Text style={[styles.equipmentTableHeaderCell, styles.equipmentNameHeader]}>
-            Nombre Equipamiento
-          </Text>
-          <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
-            Controlado
-          </Text>
-          <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
-            Listo
-          </Text>
-          <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
-            Salida
-          </Text>
-          <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
-            Regreso
-          </Text>
-        </View>
-        {/* Filas de equipos */}
-        {event.equipment.map((equipment, index) => (
-          <View key={index} style={styles.equipmentTableRow} wrap={false}>
-            <Text style={styles.equipmentNameCell}>{equipment.name}</Text>
-            <View style={styles.equipmentCheckboxCell}>
-              <View style={styles.checkbox} />
-            </View>
-            <View style={styles.equipmentCheckboxCell}>
-              <View style={styles.checkbox} />
-            </View>
-            <View style={styles.equipmentCheckboxCell}>
-              <View style={styles.checkbox} />
-            </View>
-            <View style={styles.equipmentCheckboxCell}>
-              <View style={styles.checkbox} />
-            </View>
+}) => {
+  // Agrupar equipos por nombre
+  const groupedEquipment: { [key: string]: number } = {};
+
+  if (event.equipment && event.equipment.length > 0) {
+    event.equipment.forEach((eq) => {
+      if (groupedEquipment[eq.name]) {
+        groupedEquipment[eq.name]++;
+      } else {
+        groupedEquipment[eq.name] = 1;
+      }
+    });
+  }
+
+  const equipmentEntries = Object.entries(groupedEquipment);
+
+  return (
+    <View style={styles.section}>
+      {equipmentEntries.length > 0 ? (
+        <View style={styles.equipmentTable}>
+          {/* Header de la tabla */}
+          <View style={styles.equipmentTableHeader}>
+            <Text style={[styles.equipmentTableHeaderCell, styles.equipmentNameHeader]}>
+              Nombre Equipamiento
+            </Text>
+            <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
+              Controlado
+            </Text>
+            <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
+              Listo
+            </Text>
+            <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
+              Salida
+            </Text>
+            <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
+              Regreso
+            </Text>
           </View>
-        ))}
-      </View>
-    ) : (
-      <Text style={styles.noDataText}>
-        No hay equipos registrados para este evento.
-      </Text>
-    )}
-  </View>
-);
+          {/* Filas de equipos agrupados */}
+          {equipmentEntries.map(([name, quantity], index) => (
+            <View key={index} style={styles.equipmentTableRow} wrap={false}>
+              <Text style={styles.equipmentNameCell}>
+                {name}{quantity > 1 ? ` x ${quantity}` : ''}
+              </Text>
+              <View style={styles.equipmentCheckboxCell}>
+                <View style={styles.checkbox} />
+              </View>
+              <View style={styles.equipmentCheckboxCell}>
+                <View style={styles.checkbox} />
+              </View>
+              <View style={styles.equipmentCheckboxCell}>
+                <View style={styles.checkbox} />
+              </View>
+              <View style={styles.equipmentCheckboxCell}>
+                <View style={styles.checkbox} />
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.noDataText}>
+          No hay equipos registrados para este evento.
+        </Text>
+      )}
+    </View>
+  );
+};
 
 // Componente principal con logo y header verde
 const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
