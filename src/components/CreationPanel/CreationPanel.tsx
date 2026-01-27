@@ -707,7 +707,7 @@ export default function CreationPanel({
         centered
       >
         <Text mb="md">
-          ¿Estás seguro que querés eliminar la localización "<strong>{locationToDelete}</strong>"?
+          ¿Estás seguro que querés eliminar la localización &quot;<strong>{locationToDelete}</strong>&quot;?
         </Text>
         <Text size="sm" c="dimmed" mb="lg">
           Esta acción no se puede deshacer. Solo se puede eliminar si no hay equipos asignados a esta localización.

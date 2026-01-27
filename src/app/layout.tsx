@@ -38,9 +38,8 @@ export default function RootLayout({
     <html lang='en'>
       <head>
         <ColorSchemeScript />
-        <meta name="autocomplete" content="off" />
       </head>
-      <body className={inter.className} autoComplete="off">
+      <body className={inter.className}>
         <MantineProvider forceColorScheme='dark' defaultColorScheme='dark'>
           <Notifications />
           <DisableAutocomplete />
