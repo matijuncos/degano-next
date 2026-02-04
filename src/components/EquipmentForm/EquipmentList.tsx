@@ -7,6 +7,7 @@ import { NewEquipment } from '../equipmentStockTable/types';
 import { EventModel } from '@/context/types';
 import { formatPrice } from '@/utils/priceUtils';
 import { findMainCategorySync } from '@/utils/categoryUtils';
+import { groupEquipmentByName } from '@/utils/equipmentGroupUtils';
 import { usePermissions } from '@/hooks/usePermissions';
 
 type EquipmentListProps = {
@@ -93,18 +94,6 @@ export default function EquipmentList({
     return acc;
   }, {});
 
-  // Function to group equipment by name within each category
-  const groupByName = (equipmentArray: any[]) => {
-    const grouped: { [key: string]: any[] } = {};
-    equipmentArray.forEach((eq) => {
-      if (!grouped[eq.name]) {
-        grouped[eq.name] = [];
-      }
-      grouped[eq.name].push(eq);
-    });
-    return grouped;
-  };
-
   if (!equipmentList?.length) {
     return (
       <Text size='sm' c='dimmed' ta='center'>
@@ -117,7 +106,7 @@ export default function EquipmentList({
     <Stack gap='md'>
       {Object.keys(groupedEquipment).map((categoryName) => {
         const categoryEquipment = groupedEquipment[categoryName];
-        const groupedByName = groupByName(categoryEquipment);
+        const groupedByName = groupEquipmentByName(categoryEquipment);
 
         return (
           <Box key={categoryName}>

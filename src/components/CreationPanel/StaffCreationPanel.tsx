@@ -1,11 +1,22 @@
 // StaffCreationPanel.tsx
 'use client';
+import 'dayjs/locale/es';
 import { mutate } from 'swr';
 import { useState, useEffect } from 'react';
 import { Button, TextInput, Select, Group, Textarea } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
+
+const initialFormState = {
+  fullName: '',
+  cardId: '',
+  rol: '',
+  license: 'NO',
+  licenseType: '',
+  observations: '',
+  birthDate: null
+};
 
 export default function StaffCreationPanel({
   selectedEmployee,
@@ -16,31 +27,31 @@ export default function StaffCreationPanel({
   editItem: any;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
 }) {
-  const [formData, setFormData] = useState<any>({
-    fullName: '',
-    cardId: '',
-    rol: '',
-    license: 'NO',
-    licenseType: '',
-    observations: '',
-    birthDate: null
-  });
+  const [formData, setFormData] = useState<any>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const notify = useNotification();
   const { can } = usePermissions();
   const newEmployee = selectedEmployee?._id === '';
-  const editingEmployee = selectedEmployee && selectedEmployee?._id !== '';
+  const editingEmployee = editItem && editItem?._id;
 
+  // Limpiar formulario cuando se selecciona "nuevo empleado"
   useEffect(() => {
-    if (editItem) {
+    if (selectedEmployee?._id === '' && !editItem) {
+      setFormData(initialFormState);
+    }
+  }, [selectedEmployee, editItem]);
+
+  // Cargar datos cuando se edita un empleado existente
+  useEffect(() => {
+    if (editItem && editItem._id) {
       setFormData({
         _id: editItem._id,
-        fullName: editItem.fullName,
-        cardId: editItem.cardId,
-        rol: editItem.rol,
-        license: editItem.license,
-        licenseType: editItem.licenseType,
-        observations: editItem.observations,
+        fullName: editItem.fullName || '',
+        cardId: editItem.cardId || '',
+        rol: editItem.rol || '',
+        license: editItem.license || 'NO',
+        licenseType: editItem.licenseType || '',
+        observations: editItem.observations || '',
         birthDate: editItem.birthDate ? new Date(editItem.birthDate) : null
       });
     }
@@ -53,14 +64,19 @@ export default function StaffCreationPanel({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     notify({ loading: true });
-    if (formData.license === 'NO') {
-      delete formData.licenseType;
+
+    const dataToSend = { ...formData };
+    if (dataToSend.license === 'NO') {
+      delete dataToSend.licenseType;
     }
+
+    const isCreating = !formData._id;
+
     try {
       const res = await fetch('/api/employees', {
-        method: formData._id ? 'PUT' : 'POST',
+        method: isCreating ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(dataToSend)
       });
 
       if (!res.ok) throw new Error('Error en la operación');
@@ -69,8 +85,11 @@ export default function StaffCreationPanel({
       await mutate('/api/employees', updated, { revalidate: false });
 
       notify({
-        message: formData._id ? 'Empleado actualizado' : 'Empleado creado'
+        message: isCreating ? 'Empleado creado' : 'Empleado actualizado'
       });
+
+      // Limpiar formulario después de crear/actualizar exitosamente
+      setFormData(initialFormState);
       onCancel?.(false);
     } catch (error) {
       console.error(error);
@@ -81,7 +100,7 @@ export default function StaffCreationPanel({
   };
 
   const handleCancel = () => {
-    setFormData({});
+    setFormData(initialFormState);
     onCancel?.(true);
   };
   if (!newEmployee && !editingEmployee && !editItem) return null;
@@ -110,6 +129,7 @@ export default function StaffCreationPanel({
           value={formData.birthDate}
           onChange={(date) => handleInput('birthDate', date)}
           valueFormat='DD/MM/YYYY'
+          locale='es'
           clearable
         />
         <TextInput

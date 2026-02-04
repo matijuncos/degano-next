@@ -34,6 +34,7 @@ import { Image } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
 import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
+import { groupEquipmentByNameCount } from '@/utils/equipmentGroupUtils';
 import { format24Hour } from '@/utils/dateUtils';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -357,6 +358,7 @@ const DrawerContent = () => {
       return acc;
     }, {}) || {};
 
+
   return (
     <>
       {/* HEADER PRINCIPAL */}
@@ -614,20 +616,23 @@ const DrawerContent = () => {
           </Text>
           {Object.keys(groupedEquipment).length > 0 ? (
             <Stack gap='md'>
-              {Object.keys(groupedEquipment).map((category) => (
-                <Box key={category}>
-                  <Text fw={500} size='sm' tt='uppercase' mb='xs'>
-                    {category}:
-                  </Text>
-                  <Stack gap={4} pl='md'>
-                    {groupedEquipment[category].map((eq: any, idx: number) => (
-                      <Text key={idx} size='sm'>
-                        Cant: {eq.quantity || 1} - {eq.name}
-                      </Text>
-                    ))}
-                  </Stack>
-                </Box>
-              ))}
+              {Object.keys(groupedEquipment).map((category) => {
+                const equipmentByName = groupEquipmentByNameCount(groupedEquipment[category]);
+                return (
+                  <Box key={category}>
+                    <Text fw={500} size='sm' tt='uppercase' mb='xs'>
+                      {category}:
+                    </Text>
+                    <Stack gap={4} pl='md'>
+                      {Object.entries(equipmentByName).map(([name, quantity]) => (
+                        <Text key={name} size='sm'>
+                          {name}{quantity > 1 ? ` x ${quantity}` : ''}
+                        </Text>
+                      ))}
+                    </Stack>
+                  </Box>
+                );
+              })}
             </Stack>
           ) : (
             <Text size='sm' c='dimmed'>

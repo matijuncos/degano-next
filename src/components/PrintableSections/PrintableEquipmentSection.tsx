@@ -2,6 +2,7 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
 import { findMainCategorySync } from '@/utils/categoryUtils';
+import { groupEquipmentByNameCount } from '@/utils/equipmentGroupUtils';
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 11 },
@@ -98,8 +99,8 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
   event,
   categories = []
 }) => {
-  // Agrupar equipos por categoría principal y luego por nombre
-  const groupedByCategory: { [categoryName: string]: { [equipmentName: string]: number } } = {};
+  // Primero agrupar equipos por categoría principal
+  const groupedByCategory: { [categoryName: string]: any[] } = {};
 
   if (event.equipment && event.equipment.length > 0) {
     event.equipment.forEach((eq) => {
@@ -118,14 +119,10 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
       }
 
       if (!groupedByCategory[categoryName]) {
-        groupedByCategory[categoryName] = {};
+        groupedByCategory[categoryName] = [];
       }
 
-      if (groupedByCategory[categoryName][eq.name]) {
-        groupedByCategory[categoryName][eq.name]++;
-      } else {
-        groupedByCategory[categoryName][eq.name] = 1;
-      }
+      groupedByCategory[categoryName].push(eq);
     });
   }
 
@@ -155,8 +152,9 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
           </View>
 
           {/* Secciones por categoría */}
-          {categoryEntries.map(([categoryName, equipmentGroup], categoryIndex) => {
-            const equipmentEntries = Object.entries(equipmentGroup);
+          {categoryEntries.map(([categoryName, equipmentArray], categoryIndex) => {
+            const equipmentByName = groupEquipmentByNameCount(equipmentArray);
+            const equipmentEntries = Object.entries(equipmentByName);
 
             return (
               <View key={categoryIndex} style={styles.categorySection} wrap={false}>
