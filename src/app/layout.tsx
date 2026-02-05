@@ -13,7 +13,6 @@ import { DeganoProvider } from '@/context/DeganoContext';
 import BottomNavBar from '@/components/BottomNavBar/BottomNavBar';
 import { Suspense } from 'react';
 import { Notifications } from '@mantine/notifications';
-import DisableAutocomplete from '@/components/DisableAutocomplete';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,7 +41,6 @@ export default function RootLayout({
       <body className={inter.className}>
         <MantineProvider forceColorScheme='dark' defaultColorScheme='dark'>
           <Notifications />
-          <DisableAutocomplete />
           <DeganoProvider>
             <UserProvider>
               <div
