@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Group } from '@mantine/core';
 import { IconPrinter } from '@tabler/icons-react';
 import { pdf } from '@react-pdf/renderer';
@@ -31,6 +31,21 @@ const PDFActions: React.FC<PDFActionsProps> = ({
   isAdmin = false
 }) => {
   const { selectedEvent } = useDeganoCtx();
+  const [categories, setCategories] = useState<any[]>([]);
+
+  // Cargar categorías para la impresión de equipamiento
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const getPrintableComponent = () => {
     if (!selectedEvent) return null;
@@ -40,7 +55,7 @@ const PDFActions: React.FC<PDFActionsProps> = ({
       bands: <PrintableBandsSection event={selectedEvent} />,
       music: <PrintableMusicSection event={selectedEvent} />,
       moreInfo: <PrintableMoreInfoSection event={selectedEvent} />,
-      equipment: <PrintableEquipmentSection event={selectedEvent} />,
+      equipment: <PrintableEquipmentSection event={selectedEvent} categories={categories} />,
       files: <PrintableFilesSection event={selectedEvent} />,
       payments: <PrintablePaymentsSection event={selectedEvent} />,
       timing: <PrintableTimingSection event={selectedEvent} />
@@ -62,7 +77,7 @@ const PDFActions: React.FC<PDFActionsProps> = ({
     if (!selectedEvent) return;
 
     const fullEventComponent = (
-      <PrintableFullEventSection event={selectedEvent} />
+      <PrintableFullEventSection event={selectedEvent} categories={categories} />
     );
 
     const blob = await pdf(fullEventComponent).toBlob();

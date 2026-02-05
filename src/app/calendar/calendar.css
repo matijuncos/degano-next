@@ -14,6 +14,7 @@
   padding: 6px 3px;
   font-size: 12px;
   font-weight: 500;
+  text-transform: capitalize;
 }
 
 .rbc-header + .rbc-header {
@@ -53,6 +54,7 @@
   color: #c1c2c5;
   font-weight: 600;
   font-size: 15px;
+  text-transform: capitalize;
 }
 
 /* Celdas del calendario */
@@ -299,6 +301,7 @@
   background-color: #f8f9fa;
   color: #212529;
   border-color: #dee2e6;
+  text-transform: capitalize;
 }
 
 .calendar-light-theme .rbc-header + .rbc-header {
@@ -330,6 +333,7 @@
 
 .calendar-light-theme .rbc-toolbar-label {
   color: #212529;
+  text-transform: capitalize;
 }
 
 .calendar-light-theme .rbc-day-bg {

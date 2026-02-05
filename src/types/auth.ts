@@ -72,11 +72,11 @@ export interface AuthUser {
 // VIEWER: Solo lectura. NO ve teléfonos de clientes/shows ni dinero. NO crea, edita ni elimina nada
 export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
   admin: {
-    // Eventos - Admin NO puede eliminar eventos
+    // Eventos - Control total
     canViewEvents: true,
     canCreateEvents: true,
     canEditEvents: true,
-    canDeleteEvents: false,  // ❌ NO elimina (solo manager)
+    canDeleteEvents: true,  // ✅ SÍ puede eliminar
 
     // Clientes
     canViewClients: true,
@@ -128,11 +128,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
   },
 
   manager: {
-    // Eventos - Manager puede crear eventos
+    // Eventos - Manager puede crear eventos pero NO eliminar
     canViewEvents: true,
     canCreateEvents: true,
     canEditEvents: true,
-    canDeleteEvents: true,
+    canDeleteEvents: false,  // ❌ NO elimina (solo admin)
 
     // Clientes - NO puede ver teléfonos
     canViewClients: true,

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
+import { findMainCategorySync } from '@/utils/categoryUtils';
+import { groupEquipmentByNameCount } from '@/utils/equipmentGroupUtils';
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 11 },
@@ -21,6 +23,23 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   section: { marginBottom: 12 },
+  categorySection: {
+    marginBottom: 16
+  },
+  categoryHeader: {
+    backgroundColor: '#e8f5e9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+    borderRadius: 3,
+    borderLeft: '3px solid #6aa74f'
+  },
+  categoryTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+    textTransform: 'uppercase'
+  },
   equipmentTable: {
     marginTop: 8
   },
@@ -72,33 +91,49 @@ const styles = StyleSheet.create({
 
 interface PrintableEquipmentSectionProps {
   event: EventModel;
+  categories?: any[];
 }
 
 // Exportar contenido interno para reutilización en PrintableFullEventSection
 export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps> = ({
-  event
+  event,
+  categories = []
 }) => {
-  // Agrupar equipos por nombre
-  const groupedEquipment: { [key: string]: number } = {};
+  // Primero agrupar equipos por categoría principal
+  const groupedByCategory: { [categoryName: string]: any[] } = {};
 
   if (event.equipment && event.equipment.length > 0) {
     event.equipment.forEach((eq) => {
-      if (groupedEquipment[eq.name]) {
-        groupedEquipment[eq.name]++;
-      } else {
-        groupedEquipment[eq.name] = 1;
+      // Primero intentar usar mainCategoryName existente
+      let categoryName = eq.mainCategoryName;
+
+      // Si no tiene mainCategoryName, calcularlo usando categoryId y las categorías
+      if (!categoryName && eq.categoryId && categories.length > 0) {
+        const mainCategory = findMainCategorySync(eq.categoryId, categories);
+        categoryName = mainCategory?.name || 'Sin categoría';
       }
+
+      // Fallback final
+      if (!categoryName) {
+        categoryName = 'Sin categoría';
+      }
+
+      if (!groupedByCategory[categoryName]) {
+        groupedByCategory[categoryName] = [];
+      }
+
+      groupedByCategory[categoryName].push(eq);
     });
   }
 
-  const equipmentEntries = Object.entries(groupedEquipment);
+  const categoryEntries = Object.entries(groupedByCategory);
 
   return (
     <View style={styles.section}>
-      {equipmentEntries.length > 0 ? (
+      {categoryEntries.length > 0 ? (
         <View style={styles.equipmentTable}>
           {/* Header de la tabla */}
-          <View style={styles.equipmentTableHeader}>
+          <View style={styles.equipmentTableHeader} fixed>
             <Text style={[styles.equipmentTableHeaderCell, styles.equipmentNameHeader]}>
               Nombre Equipamiento
             </Text>
@@ -115,26 +150,42 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
               Regreso
             </Text>
           </View>
-          {/* Filas de equipos agrupados */}
-          {equipmentEntries.map(([name, quantity], index) => (
-            <View key={index} style={styles.equipmentTableRow} wrap={false}>
-              <Text style={styles.equipmentNameCell}>
-                {name}{quantity > 1 ? ` x ${quantity}` : ''}
-              </Text>
-              <View style={styles.equipmentCheckboxCell}>
-                <View style={styles.checkbox} />
+
+          {/* Secciones por categoría */}
+          {categoryEntries.map(([categoryName, equipmentArray], categoryIndex) => {
+            const equipmentByName = groupEquipmentByNameCount(equipmentArray);
+            const equipmentEntries = Object.entries(equipmentByName);
+
+            return (
+              <View key={categoryIndex} style={styles.categorySection} wrap={false}>
+                {/* Header de categoría */}
+                <View style={styles.categoryHeader}>
+                  <Text style={styles.categoryTitle}>{categoryName}</Text>
+                </View>
+
+                {/* Equipos de esta categoría */}
+                {equipmentEntries.map(([name, quantity], index) => (
+                  <View key={index} style={styles.equipmentTableRow} wrap={false}>
+                    <Text style={styles.equipmentNameCell}>
+                      {name}{quantity > 1 ? ` x ${quantity}` : ''}
+                    </Text>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                  </View>
+                ))}
               </View>
-              <View style={styles.equipmentCheckboxCell}>
-                <View style={styles.checkbox} />
-              </View>
-              <View style={styles.equipmentCheckboxCell}>
-                <View style={styles.checkbox} />
-              </View>
-              <View style={styles.equipmentCheckboxCell}>
-                <View style={styles.checkbox} />
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       ) : (
         <Text style={styles.noDataText}>
@@ -147,7 +198,8 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
 
 // Componente principal con logo y header verde
 const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
-  event
+  event,
+  categories = []
 }) => (
   <Document>
     <Page size='A4' style={styles.page}>
@@ -157,7 +209,7 @@ const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Equipos</Text>
       </View>
-      <PrintableEquipmentContent event={event} />
+      <PrintableEquipmentContent event={event} categories={categories} />
     </Page>
   </Document>
 );

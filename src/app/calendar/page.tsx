@@ -29,13 +29,13 @@ export default withPageAuthRequired(function CalendarPage() {
   const [searchValue, setSearchValue] = useState<string | null>(null);
 
   const locales = {
-    es
+    'es': es
   };
 
   const localizer = dateFnsLocalizer({
     format,
     parse,
-    startOfWeek,
+    startOfWeek: (date: Date) => startOfWeek(date, { weekStartsOn: 1 }), // Semana empieza en Lunes
     getDay,
     locales
   });
@@ -383,6 +383,7 @@ export default withPageAuthRequired(function CalendarPage() {
         <Calendar
           onSelectEvent={(value) => handleSelectedSlot(value)}
           localizer={localizer}
+          culture='es'
           date={date}
           onNavigate={onNavigate}
           onView={onView}
