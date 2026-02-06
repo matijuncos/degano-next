@@ -15,12 +15,14 @@ const StaffForm = ({
   onNextTab,
   onBackTab,
   updateEvent,
+  onFormDataChange,
   goToFiles
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
   goToFiles?: boolean;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
@@ -56,6 +58,13 @@ const StaffForm = ({
   useEffect(() => {
     setEventData((prev) => ({ ...prev, staff: staffMembers }));
   }, [staffMembers]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventData);
+    }
+  }, [eventData, onFormDataChange]);
 
   const handleAddStaff = (employeeId: string | null) => {
     if (!employeeId) return;

@@ -246,7 +246,7 @@ export default withPageAuthRequired(function EventPage() {
                 {
                   accessor: 'date',
                   title: 'Fecha',
-                  render: ({ date }) => new Date(date).toLocaleDateString(),
+                  render: ({ date }) => new Date(date).toLocaleDateString('es-AR'),
                   sortable: true
                 },
                 { accessor: 'type', title: 'Tipo de evento' },
@@ -254,7 +254,7 @@ export default withPageAuthRequired(function EventPage() {
                 {
                   accessor: 'date',
                   title: 'Hora',
-                  render: ({ date }) => new Date(date).toLocaleTimeString()
+                  render: ({ date }) => new Date(date).toLocaleTimeString('es-AR')
                 },
                 { accessor: 'fullName', title: 'Cliente' },
                 {

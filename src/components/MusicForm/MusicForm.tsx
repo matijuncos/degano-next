@@ -44,6 +44,7 @@ const MusicForm = forwardRef<MusicFormRef, {
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
   hideNavigation?: boolean;
   hiddenSections?: string[];
 }>(({
@@ -51,6 +52,7 @@ const MusicForm = forwardRef<MusicFormRef, {
   onNextTab,
   onBackTab,
   updateEvent,
+  onFormDataChange,
   hideNavigation = false,
   hiddenSections = []
 }, ref) => {
@@ -141,6 +143,18 @@ const MusicForm = forwardRef<MusicFormRef, {
       }));
     }
   }, [dbGenres, event.music.genres]);
+
+  // Sincronizar spotifyLinks con musicData.playlist
+  useEffect(() => {
+    setMusicData(prev => ({ ...prev, playlist: spotifyLinks }));
+  }, [spotifyLinks]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(musicData);
+    }
+  }, [musicData, onFormDataChange]);
 
   // Expose getData function via ref
   useImperativeHandle(ref, () => ({

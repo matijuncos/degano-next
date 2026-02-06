@@ -217,7 +217,7 @@ const EditablePayments = () => {
             <Text>
               {new Date(
                 selectedEvent.payment.partialPaymentDate
-              ).toLocaleDateString()}{' '}
+              ).toLocaleDateString('es-AR')}{' '}
               -
             </Text>
             <Text>
@@ -229,7 +229,7 @@ const EditablePayments = () => {
               <Flex gap='8px'>
                 <Text fw={600}>Pago parcial:</Text>
 
-                <Text>{new Date(payment.date).toLocaleDateString()}</Text>
+                <Text>{new Date(payment.date).toLocaleDateString('es-AR')}</Text>
                 <Text> - {formatPrice(Number(payment.amount))}</Text>
               </Flex>
             </Box>

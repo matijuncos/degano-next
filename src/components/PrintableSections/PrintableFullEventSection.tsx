@@ -53,7 +53,7 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
   event,
   categories = []
 }) => {
-  const eventTitle = `${new Date(event.date).toLocaleDateString()} - ${event.type} - ${event.lugar}`;
+  const eventTitle = `${new Date(event.date).toLocaleDateString('es-AR')} - ${event.type} - ${event.lugar}`;
 
   const PageHeader = () => (
     <View style={styles.header}>

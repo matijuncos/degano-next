@@ -20,12 +20,14 @@ const TimingForm = ({
   event,
   onNextTab,
   onBackTab,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
   const { can } = usePermissions();
   const canEditEvents = can('canEditEvents');
@@ -45,6 +47,13 @@ const TimingForm = ({
       setEventData(event);
     }
   }, [event]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventData);
+    }
+  }, [eventData, onFormDataChange]);
 
   const next = () => {
     if (updateEvent) {

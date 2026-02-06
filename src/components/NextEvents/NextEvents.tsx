@@ -71,7 +71,7 @@ const NextEvents = () => {
               }}
             >
               <p>{event?.type} - {event?.lugar} - </p>
-              <p>{new Date(event.date).toLocaleDateString()}</p>
+              <p>{new Date(event.date).toLocaleDateString('es-AR')}</p>
             </div>
             <IconArrowRight />
           </motion.div>

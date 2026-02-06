@@ -88,7 +88,7 @@ export const PrintablePaymentsContent: React.FC<PrintablePaymentsSectionProps> =
       <View style={styles.fieldRow}>
         <Text style={styles.fieldLabel}>FECHA PAGO PARCIAL:</Text>
         <Text style={styles.fieldValue}>
-          {new Date(event.payment.partialPaymentDate).toLocaleDateString()}
+          {new Date(event.payment.partialPaymentDate).toLocaleDateString('es-AR')}
         </Text>
       </View>
     )}
@@ -96,7 +96,7 @@ export const PrintablePaymentsContent: React.FC<PrintablePaymentsSectionProps> =
       <View style={styles.fieldRow}>
         <Text style={styles.fieldLabel}>FECHA PAGO TOTAL:</Text>
         <Text style={styles.fieldValue}>
-          {new Date(event.payment.totalPaymentDate).toLocaleDateString()}
+          {new Date(event.payment.totalPaymentDate).toLocaleDateString('es-AR')}
         </Text>
       </View>
     )}
@@ -114,7 +114,7 @@ export const PrintablePaymentsContent: React.FC<PrintablePaymentsSectionProps> =
                   <Text style={styles.fieldLabel}>FECHA:</Text>
                   <Text style={styles.fieldValue}>
                     {payment.date
-                      ? new Date(payment.date).toLocaleDateString()
+                      ? new Date(payment.date).toLocaleDateString('es-AR')
                       : '-'}
                   </Text>
                 </View>

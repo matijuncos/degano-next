@@ -30,7 +30,8 @@ const ClientForm = ({
   onBackTab,
   validate,
   setValidate,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
@@ -38,6 +39,7 @@ const ClientForm = ({
   validate: boolean;
   setValidate: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
   const [clientData, setClientData] = useState<EventModel>({
     ...event,
@@ -97,6 +99,13 @@ const ClientForm = ({
       setExtraClients(event.extraClients || []);
     }
   }, [event]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(clientData);
+    }
+  }, [clientData, onFormDataChange]);
 
   const fetchClients = async () => {
     setLoading(true);

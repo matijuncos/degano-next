@@ -14,12 +14,14 @@ const EquipmentForm = ({
   event,
   onNextTab,
   onBackTab,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
 
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -51,6 +53,13 @@ const EquipmentForm = ({
       setEventEquipment(event);
     }
   }, [event]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventEquipment);
+    }
+  }, [eventEquipment, onFormDataChange]);
 
   // Estilos para ocultar scrollbar pero mantener funcionalidad
   const scrollContainerStyle = {

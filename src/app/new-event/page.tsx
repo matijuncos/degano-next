@@ -13,7 +13,7 @@ import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandl
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
@@ -38,12 +38,24 @@ const NewEventPage = () => {
   const notify = useNotification();
   const { can, isLoading } = usePermissions();
 
-  const updateEvent = (data: EventModel) => {
+  // Ref para mantener los datos del formulario actual sin causar re-renders
+  const currentFormDataRef = useRef<EventModel>(event);
+
+  const updateEvent = useCallback((data: EventModel) => {
     setEvent(data);
-  };
+  }, []);
+
+  // Callback para que los formularios actualicen la ref (sin causar re-render)
+  const onFormDataChange = useCallback((data: EventModel) => {
+    currentFormDataRef.current = data;
+  }, []);
 
   const handleTabChange = (value: string | null) => {
     if (value !== null) {
+      // Guardar datos del formulario actual antes de cambiar de tab
+      if (currentFormDataRef.current) {
+        setEvent(currentFormDataRef.current);
+      }
       setFormState(Number(value));
       setValidate(false);
     }
@@ -193,6 +205,7 @@ const NewEventPage = () => {
             validate={validate}
             setValidate={setValidate}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.EVENT:
@@ -204,6 +217,7 @@ const NewEventPage = () => {
             validate={validate}
             setValidate={setValidate}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.SHOW:
@@ -213,6 +227,7 @@ const NewEventPage = () => {
             onBackTab={onBackTab}
             event={event}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.MUSIC:
@@ -222,6 +237,7 @@ const NewEventPage = () => {
             onBackTab={onBackTab}
             event={event}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.TIMING:
@@ -231,6 +247,7 @@ const NewEventPage = () => {
             onBackTab={onBackTab}
             event={event}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.MORE_INFO:
@@ -240,6 +257,7 @@ const NewEventPage = () => {
             onBackTab={onBackTab}
             event={event}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.EQUIPMENT:
@@ -249,6 +267,7 @@ const NewEventPage = () => {
             onBackTab={onBackTab}
             event={event}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
           />
         );
       case EVENT_TABS.STAFF:
@@ -258,7 +277,8 @@ const NewEventPage = () => {
             onBackTab={onBackTab}
             event={event}
             updateEvent={updateEvent}
-                        goToFiles={canShowFilesTab()}
+            onFormDataChange={onFormDataChange}
+            goToFiles={canShowFilesTab()}
           />
         );
       case EVENT_TABS.FILES:
@@ -293,6 +313,7 @@ const NewEventPage = () => {
             event={event}
             onFinish={saveEvent}
             updateEvent={updateEvent}
+            onFormDataChange={onFormDataChange}
             validateAllRequiredFields={validateAllRequiredFields}
           />
         );

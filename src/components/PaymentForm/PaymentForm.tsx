@@ -9,12 +9,14 @@ const PaymentForm = ({
   onBackTab,
   onFinish,
   updateEvent,
+  onFormDataChange,
   validateAllRequiredFields
 }: {
   event: EventModel;
   onBackTab: Function;
   onFinish: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
   validateAllRequiredFields?: () => { isValid: boolean; errors: string[] };
 }) => {
   const [payment, setPayment] = useState<EventModel>(event);
@@ -34,6 +36,13 @@ const PaymentForm = ({
       }
     }
   }, [event]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(payment);
+    }
+  }, [payment, onFormDataChange]);
 
   // Función para limpiar el formato y obtener solo números
   const parseFormattedNumber = (value: string): string => {
@@ -176,6 +185,7 @@ const PaymentForm = ({
             locale='es'
             valueFormat='DD/MM/YYYY'
             placeholder='Fecha de pago inicial'
+            value={payment.payment?.partialPaymentDate ? new Date(payment.payment.partialPaymentDate) : null}
             onChange={(value) => handleDates(value, 'partialPaymentDate')}
           />
         </Grid.Col>

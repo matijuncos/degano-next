@@ -12,7 +12,8 @@ const EventForm = ({
   onBackTab,
   validate,
   setValidate,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
@@ -20,6 +21,7 @@ const EventForm = ({
   validate: boolean;
   setValidate: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
   // Función para parsear fechas ISO sin conversión de zona horaria
   const parseISODate = (dateString: string | Date | null | undefined): Date | null => {
@@ -131,7 +133,9 @@ const EventForm = ({
   }, [event]);
 
   useEffect(() => {
-    const combined = combineDateAndTime(dateOnly, timeOnly);
+    // Guardar fecha aunque no haya hora (usar 00:00 como default)
+    const time = timeOnly || '00:00';
+    const combined = combineDateAndTime(dateOnly, time);
     if (combined) {
       const updatedData = { ...eventData, date: combined };
       setEventData(updatedData);
@@ -145,7 +149,9 @@ const EventForm = ({
   }, [dateOnly, timeOnly]);
 
   useEffect(() => {
-    const combined = combineDateAndTime(endDateOnly, endTimeOnly);
+    // Guardar fecha aunque no haya hora (usar 00:00 como default)
+    const time = endTimeOnly || '00:00';
+    const combined = combineDateAndTime(endDateOnly, time);
     if (combined) {
       const updatedData = { ...eventData, endDate: combined };
       setEventData(updatedData);
@@ -185,6 +191,13 @@ const EventForm = ({
       }
     }
   }, [equipmentArrivalDateOnly]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventData);
+    }
+  }, [eventData, onFormDataChange]);
 
   const requiredFields: (keyof EventModel)[] = [
     'date',
