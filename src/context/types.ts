@@ -9,6 +9,12 @@ export interface ExtraContact {
   type: 'contact';
 }
 
+export interface BudgetAnnex {
+  id: string;
+  description: string;
+  amount: string;
+}
+
 export interface ExtraClient {
   _id?: string;
   fullName: string;
@@ -63,6 +69,8 @@ export interface EventModel {
     partialPayed: boolean;
     totalPayed: boolean;
     subsequentPayments?: any[];
+    annexes?: BudgetAnnex[];
+    budgetFileUrl?: string;
   };
   moreData: string;
   date: Date | string;
@@ -128,6 +136,8 @@ export interface DeganoContextProps {
   setFolderName: Function;
   authToken: string;
   setAuthToken: Function;
+  updateEventInList: (event: EventModel) => void;
+  addEventToList: (event: EventModel) => void;
 }
 export interface DataverseProviderProps {
   children: ReactNode;

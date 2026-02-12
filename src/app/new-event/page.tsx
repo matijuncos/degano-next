@@ -30,7 +30,7 @@ const NewEventPage = () => {
     validate,
     setValidate,
     setFolderName,
-    setAllEvents
+    addEventToList
   } = useDeganoCtx();
   const router = useRouter();
   const [event, setEvent] = useState<EventModel>(INITIAL_EVENT_STATE);
@@ -161,7 +161,7 @@ const NewEventPage = () => {
           })} - ${newEvent.type} - ${newEvent.lugar}`
         );
         if (data.event) {
-          setAllEvents((prev: EventModel[]) => [...prev, data.event]);
+          addEventToList(data.event);
           setEvent(data.event);
         }
 

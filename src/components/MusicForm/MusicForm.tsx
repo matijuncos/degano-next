@@ -219,30 +219,28 @@ const MusicForm = forwardRef<MusicFormRef, {
     });
   };
 
-  const deleteSongForbidden = (arg: any) => {
-    const newList = musicData?.music.forbidden.filter((song) => song !== arg);
+  const deleteSongForbidden = (indexToDelete: number) => {
     setMusicData((prevData: any) => {
       if (!prevData) return null;
       return {
         ...prevData,
         music: {
           ...prevData.music,
-          forbidden: newList
+          forbidden: prevData.music.forbidden.filter((_: string, i: number) => i !== indexToDelete)
         },
         allDay: prevData.allDay ?? false
       };
     });
   };
 
-  const deleteSongRequired = (arg: any) => {
-    const newList = musicData?.music.required.filter((song) => song !== arg);
+  const deleteSongRequired = (indexToDelete: number) => {
     setMusicData((prevData: any) => {
       if (!prevData) return null;
       return {
         ...prevData,
         music: {
           ...prevData.music,
-          required: newList
+          required: prevData.music.required.filter((_: string, i: number) => i !== indexToDelete)
         },
         allDay: prevData.allDay ?? false
       };
@@ -1191,15 +1189,12 @@ const MusicForm = forwardRef<MusicFormRef, {
               <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
                 {musicData?.music.forbidden.map((song, index) => {
                   return (
-                    <div key={song + index} style={{ margin: '8px' }}>
+                    <div key={`forbidden-${index}`} style={{ margin: '8px' }}>
                       <Chip
                         icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-                        id='forbidden'
                         color='red'
-                        defaultChecked
-                        onClick={() => {
-                          deleteSongForbidden(song);
-                        }}
+                        checked
+                        onChange={() => deleteSongForbidden(index)}
                         size='sm'
                       >
                         {song}
@@ -1211,13 +1206,12 @@ const MusicForm = forwardRef<MusicFormRef, {
               <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
                 {musicData?.music.required.map((song, index) => {
                   return (
-                    <div key={song + index} style={{ margin: '8px' }}>
+                    <div key={`required-${index}`} style={{ margin: '8px' }}>
                       <Chip
-                        defaultChecked
+                        checked
                         color='green'
                         icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-                        id='required'
-                        onClick={() => deleteSongRequired(song)}
+                        onChange={() => deleteSongRequired(index)}
                         size='sm'
                       >
                         {song}

@@ -32,7 +32,9 @@ export const INITIAL_EVENT_STATE: EventModel = {
     partialPaymentDate: new Date(),
     partialPayed: false,
     totalPayed: false,
-    subsequentPayments: []
+    subsequentPayments: [],
+    annexes: [],
+    budgetFileUrl: ''
   },
   equipmentPrice: 0,
   active: true,

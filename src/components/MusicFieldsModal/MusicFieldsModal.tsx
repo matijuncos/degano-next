@@ -87,7 +87,7 @@ const MusicFieldsModal = ({
     <Modal
       opened={opened}
       onClose={handleClose}
-      title='Agregar campos de música'
+      title='Editar campos de música'
       size='xl'
       fullScreen={isMobile}
       styles={{
@@ -104,8 +104,8 @@ const MusicFieldsModal = ({
       ) : (
         <>
           <Text size='sm' c='dimmed' mb='md'>
-            Agrega o modifica los campos de música del evento. Los campos vacíos
-            no se guardarán.
+            Edita los campos de música del evento. Los campos vacíos no se
+            guardarán.
           </Text>
 
           <MusicForm

@@ -15,6 +15,7 @@ const s3 = new S3Client({
 const bucketMap: Record<string, string> = {
   equipment: process.env.AWS_S3_EQUIPMENT_BUCKET_NAME!,
   bands: process.env.AWS_S3_BANDS_BUCKET_NAME!,
+  budgets: process.env.AWS_S3_BUDGETS_BUCKET_NAME!,
 };
 
 export async function POST(req: NextRequest) {

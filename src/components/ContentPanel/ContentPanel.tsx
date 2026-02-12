@@ -8,7 +8,9 @@ import {
   Tooltip,
   Modal,
   Button,
-  Box
+  Box,
+  Loader,
+  Center
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { IconPlus } from '@tabler/icons-react';
@@ -477,6 +479,16 @@ export default function ContentPanel({
       </Group>
     );
   };
+
+  if (isLoadingEquipment) {
+    return (
+      <Box p="md" w="100%">
+        <Center py="xl">
+          <Loader size="lg" />
+        </Center>
+      </Box>
+    );
+  }
 
   return (
     <Box p="md" w="100%">

@@ -1,9 +1,11 @@
 import { EVENT_TABS } from '@/context/config';
-import { EventModel } from '@/context/types';
-import { Button, Input, Box, Text, Tooltip, Grid } from '@mantine/core';
+import { EventModel, BudgetAnnex } from '@/context/types';
+import { Button, Input, Box, Text, Tooltip, Grid, Divider, ActionIcon, Group, FileButton } from '@mantine/core';
 import { DateValue, DateInput } from '@mantine/dates';
 import { useState, useMemo, useEffect } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
+import { usePermissions } from '@/hooks/usePermissions';
+import { IconTrash, IconPlus, IconUpload, IconFile, IconEye } from '@tabler/icons-react';
 const PaymentForm = ({
   event,
   onBackTab,
@@ -19,9 +21,17 @@ const PaymentForm = ({
   onFormDataChange?: (data: EventModel) => void;
   validateAllRequiredFields?: () => { isValid: boolean; errors: string[] };
 }) => {
+  const { isAdmin } = usePermissions();
   const [payment, setPayment] = useState<EventModel>(event);
   const [formattedTotalToPay, setFormattedTotalToPay] = useState('');
   const [formattedUpfrontAmount, setFormattedUpfrontAmount] = useState('');
+  const [annexes, setAnnexes] = useState<BudgetAnnex[]>(
+    event.payment?.annexes || []
+  );
+  const [budgetFileUrl, setBudgetFileUrl] = useState<string>(
+    event.payment?.budgetFileUrl || ''
+  );
+  const [uploading, setUploading] = useState(false);
 
   // Sincronizar estado local con el prop event cuando el usuario navega
   useEffect(() => {
@@ -34,6 +44,9 @@ const PaymentForm = ({
       if (event.payment?.upfrontAmount) {
         setFormattedUpfrontAmount(formatNumberInput(event.payment.upfrontAmount.toString()));
       }
+      // Sincronizar anexos y archivo de presupuesto
+      setAnnexes(event.payment?.annexes || []);
+      setBudgetFileUrl(event.payment?.budgetFileUrl || '');
     }
   }, [event]);
 
@@ -132,6 +145,132 @@ const PaymentForm = ({
     });
   };
 
+  // Funciones para manejar anexos
+  const addAnnex = () => {
+    const newAnnexes = [
+      ...annexes,
+      {
+        id: Math.random().toString(36).slice(2, 11),
+        description: '',
+        amount: ''
+      }
+    ];
+    setAnnexes(newAnnexes);
+    // Sincronizar con payment
+    setPayment(prev => ({
+      ...prev,
+      payment: {
+        ...prev.payment,
+        annexes: newAnnexes
+      }
+    }));
+  };
+
+  const updateAnnex = (id: string, field: 'description' | 'amount', value: string) => {
+    const processedValue = field === 'amount' ? formatNumberInput(value) : value;
+    const newAnnexes = annexes.map(a =>
+      a.id === id ? { ...a, [field]: processedValue } : a
+    );
+    setAnnexes(newAnnexes);
+    // Sincronizar con payment (guardar amount como valor numérico limpio)
+    setPayment(prev => ({
+      ...prev,
+      payment: {
+        ...prev.payment,
+        annexes: newAnnexes.map(a => ({
+          ...a,
+          amount: parseFormattedNumber(a.amount)
+        }))
+      }
+    }));
+  };
+
+  const removeAnnex = (id: string) => {
+    const newAnnexes = annexes.filter(a => a.id !== id);
+    setAnnexes(newAnnexes);
+    // Sincronizar con payment
+    setPayment(prev => ({
+      ...prev,
+      payment: {
+        ...prev.payment,
+        annexes: newAnnexes.map(a => ({
+          ...a,
+          amount: parseFormattedNumber(a.amount)
+        }))
+      }
+    }));
+  };
+
+  // Funciones para manejar archivo de presupuesto
+  const handleUploadBudgetFile = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await fetch('/api/uploadToS3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          bucket: 'budgets'
+        })
+      });
+      const { signedUrl, url } = await res.json();
+
+      await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      });
+
+      setBudgetFileUrl(url);
+      // Sincronizar con payment
+      setPayment(prev => ({
+        ...prev,
+        payment: {
+          ...prev.payment,
+          budgetFileUrl: url
+        }
+      }));
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteBudgetFile = async () => {
+    if (!budgetFileUrl) return;
+    try {
+      await fetch('/api/deleteFromS3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: budgetFileUrl,
+          bucket: 'budgets'
+        })
+      });
+      setBudgetFileUrl('');
+      // Sincronizar con payment
+      setPayment(prev => ({
+        ...prev,
+        payment: {
+          ...prev.payment,
+          budgetFileUrl: ''
+        }
+      }));
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    }
+  };
+
+  const getCleanFileName = (url: string) => {
+    const parts = url.split('/');
+    const fileName = parts[parts.length - 1];
+    // Remover el prefijo nanoid (primeros 21 caracteres + guión)
+    return fileName.length > 22 ? fileName.slice(22) : fileName;
+  };
+
   // Validar campos requeridos
   const validation = validateAllRequiredFields ? validateAllRequiredFields() : { isValid: true, errors: [] };
   const canFinish = validation.isValid;
@@ -190,6 +329,76 @@ const PaymentForm = ({
           />
         </Grid.Col>
       </Grid>
+      <Divider my="md" />
+      <Text fw={600} mb="sm">Anexos</Text>
+
+      {annexes.map((annex) => (
+        <Grid key={annex.id} gutter="sm" mb="sm" align="center">
+          <Grid.Col span={6}>
+            <Input
+              placeholder="Descripción del anexo"
+              value={annex.description}
+              onChange={(e) => updateAnnex(annex.id, 'description', e.target.value)}
+            />
+          </Grid.Col>
+          <Grid.Col span={4}>
+            <Input
+              placeholder="Monto ($)"
+              value={annex.amount}
+              onChange={(e) => updateAnnex(annex.id, 'amount', e.target.value)}
+            />
+          </Grid.Col>
+          <Grid.Col span={2}>
+            <ActionIcon color="red" variant="light" onClick={() => removeAnnex(annex.id)}>
+              <IconTrash size={16} />
+            </ActionIcon>
+          </Grid.Col>
+        </Grid>
+      ))}
+
+      <Button variant="light" leftSection={<IconPlus size={16} />} onClick={addAnnex}>
+        Agregar anexo
+      </Button>
+
+      {isAdmin && (
+        <>
+          <Divider my="md" />
+          <Text fw={600} mb="sm">Archivo de presupuesto</Text>
+
+          {budgetFileUrl ? (
+            <Group>
+              <IconFile size={20} />
+              <Text size="sm" style={{ flex: 1 }}>
+                {getCleanFileName(budgetFileUrl)}
+              </Text>
+              <ActionIcon
+                color="blue"
+                variant="light"
+                onClick={() => window.open(budgetFileUrl, '_blank')}
+              >
+                <IconEye size={16} />
+              </ActionIcon>
+              <ActionIcon color="red" variant="light" onClick={handleDeleteBudgetFile}>
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Group>
+          ) : (
+            <FileButton onChange={handleUploadBudgetFile} accept="image/*,.pdf">
+              {(props) => (
+                <Button
+                  {...props}
+                  variant="light"
+                  leftSection={<IconUpload size={16} />}
+                  loading={uploading}
+                >
+                  Subir archivo
+                </Button>
+              )}
+            </FileButton>
+          )}
+        </>
+      )}
+
       <div
         style={{
           display: 'flex',

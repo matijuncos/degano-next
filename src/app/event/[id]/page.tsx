@@ -37,7 +37,7 @@ import {
   IconSearch,
   IconArrowLeft,
   IconPlus,
-  IconTrash
+  IconPencil
 } from '@tabler/icons-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -129,7 +129,7 @@ const MainInformation = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isMissingFieldsModalOpen, setIsMissingFieldsModalOpen] =
     useState(false);
-  const { setSelectedEvent } = useDeganoCtx();
+  const { setSelectedEvent, updateEventInList } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
 
@@ -197,8 +197,10 @@ const MainInformation = ({
         },
         body: JSON.stringify(updatedEvent)
       });
-      await response.json();
-      setSelectedEvent(updatedEvent);
+      const { event } = await response.json();
+      const eventToUse = event || updatedEvent;
+      setSelectedEvent(eventToUse);
+      updateEventInList(eventToUse);
       notify();
     } catch (error) {
       notify({ type: 'defaultError' });
@@ -294,6 +296,7 @@ const MainInformation = ({
 
       const { event } = await response.json();
       setSelectedEvent(event);
+      updateEventInList(event);
       setAddingExtraClient(false);
       setExtraClientData({
         fullName: '',
@@ -971,16 +974,16 @@ const MusicInformation = ({
 
   return (
     <Flex direction='column' gap='8px' mt='8px'>
-      {/* Botón para agregar campos de música */}
+      {/* Botón para editar campos de música */}
       {canEditEvents && (
         <Button
           variant='light'
           size='sm'
           mb='md'
-          leftSection={<IconPlus size={16} />}
+          leftSection={<IconPencil size={16} />}
           onClick={onOpenMusicModal}
         >
-          Agregar campos de música
+          Editar campos de música
         </Button>
       )}
 
@@ -1284,12 +1287,14 @@ const MusicInformation = ({
         <Text fw={700} size='m' mb='xs' c='dimmed'>
           Música de preferencia
         </Text>
-        <EditableData disabled={!canEditEvents}
+        <EditableData
+          disabled
           type='chips'
           value={selectedEvent.music.forbidden}
           property='forbidden'
         />
-        <EditableData disabled={!canEditEvents}
+        <EditableData
+          disabled
           type='chips'
           value={selectedEvent.music.required}
           property='required'
@@ -1608,7 +1613,7 @@ const TimingInformation = ({
   } | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({ time: '', title: '', details: '' });
-  const { setSelectedEvent } = useDeganoCtx();
+  const { setSelectedEvent, updateEventInList } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
 
@@ -1627,8 +1632,10 @@ const TimingInformation = ({
         },
         body: JSON.stringify(updatedEvent)
       });
-      await response.json();
-      setSelectedEvent(updatedEvent);
+      const { event } = await response.json();
+      const eventToUse = event || updatedEvent;
+      setSelectedEvent(eventToUse);
+      updateEventInList(eventToUse);
       notify();
     } catch (error) {
       notify({ type: 'defaultError' });
@@ -1905,7 +1912,7 @@ const MoreInfoInformation = ({
 };
 
 const EventPage = () => {
-  const { setSelectedEvent, selectedEvent, loading, setFolderName } =
+  const { setSelectedEvent, selectedEvent, loading, setFolderName, updateEventInList } =
     useDeganoCtx();
   const { user } = useUser();
   const { can, permissions, role, isAdmin } = usePermissions();
@@ -1989,6 +1996,7 @@ const EventPage = () => {
       });
       const { event } = await response.json();
       setSelectedEvent(event);
+      updateEventInList(event);
       notify();
     } catch (err) {
       notify({ type: 'defaultError' });
@@ -2204,14 +2212,16 @@ const EventPage = () => {
           </AccordionSet>
           <AccordionSet value='Música'>
             <AccordionSet value='Prohibidos'>
-              <EditableData disabled={!canEditEvents}
+              <EditableData
+                disabled
                 type='chips'
                 value={selectedEvent.music.forbidden}
                 property='forbidden'
               />
             </AccordionSet>
             <AccordionSet value='Requeridos'>
-              <EditableData disabled={!canEditEvents}
+              <EditableData
+                disabled
                 type='chips'
                 value={selectedEvent.music.required}
                 property='required'
@@ -2304,7 +2314,7 @@ const EventPage = () => {
         </Box>
       )}
 
-      {/* Modal para agregar campos de música */}
+      {/* Modal para editar campos de música */}
       {selectedEvent && (
         <MusicFieldsModal
           opened={isMusicFieldsModalOpen}
@@ -2357,9 +2367,11 @@ const EventPage = () => {
               if (refetchResponse.ok) {
                 const { event } = await refetchResponse.json();
                 setSelectedEvent(event);
+                updateEventInList(event);
               } else {
                 // Si falla el refetch, usar los datos locales
                 setSelectedEvent(updatedEvent);
+                updateEventInList(updatedEvent);
               }
 
               notify({ message: 'Campos de música guardados exitosamente' });

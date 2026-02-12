@@ -55,7 +55,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   equipmentNameHeader: {
-    flex: 3
+    flex: 2.5
+  },
+  equipmentQuantityHeader: {
+    flex: 1,
+    textAlign: 'center',
   },
   equipmentCheckboxHeader: {
     flex: 1,
@@ -67,8 +71,14 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   equipmentNameCell: {
-    flex: 3,
+    flex: 2.5,
     fontSize: 10
+  },
+  equipmentQuantityCell: {
+    flex: 1,
+    fontSize: 10,
+    textAlign: 'center',
+    marginLeft: 8
   },
   equipmentCheckboxCell: {
     flex: 1,
@@ -137,6 +147,9 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
             <Text style={[styles.equipmentTableHeaderCell, styles.equipmentNameHeader]}>
               Nombre Equipamiento
             </Text>
+            <Text style={[styles.equipmentTableHeaderCell, styles.equipmentQuantityHeader]}>
+              Cant.
+            </Text>
             <Text style={[styles.equipmentTableHeaderCell, styles.equipmentCheckboxHeader]}>
               Controlado
             </Text>
@@ -167,7 +180,10 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
                 {equipmentEntries.map(([name, quantity], index) => (
                   <View key={index} style={styles.equipmentTableRow} wrap={false}>
                     <Text style={styles.equipmentNameCell}>
-                      {name}{quantity > 1 ? ` x ${quantity}` : ''}
+                      {name}
+                    </Text>
+                    <Text style={styles.equipmentQuantityCell}>
+                      {quantity > 1 ? quantity : '-'}
                     </Text>
                     <View style={styles.equipmentCheckboxCell}>
                       <View style={styles.checkbox} />

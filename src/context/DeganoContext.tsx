@@ -37,6 +37,21 @@ export const DeganoProvider: ({
       console.error('Failed to fetch movies:', error);
     }
   };
+
+  // Función para actualizar un evento específico en la lista
+  const updateEventInList = (updatedEvent: EventModel) => {
+    setAllEvents((prev) =>
+      prev.map((event) =>
+        event._id === updatedEvent._id ? updatedEvent : event
+      )
+    );
+  };
+
+  // Función para agregar un evento a la lista
+  const addEventToList = (newEvent: EventModel) => {
+    setAllEvents((prev) => [...prev, newEvent]);
+  };
+
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -87,7 +102,9 @@ export const DeganoProvider: ({
     folderName,
     setFolderName,
     authToken,
-    setAuthToken
+    setAuthToken,
+    updateEventInList,
+    addEventToList
   };
   return (
     <DeganoContext.Provider value={contextValue}>
