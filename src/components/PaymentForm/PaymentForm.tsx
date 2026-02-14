@@ -59,15 +59,32 @@ const PaymentForm = ({
 
   // Función para limpiar el formato y obtener solo números
   const parseFormattedNumber = (value: string): string => {
-    return value.replace(/[^0-9]/g, '');
+    const digits = value.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return digits;
   };
 
   // Función para formatear número mientras se escribe
   const formatNumberInput = (value: string): string => {
-    const numericValue = parseFormattedNumber(value);
-    if (!numericValue) return '';
-    return `$ ${new Intl.NumberFormat('es-AR').format(Number(numericValue))}`;
+    const digits = value.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    const formatted = new Intl.NumberFormat('es-AR').format(Number(digits));
+    return `$ ${formatted}`;
   };
+
+  // Calcular la suma de los anexos
+  const annexesTotal = useMemo(() => {
+    return annexes.reduce((sum, annex) => {
+      const amount = Number(parseFormattedNumber(annex.amount));
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+  }, [annexes]);
+
+  // Total ajustado = monto base + anexos
+  const adjustedTotal = useMemo(() => {
+    const baseTotal = Number(parseFormattedNumber(formattedTotalToPay));
+    return (isNaN(baseTotal) ? 0 : baseTotal) + annexesTotal;
+  }, [formattedTotalToPay, annexesTotal]);
 
   // Calcular el costo total de renta del equipamiento
   const rentalCost = useMemo(() => {
@@ -359,6 +376,30 @@ const PaymentForm = ({
       <Button variant="light" leftSection={<IconPlus size={16} />} onClick={addAnnex}>
         Agregar anexo
       </Button>
+
+      {/* Resumen de total ajustado */}
+      {(annexes.length > 0 || annexesTotal !== 0) && (
+        <Box
+          mt='md'
+          p='12px'
+          style={{
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)'
+          }}
+        >
+          <Text size='sm' c='dimmed' mb='4px'>
+            Monto base: {formatPrice(Number(parseFormattedNumber(formattedTotalToPay)) || 0)}
+          </Text>
+          <Text size='sm' mb='4px'>
+            Anexos: +{formatPrice(annexesTotal)}
+          </Text>
+          <Divider my='xs' />
+          <Text fw={700} size='lg'>
+            Total: {formatPrice(adjustedTotal)}
+          </Text>
+        </Box>
+      )}
 
       {isAdmin && (
         <>

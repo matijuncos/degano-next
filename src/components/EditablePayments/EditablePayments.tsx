@@ -50,14 +50,17 @@ const EditablePayments = () => {
 
   // Función para limpiar el formato y obtener solo números
   const parseFormattedNumber = (value: string): string => {
-    return value.replace(/[^0-9]/g, '');
+    const digits = value.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return digits;
   };
 
   // Función para formatear número mientras se escribe
   const formatNumberInput = (value: string): string => {
-    const numericValue = parseFormattedNumber(value);
-    if (!numericValue) return '';
-    return `$ ${new Intl.NumberFormat('es-AR').format(Number(numericValue))}`;
+    const digits = value.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    const formatted = new Intl.NumberFormat('es-AR').format(Number(digits));
+    return `$ ${formatted}`;
   };
 
   // Funciones para manejar anexos
@@ -340,15 +343,41 @@ const EditablePayments = () => {
 
     await updateEvent(eventUpdated);
   };
-  const sumOfPartialPayments =
-    selectedEvent?.payment.subsequentPayments?.reduce(
-      (sum, payment) => sum + Number(payment.amount),
-      0
-    ) || 0;
-  const initialPayment = Number(selectedEvent?.payment.upfrontAmount);
-  const sumOfPayments = sumOfPartialPayments + initialPayment;
-  const remainingPayment =
-    Number(selectedEvent?.payment.totalToPay) - sumOfPayments;
+  const baseBudget = Number(selectedEvent?.payment?.totalToPay) || 0;
+  const annexesSum = selectedEvent?.payment?.annexes?.reduce(
+    (sum: number, annex: any) => sum + Number(annex.amount), 0
+  ) || 0;
+  const totalBudget = baseBudget + annexesSum;
+
+  // Collect all payments in order
+  const allPayments: { amount: number; label: string; id?: string; date?: any; raw?: any }[] = [];
+  if (selectedEvent?.payment?.upfrontAmount) {
+    const date = selectedEvent.payment.partialPaymentDate
+      ? new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+      : '';
+    allPayments.push({
+      amount: Number(selectedEvent.payment.upfrontAmount),
+      label: `Adelanto${date ? ` ${date}` : ''}`,
+      id: '__upfront__'
+    });
+  }
+  if (selectedEvent?.payment?.subsequentPayments) {
+    selectedEvent.payment.subsequentPayments.forEach((p: any) => {
+      const date = p.date
+        ? new Date(p.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+        : '';
+      allPayments.push({
+        amount: Number(p.amount),
+        label: `${p.description || 'Pago'}${date ? ` ${date}` : ''}`,
+        id: p.id,
+        date: p.date,
+        raw: p
+      });
+    });
+  }
+
+  const sumOfPayments = allPayments.reduce((sum, p) => sum + p.amount, 0);
+  const remainingPayment = totalBudget - sumOfPayments;
 
   if (!selectedEvent) return null;
 
@@ -373,37 +402,7 @@ const EditablePayments = () => {
         </Text>
       </Box>
 
-      <Box mb='24px'>
-        <Flex justify='space-between'>
-          <Flex
-            gap='16px'
-            p='10px'
-            style={{
-              borderRadius: '6px',
-              border: 'solid 1px white'
-            }}
-          >
-            <Text fw={600}>Cotizaciòn total del evento</Text>
-            {isEditing ? (
-              <Input
-                type='text'
-                value={editedTotalToPay}
-                onChange={handleTotalToPayChange}
-                placeholder='$ 0'
-              />
-            ) : (
-              <Text>
-                {formatPrice(Number(selectedEvent?.payment.totalToPay))}
-              </Text>
-            )}
-          </Flex>
-          <ProtectedAction requiredPermission='canViewPayments'>
-            <Button onClick={handleEdit}>
-              {isEditing ? 'Guardar' : 'Editar'}
-            </Button>
-          </ProtectedAction>
-        </Flex>
-      </Box>
+      {/* PRESUPUESTO BASE + ANEXOS */}
       <Box
         mb='16px'
         p='10px'
@@ -413,268 +412,276 @@ const EditablePayments = () => {
         }}
       >
         <Text fw={600} mb='8px'>
-          Pagos parciales:
+          Presupuesto
         </Text>
-        <hr />
-        <Box my='24px'>
-          {/* Pago Inicial */}
-          <Flex gap='8px' align='center'>
-            <Text fw={600}>Pago Inicial: </Text>
-            <Text>
-              {new Date(
-                selectedEvent.payment.partialPaymentDate
-              ).toLocaleDateString('es-AR')}{' '}
-              -
-            </Text>
-            <Text>
-              {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
-            </Text>
-          </Flex>
 
-          {/* Pagos parciales existentes */}
-          {selectedEvent.payment.subsequentPayments?.map((payment: any) => (
-            <Box key={payment.id} my='sm'>
-              {editingPaymentId === payment.id ? (
-                // Modo edición
-                <Group gap='sm'>
-                  <Input
-                    type='text'
-                    placeholder='$ 0'
-                    value={editedPaymentAmount}
-                    onChange={(e) => setEditedPaymentAmount(formatNumberInput(e.target.value))}
-                    style={{ width: '150px' }}
-                  />
-                  <DateTimePicker
-                    placeholder='Fecha de pago'
-                    value={editedPaymentDate}
-                    onChange={(date) => setEditedPaymentDate(date as Date | null)}
-                    style={{ width: '180px' }}
-                  />
-                  <ActionIcon color='green' variant='light' onClick={saveEditedPayment}>
-                    <IconCheck size={16} />
-                  </ActionIcon>
-                  <ActionIcon color='gray' variant='light' onClick={cancelEditingPayment}>
-                    <IconX size={16} />
-                  </ActionIcon>
-                </Group>
-              ) : (
-                // Modo visualización
-                <Flex gap='8px' align='center'>
-                  <Text fw={600}>Pago parcial:</Text>
-                  <Text>{new Date(payment.date).toLocaleDateString('es-AR')}</Text>
-                  <Text> - {formatPrice(Number(payment.amount))}</Text>
-                  {can('canEditPayments') && (
-                    <ActionIcon
-                      color='blue'
-                      variant='subtle'
-                      size='sm'
-                      onClick={() => startEditingPayment(payment)}
-                    >
-                      <IconPencil size={14} />
-                    </ActionIcon>
-                  )}
-                  {can('canDeletePayments') && (
-                    <ActionIcon
-                      color='red'
-                      variant='subtle'
-                      size='sm'
-                      onClick={() => deleteExistingPayment(payment.id)}
-                    >
-                      <IconTrash size={14} />
-                    </ActionIcon>
-                  )}
-                </Flex>
-              )}
-            </Box>
-          ))}
+        {/* Presupuesto inicial editable */}
+        <Flex gap='8px' align='center' mb='xs'>
+          {isEditing ? (
+            <Input
+              type='text'
+              value={editedTotalToPay}
+              onChange={handleTotalToPayChange}
+              placeholder='$ 0'
+              style={{ width: '180px' }}
+            />
+          ) : (
+            <Text size='sm'>
+              {formatPrice(baseBudget)} - Presupuesto inicial
+            </Text>
+          )}
+          <ProtectedAction requiredPermission='canViewPayments'>
+            <Button size='xs' variant='light' onClick={handleEdit}>
+              {isEditing ? 'Guardar' : 'Editar'}
+            </Button>
+          </ProtectedAction>
+        </Flex>
 
-          {/* Nuevos pagos (inputs temporales) */}
-          {newPayments.map((payment) => (
-            <Box key={payment.id} my='sm'>
-              <Text fw={600} size='sm' mb='4px'>
-                Nuevo pago
-              </Text>
-              <Group gap='sm'>
-                <Input
-                  type='text'
-                  placeholder='$ 0'
-                  value={payment.amount}
-                  onChange={(e) =>
-                    updateNewPayment(payment.id, 'amount', e.target.value)
-                  }
-                  style={{ width: '150px' }}
-                  disabled={!can('canEditPayments')}
-                />
-                <DateTimePicker
-                  placeholder='Fecha de pago'
-                  value={new Date(payment.date)}
-                  onChange={(date) => updateNewPayment(payment.id, 'date', date)}
-                  style={{ width: '180px' }}
-                  disabled={!can('canEditPayments')}
-                />
-                {can('canDeletePayments') && (
+        {/* Anexos existentes guardados en el evento */}
+        {selectedEvent?.payment?.annexes && selectedEvent.payment.annexes.length > 0 && !hasAnnexChanges && (
+          <>
+            {selectedEvent.payment.annexes.map((annex: BudgetAnnex, idx: number) => (
+              <Flex key={annex.id || idx} gap='sm' mb='xs' align='center'>
+                <Text size='sm' style={{ flex: 1 }}>
+                  {formatPrice(Number(annex.amount))} - {annex.description}
+                </Text>
+                {can('canEditPayments') && (
                   <ActionIcon
                     color='red'
                     variant='light'
-                    onClick={() => removeNewPayment(payment.id)}
+                    size='sm'
+                    onClick={() => {
+                      const existingAnnexes = selectedEvent.payment.annexes?.map(a => ({
+                        ...a,
+                        amount: formatNumberInput(a.amount.toString())
+                      })) || [];
+                      const filteredAnnexes = existingAnnexes.filter(a => a.id !== annex.id);
+                      setAnnexes(filteredAnnexes);
+                      setHasAnnexChanges(true);
+                    }}
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
                 )}
-                {can('canCreatePayments') && (
-                  <ActionIcon
-                    color='green'
-                    variant='light'
-                    onClick={() => saveNewPayment(payment.id)}
-                  >
-                    <IconCheck size={16} />
-                  </ActionIcon>
-                )}
-              </Group>
-            </Box>
-          ))}
+              </Flex>
+            ))}
+          </>
+        )}
 
-          {/* Botón agregar pago */}
-          {!newPayments.length && (
-            <Box mt='md'>
-              <ProtectedAction requiredPermission='canViewPayments'>
-                <Button variant='light' leftSection={<IconPlus size={16} />} onClick={addPayment}>
-                  Agregar pago
-                </Button>
-              </ProtectedAction>
-            </Box>
+        {/* Anexos en edición */}
+        {hasAnnexChanges && annexes.map((annex) => (
+          <Group key={annex.id} gap='sm' mb='sm' align='center'>
+            <Input
+              placeholder='Descripción del anexo'
+              value={annex.description}
+              onChange={(e) => updateAnnex(annex.id, 'description', e.target.value)}
+              style={{ flex: 1 }}
+              disabled={!can('canEditPayments')}
+            />
+            <Input
+              placeholder='Monto ($)'
+              value={annex.amount}
+              onChange={(e) => updateAnnex(annex.id, 'amount', e.target.value)}
+              style={{ width: '150px' }}
+              disabled={!can('canEditPayments')}
+            />
+            <ActionIcon color='red' variant='light' onClick={() => removeAnnex(annex.id)}>
+              <IconTrash size={16} />
+            </ActionIcon>
+          </Group>
+        ))}
+
+        <Group gap='sm' mb='sm'>
+          {can('canEditPayments') && (
+            <Button variant='light' size='xs' leftSection={<IconPlus size={14} />} onClick={() => {
+              if (!hasAnnexChanges && selectedEvent?.payment?.annexes) {
+                const existingAnnexes = selectedEvent.payment.annexes.map(a => ({
+                  ...a,
+                  amount: formatNumberInput(a.amount.toString())
+                }));
+                setAnnexes(existingAnnexes);
+                setHasAnnexChanges(true);
+              }
+              addAnnex();
+            }}>
+              Agregar anexo
+            </Button>
           )}
-        </Box>
-      </Box>
+          {hasAnnexChanges && (
+            <Button variant='filled' size='xs' color='green' leftSection={<IconCheck size={14} />} onClick={saveAnnexes}>
+              Guardar anexos
+            </Button>
+          )}
+        </Group>
 
-      <Box
-        p='10px'
-        my='24px'
-        style={{
-          borderRadius: '6px',
-          border: 'solid 1px white'
-        }}
-      >
-        <Text fw={600} mb='8px'>
-          Suma de pagos parciales: {formatPrice(sumOfPayments)}
+        {/* Línea + Total (base + anexos) */}
+        <Divider variant='dashed' size='sm' my='xs' style={{ borderColor: '#C9C9C9' }} />
+        <Text size='sm' fw={600} mb='xs'>
+          {formatPrice(totalBudget)}
         </Text>
-        <hr />
-        <Text fw={600} my='8px'>
-          Falta pagar: {formatPrice(remainingPayment)}
-        </Text>
-      </Box>
 
-      {/* SECCIÓN DE ANEXOS */}
-      <Divider my="md" />
-      <Text fw={600} mb="sm">Anexos</Text>
+        {/* Pagos como negativos con saldo progresivo */}
+        {(() => {
+          let runningBalance = totalBudget;
+          return (
+            <>
+              {/* Pago Inicial */}
+              {selectedEvent?.payment?.upfrontAmount && (
+                <>
+                  <Text size='sm' c='red' mb={4}>
+                    -{formatPrice(Number(selectedEvent.payment.upfrontAmount))} - (Adelanto{selectedEvent.payment.partialPaymentDate ? ` ${new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''})
+                  </Text>
+                  {(() => { runningBalance -= Number(selectedEvent.payment.upfrontAmount); return null; })()}
+                  <Divider variant='dashed' size='sm' my='xs' style={{ borderColor: '#C9C9C9' }} />
+                  <Text size='sm' fw={selectedEvent.payment.subsequentPayments?.length ? 400 : 600} mb={4}>
+                    {formatPrice(runningBalance)}
+                  </Text>
+                </>
+              )}
 
-      {/* Anexos existentes guardados en el evento */}
-      {selectedEvent?.payment?.annexes && selectedEvent.payment.annexes.length > 0 && !hasAnnexChanges && (
-        <Box mb="md">
-          {selectedEvent.payment.annexes.map((annex: BudgetAnnex, idx: number) => (
-            <Flex key={annex.id || idx} gap="sm" mb="xs" align="center">
-              <Text size="sm" style={{ flex: 1 }}>
-                {annex.description}: {formatPrice(Number(annex.amount))}
-              </Text>
-              {can('canEditPayments') && (
+              {/* Pagos parciales existentes */}
+              {selectedEvent.payment.subsequentPayments?.map((payment: any, idx: number) => {
+                runningBalance -= Number(payment.amount);
+                const isLast = idx === (selectedEvent.payment.subsequentPayments?.length || 0) - 1;
+                return (
+                  <Box key={payment.id} my='xs'>
+                    {editingPaymentId === payment.id ? (
+                      <Group gap='sm'>
+                        <Input
+                          type='text'
+                          placeholder='$ 0'
+                          value={editedPaymentAmount}
+                          onChange={(e) => setEditedPaymentAmount(formatNumberInput(e.target.value))}
+                          style={{ width: '150px' }}
+                        />
+                        <DateTimePicker
+                          placeholder='Fecha de pago'
+                          value={editedPaymentDate}
+                          onChange={(date) => setEditedPaymentDate(date as Date | null)}
+                          style={{ width: '180px' }}
+                        />
+                        <ActionIcon color='green' variant='light' onClick={saveEditedPayment}>
+                          <IconCheck size={16} />
+                        </ActionIcon>
+                        <ActionIcon color='gray' variant='light' onClick={cancelEditingPayment}>
+                          <IconX size={16} />
+                        </ActionIcon>
+                      </Group>
+                    ) : (
+                      <Flex gap='8px' align='center'>
+                        <Text size='sm' c='red'>
+                          -{formatPrice(Number(payment.amount))} - ({payment.description || 'Pago'}{payment.date ? ` ${new Date(payment.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''})
+                        </Text>
+                        {can('canEditPayments') && (
+                          <ActionIcon color='blue' variant='subtle' size='sm' onClick={() => startEditingPayment(payment)}>
+                            <IconPencil size={14} />
+                          </ActionIcon>
+                        )}
+                        {can('canDeletePayments') && (
+                          <ActionIcon color='red' variant='subtle' size='sm' onClick={() => deleteExistingPayment(payment.id)}>
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        )}
+                      </Flex>
+                    )}
+                    <Divider variant='dashed' size='sm' my='xs' style={{ borderColor: '#C9C9C9' }} />
+                    <Text size='sm' fw={isLast ? 600 : 400} mb={4}>
+                      {formatPrice(runningBalance)}
+                    </Text>
+                  </Box>
+                );
+              })}
+            </>
+          );
+        })()}
+
+        {/* Nuevos pagos (inputs temporales) */}
+        {newPayments.map((payment) => (
+          <Box key={payment.id} my='sm'>
+            <Text fw={600} size='sm' mb='4px'>
+              Nuevo pago
+            </Text>
+            <Group gap='sm'>
+              <Input
+                type='text'
+                placeholder='$ 0'
+                value={payment.amount}
+                onChange={(e) =>
+                  updateNewPayment(payment.id, 'amount', e.target.value)
+                }
+                style={{ width: '150px' }}
+                disabled={!can('canEditPayments')}
+              />
+              <DateTimePicker
+                placeholder='Fecha de pago'
+                value={new Date(payment.date)}
+                onChange={(date) => updateNewPayment(payment.id, 'date', date)}
+                style={{ width: '180px' }}
+                disabled={!can('canEditPayments')}
+              />
+              {can('canDeletePayments') && (
                 <ActionIcon
-                  color="red"
-                  variant="light"
-                  onClick={() => {
-                    // Cargar anexos existentes para edición y eliminar este
-                    const existingAnnexes = selectedEvent.payment.annexes?.map(a => ({
-                      ...a,
-                      amount: formatNumberInput(a.amount.toString())
-                    })) || [];
-                    const filteredAnnexes = existingAnnexes.filter(a => a.id !== annex.id);
-                    setAnnexes(filteredAnnexes);
-                    setHasAnnexChanges(true);
-                  }}
+                  color='red'
+                  variant='light'
+                  onClick={() => removeNewPayment(payment.id)}
                 >
                   <IconTrash size={16} />
                 </ActionIcon>
               )}
-            </Flex>
-          ))}
-        </Box>
-      )}
+              {can('canCreatePayments') && (
+                <ActionIcon
+                  color='green'
+                  variant='light'
+                  onClick={() => saveNewPayment(payment.id)}
+                >
+                  <IconCheck size={16} />
+                </ActionIcon>
+              )}
+            </Group>
+          </Box>
+        ))}
 
-      {/* Anexos en edición */}
-      {hasAnnexChanges && annexes.map((annex) => (
-        <Group key={annex.id} gap="sm" mb="sm" align="center">
-          <Input
-            placeholder="Descripción del anexo"
-            value={annex.description}
-            onChange={(e) => updateAnnex(annex.id, 'description', e.target.value)}
-            style={{ flex: 1 }}
-            disabled={!can('canEditPayments')}
-          />
-          <Input
-            placeholder="Monto ($)"
-            value={annex.amount}
-            onChange={(e) => updateAnnex(annex.id, 'amount', e.target.value)}
-            style={{ width: '150px' }}
-            disabled={!can('canEditPayments')}
-          />
-          <ActionIcon color="red" variant="light" onClick={() => removeAnnex(annex.id)}>
-            <IconTrash size={16} />
-          </ActionIcon>
-        </Group>
-      ))}
-
-      <Group gap="sm">
-        {can('canEditPayments') && (
-          <Button variant="light" leftSection={<IconPlus size={16} />} onClick={() => {
-            if (!hasAnnexChanges && selectedEvent?.payment?.annexes) {
-              // Cargar anexos existentes formateados para edición
-              const existingAnnexes = selectedEvent.payment.annexes.map(a => ({
-                ...a,
-                amount: formatNumberInput(a.amount.toString())
-              }));
-              setAnnexes(existingAnnexes);
-              setHasAnnexChanges(true);
-            }
-            addAnnex();
-          }}>
-            Agregar anexo
-          </Button>
+        {/* Botón agregar pago */}
+        {!newPayments.length && (
+          <Box mt='md'>
+            <ProtectedAction requiredPermission='canViewPayments'>
+              <Button variant='light' size='xs' leftSection={<IconPlus size={14} />} onClick={addPayment}>
+                Agregar pago
+              </Button>
+            </ProtectedAction>
+          </Box>
         )}
-        {hasAnnexChanges && (
-          <Button variant="filled" color="green" leftSection={<IconCheck size={16} />} onClick={saveAnnexes}>
-            Guardar anexos
-          </Button>
-        )}
-      </Group>
+      </Box>
 
       {/* SECCIÓN DE ARCHIVO DE PRESUPUESTO (solo admin) */}
       {isAdmin && (
         <>
-          <Divider my="md" />
-          <Text fw={600} mb="sm">Archivo de presupuesto</Text>
+          <Divider my='md' />
+          <Text fw={600} mb='sm'>Archivo de presupuesto</Text>
 
           {budgetFileUrl ? (
             <Group>
               <IconFile size={20} />
-              <Text size="sm" style={{ flex: 1 }}>
+              <Text size='sm' style={{ flex: 1 }}>
                 {getCleanFileName(budgetFileUrl)}
               </Text>
               <ActionIcon
-                color="blue"
-                variant="light"
+                color='blue'
+                variant='light'
                 onClick={() => window.open(budgetFileUrl, '_blank')}
               >
                 <IconEye size={16} />
               </ActionIcon>
-              <ActionIcon color="red" variant="light" onClick={handleDeleteBudgetFile}>
+              <ActionIcon color='red' variant='light' onClick={handleDeleteBudgetFile}>
                 <IconTrash size={16} />
               </ActionIcon>
             </Group>
           ) : (
-            <FileButton onChange={handleUploadBudgetFile} accept="image/*,.pdf">
+            <FileButton onChange={handleUploadBudgetFile} accept='image/*,.pdf'>
               {(props) => (
                 <Button
                   {...props}
-                  variant="light"
+                  variant='light'
                   leftSection={<IconUpload size={16} />}
                   loading={uploading}
                 >

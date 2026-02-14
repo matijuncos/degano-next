@@ -494,6 +494,22 @@ const DrawerContent = () => {
 
         <Divider />
 
+        {/* SECCIÓN: MÁS INFORMACIÓN */}
+        {selectedEvent?.moreData && (
+          <>
+            <Box>
+              <Text fw={700} size='md' mb='sm'>
+                Más Información
+              </Text>
+              <Text size='sm' style={{ whiteSpace: 'pre-wrap' }}>
+                {selectedEvent.moreData}
+              </Text>
+            </Box>
+
+            <Divider />
+          </>
+        )}
+
         {/* SECCIÓN: STAFF */}
         <Box>
           <Group justify='space-between' mb='sm'>
@@ -548,82 +564,94 @@ const DrawerContent = () => {
               <Text fw={700} size='md' mb='sm'>
                 Presupuesto
               </Text>
+
+              {/* Presupuesto inicial */}
               {selectedEvent?.payment?.totalToPay != null && (
-                <Text size='sm' mb='xs'>
-                  Total a pagar:{' '}
-                  {formatPrice(Number(selectedEvent.payment.totalToPay))}
-                </Text>
-              )}
-              {selectedEvent?.equipmentPrice != null && (
-                <Text size='sm' mb='xs'>
-                  Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
+                <Text size='sm' mb={4}>
+                  {formatPrice(Number(selectedEvent.payment.totalToPay))} - Presupuesto inicial
                 </Text>
               )}
 
+              {/* Anexos (suman al presupuesto) */}
+              {selectedEvent?.payment?.annexes?.map((annex: any, idx: number) => (
+                <Text key={annex.id || idx} size='sm' mb={4}>
+                  {formatPrice(Number(annex.amount))} - {annex.description}
+                </Text>
+              ))}
+
+              {/* Línea + Total (base + anexos) */}
               <Divider
                 variant='dashed'
                 size='sm'
-                my='md'
+                my='xs'
                 style={{ borderColor: '#C9C9C9' }}
               />
+              {(() => {
+                const baseBudget = Number(selectedEvent?.payment?.totalToPay) || 0;
+                const annexesSum = selectedEvent?.payment?.annexes?.reduce(
+                  (sum: number, annex: any) => sum + Number(annex.amount), 0
+                ) || 0;
+                const totalBudget = baseBudget + annexesSum;
 
-              <Text size='sm' fw={500} mb='xs'>
-                Pagos realizados:
-              </Text>
-              {selectedEvent?.payment?.upfrontAmount && (
-                <Text size='sm' pl='md'>
-                  - Adelanto:{' '}
-                  {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
-                </Text>
-              )}
-              {selectedEvent?.payment?.subsequentPayments &&
-                selectedEvent.payment.subsequentPayments.map(
-                  (payment: any, idx: number) => (
-                    <Text key={idx} size='sm' pl='md'>
-                      - {payment.description || 'Pago'}:{' '}
-                      {formatPrice(Number(payment.amount))}
+                // Collect all payments in order
+                const allPayments: { amount: number; label: string }[] = [];
+                if (selectedEvent?.payment?.upfrontAmount) {
+                  const date = selectedEvent.payment.partialPaymentDate
+                    ? new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+                    : '';
+                  allPayments.push({
+                    amount: Number(selectedEvent.payment.upfrontAmount),
+                    label: `Adelanto${date ? ` ${date}` : ''}`
+                  });
+                }
+                if (selectedEvent?.payment?.subsequentPayments) {
+                  selectedEvent.payment.subsequentPayments.forEach((p: any) => {
+                    const date = p.date
+                      ? new Date(p.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+                      : '';
+                    allPayments.push({
+                      amount: Number(p.amount),
+                      label: `${p.description || 'Pago'}${date ? ` ${date}` : ''}`
+                    });
+                  });
+                }
+
+                let runningBalance = totalBudget;
+
+                return (
+                  <>
+                    <Text size='sm' fw={600} mb={4}>
+                      {formatPrice(totalBudget)}
                     </Text>
-                  )
-                )}
 
-              <Divider
-                variant='dashed'
-                size='sm'
-                my='md'
-                style={{ borderColor: '#C9C9C9' }}
-              />
+                    {allPayments.map((p, idx) => {
+                      runningBalance -= p.amount;
+                      return (
+                        <Box key={idx}>
+                          <Text size='sm' c='red' mb={4}>
+                            -{formatPrice(p.amount)} - ({p.label})
+                          </Text>
+                          <Divider
+                            variant='dashed'
+                            size='sm'
+                            my='xs'
+                            style={{ borderColor: '#C9C9C9' }}
+                          />
+                          <Text size='sm' fw={idx === allPayments.length - 1 ? 600 : 400} mb={4}>
+                            {formatPrice(runningBalance)}
+                          </Text>
+                        </Box>
+                      );
+                    })}
 
-              <Text size='sm' fw={500}>
-                Falta pagar:{' '}
-                {formatPrice(
-                  Number(selectedEvent?.payment.totalToPay) -
-                    ((selectedEvent?.payment.subsequentPayments?.reduce(
-                      (sum: number, payment: any) => sum + Number(payment.amount),
-                      0
-                    ) || 0) +
-                      Number(selectedEvent?.payment.upfrontAmount))
-                )}
-              </Text>
-
-              {/* ANEXOS */}
-              {selectedEvent?.payment?.annexes && selectedEvent.payment.annexes.length > 0 && (
-                <>
-                  <Divider
-                    variant='dashed'
-                    size='sm'
-                    my='md'
-                    style={{ borderColor: '#C9C9C9' }}
-                  />
-                  <Text size='sm' fw={500} mb='xs'>
-                    Anexos:
-                  </Text>
-                  {selectedEvent.payment.annexes.map((annex: any, idx: number) => (
-                    <Text key={annex.id || idx} size='sm' pl='md'>
-                      - {annex.description}: {formatPrice(Number(annex.amount))}
-                    </Text>
-                  ))}
-                </>
-              )}
+                    {allPayments.length === 0 && (
+                      <Text size='sm' c='dimmed' mb={4}>
+                        Sin pagos registrados
+                      </Text>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* ARCHIVO DE PRESUPUESTO (solo admin) */}
               {role === 'admin' && selectedEvent?.payment?.budgetFileUrl && (
