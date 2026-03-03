@@ -1,6 +1,6 @@
 import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { EventModel } from '@/context/types';
 import { Button, Input, Divider, Text, Select, ComboboxItem, Grid } from '@mantine/core';
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
@@ -220,10 +220,18 @@ const EventForm = ({
     }
   };
 
+  // Valida en tiempo real si la fecha/hora de fin es anterior a la de inicio
+  const endBeforeStart = useMemo(() => {
+    const start = combineDateAndTime(dateOnly, timeOnly);
+    const end = combineDateAndTime(endDateOnly, endTimeOnly);
+    if (!start || !end) return false;
+    return end <= start;
+  }, [dateOnly, timeOnly, endDateOnly, endTimeOnly]);
+
   const validateTimes = () => {
     const timeValid = timeOnly && timeOnly.trim() !== '';
     const endTimeValid = endTimeOnly && endTimeOnly.trim() !== '';
-    return timeValid && endTimeValid;
+    return timeValid && endTimeValid && !endBeforeStart;
   };
 
   const validateRequiredFields = () => {
@@ -533,7 +541,13 @@ const EventForm = ({
             name='endTimeOnly'
             value={endTimeOnly}
             onChange={(value: string) => setEndTimeOnly(value)}
-            error={validate && !endTimeOnly}
+            error={
+              validate && !endTimeOnly
+                ? true
+                : endBeforeStart
+                ? 'La fecha y hora de finalización es anterior a la de inicio'
+                : undefined
+            }
           />
         </Grid.Col>
 

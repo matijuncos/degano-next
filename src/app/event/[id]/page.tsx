@@ -174,6 +174,14 @@ const MainInformation = ({
     }
   }, [selectedEvent?.date, selectedEvent?.endDate, selectedEvent?.staffArrivalDate, selectedEvent?.equipmentArrivalDate]);
 
+  // Valida si la fecha/hora de fin es anterior a la de inicio
+  const endBeforeStart = useMemo(() => {
+    const start = combineDateAndTime(dateOnly, timeOnly);
+    const end = combineDateAndTime(endDateOnly, endTimeOnly);
+    if (!start || !end) return false;
+    return end <= start;
+  }, [dateOnly, timeOnly, endDateOnly, endTimeOnly]);
+
   // Calcular campos faltantes
   const missingFields = useMemo(
     () => detectMissingFields(selectedEvent),
@@ -434,18 +442,24 @@ const MainInformation = ({
             <EditableData disabled={!canEditEvents}
               type='timeOnly'
               property='endDate'
-              title='Hora de finalización'
+              title='Hora de Finalización'
               value={endTimeOnly}
               onSave={(value) => {
                 setEndTimeOnly(value);
                 if (endDateOnly && value && selectedEvent) {
                   const combined = combineDateAndTime(endDateOnly, value);
-                  if (combined) {
+                  const startCombined = combineDateAndTime(dateOnly, timeOnly);
+                  if (combined && startCombined && combined > startCombined) {
                     updateEventData({ endDate: combined });
                   }
                 }
               }}
             />
+            {endBeforeStart && (
+              <Text size='xs' c='red' mt='4px'>
+                La fecha y hora de finalización es anterior a la de inicio
+              </Text>
+            )}
           </Box>
         )}
       </Group>

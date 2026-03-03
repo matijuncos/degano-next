@@ -120,14 +120,34 @@ export default withPageAuthRequired(function CalendarPage() {
 
   // Eventos internos de la aplicación
   const internalEvents = allEvents.map((evnt) => {
+    const startDate = new Date(evnt.date);
+    const endDate = evnt.endDate ? new Date(evnt.endDate) : new Date(evnt.date);
+
+    // Verificar si el evento abarca más de un día calendario
+    const startDay = new Date(startDate);
+    startDay.setHours(0, 0, 0, 0);
+    const endDay = new Date(endDate);
+    endDay.setHours(0, 0, 0, 0);
+    const spansMultipleDays = endDay > startDay;
+
+    // Duración en horas
+    const durationHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+    // Si cruza medianoche pero dura menos de 20 hs, recortar al día de inicio
+    let adjustedEnd = endDate;
+    if (spansMultipleDays && durationHours < 20) {
+      adjustedEnd = new Date(startDate);
+      adjustedEnd.setHours(23, 59, 59, 999);
+    }
+
     return {
       ...evnt,
       title:
         evnt?.type && evnt?.lugar
           ? `${evnt.type} - ${evnt.lugar}`
           : evnt.fullName,
-      start: new Date(evnt.date),
-      end: evnt.endDate ? new Date(evnt.endDate) : new Date(evnt.date),
+      start: startDate,
+      end: adjustedEnd,
       allDay: false,
       selectable: true,
       source: 'internal',
