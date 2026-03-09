@@ -406,10 +406,10 @@ const DrawerContent = () => {
             )}
 
             {/* Horario de finalización */}
-            {selectedEvent?.end && (
+            {selectedEvent?.endDate && (
               <Text size='sm'>
                 <strong>Horario de finalización:</strong>{' '}
-                {format24Hour(selectedEvent.end)}
+                {format24Hour(selectedEvent.endDate)}
               </Text>
             )}
 
