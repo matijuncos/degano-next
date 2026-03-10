@@ -10,7 +10,7 @@ import './calendar.css';
 import 'moment/locale/es';
 import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box } from '@mantine/core';
 import { IconSearch, IconX } from '@tabler/icons-react';
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -106,9 +106,24 @@ export default withPageAuthRequired(function CalendarPage() {
     return Views.MONTH;
   });
 
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSelectedSlot = (value: any) => {
-    setSelectedEvent({ ...value });
-    setIsOpen(true);
+    if (clickTimerRef.current) {
+      // Doble click: navegar al evento
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      if (value._id) {
+        router.push(`/event/${value._id}`);
+      }
+    } else {
+      // Single click: esperar para ver si hay doble click
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        setSelectedEvent({ ...value });
+        setIsOpen(true);
+      }, 200);
+    }
   };
 
   const { defaultDate } = useMemo(

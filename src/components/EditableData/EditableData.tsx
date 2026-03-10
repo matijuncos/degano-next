@@ -288,7 +288,7 @@ const EditableData = ({
   const typeChipsData = () => (
     <>
       <Flex justify='space-between' style={{marginBottom: '10px'}}>
-        <Flex gap='8px' style={{overflow: 'auto'}}>
+        <Flex gap='8px' wrap='wrap' style={{width: '100%'}}>
           {Array.isArray(editState.inputValue) &&
           editState.inputValue.length > 0 ? (
             editState.inputValue.map((genre, i) => (
