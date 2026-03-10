@@ -305,6 +305,7 @@ export default function CreationPanel({
           placeholder='Ej: Monitores de sonido'
           value={formData.name || ''}
           onChange={(e) => handleInput('name', e.currentTarget.value)}
+          autoComplete='off'
         />
       ) : (
         <div
@@ -314,26 +315,31 @@ export default function CreationPanel({
             label='Nombre del equipo'
             value={formData.name || ''}
             onChange={(e) => handleInput('name', e.currentTarget.value)}
+            autoComplete='off'
           />
           <TextInput
             label='Código interno'
             value={formData.code || ''}
             onChange={(e) => handleInput('code', e.currentTarget.value)}
+            autoComplete='off'
           />
           <TextInput
             label='Marca'
             value={formData.brand || ''}
             onChange={(e) => handleInput('brand', e.currentTarget.value)}
+            autoComplete='off'
           />
           <TextInput
             label='Modelo'
             value={formData.model || ''}
             onChange={(e) => handleInput('model', e.currentTarget.value)}
+            autoComplete='off'
           />
           <TextInput
             label='N° de serie'
             value={formData.serialNumber || ''}
             onChange={(e) => handleInput('serialNumber', e.currentTarget.value)}
+            autoComplete='off'
           />
           {canViewPrices && (
             <>
@@ -352,6 +358,7 @@ export default function CreationPanel({
                   }));
                 }}
                 placeholder='$ 0'
+                autoComplete='off'
               />
 
               <TextInput
@@ -369,6 +376,7 @@ export default function CreationPanel({
                   }));
                 }}
                 placeholder='$ 0'
+                autoComplete='off'
               />
             </>
           )}
@@ -424,6 +432,7 @@ export default function CreationPanel({
               placeholder='Ej: Depósito 2'
               value={customLocation}
               onChange={(e) => setCustomLocation(e.currentTarget.value)}
+              autoComplete='off'
             />
           )}
           <Select

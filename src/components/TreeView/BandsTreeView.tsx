@@ -216,6 +216,7 @@ export default function BandsTreeView({
         rightSectionPointerEvents="auto"
         mb="sm"
         mx="0.75rem"
+        autoComplete='off'
       />
       <div
         style={{

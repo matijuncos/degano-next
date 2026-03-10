@@ -554,6 +554,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -594,6 +595,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -634,6 +636,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Firmas'
@@ -644,6 +647,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Salida'
@@ -654,6 +658,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
 
               {(musicData.ceremoniaCivil?.otros || []).length > 0 && (
@@ -678,6 +683,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <TextInput
                       label='Canción'
@@ -694,6 +700,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <ActionIcon
                       color='red'
@@ -736,6 +743,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Firmas'
@@ -746,6 +754,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Salida'
@@ -756,6 +765,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
 
               {(musicData.ceremoniaExtra?.otros || []).length > 0 && (
@@ -780,6 +790,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <TextInput
                       label='Canción'
@@ -796,6 +807,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <ActionIcon
                       color='red'
@@ -838,6 +850,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -878,6 +891,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -923,6 +937,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                         style={{ flex: 1 }}
                         size='sm'
                         disabled={!canEditEvents}
+                        autoComplete='off'
                       />
                       <ActionIcon
                         color='red'
@@ -965,6 +980,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                             e.currentTarget.value = '';
                           }
                         }}
+                        autoComplete='off'
                       />
                     </Box>
                   </Stack>
@@ -999,6 +1015,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -1047,6 +1064,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <TextInput
                       label='Canción'
@@ -1058,6 +1076,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <ActionIcon
                       color='red'
@@ -1175,6 +1194,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onKeyDown={handleForbidden}
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <Input
                 className={styles.input}
@@ -1183,6 +1203,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onKeyDown={handleRequired}
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
             </div>
             <div className={styles.inputPair}>
@@ -1239,6 +1260,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   style={{ flex: 1 }}
                   size='sm'
                   disabled={!canEditEvents}
+                  autoComplete='off'
                 />
                 <TextInput
                   placeholder='Spotify playlist URL'
@@ -1248,6 +1270,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   style={{ flex: 2 }}
                   size='sm'
                   disabled={!canEditEvents}
+                  autoComplete='off'
                 />
                 <Button size='sm' onClick={addSpotifyLinkButton} disabled={!canEditEvents}>
                   Agregar

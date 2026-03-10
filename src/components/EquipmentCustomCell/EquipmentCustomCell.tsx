@@ -18,6 +18,7 @@ const EquipmentCustomCell = ({
       <Input
         value={value}
         onChange={(e) => handleChange(field, e.target.value)}
+        autoComplete='off'
       />
     </TableTd>
   ) : (

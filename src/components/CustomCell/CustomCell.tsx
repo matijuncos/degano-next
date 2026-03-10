@@ -24,6 +24,7 @@ const CustomCell: React.FC<CustomCellProps> = ({
         <Input
           value={value}
           onChange={(e) => handleChange(field, e.target.value)}
+          autoComplete='off'
         />
       ) : (
         <Text>{value}</Text>

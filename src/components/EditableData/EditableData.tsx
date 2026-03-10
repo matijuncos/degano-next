@@ -223,6 +223,7 @@ const EditableData = ({
                 : ''
             }
             size='sm'
+            autoComplete='off'
           />
         ) : (
           <Text flex={1} size='sm' c='white'>
@@ -691,6 +692,7 @@ const EditableData = ({
               onKeyDown={handleStringArrayKeyDown}
               placeholder={`Agregar ${title?.toLowerCase() || 'elemento'}`}
               size='sm'
+              autoComplete='off'
             />
             <IconPlus
               cursor='pointer'

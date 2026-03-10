@@ -155,6 +155,7 @@ const MissingFieldsModal = ({
           value={value}
           onChange={(e) => handleInputChange(field.key, e.target.value)}
           placeholder={field.placeholder}
+          autoComplete='off'
         />
       </Input.Wrapper>
     );

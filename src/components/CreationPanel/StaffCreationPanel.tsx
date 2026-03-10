@@ -117,11 +117,13 @@ export default function StaffCreationPanel({
           label='Nombre completo'
           value={formData.fullName || ''}
           onChange={(e) => handleInput('fullName', e.currentTarget.value)}
+          autoComplete='off'
         />
         <TextInput
           label='DNI'
           value={formData.cardId || ''}
           onChange={(e) => handleInput('cardId', e.currentTarget.value)}
+          autoComplete='off'
         />
         <DateInput
           label='Fecha de nacimiento'
@@ -136,6 +138,7 @@ export default function StaffCreationPanel({
           label='Rol'
           value={formData.rol || ''}
           onChange={(e) => handleInput('rol', e.currentTarget.value)}
+          autoComplete='off'
         />
         <Select
           label='Tiene carnet?'
@@ -148,6 +151,7 @@ export default function StaffCreationPanel({
             label='Tipo de carnet'
             value={formData.licenseType || ''}
             onChange={(e) => handleInput('licenseType', e.currentTarget.value)}
+            autoComplete='off'
           />
         )}
         <Textarea

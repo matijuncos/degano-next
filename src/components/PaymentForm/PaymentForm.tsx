@@ -324,6 +324,7 @@ const PaymentForm = ({
         name='totalToPay'
         value={formattedTotalToPay}
         mb='16px'
+        autoComplete='off'
       />
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, sm: 6 }}>
@@ -333,6 +334,7 @@ const PaymentForm = ({
             onChange={handleUpfrontAmountChange}
             name='upfrontAmount'
             value={formattedUpfrontAmount}
+            autoComplete='off'
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
@@ -356,6 +358,7 @@ const PaymentForm = ({
               placeholder="Descripción del anexo"
               value={annex.description}
               onChange={(e) => updateAnnex(annex.id, 'description', e.target.value)}
+              autoComplete='off'
             />
           </Grid.Col>
           <Grid.Col span={4}>
@@ -363,6 +366,7 @@ const PaymentForm = ({
               placeholder="Monto ($)"
               value={annex.amount}
               onChange={(e) => updateAnnex(annex.id, 'amount', e.target.value)}
+              autoComplete='off'
             />
           </Grid.Col>
           <Grid.Col span={2}>

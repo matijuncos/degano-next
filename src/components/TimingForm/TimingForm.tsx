@@ -150,6 +150,7 @@ const TimingForm = ({
                     setNewItem({ ...newItem, title: e.target.value })
                   }
                   disabled={!canEditEvents}
+                  autoComplete='off'
                 />
               </Box>
             </Flex>
@@ -232,6 +233,7 @@ const TimingForm = ({
                             })
                           }
                           disabled={!canEditEvents}
+                          autoComplete='off'
                         />
                       </Box>
                     </Flex>

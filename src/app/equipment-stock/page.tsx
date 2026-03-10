@@ -184,10 +184,12 @@ const EquipmentSelects = withPageAuthRequired(() => {
               <Input
                 placeholder='Nombre de equipo'
                 onChange={(e) => setEquipmentInputNameValue(e.target.value)}
+                autoComplete='off'
               />
               <Input
                 placeholder='Costo de equipo'
                 onChange={(e) => setEquipmentInputPriceValue(e.target.value)}
+                autoComplete='off'
               />
               <Button onClick={addInputHandler}>
                 Agregar equipo

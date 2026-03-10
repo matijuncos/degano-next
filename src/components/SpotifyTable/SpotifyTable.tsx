@@ -106,6 +106,7 @@ const SpotifyTable = () => {
                       value={editedLabel}
                       onChange={(e) => setEditedLabel(e.target.value)}
                       size='xs'
+                      autoComplete='off'
                     />
                   ) : (
                     <Text size='sm' fw={500}>
@@ -119,6 +120,7 @@ const SpotifyTable = () => {
                       value={editedUrl}
                       onChange={(e) => setEditedUrl(e.target.value)}
                       size='xs'
+                      autoComplete='off'
                     />
                   ) : (
                     <Group gap='xs'>
@@ -184,12 +186,14 @@ const SpotifyTable = () => {
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               size='sm'
+              autoComplete='off'
             />
             <TextInput
               label='Dirección'
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               size='sm'
+              autoComplete='off'
             />
             <Button onClick={handleAddNew} size='sm'>
               <IconPlus size={16} />

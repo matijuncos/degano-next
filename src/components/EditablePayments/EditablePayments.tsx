@@ -424,6 +424,7 @@ const EditablePayments = () => {
               onChange={handleTotalToPayChange}
               placeholder='$ 0'
               style={{ width: '180px' }}
+              autoComplete='off'
             />
           ) : (
             <Text size='sm'>
@@ -477,6 +478,7 @@ const EditablePayments = () => {
               onChange={(e) => updateAnnex(annex.id, 'description', e.target.value)}
               style={{ flex: 1 }}
               disabled={!can('canEditPayments')}
+              autoComplete='off'
             />
             <Input
               placeholder='Monto ($)'
@@ -484,6 +486,7 @@ const EditablePayments = () => {
               onChange={(e) => updateAnnex(annex.id, 'amount', e.target.value)}
               style={{ width: '150px' }}
               disabled={!can('canEditPayments')}
+              autoComplete='off'
             />
             <ActionIcon color='red' variant='light' onClick={() => removeAnnex(annex.id)}>
               <IconTrash size={16} />
@@ -553,6 +556,7 @@ const EditablePayments = () => {
                           value={editedPaymentAmount}
                           onChange={(e) => setEditedPaymentAmount(formatNumberInput(e.target.value))}
                           style={{ width: '150px' }}
+                          autoComplete='off'
                         />
                         <DateTimePicker
                           placeholder='Fecha de pago'
@@ -611,6 +615,7 @@ const EditablePayments = () => {
                 }
                 style={{ width: '150px' }}
                 disabled={!can('canEditPayments')}
+                autoComplete='off'
               />
               <DateTimePicker
                 placeholder='Fecha de pago'
