@@ -19,7 +19,6 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   // PASO 1: Limpiar scheduledUses expirados y actualizar estados (solo si NO estamos en modo evento)
   if (!eventStartDate && !eventEndDate) {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
 
     // Buscar equipos con scheduledUses
     const equipmentWithScheduled = await db
@@ -32,16 +31,14 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
     for (const eq of equipmentWithScheduled) {
       const scheduledUses = eq.scheduledUses || [];
 
-      // Filtrar usos que ya pasaron
+      // Filtrar usos que ya pasaron (comparando datetime exacto)
       const activeUses = scheduledUses.filter((use: any) => {
         const endDate = new Date(use.endDate);
-        endDate.setHours(0, 0, 0, 0);
         return endDate >= now;
       });
 
       const expiredUses = scheduledUses.filter((use: any) => {
         const endDate = new Date(use.endDate);
-        endDate.setHours(0, 0, 0, 0);
         return endDate < now;
       });
 
@@ -53,8 +50,6 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
         const isCurrentlyInUse = activeUses.some((use: any) => {
           const startDate = new Date(use.startDate);
           const endDate = new Date(use.endDate);
-          startDate.setHours(0, 0, 0, 0);
-          endDate.setHours(0, 0, 0, 0);
           return now >= startDate && now <= endDate;
         });
 
@@ -110,19 +105,15 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
     if (eventStartDate && eventEndDate) {
       const eStart = new Date(eventStartDate);
       const eEnd = new Date(eventEndDate);
-      eStart.setHours(0, 0, 0, 0);
-      eEnd.setHours(0, 0, 0, 0);
 
-      // Verificar conflictos con scheduledUses
+      // Verificar conflictos con scheduledUses (comparando datetime exacto con hora)
       const scheduledUses = eq.scheduledUses || [];
       const hasConflict = scheduledUses.some((use: any) => {
         const usedStart = new Date(use.startDate);
         const usedEnd = new Date(use.endDate);
-        usedStart.setHours(0, 0, 0, 0);
-        usedEnd.setHours(0, 0, 0, 0);
 
-        // Verificar si hay solapamiento entre las fechas del evento y las fechas de uso programado
-        return eStart <= usedEnd && eEnd >= usedStart;
+        // Solapamiento real: el nuevo evento empieza antes de que termine el uso, y termina después de que empieza
+        return eStart < usedEnd && eEnd > usedStart;
       });
 
       // Si hay conflicto, marcar como no disponible para este evento
