@@ -185,7 +185,9 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
             eventId: eventId,
             eventName: body.type,
             eventDate: eventStart,
+            eventEndDate: eventEnd,
             eventLocation: body.lugar,
+            eventClientName: body.fullName,
             details: `${isCurrentOrPast ? 'Agregado a' : 'Programado para'} ${body.type} - ${body.lugar}`
           });
         }

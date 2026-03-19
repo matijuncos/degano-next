@@ -85,7 +85,7 @@ export async function createHistoryEntry(
 ): Promise<void> {
   try {
     const entry: EquipmentHistoryEntry = {
-      equipmentId: params.equipmentId,
+      equipmentId: params.equipmentId?.toString(),
       equipmentName: params.equipmentName,
       equipmentCode: params.equipmentCode,
       action: params.action,
