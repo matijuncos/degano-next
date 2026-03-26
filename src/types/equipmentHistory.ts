@@ -24,7 +24,9 @@ export interface EquipmentHistoryEntry {
   eventId?: string;
   eventName?: string;
   eventDate?: Date;
+  eventEndDate?: Date;
   eventLocation?: string;
+  eventClientName?: string;
 
   // Para traslado/cambio_estado
   details?: string;
@@ -42,7 +44,9 @@ export interface CreateHistoryEntryParams {
   eventId?: string;
   eventName?: string;
   eventDate?: Date;
+  eventEndDate?: Date;
   eventLocation?: string;
+  eventClientName?: string;
   details?: string;
   fromValue?: string;
   toValue?: string;

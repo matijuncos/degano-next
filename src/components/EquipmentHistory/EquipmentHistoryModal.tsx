@@ -117,13 +117,28 @@ export default function EquipmentHistoryModal({
             <Text size="sm">
               <strong>Evento:</strong> {entry.eventName}
             </Text>
+            {entry.eventClientName && (
+              <Text size="sm">
+                <strong>Cliente:</strong> {entry.eventClientName}
+              </Text>
+            )}
             <Text size="sm">
               <strong>Lugar:</strong> {entry.eventLocation}
             </Text>
             <Text size="sm">
-              <strong>Fecha:</strong>{' '}
+              <strong>Inicio:</strong>{' '}
               {entry.eventDate ? formatDate(entry.eventDate) : 'N/A'}
             </Text>
+            {entry.eventEndDate && (
+              <Text size="sm">
+                <strong>Fin:</strong> {formatDate(entry.eventEndDate)}
+              </Text>
+            )}
+            {entry.eventId && (
+              <Text size="xs" c="dimmed" mt={4}>
+                ID evento: {entry.eventId}
+              </Text>
+            )}
           </Box>
         );
 
@@ -179,7 +194,9 @@ export default function EquipmentHistoryModal({
 
       {history && history.length > 0 && (
         <Timeline active={history.length} bulletSize={24} lineWidth={2}>
-          {history.map((entry, index) => (
+          {[...history]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .map((entry, index) => (
             <Timeline.Item
               key={index}
               bullet={getActionIcon(entry.action)}

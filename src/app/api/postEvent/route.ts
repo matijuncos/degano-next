@@ -94,7 +94,9 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
           eventId: newEvent._id.toString(),
           eventName: document.type,
           eventDate: eventStart,
+          eventEndDate: eventEnd,
           eventLocation: document.lugar,
+          eventClientName: document.fullName,
           details: `${isCurrentOrPast ? 'Usado' : 'Programado para usar'} en ${document.type} - ${document.lugar}`
         });
       }
