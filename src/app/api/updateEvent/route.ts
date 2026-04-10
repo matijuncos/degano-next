@@ -268,3 +268,39 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
     );
   }
 }, { requiredPermission: 'canEditEvents' });
+
+// PATCH: Actualizar solo el orden de categorías de equipamiento (liviano, sin tocar equipos)
+export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
+  try {
+    const typedClientPromise: Promise<MongoClient> =
+      clientPromise as Promise<MongoClient>;
+    const client = await typedClientPromise;
+    const body = await req.json();
+    const db = client.db('degano-app');
+
+    const { eventId, equipmentCategoryOrder } = body;
+
+    if (!eventId || !Array.isArray(equipmentCategoryOrder)) {
+      return NextResponse.json(
+        { error: 'eventId and equipmentCategoryOrder are required' },
+        { status: 400 }
+      );
+    }
+
+    const event = await db
+      .collection('events')
+      .findOneAndUpdate(
+        { _id: new ObjectId(eventId) },
+        { $set: { equipmentCategoryOrder, updatedAt: new Date() } },
+        { returnDocument: 'after' }
+      );
+
+    return NextResponse.json({ event }, { status: 200 });
+  } catch (error) {
+    console.error('Error updating equipment category order:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}, { requiredPermission: 'canEditEvents' });

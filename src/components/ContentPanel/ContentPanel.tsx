@@ -10,7 +10,10 @@ import {
   Button,
   Box,
   Loader,
-  Center
+  Center,
+  NumberInput,
+  Stack,
+  Text
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { IconPlus } from '@tabler/icons-react';
@@ -22,6 +25,7 @@ export default function ContentPanel({
   onSelect,
   onEdit,
   onRemove,
+  onRemoveMultiple,
   onCancel,
   newEvent,
   eventStartDate,
@@ -34,6 +38,7 @@ export default function ContentPanel({
   onSelect?: (item: any) => void;
   onEdit?: (item: any) => void;
   onRemove?: (equipmentId: string) => void;
+  onRemoveMultiple?: (ids: string[]) => void;
   onCancel?: (wasCancelled: boolean, updatedItem?: any) => void;
   newEvent: boolean;
   eventStartDate?: Date | string;
@@ -44,39 +49,33 @@ export default function ContentPanel({
   const { data: categories = [] } = useSWR('/api/categories', async (url: string) => {
     const response = await fetch(url, {
       cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
     });
     return response.json();
-  }, {
-    dedupingInterval: 0,
-    revalidateOnMount: true
-  });
+  }, { dedupingInterval: 0, revalidateOnMount: true });
 
-  // Función para determinar el estado del equipamiento
   const getEquipmentStatus = (item: any) => {
-    // Primero verificar si está en un evento (tiene prioridad)
     if (item.outOfService?.isOut && item.outOfService?.reason === 'En Evento') {
       return { label: 'En Uso', color: '#fbbf24' };
     }
-
-    // Luego verificar si está fuera de servicio por otros motivos (roto, mantenimiento, etc.)
     if (item.outOfService?.isOut) {
       return { label: 'No Disponible', color: 'red' };
     }
-
-    // Disponible: no está fuera de servicio
     return { label: 'Disponible', color: 'green' };
   };
 
-  // Estado local para equipamiento - NO usar SWR para evitar caché
   const [equipment, setEquipment] = useState<any[]>([]);
   const [isLoadingEquipment, setIsLoadingEquipment] = useState(false);
   const [equipmentUrl, setEquipmentUrl] = useState<string>('');
 
-  // Construir URL solo cuando cambian las fechas
+  // Mapa de cantidades por nombre de equipo (para el selector de cantidad en newEvent)
+  const [quantityMap, setQuantityMap] = useState<Record<string, number>>({});
+
+  // Resetear cantidades al cambiar de categoría
+  useEffect(() => {
+    setQuantityMap({});
+  }, [selectedCategory?._id]);
+
   useEffect(() => {
     const url = eventStartDate && eventEndDate
       ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
@@ -84,21 +83,15 @@ export default function ContentPanel({
     setEquipmentUrl(url);
   }, [eventStartDate, eventEndDate]);
 
-  // Fetch directo sin caché solo cuando cambia la URL o refreshTrigger
   useEffect(() => {
     if (!equipmentUrl) return;
-
     const fetchEquipment = async () => {
       setIsLoadingEquipment(true);
       try {
-        // Agregar timestamp para evitar caché del navegador
         const cacheBuster = `${equipmentUrl}${equipmentUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
         const response = await fetch(cacheBuster, {
           cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
         const data = await response.json();
         setEquipment(data);
@@ -108,53 +101,36 @@ export default function ContentPanel({
         setIsLoadingEquipment(false);
       }
     };
-
     fetchEquipment();
   }, [equipmentUrl, refreshTrigger]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<any>(null);
 
-  const children = categories.filter(
-    (cat: any) => cat.parentId === selectedCategory?._id
-  );
-  const items = equipment.filter(
-    (eq: any) => eq.categoryId === selectedCategory?._id
-  );
-
-  const isCategory = categories.some(
-    (cat: any) => cat._id === selectedCategory?._id
-  );
+  const children = categories.filter((cat: any) => cat.parentId === selectedCategory?._id);
+  const items = equipment.filter((eq: any) => eq.categoryId === selectedCategory?._id);
+  const isCategory = categories.some((cat: any) => cat._id === selectedCategory?._id);
   const isItem = equipment.some((eq: any) => eq._id === selectedCategory?._id);
 
   if (selectedCategory) {
     setDisableCreateEquipment(isItem);
   }
 
-  // Función para manejar el click en equipos (similar a TreeView handleSelect)
   const handleEquipmentClick = (item: any) => {
-    // Si es un equipo (tiene categoryId), seleccionarlo
     if (item.categoryId) {
-      // Verificar si ya está seleccionado
       const isCurrentlySelected = selectedCategory?._id === item._id;
-
       if (!isCurrentlySelected) {
-        // Solo seleccionar si no está seleccionado
-        // No deseleccionamos equipos individuales porque vaciaría el ContentPanel
         onSelect?.(item);
-        // En el caso de newEvent, NO llamamos a onEdit aquí porque
-        // el onEdit se usa para agregar al evento (botón +)
-        // En el caso de equipment page, onEdit se llama para editar
-        if (!newEvent) {
-          onEdit?.(item);
-        }
+        if (!newEvent) onEdit?.(item);
       }
-      // Si ya está seleccionado, no hacemos nada (no deseleccionamos)
     }
   };
 
+  // ──── Headers ────
+
   const renderHeader = () => {
     if (!selectedCategory) return null;
+
     if (children.length > 0) {
       return (
         <tr>
@@ -164,9 +140,20 @@ export default function ContentPanel({
         </tr>
       );
     } else if (isCategory) {
+      if (newEvent) {
+        // Header agrupado por nombre para selección con cantidad
+        return (
+          <tr>
+            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Nombre</th>
+            <th style={{ textAlign: 'center' }}>Total</th>
+            <th style={{ textAlign: 'center' }}>Disponible</th>
+            <th style={{ textAlign: 'center' }}>Cantidad</th>
+            <th style={{ textAlign: 'center' }}>Acción</th>
+          </tr>
+        );
+      }
       return (
         <tr>
-          {newEvent && <th>Acción</th>}
           <th>Nombre</th>
           <th>Stock total</th>
           <th>Disponible</th>
@@ -196,21 +183,135 @@ export default function ContentPanel({
     }
   };
 
+  // ──── Rows para newEvent agrupados por nombre ────
+
+  const renderGroupedRows = () => {
+    // Agrupar por nombre
+    const itemsByName: Record<string, any[]> = {};
+    items.forEach((item: any) => {
+      if (!itemsByName[item.name]) itemsByName[item.name] = [];
+      itemsByName[item.name].push(item);
+    });
+
+    return Object.entries(itemsByName).map(([name, nameItems], index) => {
+      const totalCount = nameItems.length;
+      const availableItems = nameItems.filter(
+        (i) => !i.outOfService?.isOut && !selectedEquipmentIds.includes(i._id)
+      );
+      const availableCount = availableItems.length;
+      const selectedCount = nameItems.filter((i) => selectedEquipmentIds.includes(i._id)).length;
+      const currentQty = quantityMap[name] || 1;
+      const exceedsAvailable = currentQty > availableCount;
+
+      return (
+        <tr
+          key={name}
+          style={{
+            backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
+            fontWeight: 500
+          }}
+        >
+          {/* Nombre */}
+          <td style={{ padding: '6px 8px' }}>{name}</td>
+
+          {/* Total */}
+          <td style={{ padding: '6px 8px', textAlign: 'center' }}>{totalCount}</td>
+
+          {/* Disponible */}
+          <td style={{ padding: '6px 8px', textAlign: 'center', color: availableCount > 0 ? '#40c057' : '#fa5252' }}>
+            {availableCount}
+          </td>
+
+          {/* Cantidad */}
+          <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+            {availableCount > 0 ? (
+              <Stack gap='2px' align='center'>
+                <NumberInput
+                  value={currentQty}
+                  onChange={(val) =>
+                    setQuantityMap((prev) => ({ ...prev, [name]: Number(val) || 1 }))
+                  }
+                  min={1}
+                  max={availableCount}
+                  size='xs'
+                  style={{ width: '72px' }}
+                  allowDecimal={false}
+                  hideControls={false}
+                />
+                {exceedsAvailable && (
+                  <Text size='10px' c='red' style={{ whiteSpace: 'nowrap' }}>
+                    Solo {availableCount} disp.
+                  </Text>
+                )}
+              </Stack>
+            ) : (
+              <Text size='xs' c='dimmed'>—</Text>
+            )}
+          </td>
+
+          {/* Acción */}
+          <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+            <Group gap='6px' justify='center' wrap='nowrap'>
+              <ActionIcon
+                size='md'
+                color='green'
+                variant='light'
+                disabled={availableCount === 0 || exceedsAvailable}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const itemsToAdd = availableItems.slice(0, currentQty);
+                  if (itemsToAdd.length > 0) onEdit?.(itemsToAdd);
+                }}
+                title={availableCount === 0 ? 'Sin stock disponible' : `Agregar ${currentQty}`}
+              >
+                <span style={{ fontSize: '18px', fontWeight: 'bold', lineHeight: 1 }}>+</span>
+              </ActionIcon>
+
+              {selectedCount > 0 && (
+                <Group gap='2px' wrap='nowrap' align='center'>
+                  <Text size='xs' c='yellow.5' fw={600}>
+                    {selectedCount}✓
+                  </Text>
+                  <Tooltip label='Quitar del evento'>
+                    <ActionIcon
+                      size='xs'
+                      color='red'
+                      variant='subtle'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idsToRemove = nameItems
+                          .filter((i) => selectedEquipmentIds.includes(i._id))
+                          .map((i) => i._id);
+                        onRemoveMultiple?.(idsToRemove);
+                      }}
+                    >
+                      <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              )}
+            </Group>
+          </td>
+        </tr>
+      );
+    });
+  };
+
+  // ──── Rows ────
+
   const renderRows = () => {
     if (!selectedCategory) return null;
+
     if (children.length > 0) {
       return children.map((child: any, index: number) => {
-        // Calcular stock dinámicamente para cada subcategoría
         const childEquipment = equipment.filter((eq: any) => eq.categoryId === child._id);
         const childTotalStock = childEquipment.length;
         const childAvailableStock = childEquipment.filter((eq: any) => !eq.outOfService?.isOut).length;
-
         return (
           <tr
             key={child._id}
             style={{
-              backgroundColor:
-                index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
+              backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
               cursor: 'pointer',
               fontWeight: 500,
               textAlign: 'center'
@@ -224,23 +325,21 @@ export default function ContentPanel({
         );
       });
     } else if (isCategory) {
-      // Calcular stock dinámicamente basado en los equipos reales
+      // Vista agrupada para newEvent
+      if (newEvent) return renderGroupedRows();
+
+      // Vista individual para gestión de equipamiento
       const dynamicTotalStock = items.length;
-      const dynamicAvailableStock = items.filter(
-        (item: any) => !item.outOfService?.isOut
-      ).length;
+      const dynamicAvailableStock = items.filter((item: any) => !item.outOfService?.isOut).length;
+
       return items.map((item: any, index: number) => {
         const isSelected = selectedEquipmentIds.includes(item._id);
         const status = getEquipmentStatus(item);
-        const displayStatus = newEvent && isSelected ? 'RESERVADO' : status.label;
-        const displayColor = newEvent && isSelected ? '#fbbf24' : status.color;
-
         return (
           <tr
             key={item._id}
             style={{
-              backgroundColor:
-                index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
+              backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
               textAlign: 'center',
               fontWeight: 500,
               whiteSpace: 'nowrap',
@@ -248,54 +347,6 @@ export default function ContentPanel({
             }}
             onClick={() => handleEquipmentClick(item)}
           >
-            {newEvent && (
-              <td style={{ padding: '0 5px' }}>
-                <Group gap='xs' wrap='nowrap'>
-                  {isSelected ? (
-                    <ActionIcon
-                      size='md'
-                      color='red'
-                      variant='light'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemove?.(item._id);
-                      }}
-                    >
-                      <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
-                    </ActionIcon>
-                  ) : (
-                    <ActionIcon
-                      size='md'
-                      color='green'
-                      variant='light'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit?.(item);
-                      }}
-                      disabled={item.outOfService?.isOut}
-                    >
-                      <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>
-                    </ActionIcon>
-                  )}
-                  {item.propiedad === 'Alquilado' && (
-                    <Tooltip label="Eliminar equipo alquilado">
-                      <ActionIcon
-                        size='sm'
-                        color='red'
-                        variant='subtle'
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEquipmentToDelete(item);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                </Group>
-              </td>
-            )}
             <td style={{ padding: '0 5px' }}>{item.name}</td>
             <td style={{ padding: '0 5px' }}>{dynamicTotalStock}</td>
             <td style={{ padding: '0 5px' }}>{dynamicAvailableStock}</td>
@@ -305,56 +356,34 @@ export default function ContentPanel({
             <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
             <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
             <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
-            <td
-              style={{
-                color: displayColor,
-                padding: '0 5px'
-              }}
-            >
-              {displayStatus}
+            <td style={{ color: status.color, padding: '0 5px' }}>{status.label}</td>
+            <td style={{ padding: '0 5px', textAlign: 'center' }}>
+              {item.propiedad === 'Alquilado' && (
+                <Tooltip label='Eliminar equipo alquilado'>
+                  <ActionIcon
+                    size='sm'
+                    color='red'
+                    variant='subtle'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEquipmentToDelete(item);
+                      setShowDeleteModal(true);
+                    }}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </td>
-            {!newEvent && (
-              <td style={{ padding: '0 5px', textAlign: 'center' }}>
-                {item.propiedad === 'Alquilado' && (
-                  <Tooltip label="Eliminar equipo alquilado">
-                    <ActionIcon
-                      size='sm'
-                      color='red'
-                      variant='subtle'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEquipmentToDelete(item);
-                        setShowDeleteModal(true);
-                      }}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Tooltip>
-                )}
-              </td>
-            )}
           </tr>
         );
       });
     } else if (isItem) {
       const item = equipment.find((eq: any) => eq._id === selectedCategory._id);
       if (!item) return null;
-
-      const isSelected = selectedEquipmentIds.includes(item._id);
       const status = getEquipmentStatus(item);
-      const displayStatus = newEvent && isSelected ? 'RESERVADO' : status.label;
-      const displayColor = newEvent && isSelected ? '#fbbf24' : status.color;
-
       return (
-        <tr
-          style={{
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            cursor: 'pointer'
-          }}
-          onClick={() => handleEquipmentClick(item)}
-        >
+        <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer' }}>
           <td style={{ padding: '0 5px' }}>{item.name}</td>
           <td style={{ padding: '0 5px' }}>{item.code}</td>
           <td style={{ padding: '0 5px' }}>{item.brand}</td>
@@ -362,59 +391,31 @@ export default function ContentPanel({
           <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
           <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
           <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
-          <td
-            style={{
-              color: displayColor,
-              padding: '0 5px'
-            }}
-          >
-            {displayStatus}
-          </td>
+          <td style={{ color: status.color, padding: '0 5px' }}>{status.label}</td>
         </tr>
       );
     }
   };
 
-  const handleDeleteClick = () => {
-    setShowDeleteModal(true);
-  };
+  const handleDeleteClick = () => setShowDeleteModal(true);
 
   const confirmDelete = async () => {
     let wasEquipmentDeleted = false;
-
-    // Si hay un equipo específico para eliminar (desde botón en fila)
     if (equipmentToDelete) {
-      await fetch(`/api/equipment?id=${equipmentToDelete._id}`, {
-        method: 'DELETE'
-      });
+      await fetch(`/api/equipment?id=${equipmentToDelete._id}`, { method: 'DELETE' });
       wasEquipmentDeleted = true;
       setEquipmentToDelete(null);
-    }
-    // Si no, usar el selectedCategory (eliminación desde botón superior)
-    else if (selectedCategory) {
-      const isCategoryToDelete = categories.some(
-        (cat: any) => cat._id === selectedCategory._id
-      );
+    } else if (selectedCategory) {
+      const isCategoryToDelete = categories.some((cat: any) => cat._id === selectedCategory._id);
       const endpoint = isCategoryToDelete ? '/api/categories' : '/api/equipment';
-
-      await fetch(`${endpoint}?id=${selectedCategory._id}`, {
-        method: 'DELETE'
-      });
-
-      // Si se eliminó un equipo (no una categoría), marcar para refetch
-      if (!isCategoryToDelete) {
-        wasEquipmentDeleted = true;
-      }
+      await fetch(`${endpoint}?id=${selectedCategory._id}`, { method: 'DELETE' });
+      if (!isCategoryToDelete) wasEquipmentDeleted = true;
     }
-
     setShowDeleteModal(false);
     mutate('/api/categories');
     mutate('/api/equipment');
     mutate('/api/treeData');
     mutate('/api/categoryTreeData');
-
-    // Si se eliminó equipo, pasar false para que se incremente refreshTrigger
-    // Esto fuerza un refetch completo de los datos
     if (wasEquipmentDeleted) {
       onCancel?.(false, { _deleted: true });
     } else {
@@ -428,33 +429,21 @@ export default function ContentPanel({
 
     return (
       <Group justify='space-between' style={{ marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-          {selectedCategory.name}
-        </h2>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{selectedCategory.name}</h2>
         {!newEvent ? (
           <Group gap='xs'>
             <Tooltip label='Eliminar'>
-              <ActionIcon
-                color='red'
-                variant='light'
-                onClick={handleDeleteClick}
-              >
+              <ActionIcon color='red' variant='light' onClick={handleDeleteClick}>
                 <IconTrash size={16} />
               </ActionIcon>
             </Tooltip>
           </Group>
         ) : (
-          !!newEvent &&
-          selectedCategory.categoryId && (
+          !!newEvent && selectedCategory.categoryId && (
             <Group>
               {selectedEquipmentIds.includes(selectedCategory._id) ? (
                 <Tooltip label='Quitar del evento'>
-                  <ActionIcon
-                    color='red'
-                    variant='light'
-                    onClick={() => onRemove?.(selectedCategory._id)}
-                    style={{ width: '8rem' }}
-                  >
+                  <ActionIcon color='red' variant='light' onClick={() => onRemove?.(selectedCategory._id)} style={{ width: '8rem' }}>
                     <p style={{ marginRight: '15px' }}>Quitar</p>
                     <span style={{ fontSize: '18px', fontWeight: 'bold' }}>−</span>
                   </ActionIcon>
@@ -482,16 +471,14 @@ export default function ContentPanel({
 
   if (isLoadingEquipment) {
     return (
-      <Box p="md" w="100%">
-        <Center py="xl">
-          <Loader size="lg" />
-        </Center>
+      <Box p='md' w='100%'>
+        <Center py='xl'><Loader size='lg' /></Center>
       </Box>
     );
   }
 
   return (
-    <Box p="md" w="100%">
+    <Box p='md' w='100%'>
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
         <Box style={{ overflow: 'auto', maxHeight: '100vh', width: '100%', paddingBottom: '70px' }}>
@@ -500,11 +487,7 @@ export default function ContentPanel({
             highlightOnHover
             withColumnBorders
             withRowBorders
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              minWidth: '600px'
-            }}
+            style={{ width: '100%', borderCollapse: 'collapse', minWidth: newEvent && isCategory ? '400px' : '600px' }}
           >
             <thead style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
               {renderHeader()}
@@ -516,22 +499,13 @@ export default function ContentPanel({
 
       <Modal
         opened={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setEquipmentToDelete(null);
-        }}
-        title={`¿Seguro que querés eliminar este ${
-          equipmentToDelete ? 'equipo alquilado' : isItem ? 'equipamiento' : 'carpeta'
-        }?`}
+        onClose={() => { setShowDeleteModal(false); setEquipmentToDelete(null); }}
+        title={`¿Seguro que querés eliminar este ${equipmentToDelete ? 'equipo alquilado' : isItem ? 'equipamiento' : 'carpeta'}?`}
         centered
       >
         <p>
           {equipmentToDelete ? (
-            <>
-              Vas a eliminar el equipo: <strong>{equipmentToDelete.name}</strong>
-              <br />
-              Esta acción eliminará el equipamiento permanentemente de la base de datos.
-            </>
+            <>Vas a eliminar el equipo: <strong>{equipmentToDelete.name}</strong><br />Esta acción eliminará el equipamiento permanentemente de la base de datos.</>
           ) : isItem ? (
             'Esta acción eliminará el equipamiento permanentemente.'
           ) : (
@@ -539,18 +513,10 @@ export default function ContentPanel({
           )}
         </p>
         <Group justify='flex-end' mt='md'>
-          <Button
-            variant='default'
-            onClick={() => {
-              setShowDeleteModal(false);
-              setEquipmentToDelete(null);
-            }}
-          >
+          <Button variant='default' onClick={() => { setShowDeleteModal(false); setEquipmentToDelete(null); }}>
             Cancelar
           </Button>
-          <Button color='red' onClick={confirmDelete}>
-            Eliminar
-          </Button>
+          <Button color='red' onClick={confirmDelete}>Eliminar</Button>
         </Group>
       </Modal>
     </Box>

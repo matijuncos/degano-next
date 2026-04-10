@@ -106,6 +106,7 @@ export interface EventModel {
   staffArrivalTime?: string;
   equipmentArrivalDate?: string | Date;
   equipmentArrivalTime?: string;
+  equipmentCategoryOrder?: string[];
 }
 export interface SelectedEventType extends EventModel {
   title?: string;

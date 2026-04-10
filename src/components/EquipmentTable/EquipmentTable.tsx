@@ -5,7 +5,8 @@ import { isEqual } from 'lodash';
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
-import { Box, Modal, Tabs } from '@mantine/core';
+import ApplySetModal from '@/components/ApplySetModal/ApplySetModal';
+import { Box, Modal, Tabs, Button, Group } from '@mantine/core';
 import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
@@ -13,6 +14,7 @@ import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useResponsive } from '@/hooks/useResponsive';
+import { IconLayersLinked } from '@tabler/icons-react';
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
@@ -27,6 +29,7 @@ const EquipmentTable = () => {
   );
   const [total, setTotal] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
+  const [applySetModalOpen, setApplySetModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [modalOpened, setModalOpened] = useState(false);
   const [previousSelection, setPreviousSelection] = useState(null);
@@ -42,7 +45,7 @@ const EquipmentTable = () => {
     const newEquip = eventEquipment.equipment || [];
     const changed = !isEqual(oldEquip, newEquip);
     setHasChanges(changed);
-  }, [eventEquipment, selectedEvent]);
+  }, [eventEquipment.equipment, selectedEvent?.equipment]);
 
   // Detectar cuando cambian las fechas del evento y forzar refresh
   useEffect(() => {
@@ -76,26 +79,51 @@ const EquipmentTable = () => {
     setModalOpened(true);
   };
 
-  const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
-    if (equipmentSelected.outOfService.isOut) return;
+  const handleEquipmentSelection = (equipmentSelected: NewEquipment | NewEquipment[]) => {
+    const itemsToAdd = Array.isArray(equipmentSelected) ? equipmentSelected : [equipmentSelected];
+    const validItems = itemsToAdd.filter((item) => !item.outOfService?.isOut);
+    if (validItems.length === 0) return;
+
     setEventEquipment((prev) => {
-      const alreadyAdded = prev.equipment.some(
-        (eq) => eq._id === equipmentSelected._id
-      );
-      if (alreadyAdded) return prev;
+      const newItems = validItems
+        .filter((item) => !prev.equipment.some((eq) => eq._id === item._id))
+        .map((item) => ({
+          ...item,
+          lastUsedStartDate: prev.date,
+          lastUsedEndDate: prev.endDate
+        }));
+
+      if (newItems.length === 0) return prev;
+
       return {
         ...prev,
-        equipment: [
-          ...prev.equipment,
-          {
-            ...equipmentSelected,
-            lastUsedStartDate: prev.date,
-            lastUsedEndDate: prev.endDate
-          }
-        ],
+        equipment: [...prev.equipment, ...newItems],
         equipmentPrice: total
       };
     });
+  };
+
+  // Guardar orden de categorías en background (sin loading, sin notificación)
+  const saveCategoryOrder = async (newOrder: string[]) => {
+    if (!selectedEvent?._id) return;
+    try {
+      const response = await fetch('/api/updateEvent', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: selectedEvent._id,
+          equipmentCategoryOrder: newOrder
+        })
+      });
+      const data = await response.json();
+      if (data.event) {
+        setSelectedEvent((prev: any) =>
+          prev ? { ...prev, equipmentCategoryOrder: newOrder } : prev
+        );
+      }
+    } catch (error) {
+      console.error('Error saving category order:', error);
+    }
   };
 
   const updateEvent = async () => {
@@ -167,6 +195,7 @@ const EquipmentTable = () => {
                 eventStartDate={selectedEvent?.date}
                 eventEndDate={selectedEvent?.endDate}
                 disableEditOnSelect={true}
+                onApplySet={() => setApplySetModalOpen(true)}
               />
             </Tabs.Panel>
 
@@ -179,6 +208,12 @@ const EquipmentTable = () => {
                   setEventEquipment((prev) => ({
                     ...prev,
                     equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+                  }));
+                }}
+                onRemoveMultiple={(ids: string[]) => {
+                  setEventEquipment((prev) => ({
+                    ...prev,
+                    equipment: prev.equipment.filter((eq) => !ids.includes(eq._id))
                   }));
                 }}
                 onCancel={handleCancel}
@@ -195,6 +230,7 @@ const EquipmentTable = () => {
                 equipmentList={eventEquipment.equipment}
                 setEventEquipment={setEventEquipment}
                 setTotal={setTotal}
+                equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
                 allowSave={hasChanges}
                 onSave={updateEvent}
               />
@@ -243,6 +279,7 @@ const EquipmentTable = () => {
               eventStartDate={selectedEvent?.date}
               eventEndDate={selectedEvent?.endDate}
               disableEditOnSelect={true}
+              onApplySet={() => setApplySetModalOpen(true)}
             />
           </Box>
         </Panel>
@@ -268,6 +305,12 @@ const EquipmentTable = () => {
                 setEventEquipment((prev) => ({
                   ...prev,
                   equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+                }));
+              }}
+              onRemoveMultiple={(ids: string[]) => {
+                setEventEquipment((prev) => ({
+                  ...prev,
+                  equipment: prev.equipment.filter((eq) => !ids.includes(eq._id))
                 }));
               }}
               onCancel={handleCancel}
@@ -297,8 +340,10 @@ const EquipmentTable = () => {
               equipmentList={eventEquipment.equipment}
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
+              equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
               allowSave={hasChanges}
               onSave={updateEvent}
+              onReorder={saveCategoryOrder}
             />
           </Box>
         </Panel>
@@ -318,6 +363,15 @@ const EquipmentTable = () => {
           onCancel={handleCancel}
         />
       </Modal>
+
+      <ApplySetModal
+        opened={applySetModalOpen}
+        onClose={() => setApplySetModalOpen(false)}
+        eventStartDate={selectedEvent?.date}
+        eventEndDate={selectedEvent?.endDate}
+        selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+        onApply={(items) => handleEquipmentSelection(items)}
+      />
     </>
   );
 };

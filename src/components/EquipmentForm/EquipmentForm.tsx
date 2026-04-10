@@ -1,14 +1,16 @@
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
+import ApplySetModal from '@/components/ApplySetModal/ApplySetModal';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Box, Button, Modal } from '@mantine/core';
+import { Box, Button, Modal, Group } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import EquipmentList from './EquipmentList';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { IconLayersLinked } from '@tabler/icons-react';
 
 const EquipmentForm = ({
   event,
@@ -32,6 +34,7 @@ const EquipmentForm = ({
   const [modalOpened, setModalOpened] = useState(false);
   const [previousSelection, setPreviousSelection] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [applySetModalOpen, setApplySetModalOpen] = useState(false);
 
   // Cargar categorías al montar el componente
   useEffect(() => {
@@ -110,41 +113,38 @@ const EquipmentForm = ({
     setModalOpened(true);
   };
 
-  const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
-    if (equipmentSelected.outOfService.isOut) return;
+  const handleEquipmentSelection = (equipmentSelected: NewEquipment | NewEquipment[]) => {
+    const itemsToAdd = Array.isArray(equipmentSelected) ? equipmentSelected : [equipmentSelected];
+    const validItems = itemsToAdd.filter((item) => !item.outOfService?.isOut);
+    if (validItems.length === 0) return;
+
     setEventEquipment((prev) => {
-      const alreadyAdded = prev.equipment.some(
-        (eq) => eq._id === equipmentSelected._id
-      );
-      if (alreadyAdded) return prev;
-
-      // Calcular mainCategoryId y mainCategoryName
-      let mainCategoryId = '';
-      let mainCategoryName = 'Sin categoría';
-
-      if (equipmentSelected.categoryId && categories.length > 0) {
-        const mainCategory = findMainCategorySync(
-          equipmentSelected.categoryId,
-          categories
-        );
-        if (mainCategory) {
-          mainCategoryId = mainCategory.id;
-          mainCategoryName = mainCategory.name;
-        }
-      }
-
-      return {
-        ...prev,
-        equipment: [
-          ...prev.equipment,
-          {
-            ...equipmentSelected,
+      const newItems = validItems
+        .filter((item) => !prev.equipment.some((eq) => eq._id === item._id))
+        .map((item) => {
+          let mainCategoryId = '';
+          let mainCategoryName = 'Sin categoría';
+          if (item.categoryId && categories.length > 0) {
+            const mainCategory = findMainCategorySync(item.categoryId, categories);
+            if (mainCategory) {
+              mainCategoryId = mainCategory.id;
+              mainCategoryName = mainCategory.name;
+            }
+          }
+          return {
+            ...item,
             lastUsedStartDate: prev.date,
             lastUsedEndDate: prev.endDate,
             mainCategoryId,
             mainCategoryName
-          }
-        ],
+          };
+        });
+
+      if (newItems.length === 0) return prev;
+
+      return {
+        ...prev,
+        equipment: [...prev.equipment, ...newItems],
         equipmentPrice: total
       };
     });
@@ -180,6 +180,7 @@ const EquipmentForm = ({
               eventStartDate={eventEquipment.date}
               eventEndDate={eventEquipment.endDate}
               disableEditOnSelect={true}
+              onApplySet={() => setApplySetModalOpen(true)}
             />
           </Box>
         </Panel>
@@ -211,6 +212,12 @@ const EquipmentForm = ({
                   equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
                 }));
               }}
+              onRemoveMultiple={(ids: string[]) => {
+                setEventEquipment((prev) => ({
+                  ...prev,
+                  equipment: prev.equipment.filter((eq) => !ids.includes(eq._id))
+                }));
+              }}
               onCancel={handleCancel}
               newEvent={true}
               eventStartDate={eventEquipment.date}
@@ -240,6 +247,7 @@ const EquipmentForm = ({
               equipmentList={eventEquipment.equipment}
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
+              equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
             />
           </Box>
         </Panel>
@@ -275,6 +283,15 @@ const EquipmentForm = ({
           Siguiente
         </Button>
       </div>
+
+      <ApplySetModal
+        opened={applySetModalOpen}
+        onClose={() => setApplySetModalOpen(false)}
+        eventStartDate={eventEquipment.date}
+        eventEndDate={eventEquipment.endDate}
+        selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+        onApply={(items) => handleEquipmentSelection(items)}
+      />
     </div>
   );
 };

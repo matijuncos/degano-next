@@ -136,7 +136,14 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
     });
   }
 
-  const categoryEntries = Object.entries(groupedByCategory);
+  // Respetar el orden de categorías guardado en el evento
+  const savedOrder = event.equipmentCategoryOrder || [];
+  const allCategoryKeys = Object.keys(groupedByCategory);
+  const orderedKeys = [
+    ...savedOrder.filter((cat) => allCategoryKeys.includes(cat)),
+    ...allCategoryKeys.filter((cat) => !savedOrder.includes(cat))
+  ];
+  const categoryEntries = orderedKeys.map((key) => [key, groupedByCategory[key]] as [string, any[]]);
 
   return (
     <View style={styles.section}>

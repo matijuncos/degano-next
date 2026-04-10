@@ -9,7 +9,8 @@ import {
   IconPlus,
   IconChevronRight,
   IconDeviceFloppy,
-  IconSearch
+  IconSearch,
+  IconLayersLinked
 } from '@tabler/icons-react';
 
 export type CategoryNode = {
@@ -201,7 +202,8 @@ export default function TreeView({
   newEvent,
   eventStartDate,
   eventEndDate,
-  disableEditOnSelect = false
+  disableEditOnSelect = false,
+  onApplySet
 }: {
   onSelect?: (n: CategoryNode | null) => void;
   selectedCategory?: CategoryNode | null;
@@ -211,6 +213,7 @@ export default function TreeView({
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
   disableEditOnSelect?: boolean;
+  onApplySet?: () => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const [searchTerm, setSearchTerm] = useState('');
@@ -336,6 +339,17 @@ export default function TreeView({
         >
           Cargar equipamiento
         </Button>
+        {onApplySet && (
+          <Button
+            variant='light'
+            color='teal'
+            size='xs'
+            leftSection={<IconLayersLinked size={16} />}
+            onClick={onApplySet}
+          >
+            Aplicar set de equipamiento
+          </Button>
+        )}
       </div>
       <Divider my='sm' size={2}/>
       <Input
