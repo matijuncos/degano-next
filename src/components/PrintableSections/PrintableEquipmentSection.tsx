@@ -170,7 +170,7 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
             const equipmentEntries = Object.entries(equipmentByName);
 
             return (
-              <View key={categoryIndex} style={styles.categorySection} wrap={false}>
+              <View key={categoryIndex} style={styles.categorySection}>
                 {/* Header de categoría */}
                 <View style={styles.categoryHeader}>
                   <Text style={styles.categoryTitle}>{categoryName}</Text>
