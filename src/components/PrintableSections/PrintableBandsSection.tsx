@@ -87,7 +87,7 @@ export const PrintableBandsContent: React.FC<PrintableBandsSectionProps> = ({
     <View style={styles.section}>
       {event.bands && event.bands.length > 0 ? (
         event.bands.map((band: Band, index: number) => (
-          <View key={index} style={styles.bandSection} wrap={false}>
+          <View key={index} style={styles.bandSection}>
             <View style={styles.subsectionHeader}>
               <Text style={styles.subsectionTitle}>Banda {index + 1}</Text>
             </View>
