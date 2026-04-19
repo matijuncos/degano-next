@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 30,
     fontSize: 11,
-    paddingBottom: 40 // Reducido de 60 a 40 para aprovechar mejor el espacio
+    paddingBottom: 30
   },
   header: {
     flexDirection: 'row',
