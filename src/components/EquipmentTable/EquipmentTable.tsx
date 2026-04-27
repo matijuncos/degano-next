@@ -15,7 +15,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useResponsive } from '@/hooks/useResponsive';
 
 const EquipmentTable = () => {
-  const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent, setLoading, updateEventInList } = useDeganoCtx();
   const notify = useNotification();
   const { isAdmin } = usePermissions();
   const { isMobile, isTablet } = useResponsive();
@@ -115,6 +115,7 @@ const EquipmentTable = () => {
       // Actualizar el estado del evento
       setSelectedEvent(data.event);
       setEventEquipment(data.event);
+      updateEventInList(data.event);
 
       // Revalidar paths de Next.js y cache de SWR
       await Promise.all([
