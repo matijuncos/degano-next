@@ -11,7 +11,7 @@ import {
 import useNotification from '@/hooks/useNotification';
 
 const SpotifyTable = () => {
-  const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent, setLoading, updateEventInList } = useDeganoCtx();
   const playlist = selectedEvent?.playlist;
   const notify = useNotification();
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -38,6 +38,7 @@ const SpotifyTable = () => {
       const data = await response.json();
       notify();
       setSelectedEvent(data.event);
+      updateEventInList(data.event);
     } catch (error) {
       notify({type: 'defaultError'});
       console.log(error);

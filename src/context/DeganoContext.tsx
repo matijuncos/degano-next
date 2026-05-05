@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   DataverseProviderProps,
   DeganoContextProps,
@@ -10,6 +10,10 @@ import {
 } from './types';
 import { usePathname } from 'next/navigation';
 import { EVENT_TABS } from './config';
+import useSWR from 'swr';
+
+const eventsFetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => r.json()).then((d) => d.events || []);
 
 export const DeganoContext = createContext<DeganoContextProps | null>(null);
 
@@ -18,43 +22,46 @@ export const DeganoProvider: ({
 }: DataverseProviderProps) => JSX.Element = ({
   children
 }: DataverseProviderProps) => {
-  const [allEvents, setAllEvents] = useState<EventsList>([]);
+  const { data: allEvents = [], mutate: mutateEvents } = useSWR<EventsList>(
+    '/api/getEvents?page=1',
+    eventsFetcher,
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 5000
+    }
+  );
+
   const pathname = usePathname();
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventType | null>(
     null
   );
 
-  const fetchEvents = async () => {
-    const timestamp = Date.parse(new Date().toString());
-
-    try {
-      const response = await fetch(`/api/getEvents?page=1&time=${timestamp}`, {
-        cache: 'no-store'
-      });
-      const data = await response.json();
-      setAllEvents(data.events);
-    } catch (error) {
-      console.error('Failed to fetch movies:', error);
-    }
-  };
+  const fetchEvents = useCallback(() => {
+    mutateEvents();
+  }, [mutateEvents]);
 
   // Función para actualizar un evento específico en la lista
-  const updateEventInList = (updatedEvent: EventModel) => {
-    setAllEvents((prev) =>
-      prev.map((event) =>
-        event._id === updatedEvent._id ? updatedEvent : event
-      )
+  const updateEventInList = useCallback((updatedEvent: EventModel) => {
+    mutateEvents(
+      (current) =>
+        (current || []).map((ev) =>
+          ev._id === updatedEvent._id ? updatedEvent : ev
+        ),
+      { revalidate: false }
     );
-  };
+  }, [mutateEvents]);
 
   // Función para agregar un evento a la lista
-  const addEventToList = (newEvent: EventModel) => {
-    setAllEvents((prev) => [...prev, newEvent]);
-  };
+  const addEventToList = useCallback((newEvent: EventModel) => {
+    mutateEvents(
+      (current) => [...(current || []), newEvent],
+      { revalidate: false }
+    );
+  }, [mutateEvents]);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+  const setAllEvents = useCallback((events: EventsList) => {
+    mutateEvents(events, { revalidate: false });
+  }, [mutateEvents]);
 
   const [loading, setLoading] = useState(false);
 

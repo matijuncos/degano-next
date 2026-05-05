@@ -123,6 +123,15 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
           outOfService: { isOut: true, reason: 'En Evento' }
         };
       }
+
+      // Si NO hay conflicto pero el equipo está marcado como "En Evento" en la DB,
+      // mostrarlo como disponible para esta fecha (su uso actual no afecta la fecha solicitada)
+      if (eq.outOfService?.isOut && eq.outOfService?.reason === 'En Evento') {
+        return {
+          ...eq,
+          outOfService: { isOut: false, reason: null, details: null }
+        };
+      }
     }
 
     // Devolver el equipamiento tal cual está en la DB
