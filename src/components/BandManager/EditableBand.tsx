@@ -50,8 +50,10 @@ const EditableBand = ({
       const uniqueFiles = [...new Set(allFiles)];
 
       // Asegurar que fileUrls esté inicializado con todos los archivos
+      // Deep copy de contacts para no mutar la referencia original
       const updatedBand = {
         ...band,
+        contacts: band.contacts?.map(c => ({ ...c })) || [],
         fileUrls: uniqueFiles
       };
       setBandData(updatedBand);
@@ -180,14 +182,17 @@ const EditableBand = ({
   };
 
   const handleSaveContact = (contact: ExtraContact) => {
-    setBandData((prev) => ({
-      ...prev,
-      contacts: selectedContact
-        ? prev.contacts.map((c) =>
-            c.name === selectedContact.name ? contact : c
-          )
-        : [...prev.contacts, contact]
-    }));
+    setBandData((prev) => {
+      if (!selectedContact) {
+        return { ...prev, contacts: [...prev.contacts, contact] };
+      }
+      // Usar _id si existe, sino comparar por índice para evitar colisiones con _id vacío
+      const idx = prev.contacts.indexOf(selectedContact);
+      return {
+        ...prev,
+        contacts: prev.contacts.map((c, i) => (i === idx ? contact : c))
+      };
+    });
     setShowEditableContact(false);
     setSelectedContact(null);
   };
@@ -419,7 +424,7 @@ const EditableBand = ({
                     showTime: selected.showTime,
                     testTime: selected.testTime,
                     bandInfo: selected.bandInfo,
-                    contacts: selected.contacts,
+                    contacts: selected.contacts?.map(c => ({ ...c })) || [],
                     fileUrls: uniqueFiles
                   }));
                 }

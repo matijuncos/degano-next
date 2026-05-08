@@ -38,11 +38,13 @@ const BandList = ({
   const handleSaveBand = async (band: Band) => {
     onBandsChange(
       selectedBand
-        ? bands.map((b) => (b.bandName === selectedBand.bandName ? band : b))
+        ? bands.map((b) => (b._id === selectedBand._id ? band : b))
         : [...bands, band]
     );
     await refetchBands();
+    setSelectedBand(null);
     setOpened(null);
+    if (editing) setShowEditableBand(false);
   };
 
   const handleCancelBand = () => {
