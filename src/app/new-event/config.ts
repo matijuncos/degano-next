@@ -34,7 +34,8 @@ export const INITIAL_EVENT_STATE: EventModel = {
     totalPayed: false,
     subsequentPayments: [],
     annexes: [],
-    budgetFileUrl: ''
+    budgetFileUrl: '',
+    budgetFiles: []
   },
   equipmentPrice: 0,
   active: true,

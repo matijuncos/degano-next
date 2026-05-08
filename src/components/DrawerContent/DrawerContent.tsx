@@ -653,34 +653,43 @@ const DrawerContent = () => {
                 );
               })()}
 
-              {/* ARCHIVO DE PRESUPUESTO (solo admin) */}
-              {role === 'admin' && selectedEvent?.payment?.budgetFileUrl && (
-                <>
-                  <Divider
-                    variant='dashed'
-                    size='sm'
-                    my='md'
-                    style={{ borderColor: '#C9C9C9' }}
-                  />
-                  <Text size='sm' fw={500} mb='xs'>
-                    Archivo de presupuesto:
-                  </Text>
-                  <Group gap='xs'>
-                    <IconFile size={16} />
-                    <Text size='sm' style={{ flex: 1 }}>
-                      {getCleanFileName(selectedEvent.payment.budgetFileUrl)}
-                    </Text>
-                    <ActionIcon
-                      color='blue'
-                      variant='light'
+              {/* ARCHIVOS DE PRESUPUESTO (solo admin) */}
+              {role === 'admin' && (() => {
+                const files = selectedEvent?.payment?.budgetFiles
+                  || (selectedEvent?.payment?.budgetFileUrl
+                    ? [{ id: 'legacy', url: selectedEvent.payment.budgetFileUrl, fileName: getCleanFileName(selectedEvent.payment.budgetFileUrl) }]
+                    : []);
+                if (files.length === 0) return null;
+                return (
+                  <>
+                    <Divider
+                      variant='dashed'
                       size='sm'
-                      onClick={() => window.open(selectedEvent.payment.budgetFileUrl, '_blank')}
-                    >
-                      <IconEye size={14} />
-                    </ActionIcon>
-                  </Group>
-                </>
-              )}
+                      my='md'
+                      style={{ borderColor: '#C9C9C9' }}
+                    />
+                    <Text size='sm' fw={500} mb='xs'>
+                      Archivos de presupuesto:
+                    </Text>
+                    {files.map((file: any) => (
+                      <Group key={file.id} gap='xs' mb='xs'>
+                        <IconFile size={16} />
+                        <Text size='sm' style={{ flex: 1 }}>
+                          {file.fileName}
+                        </Text>
+                        <ActionIcon
+                          color='blue'
+                          variant='light'
+                          size='sm'
+                          onClick={() => window.open(file.url, '_blank')}
+                        >
+                          <IconEye size={14} />
+                        </ActionIcon>
+                      </Group>
+                    ))}
+                  </>
+                );
+              })()}
             </Box>
 
             <Divider />

@@ -15,6 +15,13 @@ export interface BudgetAnnex {
   amount: string;
 }
 
+export interface BudgetFile {
+  id: string;
+  url: string;
+  fileName: string;
+  uploadedAt: string;
+}
+
 export interface ExtraClient {
   _id?: string;
   fullName: string;
@@ -71,6 +78,7 @@ export interface EventModel {
     subsequentPayments?: any[];
     annexes?: BudgetAnnex[];
     budgetFileUrl?: string;
+    budgetFiles?: BudgetFile[];
   };
   moreData: string;
   date: Date | string;

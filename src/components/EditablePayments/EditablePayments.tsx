@@ -8,8 +8,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
 import { usePermissions } from '@/hooks/usePermissions';
 import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
-import { BudgetAnnex } from '@/context/types';
+import { BudgetAnnex, BudgetFile } from '@/context/types';
 import { IconPencil } from '@tabler/icons-react';
+
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_BUDGET_FILES = 10;
+
+const getCleanFileName = (url: string) => {
+  const parts = url.split('/');
+  const fileName = parts[parts.length - 1];
+  return fileName.length > 22 ? decodeURIComponent(fileName.slice(22)) : decodeURIComponent(fileName);
+};
 
 const EditablePayments = () => {
   const { selectedEvent, setSelectedEvent, setLoading, updateEventInList } = useDeganoCtx();
@@ -33,9 +43,11 @@ const EditablePayments = () => {
   );
   const [hasAnnexChanges, setHasAnnexChanges] = useState(false);
 
-  // Estado para archivo de presupuesto
-  const [budgetFileUrl, setBudgetFileUrl] = useState<string>(
-    selectedEvent?.payment?.budgetFileUrl || ''
+  // Estado para archivos de presupuesto (con compat layer para eventos viejos)
+  const [budgetFiles, setBudgetFiles] = useState<BudgetFile[]>(
+    selectedEvent?.payment?.budgetFiles || (selectedEvent?.payment?.budgetFileUrl
+      ? [{ id: 'legacy', url: selectedEvent.payment.budgetFileUrl, fileName: getCleanFileName(selectedEvent.payment.budgetFileUrl), uploadedAt: '' }]
+      : [])
   );
   const [uploading, setUploading] = useState(false);
 
@@ -43,7 +55,9 @@ const EditablePayments = () => {
   useEffect(() => {
     if (selectedEvent) {
       setAnnexes(selectedEvent.payment?.annexes || []);
-      setBudgetFileUrl(selectedEvent.payment?.budgetFileUrl || '');
+      setBudgetFiles(selectedEvent.payment?.budgetFiles || (selectedEvent.payment?.budgetFileUrl
+        ? [{ id: 'legacy', url: selectedEvent.payment.budgetFileUrl, fileName: getCleanFileName(selectedEvent.payment.budgetFileUrl), uploadedAt: '' }]
+        : []));
       setHasAnnexChanges(false);
     }
   }, [selectedEvent]);
@@ -110,67 +124,89 @@ const EditablePayments = () => {
     setHasAnnexChanges(false);
   };
 
-  // Funciones para manejar archivo de presupuesto
-  const handleUploadBudgetFile = async (file: File | null) => {
-    if (!file) return;
+  // Funciones para manejar archivos de presupuesto
+  const handleUploadBudgetFiles = async (files: File[]) => {
+    if (!files.length) return;
+
+    if (budgetFiles.length + files.length > MAX_BUDGET_FILES) {
+      notify({ type: 'defaultError', message: `Máximo ${MAX_BUDGET_FILES} archivos permitidos.` });
+      return;
+    }
+
+    const oversizedFile = files.find(f => f.size > MAX_FILE_SIZE_BYTES);
+    if (oversizedFile) {
+      notify({ type: 'defaultError', message: `"${oversizedFile.name}" supera el límite de ${MAX_FILE_SIZE_MB} MB.` });
+      return;
+    }
+
     setUploading(true);
     try {
-      const res = await fetch('/api/uploadToS3', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const uploadedFiles: BudgetFile[] = [];
+
+      for (const file of files) {
+        const res = await fetch('/api/uploadToS3', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            bucket: 'budgets'
+          })
+        });
+        const { signedUrl, url } = await res.json();
+
+        await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file
+        });
+
+        uploadedFiles.push({
+          id: Math.random().toString(36).slice(2, 11),
+          url,
           fileName: file.name,
-          fileType: file.type,
-          bucket: 'budgets'
-        })
-      });
-      const { signedUrl, url } = await res.json();
+          uploadedAt: new Date().toISOString()
+        });
+      }
 
-      await fetch(signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file
-      });
+      const newBudgetFiles = [...budgetFiles, ...uploadedFiles];
+      setBudgetFiles(newBudgetFiles);
 
-      setBudgetFileUrl(url);
-
-      // Guardar en el evento
       const eventUpdated = {
         ...selectedEvent,
         payment: {
           ...selectedEvent!.payment,
-          budgetFileUrl: url
+          budgetFiles: newBudgetFiles
         }
       };
       await updateEvent(eventUpdated);
     } catch (error) {
-      console.error('Error uploading file:', error);
-      notify({ type: 'defaultError', message: 'Error al subir el archivo' });
+      console.error('Error uploading files:', error);
+      notify({ type: 'defaultError', message: 'Error al subir archivo(s)' });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDeleteBudgetFile = async () => {
-    if (!budgetFileUrl) return;
+  const handleDeleteBudgetFile = async (fileToDelete: BudgetFile) => {
     try {
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: budgetFileUrl,
+          url: fileToDelete.url,
           bucket: 'budgets'
         })
       });
 
-      setBudgetFileUrl('');
+      const newBudgetFiles = budgetFiles.filter(f => f.id !== fileToDelete.id);
+      setBudgetFiles(newBudgetFiles);
 
-      // Actualizar el evento
       const eventUpdated = {
         ...selectedEvent,
         payment: {
           ...selectedEvent!.payment,
-          budgetFileUrl: ''
+          budgetFiles: newBudgetFiles
         }
       };
       await updateEvent(eventUpdated);
@@ -178,13 +214,6 @@ const EditablePayments = () => {
       console.error('Error deleting file:', error);
       notify({ type: 'defaultError', message: 'Error al eliminar el archivo' });
     }
-  };
-
-  const getCleanFileName = (url: string) => {
-    const parts = url.split('/');
-    const fileName = parts[parts.length - 1];
-    // Remover el prefijo nanoid (primeros 21 caracteres + guión)
-    return fileName.length > 22 ? fileName.slice(22) : fileName;
   };
 
   // Calcular el costo total de renta del equipamiento
@@ -658,31 +687,33 @@ const EditablePayments = () => {
         )}
       </Box>
 
-      {/* SECCIÓN DE ARCHIVO DE PRESUPUESTO (solo admin) */}
+      {/* SECCIÓN DE ARCHIVOS DE PRESUPUESTO (solo admin) */}
       {isAdmin && (
         <>
           <Divider my='md' />
-          <Text fw={600} mb='sm'>Archivo de presupuesto</Text>
+          <Text fw={600} mb='sm'>Archivos de presupuesto</Text>
 
-          {budgetFileUrl ? (
-            <Group>
+          {budgetFiles.map((file) => (
+            <Group key={file.id} mb='xs'>
               <IconFile size={20} />
               <Text size='sm' style={{ flex: 1 }}>
-                {getCleanFileName(budgetFileUrl)}
+                {file.fileName}
               </Text>
               <ActionIcon
                 color='blue'
                 variant='light'
-                onClick={() => window.open(budgetFileUrl, '_blank')}
+                onClick={() => window.open(file.url, '_blank')}
               >
                 <IconEye size={16} />
               </ActionIcon>
-              <ActionIcon color='red' variant='light' onClick={handleDeleteBudgetFile}>
+              <ActionIcon color='red' variant='light' onClick={() => handleDeleteBudgetFile(file)}>
                 <IconTrash size={16} />
               </ActionIcon>
             </Group>
-          ) : (
-            <FileButton onChange={handleUploadBudgetFile} accept='image/*,.pdf'>
+          ))}
+
+          {budgetFiles.length < MAX_BUDGET_FILES && (
+            <FileButton onChange={handleUploadBudgetFiles} accept='image/*,.pdf' multiple>
               {(props) => (
                 <Button
                   {...props}
@@ -690,10 +721,16 @@ const EditablePayments = () => {
                   leftSection={<IconUpload size={16} />}
                   loading={uploading}
                 >
-                  Subir archivo
+                  Subir archivo{budgetFiles.length > 0 ? 's' : ''}
                 </Button>
               )}
             </FileButton>
+          )}
+
+          {budgetFiles.length > 0 && (
+            <Text size='xs' c='dimmed' mt='xs'>
+              {budgetFiles.length}/{MAX_BUDGET_FILES} archivos (máx. {MAX_FILE_SIZE_MB} MB c/u)
+            </Text>
           )}
         </>
       )}
