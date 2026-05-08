@@ -125,6 +125,7 @@ const BandList = ({
               <EditableBand
                 band={selectedBand || undefined}
                 allBands={allBands || []}
+                eventBands={bands}
                 onSave={handleSaveBand}
                 onCancel={handleCancelBand}
               />
@@ -148,6 +149,7 @@ const BandList = ({
             <EditableBand
               band={selectedBand || undefined}
               allBands={allBands || []}
+              eventBands={bands}
               onSave={handleSaveBand}
               onCancel={handleCancelBand}
             />

@@ -21,11 +21,13 @@ import { usePermissions } from '@/hooks/usePermissions';
 const EditableBand = ({
   band,
   allBands,
+  eventBands = [],
   onSave,
   onCancel
 }: {
   band?: Band;
   allBands: Band[];
+  eventBands?: Band[];
   onSave: (band: Band) => void;
   onCancel: () => void;
 }) => {
@@ -398,7 +400,13 @@ const EditableBand = ({
               clearable
               data={
                 allBands
-                  ?.filter((b) => b._id !== bandData._id)
+                  ?.filter((b) => {
+                    // Excluir la banda actualmente seleccionada
+                    if (b._id === bandData._id) return false;
+                    // Excluir bandas ya agregadas al evento
+                    if (eventBands.some((eb) => eb._id === b._id)) return false;
+                    return true;
+                  })
                   .sort((a, b) => a.bandName.localeCompare(b.bandName))
                   .map((b) => ({
                     value: b._id,
