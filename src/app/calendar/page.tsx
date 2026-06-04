@@ -27,6 +27,12 @@ import useNotification from '@/hooks/useNotification';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+// Calendarios restringidos solo para admin (temporalmente ocultos para otros roles)
+const ADMIN_ONLY_CALENDAR_IDS = new Set([
+  '6a219c9028d11e7548345139', // Gastos
+  '6a21a510ba676f03086b7280'  // Ingresos
+]);
+
 export default withPageAuthRequired(function CalendarPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,15 +45,26 @@ export default withPageAuthRequired(function CalendarPage() {
   const [searchValue, setSearchValue] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
-  // ──── Calendarios y eventos personales (solo admin) ────
-  const { data: calendars = [], mutate: mutateCalendars } = useSWR<AppCalendar[]>(
-    isAdmin ? '/api/appCalendars' : null,
+  // ──── Calendarios y eventos personales ────
+  const { data: allCalendarsRaw = [], mutate: mutateCalendars } = useSWR<AppCalendar[]>(
+    '/api/appCalendars',
     fetcher
   );
-  const { data: personalEvents = [], mutate: mutatePersonalEvents } = useSWR<any[]>(
-    isAdmin ? '/api/calendarEvents' : null,
+  const { data: allPersonalEventsRaw = [], mutate: mutatePersonalEvents } = useSWR<any[]>(
+    '/api/calendarEvents',
     fetcher
   );
+
+  // Filtrar calendarios restringidos para no-admin
+  const calendars = useMemo(() => {
+    if (isAdmin) return allCalendarsRaw;
+    return allCalendarsRaw.filter((cal) => !ADMIN_ONLY_CALENDAR_IDS.has(cal._id));
+  }, [allCalendarsRaw, isAdmin]);
+
+  const personalEvents = useMemo(() => {
+    if (isAdmin) return allPersonalEventsRaw;
+    return allPersonalEventsRaw.filter((ev) => !ADMIN_ONLY_CALENDAR_IDS.has(ev.calendarId));
+  }, [allPersonalEventsRaw, isAdmin]);
 
   // Calendarios visibles (todos visibles por defecto)
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<Set<string>>(new Set());
@@ -330,7 +347,6 @@ export default withPageAuthRequired(function CalendarPage() {
   }, [calendars]);
 
   const personalCalendarEvents = useMemo(() => {
-    if (!isAdmin) return [];
     return personalEvents
       .filter((ev) => visibleCalendarIds.has(ev.calendarId))
       .map((ev) => ({
@@ -341,7 +357,7 @@ export default withPageAuthRequired(function CalendarPage() {
         source: 'personal',
         calendarColor: calendarMap[ev.calendarId]?.color || '#4a9eed'
       }));
-  }, [personalEvents, visibleCalendarIds, calendarMap, isAdmin]);
+  }, [personalEvents, visibleCalendarIds, calendarMap]);
 
   // Merge de todos los eventos
   const allCalendarEvents = useMemo(
