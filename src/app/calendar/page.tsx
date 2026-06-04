@@ -476,7 +476,7 @@ export default withPageAuthRequired(function CalendarPage() {
               backgroundColor: isLightTheme ? '#f8f9fa' : '#25262b'
             }}
           >
-            <Flex gap='md' align='center' wrap='wrap'>
+            <Flex gap='md' align='center' wrap='wrap' style={{ marginLeft: '50px' }}>
               <Badge color='green' variant='filled'>
                 {internalEvents.length} eventos
               </Badge>
