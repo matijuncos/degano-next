@@ -37,6 +37,7 @@ export default withPageAuthRequired(function CalendarPage() {
   const [navigating, setNavigating] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   // ──── Calendarios y eventos personales (solo admin) ────
   const { data: calendars = [], mutate: mutateCalendars } = useSWR<AppCalendar[]>(
@@ -456,6 +457,7 @@ export default withPageAuthRequired(function CalendarPage() {
           nativeEventsVisible={nativeEventsVisible}
           onToggleNativeEvents={() => setNativeEventsVisible((v) => !v)}
           isAdmin={isAdmin}
+          onCollapsedChange={setSidebarCollapsed}
         />
 
         {/* Contenido principal */}
@@ -476,7 +478,7 @@ export default withPageAuthRequired(function CalendarPage() {
               backgroundColor: isLightTheme ? '#f8f9fa' : '#25262b'
             }}
           >
-            <Flex gap='md' align='center' wrap='wrap' style={{ marginLeft: '50px' }}>
+            <Flex gap='md' align='center' wrap='wrap' style={{ marginLeft: sidebarCollapsed ? '50px' : undefined }}>
               <Badge color='green' variant='filled'>
                 {internalEvents.length} eventos
               </Badge>

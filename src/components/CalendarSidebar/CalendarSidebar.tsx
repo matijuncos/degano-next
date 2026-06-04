@@ -41,6 +41,7 @@ interface CalendarSidebarProps {
   nativeEventsVisible: boolean;
   onToggleNativeEvents: () => void;
   isAdmin: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export default function CalendarSidebar({
@@ -53,7 +54,8 @@ export default function CalendarSidebar({
   isLightTheme,
   nativeEventsVisible,
   onToggleNativeEvents,
-  isAdmin
+  isAdmin,
+  onCollapsedChange
 }: CalendarSidebarProps) {
   const { isMobile } = useResponsive();
   const [showNewForm, setShowNewForm] = useState(false);
@@ -65,9 +67,14 @@ export default function CalendarSidebar({
   const [editColor, setEditColor] = useState('');
   const [collapsed, setCollapsed] = useState(true);
 
+  const updateCollapsed = (value: boolean) => {
+    setCollapsed(value);
+    onCollapsedChange?.(value);
+  };
+
   // Colapsar automáticamente cuando cambia a mobile
   useEffect(() => {
-    if (isMobile) setCollapsed(true);
+    if (isMobile) updateCollapsed(true);
   }, [isMobile]);
 
   const borderColor = isLightTheme ? '#dee2e6' : '#373a40';
@@ -102,7 +109,7 @@ export default function CalendarSidebar({
           size='lg'
           variant='filled'
           color='blue'
-          onClick={() => setCollapsed(false)}
+          onClick={() => updateCollapsed(false)}
           style={{
             position: 'absolute',
             top: 12,
@@ -133,7 +140,7 @@ export default function CalendarSidebar({
       {/* Backdrop para cerrar en mobile */}
       {isMobile && (
         <Box
-          onClick={() => setCollapsed(true)}
+          onClick={() => updateCollapsed(true)}
           style={{
             position: 'absolute',
             top: 0,
@@ -180,7 +187,7 @@ export default function CalendarSidebar({
                 size='sm'
                 variant='light'
                 color='dark'
-                onClick={() => setCollapsed(true)}
+                onClick={() => updateCollapsed(true)}
               >
                 <IconChevronLeft size={14} />
               </ActionIcon>
