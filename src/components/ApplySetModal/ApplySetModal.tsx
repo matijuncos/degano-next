@@ -191,23 +191,34 @@ export default function ApplySetModal({
       {selectedSet && (
         <>
           <Divider my='sm' />
+          {!allAvailable && someAvailable && (
+            <Group gap='xs' mb='xs'>
+              <IconAlertTriangle size={14} color='#f08c00' />
+              <Text size='xs' c='yellow'>
+                Algunos ítems no tienen stock suficiente. Se agregarán solo los disponibles.
+              </Text>
+            </Group>
+          )}
+          {!someAvailable && (
+            <Group gap='xs' mb='xs'>
+              <IconX size={14} color='#e03131' />
+              <Text size='xs' c='red'>
+                No hay stock disponible para ningún ítem del set.
+              </Text>
+            </Group>
+          )}
           <Group justify='flex-end' gap='xs'>
             <Button variant='default' onClick={onClose}>Cancelar</Button>
-            {!allAvailable && someAvailable && (
-              <Button
-                color='yellow'
-                variant='light'
-                onClick={() => handleApply(true)}
-              >
-                Aplicar lo disponible
-              </Button>
-            )}
             <Button
               color='green'
               onClick={() => handleApply(false)}
               disabled={!someAvailable}
             >
-              {allAvailable ? 'Aplicar set completo' : 'Sin stock disponible'}
+              {allAvailable
+                ? `Aplicar set completo (${itemsToApply.length} equipos)`
+                : someAvailable
+                  ? `Aplicar disponibles (${itemsToApply.length} equipos)`
+                  : 'Sin stock disponible'}
             </Button>
           </Group>
         </>

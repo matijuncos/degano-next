@@ -15,12 +15,17 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useResponsive } from '@/hooks/useResponsive';
 import { IconLayersLinked } from '@tabler/icons-react';
+import { findMainCategorySync } from '@/utils/categoryUtils';
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const EquipmentTable = () => {
   const { selectedEvent, setSelectedEvent, setLoading, updateEventInList } = useDeganoCtx();
   const notify = useNotification();
   const { isAdmin } = usePermissions();
   const { isMobile, isTablet } = useResponsive();
+  const { data: categories = [] } = useSWR<any[]>('/api/categories', fetcher);
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
@@ -87,11 +92,24 @@ const EquipmentTable = () => {
     setEventEquipment((prev) => {
       const newItems = validItems
         .filter((item) => !prev.equipment.some((eq) => eq._id === item._id))
-        .map((item) => ({
-          ...item,
-          lastUsedStartDate: prev.date,
-          lastUsedEndDate: prev.endDate
-        }));
+        .map((item) => {
+          let mainCategoryId = item.mainCategoryId || '';
+          let mainCategoryName = item.mainCategoryName || 'Sin categoría';
+          if (!item.mainCategoryName && item.categoryId && categories.length > 0) {
+            const mainCategory = findMainCategorySync(item.categoryId, categories);
+            if (mainCategory) {
+              mainCategoryId = mainCategory.id;
+              mainCategoryName = mainCategory.name;
+            }
+          }
+          return {
+            ...item,
+            lastUsedStartDate: prev.date,
+            lastUsedEndDate: prev.endDate,
+            mainCategoryId,
+            mainCategoryName
+          };
+        });
 
       if (newItems.length === 0) return prev;
 
