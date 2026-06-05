@@ -27,12 +27,6 @@ import useNotification from '@/hooks/useNotification';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-// Calendarios restringidos solo para admin (temporalmente ocultos para otros roles)
-const ADMIN_ONLY_CALENDAR_IDS = new Set([
-  '6a219c9028d11e7548345139', // Gastos
-  '6a21a510ba676f03086b7280'  // Ingresos
-]);
-
 export default withPageAuthRequired(function CalendarPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,15 +49,15 @@ export default withPageAuthRequired(function CalendarPage() {
     fetcher
   );
 
-  // Filtrar calendarios restringidos para no-admin
+  // Calendarios extras son solo para admin
   const calendars = useMemo(() => {
     if (isAdmin) return allCalendarsRaw;
-    return allCalendarsRaw.filter((cal) => !ADMIN_ONLY_CALENDAR_IDS.has(cal._id));
+    return [];
   }, [allCalendarsRaw, isAdmin]);
 
   const personalEvents = useMemo(() => {
     if (isAdmin) return allPersonalEventsRaw;
-    return allPersonalEventsRaw.filter((ev) => !ADMIN_ONLY_CALENDAR_IDS.has(ev.calendarId));
+    return [];
   }, [allPersonalEventsRaw, isAdmin]);
 
   // Calendarios visibles (todos visibles por defecto)

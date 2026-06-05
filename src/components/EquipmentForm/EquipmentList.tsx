@@ -50,7 +50,7 @@ function SortableCategoryItem(props: CategoryItemProps) {
   } = useSortable({ id: props.categoryName });
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     marginBottom: '12px',
     opacity: isDragging ? 0.4 : 1,
@@ -293,7 +293,11 @@ export default function EquipmentList({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [categoryOrder, setCategoryOrder] = useState<string[]>(equipmentCategoryOrder || []);
   const categoryOrderRef = React.useRef<string[]>(equipmentCategoryOrder || []);
+  // savedOrderRef preserva el orden del DB/drag y NO se actualiza por el sync effect.
+  // Esto evita que renders intermedios (antes de cargar categorías) corrompan el orden.
+  const savedOrderRef = React.useRef<string[]>(equipmentCategoryOrder || []);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const isDraggingRef = React.useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -364,12 +368,25 @@ export default function EquipmentList({
 
   const currentCategories = Object.keys(groupedEquipment);
 
-  // Sincronizar categoryOrder cuando cambian los items
+  // Orden final: respetar categoryOrder para las presentes, resto al final
+  const orderedCategories = [
+    ...categoryOrder.filter((cat) => currentCategories.includes(cat)),
+    ...currentCategories.filter((cat) => !categoryOrder.includes(cat))
+  ];
+  const orderedCategoriesRef = React.useRef(orderedCategories);
+  orderedCategoriesRef.current = orderedCategories;
+
+  // Sincronizar categoryOrder cuando cambian los items (NO durante drag)
   useEffect(() => {
-    const prev = categoryOrderRef.current;
-    const filtered = prev.filter((cat) => currentCategories.includes(cat));
-    const newOnes = currentCategories.filter((cat) => !filtered.includes(cat));
+    if (isDraggingRef.current) return;
+
+    // Usar savedOrderRef (orden del DB o último drag) como base, no categoryOrderRef
+    // que puede haberse corrompido por renders intermedios con categorías incompletas
+    const saved = savedOrderRef.current;
+    const filtered = saved.filter((cat) => currentCategories.includes(cat));
+    const newOnes = currentCategories.filter((cat) => !saved.includes(cat));
     const merged = [...filtered, ...newOnes];
+    const prev = categoryOrderRef.current;
 
     const changed =
       merged.length !== prev.length ||
@@ -383,29 +400,28 @@ export default function EquipmentList({
   }, [currentCategories.join(',')]);
 
   const handleDragStart = (event: DragStartEvent) => {
+    isDraggingRef.current = true;
     setActiveDragId(event.active.id as string);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    isDraggingRef.current = false;
     setActiveDragId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = orderedCategories.indexOf(active.id as string);
-    const newIndex = orderedCategories.indexOf(over.id as string);
-    const newOrder = arrayMove(orderedCategories, oldIndex, newIndex);
+    const current = orderedCategoriesRef.current;
+    const oldIndex = current.indexOf(active.id as string);
+    const newIndex = current.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newOrder = arrayMove(current, oldIndex, newIndex);
 
+    savedOrderRef.current = newOrder;
     categoryOrderRef.current = newOrder;
     setCategoryOrder(newOrder);
     setEventEquipment((prev) => ({ ...prev, equipmentCategoryOrder: newOrder }));
     onReorder?.(newOrder);
   };
-
-  // Orden final: respetar categoryOrder para las presentes, resto al final
-  const orderedCategories = [
-    ...categoryOrder.filter((cat) => currentCategories.includes(cat)),
-    ...currentCategories.filter((cat) => !categoryOrder.includes(cat))
-  ];
 
   if (!equipmentList?.length) {
     return (
@@ -416,58 +432,64 @@ export default function EquipmentList({
   }
 
   return (
-    <Stack gap='md'>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={orderedCategories}
-          strategy={verticalListSortingStrategy}
-        >
-          {orderedCategories.map((categoryName) => (
-            <SortableCategoryItem
-              key={categoryName}
-              categoryName={categoryName}
-              groupedEquipment={groupedEquipment}
-              expandedGroups={expandedGroups}
-              toggleGroup={toggleGroup}
-              handleRemove={handleRemove}
-              canViewPrices={canViewPrices}
-            />
-          ))}
-        </SortableContext>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <Stack gap={0} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box style={{ flex: 1, overflowY: 'auto', padding: '0 4px' }}>
+          <Stack gap='md'>
+            <SortableContext
+              items={orderedCategories}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedCategories.map((categoryName) => (
+                <SortableCategoryItem
+                  key={categoryName}
+                  categoryName={categoryName}
+                  groupedEquipment={groupedEquipment}
+                  expandedGroups={expandedGroups}
+                  toggleGroup={toggleGroup}
+                  handleRemove={handleRemove}
+                  canViewPrices={canViewPrices}
+                />
+              ))}
+            </SortableContext>
+          </Stack>
+        </Box>
 
-        <DragOverlay>
-          {activeDragId ? (
-            <CategoryContent
-              categoryName={activeDragId}
-              groupedEquipment={groupedEquipment}
-              expandedGroups={expandedGroups}
-              toggleGroup={() => {}}
-              handleRemove={() => {}}
-              canViewPrices={canViewPrices}
-              isDragOverlay
-            />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+        <Box style={{ flexShrink: 0, padding: '8px 4px' }}>
+          <Divider my='xs' />
 
-      <Divider my='xs' />
+          {canViewPrices && (
+            <Group justify='space-between' px='xs'>
+              <Text fw={500}>Total:</Text>
+              <Text fw={600}>{formatPrice(total)}</Text>
+            </Group>
+          )}
+          {allowSave && (
+            <Group justify='center' px='xs' onClick={onSave}>
+              <Button>Guardar Cambios</Button>
+            </Group>
+          )}
+        </Box>
+      </Stack>
 
-      {canViewPrices && (
-        <Group justify='space-between' px='xs'>
-          <Text fw={500}>Total:</Text>
-          <Text fw={600}>{formatPrice(total)}</Text>
-        </Group>
-      )}
-      {allowSave && (
-        <Group justify='center' px='xs' onClick={onSave}>
-          <Button>Guardar Cambios</Button>
-        </Group>
-      )}
-    </Stack>
+      <DragOverlay>
+        {activeDragId ? (
+          <CategoryContent
+            categoryName={activeDragId}
+            groupedEquipment={groupedEquipment}
+            expandedGroups={expandedGroups}
+            toggleGroup={() => {}}
+            handleRemove={() => {}}
+            canViewPrices={canViewPrices}
+            isDragOverlay
+          />
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

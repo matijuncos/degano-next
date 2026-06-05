@@ -106,8 +106,10 @@ const EquipmentTable = () => {
   // Guardar orden de categorías en background (sin loading, sin notificación)
   const saveCategoryOrder = async (newOrder: string[]) => {
     if (!selectedEvent?._id) return;
+    // Actualizar selectedEvent en contexto para que el print refleje el nuevo orden
+    setSelectedEvent((prev: any) => prev ? { ...prev, equipmentCategoryOrder: newOrder } : prev);
     try {
-      const response = await fetch('/api/updateEvent', {
+      await fetch('/api/updateEvent', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,14 +117,8 @@ const EquipmentTable = () => {
           equipmentCategoryOrder: newOrder
         })
       });
-      const data = await response.json();
-      if (data.event) {
-        setSelectedEvent((prev: any) =>
-          prev ? { ...prev, equipmentCategoryOrder: newOrder } : prev
-        );
-      }
     } catch (error) {
-      console.error('Error saving category order:', error);
+      console.error('[saveCategoryOrder] Error:', error);
     }
   };
 
@@ -333,7 +329,6 @@ const EquipmentTable = () => {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              overflowY: 'auto',
               height: '100%'
             }}
           >

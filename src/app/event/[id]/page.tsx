@@ -2117,191 +2117,185 @@ const EventPage = () => {
     )
   };
 
-  const TabsVersion = () => {
-    return (
-      <>
-        <EventTabs />
-        <div>{tabContent[activeTab as keyof typeof tabContent]}</div>
-      </>
-    );
-  };
+  const eventTabsContent = (
+    <Tabs
+      value={activeTab}
+      onChange={(value: string | null) => setActiveTab(value)}
+    >
+      <Tabs.List>
+        <Tabs.Tab value='main'>Información Principal</Tabs.Tab>
+        <Tabs.Tab value='bands'>Show</Tabs.Tab>
+        <Tabs.Tab value='music'>Música</Tabs.Tab>
+        <Tabs.Tab value='timing'>Timing</Tabs.Tab>
+        <Tabs.Tab value='moreInfo'>Más Información</Tabs.Tab>
+        <Tabs.Tab value='equipment'>Equipos</Tabs.Tab>
+        <Tabs.Tab value='files'>Archivos</Tabs.Tab>
+        {isAdmin && <Tabs.Tab value='payments'>Presupuesto</Tabs.Tab>}
+      </Tabs.List>
+    </Tabs>
+  );
 
-  const AllAccordions = () => {
-    if (!selectedEvent || !role) return null;
-    return (
-      <>
-        <Flex direction='column' gap='8px'>
-          <AccordionSet value='Información Principal'>
-            <Grid gutter='xl'>
-              <Grid.Col span={5.5}>
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='phoneNumber'
-                  title='Teléfono'
-                  value={obfuscatePhone(selectedEvent.phoneNumber, role, 'client')}
-                />
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='type'
-                  title='Tipo de evento'
-                  value={selectedEvent.type}
-                />
+  const tabsVersionContent = (
+    <>
+      {eventTabsContent}
+      <div>{tabContent[activeTab as keyof typeof tabContent]}</div>
+    </>
+  );
+
+  const allAccordionsContent = (!selectedEvent || !role) ? null : (
+    <>
+      <Flex direction='column' gap='8px'>
+        <AccordionSet value='Información Principal'>
+          <Grid gutter='xl'>
+            <Grid.Col span={5.5}>
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='phoneNumber'
+                title='Teléfono'
+                value={obfuscatePhone(selectedEvent.phoneNumber, role, 'client')}
+              />
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='type'
+                title='Tipo de evento'
+                value={selectedEvent.type}
+              />
+              <EditableData disabled={!canEditEvents}
+                type='date'
+                property='date'
+                title='Fecha'
+                value={new Date(selectedEvent.date)}
+              />
+              {selectedEvent.endDate ? (
                 <EditableData disabled={!canEditEvents}
                   type='date'
-                  property='date'
-                  title='Fecha'
-                  value={new Date(selectedEvent.date)}
+                  property='endDate'
+                  title='Fecha Finalizacion'
+                  value={new Date(selectedEvent.endDate)}
                 />
-                {selectedEvent.endDate ? (
-                  <EditableData disabled={!canEditEvents}
-                    type='date'
-                    property='endDate'
-                    title='Fecha Finalizacion'
-                    value={new Date(selectedEvent.endDate)}
-                  />
-                ) : (
-                  <></>
-                )}
+              ) : (
+                <></>
+              )}
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='lugar'
+                title='Lugar'
+                value={selectedEvent.lugar}
+              />
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='eventAddress'
+                title='Dirección'
+                value={selectedEvent.eventAddress}
+              />
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='eventCity'
+                title='Localidad'
+                value={selectedEvent.eventCity}
+              />
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='guests'
+                title='Cantidad de invitados'
+                value={selectedEvent.guests}
+              />
+            </Grid.Col>
+            <Grid.Col
+              span='auto'
+              style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
+            >
+              <Divider orientation='vertical' />
+            </Grid.Col>
+            <Grid.Col span={5.5}>
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='age'
+                title='Edad'
+                value={selectedEvent.age}
+              />
+              {selectedEvent.email && (
                 <EditableData disabled={!canEditEvents}
                   type='text'
-                  property='lugar'
-                  title='Lugar'
-                  value={selectedEvent.lugar}
+                  property='email'
+                  title='Email'
+                  value={selectedEvent.email}
                 />
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='eventAddress'
-                  title='Dirección'
-                  value={selectedEvent.eventAddress}
-                />
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='eventCity'
-                  title='Localidad'
-                  value={selectedEvent.eventCity}
-                />
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='guests'
-                  title='Cantidad de invitados'
-                  value={selectedEvent.guests}
-                />
-              </Grid.Col>
-              <Grid.Col
-                span='auto'
-                style={{ width: '2px', minWidth: '2px', flexGrow: 0 }}
-              >
-                <Divider orientation='vertical' />
-              </Grid.Col>
-              <Grid.Col span={5.5}>
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='age'
-                  title='Edad'
-                  value={selectedEvent.age}
-                />
-                {selectedEvent.email && (
-                  <EditableData disabled={!canEditEvents}
-                    type='text'
-                    property='email'
-                    title='Email'
-                    value={selectedEvent.email}
-                  />
-                )}
-                <EditableData disabled={!canEditEvents}
-                  type='text'
-                  property='guests'
-                  title='Invitados'
-                  value={selectedEvent.guests}
-                />
-              </Grid.Col>
-            </Grid>
-          </AccordionSet>
-          <AccordionSet value='Show'>
-            <BandList
-              bands={selectedEvent?.bands || []}
-              onBandsChange={handleBandsChange}
-              editing={true}
+              )}
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='guests'
+                title='Invitados'
+                value={selectedEvent.guests}
+              />
+            </Grid.Col>
+          </Grid>
+        </AccordionSet>
+        <AccordionSet value='Show'>
+          <BandList
+            bands={selectedEvent?.bands || []}
+            onBandsChange={handleBandsChange}
+            editing={true}
+          />
+        </AccordionSet>
+        <AccordionSet value='Música'>
+          <AccordionSet value='Prohibidos'>
+            <EditableData
+              disabled
+              type='chips'
+              value={selectedEvent.music.forbidden}
+              property='forbidden'
             />
           </AccordionSet>
-          <AccordionSet value='Música'>
-            <AccordionSet value='Prohibidos'>
-              <EditableData
-                disabled
-                type='chips'
-                value={selectedEvent.music.forbidden}
-                property='forbidden'
-              />
-            </AccordionSet>
-            <AccordionSet value='Requeridos'>
-              <EditableData
-                disabled
-                type='chips'
-                value={selectedEvent.music.required}
-                property='required'
-              />
-            </AccordionSet>
-            <AccordionSet value='Géneros'>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}
-              >
-                <EditableData disabled={!canEditEvents}
-                  type='rate'
-                  property='genres'
-                  value={selectedEvent.music.genres}
-                />
-              </div>
-            </AccordionSet>
-            <AccordionSet value='Playlist'>
-              <SpotifyTable />
-            </AccordionSet>
-          </AccordionSet>
-          <AccordionSet value='Más Información'>
-            <EditableData disabled={!canEditEvents}
-              type='textarea'
-              property='moreData'
-              value={selectedEvent.moreData}
+          <AccordionSet value='Requeridos'>
+            <EditableData
+              disabled
+              type='chips'
+              value={selectedEvent.music.required}
+              property='required'
             />
           </AccordionSet>
-          {/* <AccordionSet value='Equipos'>
-            <EquipmentTable />
-          </AccordionSet> */}
-          <AccordionSet value='Archivos'>
-            <FilesHandlerComponent />
+          <AccordionSet value='Géneros'>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}
+            >
+              <EditableData disabled={!canEditEvents}
+                type='rate'
+                property='genres'
+                value={selectedEvent.music.genres}
+              />
+            </div>
           </AccordionSet>
-          {isAdmin && (
-            <AccordionSet value='Historial de pagos'>
-              <EditablePayments />
-            </AccordionSet>
-          )}
-        </Flex>
-      </>
-    );
-  };
+          <AccordionSet value='Playlist'>
+            <SpotifyTable />
+          </AccordionSet>
+        </AccordionSet>
+        <AccordionSet value='Más Información'>
+          <EditableData disabled={!canEditEvents}
+            type='textarea'
+            property='moreData'
+            value={selectedEvent.moreData}
+          />
+        </AccordionSet>
+        {/* <AccordionSet value='Equipos'>
+          <EquipmentTable />
+        </AccordionSet> */}
+        <AccordionSet value='Archivos'>
+          <FilesHandlerComponent />
+        </AccordionSet>
+        {isAdmin && (
+          <AccordionSet value='Historial de pagos'>
+            <EditablePayments />
+          </AccordionSet>
+        )}
+      </Flex>
+    </>
+  );
 
-  const EventTabs = () => {
-    return (
-      <Tabs
-        value={activeTab}
-        onChange={(value: string | null) => setActiveTab(value)}
-      >
-        <Tabs.List>
-          <Tabs.Tab value='main'>Información Principal</Tabs.Tab>
-          <Tabs.Tab value='bands'>Show</Tabs.Tab>
-          <Tabs.Tab value='music'>Música</Tabs.Tab>
-          <Tabs.Tab value='timing'>Timing</Tabs.Tab>
-          <Tabs.Tab value='moreInfo'>Más Información</Tabs.Tab>
-          <Tabs.Tab value='equipment'>Equipos</Tabs.Tab>
-          <Tabs.Tab value='files'>Archivos</Tabs.Tab>
-          {isAdmin && <Tabs.Tab value='payments'>Presupuesto</Tabs.Tab>}
-        </Tabs.List>
-      </Tabs>
-    );
-  };
 
   return selectedEvent ? (
     <Container size='xl'>
@@ -2324,7 +2318,7 @@ const EventPage = () => {
           <Title mb='16px'>
             {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
           </Title>
-          {showTabsVersion ? <TabsVersion /> : <AllAccordions />}
+          {showTabsVersion ? tabsVersionContent : allAccordionsContent}
         </Box>
       )}
 
