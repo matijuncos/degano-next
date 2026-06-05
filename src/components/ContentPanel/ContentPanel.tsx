@@ -52,7 +52,7 @@ export default function ContentPanel({
       headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
     });
     return response.json();
-  }, { dedupingInterval: 0, revalidateOnMount: true });
+  }, { revalidateOnMount: true });
 
   const getEquipmentStatus = (item: any) => {
     if (item.outOfService?.isOut && item.outOfService?.reason === 'En Evento') {
@@ -88,8 +88,7 @@ export default function ContentPanel({
     const fetchEquipment = async () => {
       setIsLoadingEquipment(true);
       try {
-        const cacheBuster = `${equipmentUrl}${equipmentUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-        const response = await fetch(cacheBuster, {
+        const response = await fetch(equipmentUrl, {
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });

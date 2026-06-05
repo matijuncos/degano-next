@@ -6,9 +6,13 @@ export async function GET() {
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  const categories = await db.collection('categories').find().sort({name: 1}).toArray();
-  // Ordenar por createdAt (más viejos primero) y luego alfabéticamente por nombre
-  const equipment = await db.collection('equipment').find().sort({createdAt: 1, name: 1}).toArray();
+  const [categories, equipment] = await Promise.all([
+    db.collection('categories').find().sort({ name: 1 }).toArray(),
+    db.collection('equipment')
+      .find({}, { projection: { _id: 1, name: 1, categoryId: 1 } })
+      .sort({ createdAt: 1, name: 1 })
+      .toArray()
+  ]);
 
   const equipmentNodes = equipment.map(eq => ({
     _id: eq._id.toString(),

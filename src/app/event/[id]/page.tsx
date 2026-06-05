@@ -205,8 +205,9 @@ const MainInformation = ({
         },
         body: JSON.stringify(updatedEvent)
       });
-      const { event } = await response.json();
-      const eventToUse = event || updatedEvent;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      const eventToUse = data.event || updatedEvent;
       setSelectedEvent(eventToUse);
       updateEventInList(eventToUse);
       notify();
@@ -297,14 +298,16 @@ const MainInformation = ({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          _id: selectedEvent._id,
+          ...selectedEvent,
           extraClients: updatedExtraClients
         })
       });
 
-      const { event } = await response.json();
-      setSelectedEvent(event);
-      updateEventInList(event);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      const eventToUse = data.event || { ...selectedEvent, extraClients: updatedExtraClients };
+      setSelectedEvent(eventToUse);
+      updateEventInList(eventToUse);
       setAddingExtraClient(false);
       setExtraClientData({
         fullName: '',
@@ -1646,8 +1649,9 @@ const TimingInformation = ({
         },
         body: JSON.stringify(updatedEvent)
       });
-      const { event } = await response.json();
-      const eventToUse = event || updatedEvent;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      const eventToUse = data.event || updatedEvent;
       setSelectedEvent(eventToUse);
       updateEventInList(eventToUse);
       notify();

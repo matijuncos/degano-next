@@ -238,9 +238,11 @@ const EditablePayments = () => {
         body: JSON.stringify(event)
       });
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      const updatedEvent = data.event || event;
       notify();
-      setSelectedEvent(data.event);
-      updateEventInList(data.event);
+      setSelectedEvent(updatedEvent);
+      updateEventInList(updatedEvent);
     } catch (error) {
       notify({ type: 'defaultError' });
       console.log(error);

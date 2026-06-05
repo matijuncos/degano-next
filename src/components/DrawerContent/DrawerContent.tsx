@@ -295,8 +295,9 @@ const DrawerContent = () => {
         })
       });
 
-      const { event } = await response.json();
-      setSelectedEvent(event);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      setSelectedEvent(data.event);
       setIsStaffModalOpen(false);
       setSelectedEmployee(null);
       notify({ message: 'Staff agregado correctamente' });
@@ -323,8 +324,9 @@ const DrawerContent = () => {
         })
       });
 
-      const { event } = await response.json();
-      setSelectedEvent(event);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      setSelectedEvent(data.event);
       notify({ message: 'Staff eliminado correctamente' });
     } catch (error) {
       notify({ type: 'defaultError' });

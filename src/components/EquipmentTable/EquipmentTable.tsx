@@ -154,32 +154,35 @@ const EquipmentTable = () => {
       });
       const data = await response.json();
 
-      // Actualizar el estado del evento
-      setSelectedEvent(data.event);
-      setEventEquipment(data.event);
-      updateEventInList(data.event);
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al actualizar el evento');
+      }
 
-      // Revalidar paths de Next.js y cache de SWR
-      await Promise.all([
-        // Revalidar paths de Next.js
+      // Actualizar el estado del evento
+      const updatedEvent = data.event || eventEquipment;
+      setSelectedEvent(updatedEvent);
+      setEventEquipment(updatedEvent);
+      updateEventInList(updatedEvent);
+
+      notify({ message: 'Se actualizo el evento correctamente' });
+
+      // Revalidar caches en background (no bloquea ni muestra error si falla)
+      Promise.all([
         fetch('/api/revalidate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ paths: ['/equipment', '/api/equipment'] })
         }),
-        // Invalidar cache de SWR
         mutate('/api/equipment'),
         mutate('/api/equipment?eventStartDate=' + new Date(selectedEvent?.date || '').toISOString() + '&eventEndDate=' + new Date(selectedEvent?.endDate || '').toISOString()),
         mutate('/api/categories'),
         mutate('/api/categoryTreeData'),
         mutate('/api/treeData'),
         mutate('/api/equipmentLocation')
-      ]);
+      ]).catch(() => {});
 
       // Incrementar refresh trigger para forzar recarga de equipamiento
       setRefreshTrigger(prev => prev + 1);
-
-      notify({ message: 'Se actualizo el evento correctamente' });
     } catch (error) {
       notify({ type: 'defaultError' });
       console.log(error);
