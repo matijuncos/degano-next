@@ -12,6 +12,7 @@ import { IconSearch, IconX } from '@tabler/icons-react';
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
+import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns/format';
 import { parse } from 'date-fns/parse';
@@ -32,6 +33,7 @@ export default withPageAuthRequired(function CalendarPage() {
   const searchParams = useSearchParams();
   const notify = useNotification();
   const { isAdmin } = usePermissions();
+  const setLoadingCursor = useLoadingCursor();
 
   const [isOpen, setIsOpen] = useState(false);
   const [navigating, setNavigating] = useState(false);
@@ -193,14 +195,16 @@ export default withPageAuthRequired(function CalendarPage() {
   };
 
   // ──── Localizer y tema ────
-  const locales = { es };
-  const localizer = dateFnsLocalizer({
-    format,
-    parse,
-    startOfWeek: (date: Date) => startOfWeek(date, { weekStartsOn: 1 }),
-    getDay,
-    locales
-  });
+  const localizer = useMemo(() => {
+    const locales = { es };
+    return dateFnsLocalizer({
+      format,
+      parse,
+      startOfWeek: (date: Date) => startOfWeek(date, { weekStartsOn: 1 }),
+      getDay,
+      locales
+    });
+  }, []);
 
   const { setSelectedEvent, allEvents } = useDeganoCtx();
 
@@ -281,10 +285,28 @@ export default withPageAuthRequired(function CalendarPage() {
           });
       }
     } else {
-      clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = setTimeout(async () => {
         clickTimerRef.current = null;
+        setLoadingCursor(true);
+        // Fetchear evento completo para el drawer (el listado es liviano)
+        if (value._id) {
+          try {
+            const res = await fetch(`/api/getEvent?id=${value._id}`, {
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
+            });
+            const data = await res.json();
+            if (data.event) {
+              setSelectedEvent(data.event);
+              setIsOpen(true);
+              setLoadingCursor(false);
+              return;
+            }
+          } catch {}
+        }
         setSelectedEvent({ ...value });
         setIsOpen(true);
+        setLoadingCursor(false);
       }, 200);
     }
   };
@@ -310,7 +332,7 @@ export default withPageAuthRequired(function CalendarPage() {
   const { defaultDate } = useMemo(() => ({ defaultDate: new Date() }), []);
 
   // ──── Eventos Degano ────
-  const internalEvents = allEvents.map((evnt) => {
+  const internalEvents = useMemo(() => allEvents.map((evnt) => {
     const startDate = new Date(evnt.date);
     const endDate = evnt.endDate ? new Date(evnt.endDate) : new Date(evnt.date);
     const startDay = new Date(startDate); startDay.setHours(0, 0, 0, 0);
@@ -331,7 +353,7 @@ export default withPageAuthRequired(function CalendarPage() {
       selectable: true,
       source: 'internal'
     };
-  });
+  }), [allEvents]);
 
   // ──── Eventos personales filtrados ────
   const calendarMap = useMemo(() => {

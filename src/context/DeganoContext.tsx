@@ -26,8 +26,8 @@ export const DeganoProvider: ({
     '/api/getEvents?page=1',
     eventsFetcher,
     {
-      revalidateOnFocus: true,
-      dedupingInterval: 5000
+      revalidateOnFocus: false,
+      dedupingInterval: 30000
     }
   );
 
