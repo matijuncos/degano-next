@@ -8,7 +8,11 @@ import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 export const GET = withAuth(async (_context: AuthContext, _req: Request) => {
   const client = await clientPromise;
   const db = client.db('degano-app');
-  const events = await db.collection('calendar_events').find({}).toArray();
+  const events = await db.collection('calendar_events').find({}, {
+    projection: {
+      _id: 1, title: 1, start: 1, end: 1, allDay: 1, calendarId: 1
+    }
+  }).toArray();
   return NextResponse.json(events);
 });
 

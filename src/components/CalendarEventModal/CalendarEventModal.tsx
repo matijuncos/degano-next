@@ -114,7 +114,12 @@ export default function CalendarEventModal({
       color: isLightTheme ? '#1a1b1e' : '#c1c2c5',
       borderColor: isLightTheme ? '#dee2e6' : '#373a40'
     },
-    label: { color: isLightTheme ? '#1a1b1e' : '#c1c2c5' }
+    label: { color: isLightTheme ? '#1a1b1e' : '#c1c2c5' },
+    dropdown: {
+      backgroundColor: isLightTheme ? '#ffffff' : '#25262b',
+      borderColor: isLightTheme ? '#dee2e6' : '#373a40'
+    },
+    option: { color: isLightTheme ? '#000000' : '#ffffff' }
   };
 
   // Opciones del select con color swatch
@@ -230,7 +235,7 @@ export default function CalendarEventModal({
               onChange={(val) => val && setCalendarId(val)}
               style={{ flex: 1 }}
               styles={inputStyles}
-              comboboxProps={{ withinPortal: false }}
+              comboboxProps={{ withinPortal: true }}
             />
           </Group>
         </Stack>

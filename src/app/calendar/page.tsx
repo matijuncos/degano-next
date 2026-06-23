@@ -41,15 +41,16 @@ export default withPageAuthRequired(function CalendarPage() {
   const [searchValue, setSearchValue] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
-  // ──── Calendarios y eventos personales ────
-  const { data: allCalendarsRaw = [], mutate: mutateCalendars } = useSWR<AppCalendar[]>(
-    '/api/appCalendars',
-    fetcher
+  // ──── Calendarios y eventos personales (una sola request) ────
+  const { data: calendarData, mutate: mutateCalendarData } = useSWR<{ calendars: AppCalendar[]; events: any[] }>(
+    '/api/calendarData',
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
   );
-  const { data: allPersonalEventsRaw = [], mutate: mutatePersonalEvents } = useSWR<any[]>(
-    '/api/calendarEvents',
-    fetcher
-  );
+  const allCalendarsRaw = calendarData?.calendars || [];
+  const allPersonalEventsRaw = calendarData?.events || [];
+  const mutateCalendars = mutateCalendarData;
+  const mutatePersonalEvents = mutateCalendarData;
 
   // Calendarios extras son solo para admin
   const calendars = useMemo(() => {
