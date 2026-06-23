@@ -115,6 +115,12 @@ export interface EventModel {
   equipmentArrivalDate?: string | Date;
   equipmentArrivalTime?: string;
   equipmentCategoryOrder?: string[];
+  files?: {
+    url: string;
+    name: string;
+    mimeType: string;
+    uploadedAt: string;
+  }[];
 }
 export interface SelectedEventType extends EventModel {
   title?: string;

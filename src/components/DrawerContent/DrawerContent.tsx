@@ -42,11 +42,10 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { obfuscatePhone } from '@/utils/roleUtils';
 
 interface FileItem {
-  id: string;
+  url: string;
   name: string;
-  webViewLink: string;
   mimeType: string;
-  [key: string]: any;
+  uploadedAt: string;
 }
 
 interface StaffMember {
@@ -56,14 +55,13 @@ interface StaffMember {
 }
 
 const DrawerContent = () => {
-  const { selectedEvent, setSelectedEvent, folderName } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent } = useDeganoCtx();
   const router = useRouter();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
   const { can, role } = usePermissions();
   const canViewPayments = can('canViewPayments');
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [loadingFiles, setLoadingFiles] = useState(false);
+  const files: FileItem[] = selectedEvent?.files || [];
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -223,32 +221,6 @@ const DrawerContent = () => {
     );
   };
 
-  // Fetch de archivos usando la API
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (!folderName || folderName === 'untitled') return;
-
-      setLoadingFiles(true);
-      try {
-        const response = await fetch('/api/listGoogleDriveFiles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderName })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setFiles(data.files || []);
-        }
-      } catch (error) {
-        console.error('Error fetching files:', error);
-      } finally {
-        setLoadingFiles(false);
-      }
-    };
-
-    fetchFiles();
-  }, [folderName]);
 
   const handleAddStaff = async () => {
     if (!selectedEmployee) {
@@ -810,15 +782,11 @@ const DrawerContent = () => {
           <Text fw={700} size='md' mb='sm'>
             Archivos
           </Text>
-          {loadingFiles ? (
-            <Text size='sm' c='dimmed'>
-              Cargando archivos...
-            </Text>
-          ) : files.length > 0 ? (
+          {files.length > 0 ? (
             <Group gap='sm'>
               {files.map((file) => (
                 <Card
-                  key={file.id}
+                  key={file.url}
                   withBorder
                   padding='xs'
                   style={{
@@ -826,11 +794,7 @@ const DrawerContent = () => {
                     width: '80px',
                     transition: 'transform 0.1s, box-shadow 0.1s'
                   }}
-                  onClick={() => {
-                    if (file.webViewLink) {
-                      window.open(file.webViewLink, '_blank');
-                    }
-                  }}
+                  onClick={() => window.open(file.url, '_blank')}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.05)';
                     e.currentTarget.style.boxShadow =

@@ -16,6 +16,7 @@ const bucketMap: Record<string, string> = {
   equipment: process.env.AWS_S3_EQUIPMENT_BUCKET_NAME!,
   bands: process.env.AWS_S3_BANDS_BUCKET_NAME!,
   budgets: process.env.AWS_S3_BUDGETS_BUCKET_NAME!,
+  events: process.env.AWS_S3_EVENTS_BUCKET_NAME || 'degano-event-files',
 };
 
 export async function POST(req: NextRequest) {
