@@ -126,16 +126,34 @@ export default function FilesHandlerComponent() {
     try {
       // Subir archivos secuencialmente para evitar race conditions con la carpeta de Google Drive
       for (const file of allFiles) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('folderName', folderName);
-
-        const response = await fetch('/api/uploadToGoogleDrive', {
+        // 1. Obtener URL de upload resumable (pasa por Vercel, pero solo metadata liviana)
+        const initRes = await fetch('/api/getGoogleDriveUploadUrl', {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            mimeType: file.type,
+            folderName
+          })
         });
 
-        if (!response.ok) {
+        if (!initRes.ok) {
+          throw new Error(`Error iniciando subida de ${file.name}`);
+        }
+
+        const { uploadUrl } = await initRes.json();
+
+        // 2. Subir el archivo directo a Google Drive (sin pasar por Vercel, sin límite de tamaño)
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'Content-Length': file.size.toString()
+          },
+          body: file
+        });
+
+        if (!uploadRes.ok) {
           throw new Error(`Error subiendo ${file.name}`);
         }
       }
@@ -144,7 +162,7 @@ export default function FilesHandlerComponent() {
       setAllfiles([]);
       notify({ message: 'Archivos subidos correctamente' });
 
-      // Recargar lista en background (no bloquea ni muestra error si tarda)
+      // Recargar lista en background
       setTimeout(() => fetchFiles(), 1500);
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -201,7 +219,7 @@ export default function FilesHandlerComponent() {
                     console.log('rejected files', files);
                     alert(`Archivos rechazados: ${files.map(f => f.file.name).join(', ')}. Verifica que no excedan 10MB.`);
                   }}
-                  maxSize={10 * 1024 ** 2}
+                  maxSize={100 * 1024 ** 2}
                   accept={{
                     'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
                     'video/*': ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv'],
@@ -249,7 +267,7 @@ export default function FilesHandlerComponent() {
                           </Text>
                           <Text size='sm' c='dimmed' inline mt={7}>
                             Adjunta la cantidad de archivos que quieras (imágenes, videos, audio, PDFs, etc.). Cada
-                            archivo no debe exceder los 10MB
+                            archivo no debe exceder los 100MB
                           </Text>
                         </div>
                       </>
