@@ -12,7 +12,8 @@ import {
   IconVideo,
   IconFileTypePdf,
   IconFileText,
-  IconFileZip
+  IconFileZip,
+  IconDownload
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState } from 'react';
@@ -123,8 +124,8 @@ export default function FilesHandlerComponent() {
     notify({ loading: true });
 
     try {
-      // Subir cada archivo
-      const uploadPromises = allFiles.map(async (file) => {
+      // Subir archivos secuencialmente para evitar race conditions con la carpeta de Google Drive
+      for (const file of allFiles) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folderName', folderName);
@@ -137,21 +138,40 @@ export default function FilesHandlerComponent() {
         if (!response.ok) {
           throw new Error(`Error subiendo ${file.name}`);
         }
+      }
 
-        return response.json();
-      });
-
-      await Promise.all(uploadPromises);
-
-      // Limpiar y recargar
+      // Limpiar archivos pendientes
       setAllfiles([]);
-      await fetchFiles();
       notify({ message: 'Archivos subidos correctamente' });
+
+      // Recargar lista en background (no bloquea ni muestra error si tarda)
+      setTimeout(() => fetchFiles(), 1500);
     } catch (error) {
       console.error('Error uploading files:', error);
       notify({ type: 'defaultError', message: 'Error al subir archivos' });
     } finally {
       setLoading((prev) => ({ ...prev, uploading: false }));
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string, fileName: string) => {
+    if (!confirm(`¿Eliminar "${fileName}"?`)) return;
+
+    setLoading((prev) => ({ ...prev, deletingFile: fileId }));
+    try {
+      const response = await fetch(`/api/deleteGoogleDriveFile?fileId=${fileId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Error al eliminar');
+
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+      notify({ message: 'Archivo eliminado' });
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      notify({ type: 'defaultError', message: 'Error al eliminar archivo' });
+    } finally {
+      setLoading((prev) => ({ ...prev, deletingFile: null }));
     }
   };
 
@@ -258,7 +278,7 @@ export default function FilesHandlerComponent() {
                                 flex: 1
                               }}
                             >
-                              <IconFile3d size={34} />
+                              {getFileIcon(file.type, file.name)}
                               <div
                                 style={{
                                   width: '100px',
@@ -329,7 +349,7 @@ export default function FilesHandlerComponent() {
             </>
           )}
 
-          <Flex direction='column' gap='12px' align='flex-start'>
+          <Flex direction='column' gap='12px' align='flex-start' pb='100px'>
             <h2>Archivos en la carpeta de este evento (Google drive)</h2>
             {loading.fetchingFiles ? (
               <Loader size='sm' />
@@ -343,12 +363,12 @@ export default function FilesHandlerComponent() {
                   p='12px 18px'
                   flex={1}
                   w='100%'
-                  maw='350px'
+                  maw='450px'
                   style={{
                     border: 'solid 1px rgba(180, 180, 180, 0.3)',
                     borderRadius: '6px',
                     width: '100%',
-                    maxWidth: '350px',
+                    maxWidth: '450px',
                     cursor: 'pointer',
                     transition: 'background-color 0.2s, transform 0.1s'
                   }}
@@ -369,7 +389,7 @@ export default function FilesHandlerComponent() {
                   {getFileIcon(file.mimeType, file.name)}
                   <div
                     style={{
-                      width: '250px',
+                      flex: 1,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis'
@@ -377,6 +397,36 @@ export default function FilesHandlerComponent() {
                   >
                     {file.name}
                   </div>
+                  <Flex gap='6px' align='center' style={{ flexShrink: 0 }}>
+                    <IconDownload
+                      size={18}
+                      style={{ opacity: 0.6, cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (file.id) {
+                          window.open(
+                            `https://drive.google.com/uc?export=download&id=${file.id}`,
+                            '_blank'
+                          );
+                        }
+                      }}
+                    />
+                    {canDeleteFiles && (
+                      loading.deletingFile === file.id ? (
+                        <Loader size={16} />
+                      ) : (
+                        <IconTrash
+                          size={18}
+                          color='red'
+                          style={{ opacity: 0.6, cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFile(file.id, file.name);
+                          }}
+                        />
+                      )
+                    )}
+                  </Flex>
                 </Flex>
               ))
             )}

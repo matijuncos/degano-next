@@ -379,9 +379,9 @@ const DrawerContent = () => {
       <Stack gap='xl' style={{ padding: '0 16px', marginBottom: '20px', paddingBottom: '50px' }}>
         {/* FECHA */}
         <Text size='sm' c='dimmed'>
-          {selectedEvent?.start
+          {(selectedEvent?.date || selectedEvent?.start)
             ? capitalizeFirstLetter(
-                new Date(selectedEvent.start).toLocaleDateString('es-AR', {
+                new Date(selectedEvent.date ?? selectedEvent.start!).toLocaleDateString('es-AR', {
                   weekday: 'long',
                   day: '2-digit',
                   month: 'long',
@@ -400,10 +400,10 @@ const DrawerContent = () => {
           </Text>
           <Stack gap='xs'>
             {/* Horario de inicio */}
-            {selectedEvent?.start && (
+            {(selectedEvent?.date || selectedEvent?.start) && (
               <Text size='sm'>
                 <strong>Horario de inicio:</strong>{' '}
-                {format24Hour(selectedEvent.start)}
+                {format24Hour(selectedEvent.date || selectedEvent.start)}
               </Text>
             )}
 
