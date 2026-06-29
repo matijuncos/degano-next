@@ -121,6 +121,9 @@ export interface EventModel {
     mimeType: string;
     uploadedAt: string;
   }[];
+  // Identificador único para la "carpeta" (prefijo) de archivos en S3.
+  // Independiente del _id: se genera al crear el evento y nunca cambia.
+  folderId?: string;
 }
 export interface SelectedEventType extends EventModel {
   title?: string;

@@ -20,6 +20,7 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
 import { Tabs, Button, Text, Center } from '@mantine/core';
+import { nanoid } from 'nanoid';
 import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -33,7 +34,12 @@ const NewEventPage = () => {
     addEventToList
   } = useDeganoCtx();
   const router = useRouter();
-  const [event, setEvent] = useState<EventModel>(INITIAL_EVENT_STATE);
+  // folderId único para los archivos del evento en S3, generado una sola vez
+  // al iniciar el formulario. Se persiste con el evento al crearlo.
+  const [event, setEvent] = useState<EventModel>(() => ({
+    ...INITIAL_EVENT_STATE,
+    folderId: `evt-${nanoid()}`
+  }));
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
   const { can, isLoading } = usePermissions();
@@ -151,41 +157,58 @@ const NewEventPage = () => {
         },
         body: JSON.stringify(newEvent)
       });
-      const data = await response.json();
-      if (data) {
-        setFolderName(
-          `${new Date(newEvent.date).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          })} - ${newEvent.type} - ${newEvent.lugar}`
-        );
-        if (data.event) {
-          addEventToList(data.event);
-          setEvent(data.event);
-        }
 
-        // Invalidar TODO el cache de SWR relacionado con equipment
-        await Promise.all([
-          mutate('/api/equipment'),
-          mutate('/api/categories'),
-          mutate('/api/categoryTreeData'),
-          mutate('/api/treeData'),
-          mutate('/api/equipmentLocation')
-        ]);
-
-        // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
-        if (canShowFilesTab()) {
-          notify({
-            message:
-            'Evento guardado correctamente. Ahora puedes subir archivos.'
-          });
-          setFormState(EVENT_TABS.FILES);
-        } else {
-          router.push('/upload-file');
-          notify();
-        }
+      // Si el server no confirma la creación, es un error real
+      if (!response.ok) {
+        throw new Error(`postEvent respondió con status ${response.status}`);
       }
+
+      const data = await response.json();
+
+      if (!data?.event) {
+        throw new Error('postEvent no devolvió el evento creado');
+      }
+
+      // A partir de acá el evento YA está creado en el server.
+      // El resto son operaciones de cliente: si alguna falla NO debe
+      // mostrarse un falso error, porque el evento sí se guardó.
+      setFolderName(
+        `${new Date(newEvent.date).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit'
+        })} - ${newEvent.type} - ${newEvent.lugar}`
+      );
+      addEventToList(data.event);
+      setEvent(data.event);
+
+      // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
+      if (canShowFilesTab()) {
+        notify({
+          message:
+          'Evento guardado correctamente. Ahora puedes subir archivos.'
+        });
+        setFormState(EVENT_TABS.FILES);
+      } else {
+        notify();
+        router.push('/upload-file');
+      }
+
+      // Invalidar caché SWR. Fire-and-forget: una revalidación fallida
+      // no debe afectar el éxito (el evento ya está creado en el server).
+      // - getEvents: revalida la lista que alimenta calendario y listado,
+      //   para que el evento nuevo aparezca sin necesidad de recargar.
+      // - el resto: cachés de equipamiento (cambian los scheduledUses).
+      Promise.all([
+        mutate('/api/getEvents'),
+        mutate('/api/equipment'),
+        mutate('/api/categories'),
+        mutate('/api/categoryTreeData'),
+        mutate('/api/treeData'),
+        mutate('/api/equipmentLocation')
+      ]).catch((err) => {
+        console.error('failed to revalidate SWR cache ', err);
+      });
     } catch (err) {
       notify({ type: 'defaultError' });
       console.error('failed to save the event ', err);

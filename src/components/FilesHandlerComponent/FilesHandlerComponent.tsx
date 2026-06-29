@@ -16,6 +16,7 @@ import {
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState } from 'react';
+import { nanoid } from 'nanoid';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -78,6 +79,11 @@ export default function FilesHandlerComponent() {
     try {
       const uploadedFiles: EventFile[] = [];
 
+      // folderId único para los archivos de este evento. Si el evento ya
+      // tiene uno se reutiliza; si no (eventos viejos), se genera y luego
+      // se persiste con el evento para que quede estable.
+      const folderId = selectedEvent.folderId || `evt-${nanoid()}`;
+
       for (const file of allFiles) {
         // 1. Obtener presigned URL de S3
         const presignRes = await fetch('/api/uploadToS3', {
@@ -86,7 +92,8 @@ export default function FilesHandlerComponent() {
           body: JSON.stringify({
             fileName: file.name,
             fileType: file.type,
-            bucket: 'events'
+            bucket: 'events',
+            folder: folderId
           })
         });
 
@@ -110,21 +117,23 @@ export default function FilesHandlerComponent() {
         });
       }
 
-      // 3. Guardar referencias en el evento (MongoDB)
+      // 3. Guardar referencias en el evento (MongoDB).
+      // Se persiste también el folderId para que quede estable entre subidas.
       const updatedFiles = [...files, ...uploadedFiles];
       const saveRes = await fetch('/api/updateEvent', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...selectedEvent,
-          files: updatedFiles
+          files: updatedFiles,
+          folderId
         })
       });
 
       if (!saveRes.ok) throw new Error('Error guardando archivos en el evento');
 
       const data = await saveRes.json();
-      setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles });
+      setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles, folderId });
 
       setAllfiles([]);
       notify({ message: 'Archivos subidos correctamente' });
@@ -389,14 +398,26 @@ export default function FilesHandlerComponent() {
                     <IconDownload
                       size={18}
                       style={{ opacity: 0.6, cursor: 'pointer' }}
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        // Descarga directa via link
-                        const a = document.createElement('a');
-                        a.href = file.url;
-                        a.download = file.name;
-                        a.target = '_blank';
-                        a.click();
+                        try {
+                          const res = await fetch('/api/downloadFromS3', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              url: file.url,
+                              fileName: file.name,
+                              bucket: 'events'
+                            })
+                          });
+                          const { signedUrl } = await res.json();
+                          const a = document.createElement('a');
+                          a.href = signedUrl;
+                          a.download = file.name;
+                          a.click();
+                        } catch {
+                          window.open(file.url, '_blank');
+                        }
                       }}
                     />
                     {canDeleteFiles && (

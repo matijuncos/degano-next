@@ -23,7 +23,7 @@ export const DeganoProvider: ({
   children
 }: DataverseProviderProps) => {
   const { data: allEvents = [], mutate: mutateEvents } = useSWR<EventsList>(
-    '/api/getEvents?page=1',
+    '/api/getEvents',
     eventsFetcher,
     {
       revalidateOnFocus: false,
