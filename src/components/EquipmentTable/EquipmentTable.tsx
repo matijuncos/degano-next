@@ -277,7 +277,7 @@ const EquipmentTable = () => {
   // Vista desktop: 3 columnas resizables
   return (
     <>
-      <PanelGroup direction="horizontal" style={{ overflow: 'hidden' }}>
+      <PanelGroup direction="horizontal" style={{ overflow: 'visible' }}>
         {/* Sidebar - Categorías - 25% inicial */}
         <Panel defaultSize={25} minSize={10} maxSize={50}>
           <Box
@@ -306,13 +306,18 @@ const EquipmentTable = () => {
         <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
         {/* ContentPanel - Lista de equipos - 55% inicial */}
-        <Panel defaultSize={55} minSize={20} maxSize={80}>
+        {/* overflow:visible sobrescribe el overflow:hidden que el Panel setea
+            por defecto, para que el sticky del contenido no quede atrapado. */}
+        <Panel defaultSize={55} minSize={20} maxSize={80} style={{ overflow: 'visible' }}>
+          {/* Box sticky de alto-contenido (SIN height:100%). Su bloque
+              contenedor es el Panel, que se estira a la columna más larga
+              (categorías), así el sticky tiene recorrido y acompaña el
+              scroll de la página. */}
           <Box
             style={{
               borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%'
+              position: 'sticky',
+              top: 8
             }}
           >
             <ContentPanel
