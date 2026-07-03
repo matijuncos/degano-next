@@ -22,7 +22,16 @@ export default function Sidebar({
   onApplySet?: () => void;
 }) {
   return (
-    <aside className='border-r h-screen p-2 overflow-y-auto' style={{ width: '100%', height: '100%' }}>
+    <aside
+      className='border-r h-screen p-2'
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
       {!newEvent  &&
         <h2 className='font-bold text-lg mb-2' style={{ textAlign: 'center' }}>
           Equipamiento

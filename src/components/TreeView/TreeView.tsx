@@ -309,7 +309,8 @@ export default function TreeView({
   return (
     <div
       style={{
-        height: '100vh',
+        flex: 1,
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -373,6 +374,8 @@ export default function TreeView({
       />
       <div
         style={{
+          flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           overflowX: 'auto',
           paddingBottom: '30px'
