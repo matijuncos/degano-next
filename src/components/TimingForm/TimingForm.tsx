@@ -9,12 +9,14 @@ import {
   Box,
   Card,
   Group,
-  Title
+  Title,
+  ActionIcon
 } from '@mantine/core';
 import { TimePicker } from '@mantine/dates';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconGripVertical } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
+import SortableTimingList from './SortableTimingList';
 
 const TimingForm = ({
   event,
@@ -195,124 +197,146 @@ const TimingForm = ({
       {/* Lista de timing */}
       {eventData.timing && eventData.timing.length > 0 ? (
         <Flex direction='column' gap='xs'>
-          {eventData.timing.map((item, index) => (
-            <Card key={index} withBorder style={{padding: '5px 10px'}}>
-              {editingIndex === index ? (
-                // Modo edición
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSaveEdit();
-                  }}
-                >
-                  <Box>
-                    <Text fw={500} mb='sm' c='dimmed'>
-                      #{index + 1}
-                    </Text>
-                    <Flex gap='sm' mb='sm' align='flex-end'>
-                      <TimePicker
-                        label='Hora'
-                        value={editingItem?.time || ''}
-                        onChange={(value) =>
-                          setEditingItem({ ...editingItem!, time: value })
+          <SortableTimingList
+            items={eventData.timing}
+            disabled={!canEditEvents || editingIndex !== null || isAdding}
+            onReorder={(newTiming) =>
+              setEventData((prev) => ({ ...prev, timing: newTiming }))
+            }
+            renderItem={(item, index, dragHandleProps) => (
+              <Card key={index} withBorder style={{ padding: '5px 10px' }}>
+                {editingIndex === index ? (
+                  // Modo edición
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSaveEdit();
+                    }}
+                  >
+                    <Box>
+                      <Text fw={500} mb='sm' c='dimmed'>
+                        #{index + 1}
+                      </Text>
+                      <Flex gap='sm' mb='sm' align='flex-end'>
+                        <TimePicker
+                          label='Hora'
+                          value={editingItem?.time || ''}
+                          onChange={(value) =>
+                            setEditingItem({ ...editingItem!, time: value })
+                          }
+                          style={{ flex: 1 }}
+                          disabled={!canEditEvents}
+                        />
+                        <Box style={{ flex: 2 }}>
+                          <Text size='sm' fw={500} mb='4px'>
+                            Título
+                          </Text>
+                          <Input
+                            placeholder='Título del evento'
+                            value={editingItem?.title || ''}
+                            onChange={(e) =>
+                              setEditingItem({
+                                ...editingItem!,
+                                title: e.target.value
+                              })
+                            }
+                            disabled={!canEditEvents}
+                            autoComplete='off'
+                          />
+                        </Box>
+                      </Flex>
+                      <Textarea
+                        placeholder='Detalles adicionales'
+                        value={editingItem?.details || ''}
+                        onChange={(e) =>
+                          setEditingItem({
+                            ...editingItem!,
+                            details: e.target.value
+                          })
                         }
-                        style={{ flex: 1 }}
+                        minRows={2}
+                        mb='sm'
                         disabled={!canEditEvents}
                       />
-                      <Box style={{ flex: 2 }}>
-                        <Text size='sm' fw={500} mb='4px'>
-                          Título
+                      <Group gap='xs'>
+                        <Button
+                          type='submit'
+                          onClick={handleSaveEdit}
+                          color='green'
+                          size='xs'
+                        >
+                          Guardar
+                        </Button>
+                        <Button
+                          onClick={handleCancelEdit}
+                          variant='light'
+                          color='gray'
+                          size='xs'
+                        >
+                          Cancelar
+                        </Button>
+                      </Group>
+                    </Box>
+                  </form>
+                ) : (
+                  // Modo visualización
+                  <Flex justify='space-between' align='center' gap='md'>
+                    <Flex gap='md' align='center' style={{ flex: 1 }}>
+                      {canEditEvents && editingIndex === null && !isAdding && (
+                        <ActionIcon
+                          variant='transparent'
+                          title='Arrastrar para reordenar'
+                          style={{
+                            cursor: 'grab',
+                            color: 'rgba(255,255,255,0.35)',
+                            touchAction: 'none',
+                            flexShrink: 0
+                          }}
+                          {...dragHandleProps}
+                        >
+                          <IconGripVertical size={16} />
+                        </ActionIcon>
+                      )}
+                      <Text fw={600} c='dimmed' style={{ minWidth: '30px' }}>
+                        #{index + 1}
+                      </Text>
+                      <Text fw={600} style={{ minWidth: '60px' }}>
+                        {item.time}hs
+                      </Text>
+                      <Text fw={500} style={{ flex: 1 }}>
+                        {item.title}
+                      </Text>
+                      {item.details && (
+                        <Text size='sm' c='dimmed' style={{ flex: 2 }}>
+                          {item.details}
                         </Text>
-                        <Input
-                          placeholder='Título del evento'
-                          value={editingItem?.title || ''}
-                          onChange={(e) =>
-                            setEditingItem({
-                              ...editingItem!,
-                              title: e.target.value
-                            })
-                          }
-                          disabled={!canEditEvents}
-                          autoComplete='off'
-                        />
-                      </Box>
+                      )}
                     </Flex>
-                    <Textarea
-                      placeholder='Detalles adicionales'
-                      value={editingItem?.details || ''}
-                      onChange={(e) =>
-                        setEditingItem({
-                          ...editingItem!,
-                          details: e.target.value
-                        })
-                      }
-                      minRows={2}
-                      mb='sm'
-                      disabled={!canEditEvents}
-                    />
                     <Group gap='xs'>
                       <Button
-                        type='submit'
-                        onClick={handleSaveEdit}
-                        color='green'
                         size='xs'
+                        variant='light'
+                        color='blue'
+                        onClick={() => handleEditTiming(index)}
+                        disabled={!canEditEvents}
                       >
-                        Guardar
+                        Editar
                       </Button>
                       <Button
-                        onClick={handleCancelEdit}
-                        variant='light'
-                        color='gray'
                         size='xs'
+                        variant='light'
+                        color='red'
+                        onClick={() => handleDeleteTiming(index)}
+                        disabled={!canEditEvents}
                       >
-                        Cancelar
+                        Eliminar
                       </Button>
                     </Group>
-                  </Box>
-                </form>
-              ) : (
-                // Modo visualización
-                <Flex justify='space-between' align='center' gap='md'>
-                  <Flex gap='md' align='center' style={{ flex: 1 }}>
-                    <Text fw={600} c='dimmed' style={{ minWidth: '30px' }}>
-                      #{index + 1}
-                    </Text>
-                    <Text fw={600} style={{ minWidth: '60px' }}>
-                      {item.time}hs
-                    </Text>
-                    <Text fw={500} style={{ flex: 1 }}>
-                      {item.title}
-                    </Text>
-                    {item.details && (
-                      <Text size='sm' c='dimmed' style={{ flex: 2 }}>
-                        {item.details}
-                      </Text>
-                    )}
                   </Flex>
-                  <Group gap='xs'>
-                    <Button
-                      size='xs'
-                      variant='light'
-                      color='blue'
-                      onClick={() => handleEditTiming(index)}
-                      disabled={!canEditEvents}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      size='xs'
-                      variant='light'
-                      color='red'
-                      onClick={() => handleDeleteTiming(index)}
-                      disabled={!canEditEvents}
-                    >
-                      Eliminar
-                    </Button>
-                  </Group>
-                </Flex>
-              )}
-            </Card>
-          ))}
+                )}
+              </Card>
+            )}
+          />
         </Flex>
       ) : (
         !isAdding && (
