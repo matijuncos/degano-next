@@ -1635,8 +1635,7 @@ const TimingInformation = ({
   const { setSelectedEvent, updateEventInList } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
-  const { can } = usePermissions();
-  const canEditEvents = can('canEditEvents');
+  const { isAdmin } = usePermissions();
 
   const updateEventData = async (updates: Partial<EventModel>) => {
     if (!selectedEvent) return;
@@ -1830,7 +1829,7 @@ const TimingInformation = ({
         <Flex direction='column' gap='xs'>
           <SortableTimingList
             items={selectedEvent.timing}
-            disabled={!canEditEvents || editingIndex !== null || isAdding}
+            disabled={!isAdmin || editingIndex !== null || isAdding}
             onReorder={handleReorderTiming}
             renderItem={(item, index, dragHandleProps) => (
               <Card key={index} withBorder style={{ padding: '5px 10px' }}>
@@ -1902,7 +1901,7 @@ const TimingInformation = ({
                   // Modo visualización
                   <Flex justify='space-between' align='center' gap='md'>
                     <Flex gap='md' align='center' style={{ flex: 1 }}>
-                      {canEditEvents && editingIndex === null && !isAdding && (
+                      {isAdmin && editingIndex === null && !isAdding && (
                         <ActionIcon
                           variant='transparent'
                           title='Arrastrar para reordenar'

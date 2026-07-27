@@ -65,14 +65,21 @@ export default function CalendarEventModal({
   // Inicializar / resetear al abrir
   useEffect(() => {
     if (opened) {
+      const baseStart = initialData?.start ? new Date(initialData.start) : new Date();
       setTitle(initialData?.title || '');
-      setStart(initialData?.start ? new Date(initialData.start) : new Date());
-      setEnd(initialData?.end ? new Date(initialData.end) : new Date(Date.now() + 60 * 60 * 1000));
+      setStart(baseStart);
+      // Al editar se respeta el fin guardado; al crear, el fin sugerido es
+      // el mismo día que el inicio + 1 hora (no el día siguiente).
+      setEnd(
+        isEditing && initialData?.end
+          ? new Date(initialData.end)
+          : new Date(baseStart.getTime() + 60 * 60 * 1000)
+      );
       setAllDay(initialData?.allDay || false);
       setCalendarId(initialData?.calendarId || defaultCalendarId);
       setDescription(initialData?.description || '');
     }
-  }, [opened, initialData, defaultCalendarId]);
+  }, [opened, initialData, defaultCalendarId, isEditing]);
 
   const canSave = !!title.trim() && !!start && !!calendarId;
 

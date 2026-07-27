@@ -31,7 +31,7 @@ const TimingForm = ({
   updateEvent?: Function;
   onFormDataChange?: (data: EventModel) => void;
 }) => {
-  const { can } = usePermissions();
+  const { can, isAdmin } = usePermissions();
   const canEditEvents = can('canEditEvents');
   const [eventData, setEventData] = useState<EventModel>(event);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -199,7 +199,7 @@ const TimingForm = ({
         <Flex direction='column' gap='xs'>
           <SortableTimingList
             items={eventData.timing}
-            disabled={!canEditEvents || editingIndex !== null || isAdding}
+            disabled={!isAdmin || editingIndex !== null || isAdding}
             onReorder={(newTiming) =>
               setEventData((prev) => ({ ...prev, timing: newTiming }))
             }
@@ -282,7 +282,7 @@ const TimingForm = ({
                   // Modo visualización
                   <Flex justify='space-between' align='center' gap='md'>
                     <Flex gap='md' align='center' style={{ flex: 1 }}>
-                      {canEditEvents && editingIndex === null && !isAdding && (
+                      {isAdmin && editingIndex === null && !isAdding && (
                         <ActionIcon
                           variant='transparent'
                           title='Arrastrar para reordenar'
