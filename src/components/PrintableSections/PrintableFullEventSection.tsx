@@ -76,7 +76,9 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
   );
   const hasTiming = event.timing && event.timing.length > 0;
   const hasMoreData = event.moreData && Object.keys(event.moreData).length > 0;
-  const hasEquipment = event.equipment && event.equipment.length > 0;
+  const hasEquipment =
+    (event.equipment && event.equipment.length > 0) ||
+    (event.extraEquipment && event.extraEquipment.length > 0);
 
   return (
     <Document>

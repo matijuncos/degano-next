@@ -31,7 +31,10 @@ export default function ContentPanel({
   eventStartDate,
   eventEndDate,
   selectedEquipmentIds = [],
-  refreshTrigger = 0
+  refreshTrigger = 0,
+  onAddNegative,
+  onRemoveNegative,
+  extraEquipment = []
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
@@ -45,6 +48,11 @@ export default function ContentPanel({
   eventEndDate?: Date | string;
   selectedEquipmentIds?: string[];
   refreshTrigger?: number;
+  // Agrega N unidades "negativas" (a alquilar) para un nombre de equipo.
+  onAddNegative?: (name: string, categoryId: string, qty: number) => void;
+  // Quita todos los "a alquilar" cargados para ese nombre.
+  onRemoveNegative?: (name: string) => void;
+  extraEquipment?: { name: string; quantity: number }[];
 }) {
   const { data: categories = [] } = useSWR('/api/categories', async (url: string) => {
     const response = await fetch(url, {
@@ -200,7 +208,10 @@ export default function ContentPanel({
       const availableCount = availableItems.length;
       const selectedCount = nameItems.filter((i) => selectedEquipmentIds.includes(i._id)).length;
       const currentQty = quantityMap[name] || 1;
-      const exceedsAvailable = currentQty > availableCount;
+      // Negativos (a alquilar) ya cargados para este nombre
+      const negativeCount = (extraEquipment || [])
+        .filter((e) => e.name === name)
+        .reduce((sum, e) => sum + (e.quantity || 0), 0);
 
       return (
         <tr
@@ -221,75 +232,114 @@ export default function ContentPanel({
             {availableCount}
           </td>
 
-          {/* Cantidad */}
+          {/* Cantidad (siempre editable: sirve para reales y para negativos) */}
           <td style={{ padding: '6px 8px', textAlign: 'center' }}>
-            {availableCount > 0 ? (
-              <Stack gap='2px' align='center'>
-                <NumberInput
-                  value={currentQty}
-                  onChange={(val) =>
-                    setQuantityMap((prev) => ({ ...prev, [name]: Number(val) || 1 }))
-                  }
-                  min={1}
-                  max={availableCount}
-                  size='xs'
-                  style={{ width: '72px' }}
-                  allowDecimal={false}
-                  hideControls={false}
-                />
-                {exceedsAvailable && (
-                  <Text size='10px' c='red' style={{ whiteSpace: 'nowrap' }}>
-                    Solo {availableCount} disp.
-                  </Text>
-                )}
-              </Stack>
-            ) : (
-              <Text size='xs' c='dimmed'>—</Text>
-            )}
+            <NumberInput
+              value={currentQty}
+              onChange={(val) =>
+                setQuantityMap((prev) => ({ ...prev, [name]: Number(val) || 1 }))
+              }
+              min={1}
+              size='xs'
+              style={{ width: '72px', margin: '0 auto' }}
+              allowDecimal={false}
+              hideControls={false}
+              // Rojo cuando la cantidad excede el stock disponible (esos van "a alquilar")
+              styles={{
+                input:
+                  currentQty > availableCount
+                    ? { color: '#fa5252', fontWeight: 700, borderColor: '#fa5252' }
+                    : undefined
+              }}
+            />
           </td>
 
           {/* Acción */}
           <td style={{ padding: '6px 8px', textAlign: 'center' }}>
-            <Group gap='6px' justify='center' wrap='nowrap'>
-              <ActionIcon
-                size='md'
-                color='green'
-                variant='light'
-                disabled={availableCount === 0 || exceedsAvailable}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const itemsToAdd = availableItems.slice(0, currentQty);
-                  if (itemsToAdd.length > 0) onEdit?.(itemsToAdd);
-                }}
-                title={availableCount === 0 ? 'Sin stock disponible' : `Agregar ${currentQty}`}
+            <Stack gap='4px' align='center'>
+              {/* Botón único con auto-split: agrega hasta lo disponible como
+                  reales y el excedente automáticamente como "a alquilar". */}
+              <Tooltip
+                label={
+                  currentQty <= availableCount
+                    ? `Agregar ${currentQty}`
+                    : `Agregar ${availableCount} disponible(s) + ${currentQty - availableCount} a alquilar`
+                }
               >
-                <span style={{ fontSize: '18px', fontWeight: 'bold', lineHeight: 1 }}>+</span>
-              </ActionIcon>
+                <ActionIcon
+                  size='md'
+                  color='green'
+                  variant='light'
+                  disabled={currentQty < 1}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const realToAdd = availableItems.slice(0, currentQty);
+                    const negToAdd = Math.max(0, currentQty - availableCount);
+                    if (realToAdd.length > 0) onEdit?.(realToAdd);
+                    if (negToAdd > 0) {
+                      onAddNegative?.(
+                        name,
+                        nameItems[0]?.categoryId || selectedCategory?._id || '',
+                        negToAdd
+                      );
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '18px', fontWeight: 'bold', lineHeight: 1 }}>+</span>
+                </ActionIcon>
+              </Tooltip>
 
-              {selectedCount > 0 && (
-                <Group gap='2px' wrap='nowrap' align='center'>
-                  <Text size='xs' c='yellow.5' fw={600}>
-                    {selectedCount}✓
-                  </Text>
-                  <Tooltip label='Quitar del evento'>
-                    <ActionIcon
-                      size='xs'
-                      color='red'
-                      variant='subtle'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const idsToRemove = nameItems
-                          .filter((i) => selectedEquipmentIds.includes(i._id))
-                          .map((i) => i._id);
-                        onRemoveMultiple?.(idsToRemove);
-                      }}
-                    >
-                      <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
-                    </ActionIcon>
-                  </Tooltip>
+              {/* Indicadores: reales seleccionados + negativos cargados */}
+              {(selectedCount > 0 || negativeCount > 0) && (
+                <Group gap='10px' wrap='nowrap' align='center'>
+                  {selectedCount > 0 && (
+                    <Group gap='2px' wrap='nowrap' align='center'>
+                      <Text size='xs' c='yellow.5' fw={600}>
+                        {selectedCount}✓
+                      </Text>
+                      <Tooltip label='Quitar reales del evento'>
+                        <ActionIcon
+                          size='xs'
+                          color='red'
+                          variant='subtle'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const idsToRemove = nameItems
+                              .filter((i) => selectedEquipmentIds.includes(i._id))
+                              .map((i) => i._id);
+                            onRemoveMultiple?.(idsToRemove);
+                          }}
+                        >
+                          <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  )}
+                  {negativeCount > 0 && (
+                    <Group gap='2px' wrap='nowrap' align='center'>
+                      <Text size='xs' c='red' fw={700} style={{ whiteSpace: 'nowrap' }}>
+                        {negativeCount} a alquilar
+                      </Text>
+                      {onRemoveNegative && (
+                        <Tooltip label='Quitar los "a alquilar"'>
+                          <ActionIcon
+                            size='xs'
+                            color='red'
+                            variant='subtle'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveNegative(name);
+                            }}
+                          >
+                            <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </Group>
+                  )}
                 </Group>
               )}
-            </Group>
+            </Stack>
           </td>
         </tr>
       );

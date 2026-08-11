@@ -37,6 +37,9 @@ type CategoryItemProps = {
   handleRemove: (id: string) => void;
   canViewPrices: boolean;
   isDragOverlay?: boolean;
+  // Negativos (a alquilar) de esta categoría, y cómo quitarlos
+  extraForCategory?: { name: string; quantity: number; mainCategoryName?: string }[];
+  handleRemoveNegative?: (name: string, mainCategoryName: string) => void;
 };
 
 function SortableCategoryItem(props: CategoryItemProps) {
@@ -73,10 +76,13 @@ function CategoryContent({
   handleRemove,
   canViewPrices,
   isDragOverlay = false,
-  dragHandleProps
+  dragHandleProps,
+  extraForCategory = [],
+  handleRemoveNegative
 }: CategoryItemProps & { dragHandleProps?: Record<string, any> }) {
-  const categoryEquipment = groupedEquipment[categoryName];
-  if (!categoryEquipment) return null;
+  const categoryEquipment = groupedEquipment[categoryName] || [];
+  // La categoría puede tener solo negativos (sin equipos reales)
+  if (categoryEquipment.length === 0 && extraForCategory.length === 0) return null;
   const groupedByName = groupEquipmentByName(categoryEquipment);
 
   return (
@@ -263,6 +269,42 @@ function CategoryContent({
             </Box>
           );
         })}
+
+        {/* Negativos / a alquilar (en rojo) */}
+        {extraForCategory.map((neg) => (
+          <Stack
+            key={`neg-${neg.name}`}
+            gap='2px'
+            style={{
+              padding: '6px 8px',
+              backgroundColor: 'rgba(250, 82, 82, 0.08)',
+              borderRadius: '4px',
+              borderLeft: '3px solid rgba(250, 82, 82, 0.8)'
+            }}
+          >
+            <Group justify='space-between' gap='xs'>
+              <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
+                <Text size='sm' fw={600} c='red' truncate>
+                  {neg.name} x {neg.quantity}
+                </Text>
+                <Text size='10px' c='red' style={{ opacity: 0.85 }}>
+                  A alquilar (excede stock)
+                </Text>
+              </Stack>
+              {!isDragOverlay && handleRemoveNegative && (
+                <ActionIcon
+                  size='xs'
+                  color='red'
+                  variant='subtle'
+                  onClick={() => handleRemoveNegative(neg.name, neg.mainCategoryName || categoryName)}
+                  title='Quitar a alquilar'
+                >
+                  <FaTrashAlt size={10} />
+                </ActionIcon>
+              )}
+            </Group>
+          </Stack>
+        ))}
       </Stack>
     </Box>
   );
@@ -276,6 +318,7 @@ type EquipmentListProps = {
   allowSave?: boolean;
   onSave?: () => void;
   onReorder?: (newOrder: string[]) => void;
+  extraEquipment?: { name: string; quantity: number; mainCategoryName?: string; categoryId?: string }[];
 };
 
 export default function EquipmentList({
@@ -285,7 +328,8 @@ export default function EquipmentList({
   equipmentCategoryOrder,
   allowSave = false,
   onSave,
-  onReorder
+  onReorder,
+  extraEquipment = []
 }: EquipmentListProps) {
   const { can } = usePermissions();
   const canViewPrices = can('canViewEquipmentPrices');
@@ -322,6 +366,16 @@ export default function EquipmentList({
     setEventEquipment((prev) => ({
       ...prev,
       equipment: prev.equipment.filter((eq) => eq._id !== id)
+    }));
+  };
+
+  // Quitar un negativo (a alquilar) por nombre + categoría
+  const handleRemoveNegative = (name: string, mainCategoryName: string) => {
+    setEventEquipment((prev) => ({
+      ...prev,
+      extraEquipment: (prev.extraEquipment || []).filter(
+        (e) => !(e.name === name && (e.mainCategoryName || 'Sin categoría') === mainCategoryName)
+      )
     }));
   };
 
@@ -366,7 +420,25 @@ export default function EquipmentList({
     return acc;
   }, {});
 
-  const currentCategories = Object.keys(groupedEquipment);
+  // Agrupar negativos (a alquilar) por categoría principal
+  const extraByCategory = (extraEquipment || []).reduce(
+    (acc: { [cat: string]: typeof extraEquipment }, item) => {
+      let cat = item.mainCategoryName;
+      if (!cat && item.categoryId && categories.length > 0) {
+        cat = findMainCategorySync(item.categoryId, categories)?.name;
+      }
+      if (!cat) cat = 'Sin categoría';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    },
+    {}
+  );
+
+  // Categorías presentes = reales + las que solo tienen negativos
+  const currentCategories = Array.from(
+    new Set([...Object.keys(groupedEquipment), ...Object.keys(extraByCategory)])
+  );
 
   // Orden final: respetar categoryOrder para las presentes, resto al final
   const orderedCategories = [
@@ -423,7 +495,7 @@ export default function EquipmentList({
     onReorder?.(newOrder);
   };
 
-  if (!equipmentList?.length) {
+  if (!equipmentList?.length && !extraEquipment?.length) {
     return (
       <Text size='sm' c='dimmed' ta='center'>
         No hay equipos seleccionados
@@ -454,6 +526,8 @@ export default function EquipmentList({
                   toggleGroup={toggleGroup}
                   handleRemove={handleRemove}
                   canViewPrices={canViewPrices}
+                  extraForCategory={extraByCategory[categoryName] || []}
+                  handleRemoveNegative={handleRemoveNegative}
                 />
               ))}
             </SortableContext>
@@ -486,6 +560,7 @@ export default function EquipmentList({
             toggleGroup={() => {}}
             handleRemove={() => {}}
             canViewPrices={canViewPrices}
+            extraForCategory={extraByCategory[activeDragId] || []}
             isDragOverlay
           />
         ) : null}

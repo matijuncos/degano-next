@@ -6,7 +6,7 @@ import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import ApplySetModal from '@/components/ApplySetModal/ApplySetModal';
-import { Box, Modal, Tabs, Button, Group } from '@mantine/core';
+import { Box, Modal, Tabs, Button, Group, Alert } from '@mantine/core';
 import EquipmentList from '../EquipmentForm/EquipmentList';
 import { EventModel } from '@/context/types';
 import { NewEquipment } from '../equipmentStockTable/types';
@@ -14,7 +14,7 @@ import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useResponsive } from '@/hooks/useResponsive';
-import { IconLayersLinked } from '@tabler/icons-react';
+import { IconLayersLinked, IconAlertTriangle } from '@tabler/icons-react';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import useSWR from 'swr';
 
@@ -46,11 +46,16 @@ const EquipmentTable = () => {
 
   useEffect(() => {
     if (!selectedEvent) return;
-    const oldEquip = selectedEvent.equipment || [];
-    const newEquip = eventEquipment.equipment || [];
-    const changed = !isEqual(oldEquip, newEquip);
-    setHasChanges(changed);
-  }, [eventEquipment.equipment, selectedEvent?.equipment]);
+    const equipChanged = !isEqual(
+      selectedEvent.equipment || [],
+      eventEquipment.equipment || []
+    );
+    const extraChanged = !isEqual(
+      selectedEvent.extraEquipment || [],
+      eventEquipment.extraEquipment || []
+    );
+    setHasChanges(equipChanged || extraChanged);
+  }, [eventEquipment.equipment, eventEquipment.extraEquipment, selectedEvent?.equipment, selectedEvent?.extraEquipment]);
 
   // Detectar cuando cambian las fechas del evento y forzar refresh
   useEffect(() => {
@@ -119,6 +124,37 @@ const EquipmentTable = () => {
         equipmentPrice: total
       };
     });
+  };
+
+  // Agregar N unidades "negativas" (a alquilar) para un nombre de equipo.
+  // Van a un array separado (extraEquipment): NO tocan el inventario real ni
+  // los scheduledUses, así que no afectan la disponibilidad.
+  const handleAddNegative = (name: string, categoryId: string, qty: number) => {
+    if (!name || !qty || qty < 1) return;
+    let mainCategoryName = 'Sin categoría';
+    if (categoryId && categories.length > 0) {
+      const mc = findMainCategorySync(categoryId, categories);
+      if (mc) mainCategoryName = mc.name;
+    }
+    setEventEquipment((prev) => {
+      const existing = prev.extraEquipment || [];
+      const idx = existing.findIndex(
+        (e) => e.name === name && (e.mainCategoryName || 'Sin categoría') === mainCategoryName
+      );
+      const next =
+        idx >= 0
+          ? existing.map((e, i) => (i === idx ? { ...e, quantity: e.quantity + qty } : e))
+          : [...existing, { name, categoryId, mainCategoryName, quantity: qty }];
+      return { ...prev, extraEquipment: next };
+    });
+  };
+
+  // Quitar todos los "a alquilar" cargados para un nombre.
+  const handleRemoveNegativeByName = (name: string) => {
+    setEventEquipment((prev) => ({
+      ...prev,
+      extraEquipment: (prev.extraEquipment || []).filter((e) => e.name !== name)
+    }));
   };
 
   // Guardar orden de categorías en background (sin loading, sin notificación)
@@ -195,6 +231,18 @@ const EquipmentTable = () => {
   if (isMobile || isTablet) {
     return (
       <>
+        {hasChanges && (
+          <Alert
+            color='yellow'
+            variant='light'
+            icon={<IconAlertTriangle size={18} />}
+            m='md'
+            mb='0'
+            py='6px'
+          >
+            Tenés cambios sin guardar.
+          </Alert>
+        )}
         <Box p="md">
           <Tabs value={mobileView} onChange={(value) => setMobileView(value as any)}>
             <Tabs.List>
@@ -240,6 +288,9 @@ const EquipmentTable = () => {
                 eventEndDate={selectedEvent?.endDate}
                 selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
                 refreshTrigger={refreshTrigger}
+                onAddNegative={handleAddNegative}
+                onRemoveNegative={handleRemoveNegativeByName}
+                extraEquipment={eventEquipment.extraEquipment}
               />
             </Tabs.Panel>
 
@@ -249,6 +300,7 @@ const EquipmentTable = () => {
                 setEventEquipment={setEventEquipment}
                 setTotal={setTotal}
                 equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
+                extraEquipment={eventEquipment.extraEquipment}
                 allowSave={hasChanges}
                 onSave={updateEvent}
               />
@@ -277,6 +329,17 @@ const EquipmentTable = () => {
   // Vista desktop: 3 columnas resizables
   return (
     <>
+      {hasChanges && (
+        <Alert
+          color='yellow'
+          variant='light'
+          icon={<IconAlertTriangle size={18} />}
+          mb='sm'
+          py='6px'
+        >
+          Tenés cambios sin guardar.
+        </Alert>
+      )}
       <PanelGroup direction="horizontal" style={{ overflow: 'visible' }}>
         {/* Sidebar - Categorías - 25% inicial */}
         <Panel defaultSize={25} minSize={10} maxSize={50}>
@@ -342,6 +405,9 @@ const EquipmentTable = () => {
               eventEndDate={selectedEvent?.endDate}
               selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
               refreshTrigger={refreshTrigger}
+              onAddNegative={handleAddNegative}
+              onRemoveNegative={handleRemoveNegativeByName}
+              extraEquipment={eventEquipment.extraEquipment}
             />
           </Box>
         </Panel>
@@ -363,6 +429,7 @@ const EquipmentTable = () => {
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
               equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
+              extraEquipment={eventEquipment.extraEquipment}
               allowSave={hasChanges}
               onSave={updateEvent}
               onReorder={saveCategoryOrder}

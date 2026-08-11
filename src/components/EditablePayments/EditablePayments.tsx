@@ -2,7 +2,7 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
 import useNotification from '@/hooks/useNotification';
 import { Box, Button, Flex, Group, Input, Text, Divider, ActionIcon, FileButton } from '@mantine/core';
-import { DateTimePicker } from '@mantine/dates';
+import { DatePickerInput } from '@mantine/dates';
 import { IconCheck, IconTrash, IconPlus, IconUpload, IconFile, IconEye, IconX } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
@@ -36,6 +36,7 @@ const EditablePayments = () => {
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [editedPaymentAmount, setEditedPaymentAmount] = useState('');
   const [editedPaymentDate, setEditedPaymentDate] = useState<Date | null>(null);
+  const [editedPaymentDescription, setEditedPaymentDescription] = useState('');
 
   // Estado para anexos
   const [annexes, setAnnexes] = useState<BudgetAnnex[]>(
@@ -278,12 +279,13 @@ const EditablePayments = () => {
       {
         id: Math.random().toString(36).slice(2, 11),
         amount: '',
-        date: new Date()
+        date: new Date(),
+        description: ''
       }
     ]);
   };
 
-  const updateNewPayment = (id: string, field: 'amount' | 'date', value: any) => {
+  const updateNewPayment = (id: string, field: 'amount' | 'date' | 'description', value: any) => {
     let processedValue = value;
     if (field === 'amount') {
       processedValue = formatNumberInput(value);
@@ -328,12 +330,14 @@ const EditablePayments = () => {
     setEditingPaymentId(payment.id);
     setEditedPaymentAmount(formatNumberInput(payment.amount?.toString() || ''));
     setEditedPaymentDate(new Date(payment.date));
+    setEditedPaymentDescription(payment.description || '');
   };
 
   const cancelEditingPayment = () => {
     setEditingPaymentId(null);
     setEditedPaymentAmount('');
     setEditedPaymentDate(null);
+    setEditedPaymentDescription('');
   };
 
   const saveEditedPayment = async () => {
@@ -341,7 +345,12 @@ const EditablePayments = () => {
 
     const updatedSubsequentPayments = selectedEvent!.payment.subsequentPayments?.map((p: any) =>
       p.id === editingPaymentId
-        ? { ...p, amount: parseFormattedNumber(editedPaymentAmount), date: editedPaymentDate }
+        ? {
+            ...p,
+            amount: parseFormattedNumber(editedPaymentAmount),
+            date: editedPaymentDate,
+            description: editedPaymentDescription.trim()
+          }
         : p
     );
 
@@ -356,6 +365,7 @@ const EditablePayments = () => {
     setEditingPaymentId(null);
     setEditedPaymentAmount('');
     setEditedPaymentDate(null);
+    setEditedPaymentDescription('');
     await updateEvent(eventUpdated);
   };
 
@@ -583,17 +593,26 @@ const EditablePayments = () => {
                       <Group gap='sm'>
                         <Input
                           type='text'
+                          placeholder='Concepto (ej. 30% del evento)'
+                          value={editedPaymentDescription}
+                          onChange={(e) => setEditedPaymentDescription(e.target.value)}
+                          style={{ flex: 1, minWidth: '160px' }}
+                          autoComplete='off'
+                        />
+                        <Input
+                          type='text'
                           placeholder='$ 0'
                           value={editedPaymentAmount}
                           onChange={(e) => setEditedPaymentAmount(formatNumberInput(e.target.value))}
                           style={{ width: '150px' }}
                           autoComplete='off'
                         />
-                        <DateTimePicker
+                        <DatePickerInput
                           placeholder='Fecha de pago'
                           value={editedPaymentDate}
-                          onChange={(date) => setEditedPaymentDate(date as Date | null)}
-                          style={{ width: '180px' }}
+                          onChange={(val: any) => setEditedPaymentDate(val ? new Date(val) : null)}
+                          valueFormat='DD/MM/YYYY'
+                          style={{ width: '150px' }}
                         />
                         <ActionIcon color='green' variant='light' onClick={saveEditedPayment}>
                           <IconCheck size={16} />
@@ -639,6 +658,17 @@ const EditablePayments = () => {
             <Group gap='sm'>
               <Input
                 type='text'
+                placeholder='Concepto (ej. 30% del evento)'
+                value={payment.description || ''}
+                onChange={(e) =>
+                  updateNewPayment(payment.id, 'description', e.target.value)
+                }
+                style={{ flex: 1, minWidth: '160px' }}
+                disabled={!can('canEditPayments')}
+                autoComplete='off'
+              />
+              <Input
+                type='text'
                 placeholder='$ 0'
                 value={payment.amount}
                 onChange={(e) =>
@@ -648,11 +678,14 @@ const EditablePayments = () => {
                 disabled={!can('canEditPayments')}
                 autoComplete='off'
               />
-              <DateTimePicker
+              <DatePickerInput
                 placeholder='Fecha de pago'
-                value={new Date(payment.date)}
-                onChange={(date) => updateNewPayment(payment.id, 'date', date)}
-                style={{ width: '180px' }}
+                value={payment.date ? new Date(payment.date) : null}
+                onChange={(val: any) =>
+                  updateNewPayment(payment.id, 'date', val ? new Date(val) : null)
+                }
+                valueFormat='DD/MM/YYYY'
+                style={{ width: '150px' }}
                 disabled={!can('canEditPayments')}
               />
               {can('canDeletePayments') && (

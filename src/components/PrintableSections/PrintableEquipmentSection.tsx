@@ -136,14 +136,28 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
     });
   }
 
-  // Respetar el orden de categorías guardado en el evento
+  // Negativos (a alquilar) agrupados por categoría principal
+  const extraByCategory: { [categoryName: string]: { name: string; quantity: number }[] } = {};
+  (event.extraEquipment || []).forEach((item) => {
+    let categoryName = item.mainCategoryName;
+    if (!categoryName && item.categoryId && categories.length > 0) {
+      categoryName = findMainCategorySync(item.categoryId, categories)?.name;
+    }
+    if (!categoryName) categoryName = 'Sin categoría';
+    if (!extraByCategory[categoryName]) extraByCategory[categoryName] = [];
+    extraByCategory[categoryName].push({ name: item.name, quantity: item.quantity });
+  });
+
+  // Respetar el orden de categorías guardado en el evento (reales + negativos)
   const savedOrder = event.equipmentCategoryOrder || [];
-  const allCategoryKeys = Object.keys(groupedByCategory);
+  const allCategoryKeys = Array.from(
+    new Set([...Object.keys(groupedByCategory), ...Object.keys(extraByCategory)])
+  );
   const orderedKeys = [
     ...savedOrder.filter((cat) => allCategoryKeys.includes(cat)),
     ...allCategoryKeys.filter((cat) => !savedOrder.includes(cat))
   ];
-  const categoryEntries = orderedKeys.map((key) => [key, groupedByCategory[key]] as [string, any[]]);
+  const categoryEntries = orderedKeys.map((key) => [key, groupedByCategory[key] || []] as [string, any[]]);
 
   return (
     <View style={styles.section}>
@@ -190,7 +204,31 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
                       {name}
                     </Text>
                     <Text style={styles.equipmentQuantityCell}>
-                      {quantity > 1 ? quantity : '-'}
+                      {quantity}
+                    </Text>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                    <View style={styles.equipmentCheckboxCell}>
+                      <View style={styles.checkbox} />
+                    </View>
+                  </View>
+                ))}
+
+                {/* Equipos negativos / a alquilar (en rojo) */}
+                {(extraByCategory[categoryName] || []).map((neg, negIndex) => (
+                  <View key={`neg-${negIndex}`} style={styles.equipmentTableRow} wrap={false}>
+                    <Text style={[styles.equipmentNameCell, { color: '#c92a2a' }]}>
+                      {neg.name} (a alquilar)
+                    </Text>
+                    <Text style={[styles.equipmentQuantityCell, { color: '#c92a2a' }]}>
+                      {neg.quantity}
                     </Text>
                     <View style={styles.equipmentCheckboxCell}>
                       <View style={styles.checkbox} />

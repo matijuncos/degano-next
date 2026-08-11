@@ -150,6 +150,36 @@ const EquipmentForm = ({
     });
   };
 
+  // Agregar N "negativos" (a alquilar) para un nombre. Array separado: no toca
+  // el inventario real ni la disponibilidad.
+  const handleAddNegative = (name: string, categoryId: string, qty: number) => {
+    if (!name || !qty || qty < 1) return;
+    let mainCategoryName = 'Sin categoría';
+    if (categoryId && categories.length > 0) {
+      const mc = findMainCategorySync(categoryId, categories);
+      if (mc) mainCategoryName = mc.name;
+    }
+    setEventEquipment((prev) => {
+      const existing = prev.extraEquipment || [];
+      const idx = existing.findIndex(
+        (e) => e.name === name && (e.mainCategoryName || 'Sin categoría') === mainCategoryName
+      );
+      const next =
+        idx >= 0
+          ? existing.map((e, i) => (i === idx ? { ...e, quantity: e.quantity + qty } : e))
+          : [...existing, { name, categoryId, mainCategoryName, quantity: qty }];
+      return { ...prev, extraEquipment: next };
+    });
+  };
+
+  // Quitar todos los "a alquilar" cargados para un nombre.
+  const handleRemoveNegativeByName = (name: string) => {
+    setEventEquipment((prev) => ({
+      ...prev,
+      extraEquipment: (prev.extraEquipment || []).filter((e) => e.name !== name)
+    }));
+  };
+
   return (
     <div>
       <style jsx>{`
@@ -224,6 +254,9 @@ const EquipmentForm = ({
               eventEndDate={eventEquipment.endDate}
               selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
               refreshTrigger={refreshTrigger}
+              onAddNegative={handleAddNegative}
+              onRemoveNegative={handleRemoveNegativeByName}
+              extraEquipment={eventEquipment.extraEquipment}
             />
           </Box>
         </Panel>
@@ -248,6 +281,7 @@ const EquipmentForm = ({
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
               equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
+              extraEquipment={eventEquipment.extraEquipment}
             />
           </Box>
         </Panel>

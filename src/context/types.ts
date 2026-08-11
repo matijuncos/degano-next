@@ -9,6 +9,15 @@ export interface ExtraContact {
   type: 'contact';
 }
 
+// Equipamiento "negativo" / a alquilar (excede el stock real). Solo datos de
+// display: nombre + categoría + cantidad. No representa unidades del inventario.
+export interface ExtraEquipmentItem {
+  name: string;
+  categoryId?: string;
+  mainCategoryName?: string;
+  quantity: number;
+}
+
 export interface BudgetAnnex {
   id: string;
   description: string;
@@ -67,6 +76,10 @@ export interface EventModel {
   bands: Array<Band>;
   music: Music;
   equipment: NewEquipment[];
+  // Equipamiento "negativo" / a alquilar: cantidades por nombre que exceden el
+  // stock real disponible (se muestran en rojo). NO son unidades del inventario:
+  // no tienen _id ni scheduledUses y NO afectan la disponibilidad real.
+  extraEquipment?: ExtraEquipmentItem[];
   equipmentPrice: number;
   payment: {
     upfrontAmount: string;

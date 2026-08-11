@@ -81,6 +81,16 @@ export default function CalendarEventModal({
     }
   }, [opened, initialData, defaultCalendarId, isEditing]);
 
+  // Al cambiar el inicio, el fin se auto-ajusta a inicio + 1 hora (mismo día).
+  // Sigue siendo editable: el usuario puede modificar el fin después.
+  const handleStartChange = (val: any) => {
+    const newStart = val ? new Date(val) : null;
+    setStart(newStart);
+    if (newStart) {
+      setEnd(new Date(newStart.getTime() + 60 * 60 * 1000));
+    }
+  };
+
   const canSave = !!title.trim() && !!start && !!calendarId;
 
   const handleSave = async () => {
@@ -194,7 +204,7 @@ export default function CalendarEventModal({
             <DatePickerInput
               label='Fecha inicio'
               value={start}
-              onChange={(val: any) => setStart(val ? new Date(val) : null)}
+              onChange={handleStartChange}
               locale='es'
               styles={inputStyles}
             />
@@ -212,7 +222,7 @@ export default function CalendarEventModal({
             <DateTimePicker
               label='Inicio'
               value={start}
-              onChange={(val: any) => setStart(val ? new Date(val) : null)}
+              onChange={handleStartChange}
               locale='es'
               styles={inputStyles}
             />
