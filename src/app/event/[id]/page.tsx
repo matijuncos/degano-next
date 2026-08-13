@@ -1096,6 +1096,23 @@ const MusicInformation = ({
       </ActionIcon>
     ) : null;
 
+  // Variante para bloques de varios campos: tacho absoluto en la esquina
+  // superior derecha (no ocupa espacio en el flujo). El Box padre debe ser
+  // position: relative.
+  const cornerDeleteButton = (onDelete: () => void) =>
+    canEditEvents ? (
+      <ActionIcon
+        color='red'
+        variant='subtle'
+        size='sm'
+        onClick={onDelete}
+        title='Eliminar'
+        style={{ position: 'absolute', top: 4, right: 0 }}
+      >
+        <IconTrash size={16} />
+      </ActionIcon>
+    ) : null;
+
   return (
     <Flex direction='column' gap='8px' mt='8px'>
       {/* Botón para editar campos de música */}
@@ -1212,20 +1229,20 @@ const MusicInformation = ({
                     <Box
                       key={`civil-otro-${index}`}
                       style={{
+                        position: 'relative',
                         borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
                         paddingLeft: '12px',
+                        paddingRight: '32px',
                         marginTop: '8px'
                       }}
                     >
-                      <Flex justify='flex-end'>
-                        {deleteItemButton(() =>
-                          deleteCeremonyOtro(
-                            'ceremoniaCivil',
-                            index,
-                            item.titulo || `Otro ${index + 1}`
-                          )
-                        )}
-                      </Flex>
+                      {cornerDeleteButton(() =>
+                        deleteCeremonyOtro(
+                          'ceremoniaCivil',
+                          index,
+                          item.titulo || `Otro ${index + 1}`
+                        )
+                      )}
                       <EditableData disabled={!canEditEvents}
                         type='text'
                         property={`ceremoniaCivil.otros[${index}].titulo`}
@@ -1302,20 +1319,20 @@ const MusicInformation = ({
                     <Box
                       key={`extra-otro-${index}`}
                       style={{
+                        position: 'relative',
                         borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
                         paddingLeft: '12px',
+                        paddingRight: '32px',
                         marginTop: '8px'
                       }}
                     >
-                      <Flex justify='flex-end'>
-                        {deleteItemButton(() =>
-                          deleteCeremonyOtro(
-                            'ceremoniaExtra',
-                            index,
-                            item.titulo || `Otro ${index + 1}`
-                          )
-                        )}
-                      </Flex>
+                      {cornerDeleteButton(() =>
+                        deleteCeremonyOtro(
+                          'ceremoniaExtra',
+                          index,
+                          item.titulo || `Otro ${index + 1}`
+                        )
+                      )}
                       <EditableData disabled={!canEditEvents}
                         type='text'
                         property={`ceremoniaExtra.otros[${index}].titulo`}
@@ -1415,20 +1432,20 @@ const MusicInformation = ({
               <Box
                 key={`custom-${index}`}
                 style={{
+                  position: 'relative',
                   borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
                   paddingLeft: '12px',
+                  paddingRight: '32px',
                   marginBottom: '12px'
                 }}
               >
-                <Flex justify='flex-end'>
-                  {deleteItemButton(() =>
-                    deleteMomentItem(
-                      'customMoments',
-                      index,
-                      item.titulo || `Momento ${index + 1}`
-                    )
-                  )}
-                </Flex>
+                {cornerDeleteButton(() =>
+                  deleteMomentItem(
+                    'customMoments',
+                    index,
+                    item.titulo || `Momento ${index + 1}`
+                  )
+                )}
                 <EditableData disabled={!canEditEvents}
                   type='text'
                   property={`customMoments[${index}].titulo`}
@@ -1455,20 +1472,20 @@ const MusicInformation = ({
               <Box
                 key={`ambience-${categoryIndex}`}
                 style={{
+                  position: 'relative',
                   borderLeft: '2px solid rgba(255, 255, 255, 0.1)',
                   paddingLeft: '12px',
+                  paddingRight: '32px',
                   marginBottom: '12px'
                 }}
               >
-                <Flex justify='flex-end'>
-                  {deleteItemButton(() =>
-                    deleteMomentItem(
-                      'ambienceMusic',
-                      categoryIndex,
-                      category.descripcion || `Momento ${categoryIndex + 1}`
-                    )
-                  )}
-                </Flex>
+                {cornerDeleteButton(() =>
+                  deleteMomentItem(
+                    'ambienceMusic',
+                    categoryIndex,
+                    category.descripcion || `Momento ${categoryIndex + 1}`
+                  )
+                )}
                 <EditableData disabled={!canEditEvents}
                   type='text'
                   property={`ambienceMusic[${categoryIndex}].descripcion`}
