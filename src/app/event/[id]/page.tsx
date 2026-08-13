@@ -38,7 +38,8 @@ import {
   IconArrowLeft,
   IconPlus,
   IconPencil,
-  IconGripVertical
+  IconGripVertical,
+  IconTrash
 } from '@tabler/icons-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -980,6 +981,10 @@ const MusicInformation = ({
   onOpenMusicModal: () => void;
   canEditEvents: boolean;
 }) => {
+  const { setSelectedEvent, updateEventInList } = useDeganoCtx();
+  const notify = useNotification();
+  const setLoadingCursor = useLoadingCursor();
+
   if (!selectedEvent) return null;
 
   // Helper function to check if a ceremony has any content
@@ -990,6 +995,59 @@ const MusicInformation = ({
     const hasOtros = ceremony.otros && ceremony.otros.length > 0;
     return hasMainFields || hasOtros;
   };
+
+  // Elimina un momento dejando el/los campo(s) en su estado vacío/predefinido
+  // (arrays → [], ceremonias → objeto vacío). Persiste el evento completo.
+  const deleteMoment = async (updates: Partial<EventModel>, label: string) => {
+    if (
+      !window.confirm(`¿Eliminar "${label}"? Se quitará ese momento del evento.`)
+    )
+      return;
+    const updatedEvent = { ...selectedEvent, ...updates };
+    setLoadingCursor(true);
+    notify({ loading: true });
+    try {
+      const res = await fetch(`/api/updateEvent?id=${new Date().toISOString()}`, {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEvent)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar');
+      const ev = data.event || updatedEvent;
+      setSelectedEvent(ev);
+      updateEventInList(ev);
+      notify({ message: 'Momento eliminado' });
+    } catch (e) {
+      notify({ type: 'defaultError' });
+      console.error('Error deleting moment:', e);
+    } finally {
+      setLoadingCursor(false);
+    }
+  };
+
+  // Encabezado de momento con botón "Eliminar" (solo si puede editar)
+  const momentTitle = (label: string, updates: Partial<EventModel>) => (
+    <Flex justify='space-between' align='center' mb='xs'>
+      <Text fw={700} size='m' c='dimmed'>
+        {label}
+      </Text>
+      {canEditEvents && (
+        <Button
+          size='compact-xs'
+          variant='subtle'
+          color='red'
+          leftSection={<IconTrash size={14} />}
+          onClick={() => deleteMoment(updates, label)}
+        >
+          Eliminar
+        </Button>
+      )}
+    </Flex>
+  );
+
+  const emptyCeremony = { ingreso: '', firmas: '', salida: '', otros: [] };
 
   return (
     <Flex direction='column' gap='8px' mt='8px'>
@@ -1009,9 +1067,7 @@ const MusicInformation = ({
       {/* Canciones de ingreso */}
       {selectedEvent.welcomeSongs && selectedEvent.welcomeSongs.length > 0 && (
         <Box>
-          <Text fw={700} size='m' mb='xs' c='dimmed'>
-            Canciones de ingreso
-          </Text>
+          {momentTitle('Canciones de ingreso', { welcomeSongs: [] })}
           {selectedEvent.welcomeSongs.map((song, index) => (
             <EditableData disabled={!canEditEvents}
               key={`welcome-${index}`}
@@ -1027,9 +1083,7 @@ const MusicInformation = ({
       {/* Canción de rosas */}
       {selectedEvent.walkIn && selectedEvent.walkIn.length > 0 && (
         <Box>
-          <Text fw={700} size='m' mb='xs' c='dimmed'>
-            Canción de rosas
-          </Text>
+          {momentTitle('Canción de rosas', { walkIn: [] })}
           {selectedEvent.walkIn.map((song, index) => (
             <EditableData disabled={!canEditEvents}
               key={`walkin-${index}`}
@@ -1046,9 +1100,7 @@ const MusicInformation = ({
       {selectedEvent.ceremoniaCivil &&
         hasCeremonyContent(selectedEvent.ceremoniaCivil) && (
           <Box>
-            <Text fw={700} size='m' mb='xs' c='dimmed'>
-              Ceremonia Civil
-            </Text>
+            {momentTitle('Ceremonia Civil', { ceremoniaCivil: emptyCeremony })}
             {selectedEvent.ceremoniaCivil.ingreso && (
               <EditableData disabled={!canEditEvents}
                 type='text'
@@ -1108,9 +1160,7 @@ const MusicInformation = ({
       {selectedEvent.ceremoniaExtra &&
         hasCeremonyContent(selectedEvent.ceremoniaExtra) && (
           <Box>
-            <Text fw={700} size='m' mb='xs' c='dimmed'>
-              Ceremonia Extra
-            </Text>
+            {momentTitle('Ceremonia Extra', { ceremoniaExtra: emptyCeremony })}
             {selectedEvent.ceremoniaExtra.ingreso && (
               <EditableData disabled={!canEditEvents}
                 type='text'
@@ -1169,9 +1219,7 @@ const MusicInformation = ({
       {/* Vals */}
       {selectedEvent.vals && selectedEvent.vals.length > 0 && (
         <Box>
-          <Text fw={700} size='m' mb='xs' c='dimmed'>
-            Vals
-          </Text>
+          {momentTitle('Vals', { vals: [] })}
           {selectedEvent.vals.map((song, index) => (
             <EditableData disabled={!canEditEvents}
               key={`vals-${index}`}
@@ -1188,9 +1236,10 @@ const MusicInformation = ({
       {selectedEvent.openingPartySongs &&
         selectedEvent.openingPartySongs.length > 0 && (
           <Box>
-            <Text fw={700} size='m' mb='xs' c='dimmed'>
-              Apertura de pista
-            </Text>
+            {momentTitle('Apertura de pista', {
+              openingPartySongs: [],
+              openingPartySong: ''
+            })}
             {selectedEvent.openingPartySongs.map((song, index) => (
               <EditableData disabled={!canEditEvents}
                 key={`opening-${index}`}
@@ -1206,9 +1255,7 @@ const MusicInformation = ({
       {/* Canciones de cierre */}
       {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
         <Box>
-          <Text fw={700} size='m' mb='xs' c='dimmed'>
-            Canciones de cierre
-          </Text>
+          {momentTitle('Canciones de cierre', { closingSongs: [] })}
           {selectedEvent.closingSongs.map((song, index) => (
             <EditableData disabled={!canEditEvents}
               key={`closing-${index}`}
@@ -1225,9 +1272,7 @@ const MusicInformation = ({
       {selectedEvent.customMoments &&
         selectedEvent.customMoments.length > 0 && (
           <Box>
-            <Text fw={700} size='m' mb='xs' c='dimmed'>
-              Momentos
-            </Text>
+            {momentTitle('Momentos', { customMoments: [] })}
             {selectedEvent.customMoments.map((item: any, index: number) => (
               <Box
                 key={`custom-${index}`}
@@ -1258,9 +1303,7 @@ const MusicInformation = ({
       {selectedEvent.ambienceMusic &&
         selectedEvent.ambienceMusic.length > 0 && (
           <Box>
-            <Text fw={700} size='m' mb='xs' c='dimmed'>
-              Música para ambientar
-            </Text>
+            {momentTitle('Música para ambientar', { ambienceMusic: [] })}
             {selectedEvent.ambienceMusic.map((category, categoryIndex) => (
               <Box
                 key={`ambience-${categoryIndex}`}

@@ -150,7 +150,7 @@ const EquipmentForm = ({
     });
   };
 
-  // Agregar N "negativos" (a alquilar) para un nombre. Array separado: no toca
+  // Agregar N "negativos" (a tercerizar) para un nombre. Array separado: no toca
   // el inventario real ni la disponibilidad.
   const handleAddNegative = (name: string, categoryId: string, qty: number) => {
     if (!name || !qty || qty < 1) return;
@@ -172,7 +172,7 @@ const EquipmentForm = ({
     });
   };
 
-  // Quitar todos los "a alquilar" cargados para un nombre.
+  // Quitar todos los "a tercerizar" cargados para un nombre.
   const handleRemoveNegativeByName = (name: string) => {
     setEventEquipment((prev) => ({
       ...prev,
@@ -282,6 +282,7 @@ const EquipmentForm = ({
               setTotal={setTotal}
               equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
               extraEquipment={eventEquipment.extraEquipment}
+              equipmentItemOrder={eventEquipment.equipmentItemOrder}
             />
           </Box>
         </Panel>

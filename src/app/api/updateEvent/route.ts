@@ -273,7 +273,8 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   }
 }, { requiredPermission: 'canEditEvents' });
 
-// PATCH: Actualizar solo el orden de categorías de equipamiento (liviano, sin tocar equipos)
+// PATCH: Actualizar solo el orden de equipamiento (categorías y/o items dentro
+// de cada categoría). Liviano, sin tocar equipos ni scheduledUses.
 export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const typedClientPromise: Promise<MongoClient> =
@@ -282,11 +283,24 @@ export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
     const body = await req.json();
     const db = client.db('degano-app');
 
-    const { eventId, equipmentCategoryOrder } = body;
+    const { eventId, equipmentCategoryOrder, equipmentItemOrder } = body;
 
-    if (!eventId || !Array.isArray(equipmentCategoryOrder)) {
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
+    }
+
+    // Setear solo los campos de orden que vengan en el body
+    const update: Record<string, any> = { updatedAt: new Date() };
+    if (Array.isArray(equipmentCategoryOrder)) {
+      update.equipmentCategoryOrder = equipmentCategoryOrder;
+    }
+    if (equipmentItemOrder && typeof equipmentItemOrder === 'object') {
+      update.equipmentItemOrder = equipmentItemOrder;
+    }
+
+    if (Object.keys(update).length === 1) {
       return NextResponse.json(
-        { error: 'eventId and equipmentCategoryOrder are required' },
+        { error: 'equipmentCategoryOrder or equipmentItemOrder is required' },
         { status: 400 }
       );
     }
@@ -295,13 +309,13 @@ export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
       .collection('events')
       .findOneAndUpdate(
         { _id: new ObjectId(eventId) },
-        { $set: { equipmentCategoryOrder, updatedAt: new Date() } },
+        { $set: update },
         { returnDocument: 'after' }
       );
 
     return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
-    console.error('Error updating equipment category order:', error);
+    console.error('Error updating equipment order:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

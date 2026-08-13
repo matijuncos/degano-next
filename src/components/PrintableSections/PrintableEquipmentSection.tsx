@@ -136,7 +136,7 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
     });
   }
 
-  // Negativos (a alquilar) agrupados por categoría principal
+  // Negativos (a tercerizar) agrupados por categoría principal
   const extraByCategory: { [categoryName: string]: { name: string; quantity: number }[] } = {};
   (event.extraEquipment || []).forEach((item) => {
     let categoryName = item.mainCategoryName;
@@ -188,7 +188,16 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
           {/* Secciones por categoría */}
           {categoryEntries.map(([categoryName, equipmentArray], categoryIndex) => {
             const equipmentByName = groupEquipmentByNameCount(equipmentArray);
-            const equipmentEntries = Object.entries(equipmentByName);
+            // Respetar el orden de items guardado dentro de la categoría
+            const itemOrder = event.equipmentItemOrder?.[categoryName] || [];
+            const allNames = Object.keys(equipmentByName);
+            const orderedItemNames = [
+              ...itemOrder.filter((n) => allNames.includes(n)),
+              ...allNames.filter((n) => !itemOrder.includes(n))
+            ];
+            const equipmentEntries = orderedItemNames.map(
+              (name) => [name, equipmentByName[name]] as [string, number]
+            );
 
             return (
               <View key={categoryIndex} style={styles.categorySection}>
@@ -221,11 +230,11 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
                   </View>
                 ))}
 
-                {/* Equipos negativos / a alquilar (en rojo) */}
+                {/* Equipos negativos / a tercerizar (en rojo) */}
                 {(extraByCategory[categoryName] || []).map((neg, negIndex) => (
                   <View key={`neg-${negIndex}`} style={styles.equipmentTableRow} wrap={false}>
                     <Text style={[styles.equipmentNameCell, { color: '#c92a2a' }]}>
-                      {neg.name} (a alquilar)
+                      {neg.name} (a tercerizar)
                     </Text>
                     <Text style={[styles.equipmentQuantityCell, { color: '#c92a2a' }]}>
                       {neg.quantity}
