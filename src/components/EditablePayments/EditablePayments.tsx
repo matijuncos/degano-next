@@ -37,6 +37,10 @@ const EditablePayments = () => {
   const [editedPaymentAmount, setEditedPaymentAmount] = useState('');
   const [editedPaymentDate, setEditedPaymentDate] = useState<Date | null>(null);
   const [editedPaymentDescription, setEditedPaymentDescription] = useState('');
+  // Estado para editar el Adelanto (pago inicial / upfrontAmount)
+  const [editingUpfront, setEditingUpfront] = useState(false);
+  const [editedUpfrontAmount, setEditedUpfrontAmount] = useState('');
+  const [editedUpfrontDate, setEditedUpfrontDate] = useState<Date | null>(null);
 
   // Estado para anexos
   const [annexes, setAnnexes] = useState<BudgetAnnex[]>(
@@ -384,6 +388,52 @@ const EditablePayments = () => {
 
     await updateEvent(eventUpdated);
   };
+
+  // ── Editar / eliminar el Adelanto (pago inicial) ──
+  const startEditingUpfront = () => {
+    setEditingUpfront(true);
+    setEditedUpfrontAmount(
+      formatNumberInput(selectedEvent?.payment.upfrontAmount?.toString() || '')
+    );
+    setEditedUpfrontDate(
+      selectedEvent?.payment.partialPaymentDate
+        ? new Date(selectedEvent.payment.partialPaymentDate)
+        : null
+    );
+  };
+
+  const cancelEditingUpfront = () => {
+    setEditingUpfront(false);
+    setEditedUpfrontAmount('');
+    setEditedUpfrontDate(null);
+  };
+
+  const saveEditedUpfront = async () => {
+    const eventUpdated = {
+      ...selectedEvent,
+      payment: {
+        ...selectedEvent!.payment,
+        upfrontAmount: parseFormattedNumber(editedUpfrontAmount),
+        ...(editedUpfrontDate ? { partialPaymentDate: editedUpfrontDate } : {})
+      }
+    };
+    setEditingUpfront(false);
+    setEditedUpfrontAmount('');
+    setEditedUpfrontDate(null);
+    await updateEvent(eventUpdated);
+  };
+
+  const deleteUpfront = async () => {
+    const eventUpdated = {
+      ...selectedEvent,
+      payment: {
+        ...selectedEvent!.payment,
+        upfrontAmount: ''
+      }
+    };
+    await updateEvent(eventUpdated);
+  };
+
   const baseBudget = Number(selectedEvent?.payment?.totalToPay) || 0;
   const annexesSum = selectedEvent?.payment?.annexes?.reduce(
     (sum: number, annex: any) => sum + Number(annex.amount), 0
@@ -572,9 +622,63 @@ const EditablePayments = () => {
               {/* Pago Inicial */}
               {selectedEvent?.payment?.upfrontAmount && (
                 <>
-                  <Text size='sm' c='red' mb={4}>
-                    -{formatPrice(Number(selectedEvent.payment.upfrontAmount))} - (Adelanto{selectedEvent.payment.partialPaymentDate ? ` ${new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''})
-                  </Text>
+                  {editingUpfront ? (
+                    <Group gap='sm' mb={4}>
+                      <Input
+                        type='text'
+                        placeholder='$ 0'
+                        value={editedUpfrontAmount}
+                        onChange={(e) =>
+                          setEditedUpfrontAmount(formatNumberInput(e.target.value))
+                        }
+                        style={{ width: '150px' }}
+                        autoComplete='off'
+                      />
+                      <DatePickerInput
+                        placeholder='Fecha'
+                        value={editedUpfrontDate}
+                        onChange={(val: any) =>
+                          setEditedUpfrontDate(val ? new Date(val) : null)
+                        }
+                        valueFormat='DD/MM/YYYY'
+                        style={{ width: '150px' }}
+                      />
+                      <ActionIcon color='green' variant='light' onClick={saveEditedUpfront}>
+                        <IconCheck size={16} />
+                      </ActionIcon>
+                      <ActionIcon color='gray' variant='light' onClick={cancelEditingUpfront}>
+                        <IconX size={16} />
+                      </ActionIcon>
+                    </Group>
+                  ) : (
+                    <Flex gap='8px' align='center' mb={4}>
+                      <Text size='sm' c='red'>
+                        -{formatPrice(Number(selectedEvent.payment.upfrontAmount))} - (Adelanto{selectedEvent.payment.partialPaymentDate ? ` ${new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''})
+                      </Text>
+                      {can('canEditPayments') && (
+                        <ActionIcon
+                          color='blue'
+                          variant='subtle'
+                          size='sm'
+                          onClick={startEditingUpfront}
+                          title='Editar adelanto'
+                        >
+                          <IconPencil size={14} />
+                        </ActionIcon>
+                      )}
+                      {can('canDeletePayments') && (
+                        <ActionIcon
+                          color='red'
+                          variant='subtle'
+                          size='sm'
+                          onClick={deleteUpfront}
+                          title='Eliminar adelanto'
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      )}
+                    </Flex>
+                  )}
                   {(() => { runningBalance -= Number(selectedEvent.payment.upfrontAmount); return null; })()}
                   <Divider variant='dashed' size='sm' my='xs' style={{ borderColor: '#C9C9C9' }} />
                   <Text size='sm' fw={selectedEvent.payment.subsequentPayments?.length ? 400 : 600} mb={4}>
