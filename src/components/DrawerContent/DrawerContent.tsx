@@ -333,6 +333,27 @@ const DrawerContent = () => {
       return acc;
     }, {}) || {};
 
+  // Equipamiento "a tercerizar" (negativo, excede stock) agrupado por categoría
+  const groupedExtraEquipment =
+    (selectedEvent?.extraEquipment || []).reduce((acc: any, item: any) => {
+      let mainCategoryName = item.mainCategoryName;
+      if (!mainCategoryName && item.categoryId && categories.length > 0) {
+        mainCategoryName = findMainCategorySync(item.categoryId, categories)?.name;
+      }
+      if (!mainCategoryName) mainCategoryName = 'Sin categoría';
+      if (!acc[mainCategoryName]) acc[mainCategoryName] = [];
+      acc[mainCategoryName].push(item);
+      return acc;
+    }, {}) || {};
+
+  // Unión de categorías (reales + a tercerizar) para el render del drawer
+  const allEquipmentCategories = Array.from(
+    new Set([
+      ...Object.keys(groupedEquipment),
+      ...Object.keys(groupedExtraEquipment)
+    ])
+  );
+
 
   return (
     <>
@@ -675,10 +696,13 @@ const DrawerContent = () => {
           <Text fw={700} size='md' mb='sm'>
             Equipamiento
           </Text>
-          {Object.keys(groupedEquipment).length > 0 ? (
+          {allEquipmentCategories.length > 0 ? (
             <Stack gap='md'>
-              {Object.keys(groupedEquipment).map((category) => {
-                const equipmentByName = groupEquipmentByNameCount(groupedEquipment[category]);
+              {allEquipmentCategories.map((category) => {
+                const equipmentByName = groupEquipmentByNameCount(
+                  groupedEquipment[category] || []
+                );
+                const extraItems = groupedExtraEquipment[category] || [];
                 return (
                   <Box key={category}>
                     <Text fw={500} size='sm' tt='uppercase' mb='xs'>
@@ -688,6 +712,11 @@ const DrawerContent = () => {
                       {Object.entries(equipmentByName).map(([name, quantity]) => (
                         <Text key={name} size='sm'>
                           {name}{quantity > 1 ? ` x ${quantity}` : ''}
+                        </Text>
+                      ))}
+                      {extraItems.map((item: any, i: number) => (
+                        <Text key={`extra-${i}`} size='sm' c='red'>
+                          {item.name}{item.quantity > 1 ? ` x ${item.quantity}` : ''} (a tercerizar)
                         </Text>
                       ))}
                     </Stack>

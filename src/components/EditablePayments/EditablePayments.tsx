@@ -41,6 +41,7 @@ const EditablePayments = () => {
   const [editingUpfront, setEditingUpfront] = useState(false);
   const [editedUpfrontAmount, setEditedUpfrontAmount] = useState('');
   const [editedUpfrontDate, setEditedUpfrontDate] = useState<Date | null>(null);
+  const [editedUpfrontDescription, setEditedUpfrontDescription] = useState('');
 
   // Estado para anexos
   const [annexes, setAnnexes] = useState<BudgetAnnex[]>(
@@ -408,12 +409,14 @@ const EditablePayments = () => {
         ? new Date(selectedEvent.payment.partialPaymentDate)
         : null
     );
+    setEditedUpfrontDescription(selectedEvent?.payment.upfrontDescription || '');
   };
 
   const cancelEditingUpfront = () => {
     setEditingUpfront(false);
     setEditedUpfrontAmount('');
     setEditedUpfrontDate(null);
+    setEditedUpfrontDescription('');
   };
 
   const saveEditedUpfront = async () => {
@@ -422,12 +425,14 @@ const EditablePayments = () => {
       payment: {
         ...selectedEvent!.payment,
         upfrontAmount: parseFormattedNumber(editedUpfrontAmount),
+        upfrontDescription: editedUpfrontDescription.trim(),
         ...(editedUpfrontDate ? { partialPaymentDate: editedUpfrontDate } : {})
       }
     };
     setEditingUpfront(false);
     setEditedUpfrontAmount('');
     setEditedUpfrontDate(null);
+    setEditedUpfrontDescription('');
     await updateEvent(eventUpdated);
   };
 
@@ -456,7 +461,7 @@ const EditablePayments = () => {
       : '';
     allPayments.push({
       amount: Number(selectedEvent.payment.upfrontAmount),
-      label: `Adelanto${date ? ` ${date}` : ''}`,
+      label: `Adelanto${date ? ` ${date}` : ''}${selectedEvent.payment.upfrontDescription ? ` - (${selectedEvent.payment.upfrontDescription})` : ''}`,
       id: '__upfront__'
     });
   }
@@ -642,6 +647,16 @@ const EditablePayments = () => {
                         style={{ width: '150px' }}
                         autoComplete='off'
                       />
+                      <Input
+                        type='text'
+                        placeholder='Concepto / info extra'
+                        value={editedUpfrontDescription}
+                        onChange={(e) =>
+                          setEditedUpfrontDescription(e.target.value)
+                        }
+                        style={{ width: '220px' }}
+                        autoComplete='off'
+                      />
                       <DatePickerInput
                         placeholder='Fecha'
                         value={editedUpfrontDate}
@@ -661,7 +676,7 @@ const EditablePayments = () => {
                   ) : (
                     <Flex gap='8px' align='center' mb={4}>
                       <Text size='sm' c='red'>
-                        -{formatPrice(Number(selectedEvent.payment.upfrontAmount))} - (Adelanto{selectedEvent.payment.partialPaymentDate ? ` ${new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''})
+                        -{formatPrice(Number(selectedEvent.payment.upfrontAmount))} - (Adelanto{selectedEvent.payment.partialPaymentDate ? ` ${new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''}){selectedEvent.payment.upfrontDescription ? ` - (${selectedEvent.payment.upfrontDescription})` : ''}
                       </Text>
                       {can('canEditPayments') && (
                         <ActionIcon

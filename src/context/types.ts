@@ -83,6 +83,7 @@ export interface EventModel {
   equipmentPrice: number;
   payment: {
     upfrontAmount: string;
+    upfrontDescription?: string; // Info extra / concepto del adelanto
     totalPaymentDate?: Date;
     totalToPay: string;
     partialPaymentDate: Date;
