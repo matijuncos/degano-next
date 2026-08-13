@@ -996,13 +996,14 @@ const MusicInformation = ({
     return hasMainFields || hasOtros;
   };
 
-  // Elimina un momento dejando el/los campo(s) en su estado vacío/predefinido
-  // (arrays → [], ceremonias → objeto vacío). Persiste el evento completo.
-  const deleteMoment = async (updates: Partial<EventModel>, label: string) => {
-    if (
-      !window.confirm(`¿Eliminar "${label}"? Se quitará ese momento del evento.`)
-    )
-      return;
+  const emptyCeremony = { ingreso: '', firmas: '', salida: '', otros: [] };
+
+  // Persiste el evento completo con los cambios dados. Reutilizado por los
+  // borrados de ítems individuales dentro de cada momento.
+  const persistEventUpdate = async (
+    updates: Partial<EventModel>,
+    successMsg: string
+  ) => {
     const updatedEvent = { ...selectedEvent, ...updates };
     setLoadingCursor(true);
     notify({ loading: true });
@@ -1018,36 +1019,82 @@ const MusicInformation = ({
       const ev = data.event || updatedEvent;
       setSelectedEvent(ev);
       updateEventInList(ev);
-      notify({ message: 'Momento eliminado' });
+      notify({ message: successMsg });
     } catch (e) {
       notify({ type: 'defaultError' });
-      console.error('Error deleting moment:', e);
+      console.error('Error updating moment:', e);
     } finally {
       setLoadingCursor(false);
     }
   };
 
-  // Encabezado de momento con botón "Eliminar" (solo si puede editar)
-  const momentTitle = (label: string, updates: Partial<EventModel>) => (
-    <Flex justify='space-between' align='center' mb='xs'>
-      <Text fw={700} size='m' c='dimmed'>
-        {label}
-      </Text>
-      {canEditEvents && (
-        <Button
-          size='compact-xs'
-          variant='subtle'
-          color='red'
-          leftSection={<IconTrash size={14} />}
-          onClick={() => deleteMoment(updates, label)}
-        >
-          Eliminar
-        </Button>
-      )}
-    </Flex>
+  // Elimina UN ítem (canción/entrada) dentro de un momento que es un array
+  // (welcomeSongs, vals, customMoments, ambienceMusic, etc.), por índice.
+  const deleteMomentItem = async (
+    property: keyof EventModel,
+    index: number,
+    label: string
+  ) => {
+    if (!window.confirm(`¿Eliminar "${label}"?`)) return;
+    const arr = [...(((selectedEvent as any)[property] as any[]) || [])];
+    arr.splice(index, 1);
+    await persistEventUpdate(
+      { [property]: arr } as Partial<EventModel>,
+      'Elemento eliminado'
+    );
+  };
+
+  // Elimina un campo suelto de una ceremonia (ingreso/firmas/salida) → vacío.
+  const clearCeremonyField = async (
+    ceremonyKey: 'ceremoniaCivil' | 'ceremoniaExtra',
+    field: 'ingreso' | 'firmas' | 'salida',
+    label: string
+  ) => {
+    if (!window.confirm(`¿Eliminar "${label}"?`)) return;
+    const current = (selectedEvent[ceremonyKey] || emptyCeremony) as any;
+    await persistEventUpdate(
+      { [ceremonyKey]: { ...current, [field]: '' } } as Partial<EventModel>,
+      'Elemento eliminado'
+    );
+  };
+
+  // Elimina una entrada del array "otros" de una ceremonia, por índice.
+  const deleteCeremonyOtro = async (
+    ceremonyKey: 'ceremoniaCivil' | 'ceremoniaExtra',
+    index: number,
+    label: string
+  ) => {
+    if (!window.confirm(`¿Eliminar "${label}"?`)) return;
+    const current = (selectedEvent[ceremonyKey] || emptyCeremony) as any;
+    const otros = [...(current.otros || [])];
+    otros.splice(index, 1);
+    await persistEventUpdate(
+      { [ceremonyKey]: { ...current, otros } } as Partial<EventModel>,
+      'Elemento eliminado'
+    );
+  };
+
+  // Encabezado de momento (el borrado ahora es por ítem, no por sección)
+  const momentTitle = (label: string) => (
+    <Text fw={700} size='m' c='dimmed' mb='xs'>
+      {label}
+    </Text>
   );
 
-  const emptyCeremony = { ingreso: '', firmas: '', salida: '', otros: [] };
+  // Tachito rojo para borrar un ítem individual (solo si puede editar)
+  const deleteItemButton = (onDelete: () => void) =>
+    canEditEvents ? (
+      <ActionIcon
+        color='red'
+        variant='subtle'
+        size='sm'
+        onClick={onDelete}
+        title='Eliminar'
+        style={{ flexShrink: 0 }}
+      >
+        <IconTrash size={16} />
+      </ActionIcon>
+    ) : null;
 
   return (
     <Flex direction='column' gap='8px' mt='8px'>
@@ -1067,15 +1114,21 @@ const MusicInformation = ({
       {/* Canciones de ingreso */}
       {selectedEvent.welcomeSongs && selectedEvent.welcomeSongs.length > 0 && (
         <Box>
-          {momentTitle('Canciones de ingreso', { welcomeSongs: [] })}
+          {momentTitle('Canciones de ingreso')}
           {selectedEvent.welcomeSongs.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
-              key={`welcome-${index}`}
-              type='text'
-              property={`welcomeSongs[${index}]`}
-              title={`Tema ${index + 1}`}
-              value={song}
-            />
+            <Flex key={`welcome-${index}`} align='center' gap='4px'>
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <EditableData disabled={!canEditEvents}
+                  type='text'
+                  property={`welcomeSongs[${index}]`}
+                  title={`Tema ${index + 1}`}
+                  value={song}
+                />
+              </Box>
+              {deleteItemButton(() =>
+                deleteMomentItem('welcomeSongs', index, `Tema ${index + 1}`)
+              )}
+            </Flex>
           ))}
         </Box>
       )}
@@ -1083,15 +1136,21 @@ const MusicInformation = ({
       {/* Canción de rosas */}
       {selectedEvent.walkIn && selectedEvent.walkIn.length > 0 && (
         <Box>
-          {momentTitle('Canción de rosas', { walkIn: [] })}
+          {momentTitle('Canción de rosas')}
           {selectedEvent.walkIn.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
-              key={`walkin-${index}`}
-              type='text'
-              property={`walkIn[${index}]`}
-              title={`Tema ${index + 1}`}
-              value={song}
-            />
+            <Flex key={`walkin-${index}`} align='center' gap='4px'>
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <EditableData disabled={!canEditEvents}
+                  type='text'
+                  property={`walkIn[${index}]`}
+                  title={`Tema ${index + 1}`}
+                  value={song}
+                />
+              </Box>
+              {deleteItemButton(() =>
+                deleteMomentItem('walkIn', index, `Tema ${index + 1}`)
+              )}
+            </Flex>
           ))}
         </Box>
       )}
@@ -1100,30 +1159,51 @@ const MusicInformation = ({
       {selectedEvent.ceremoniaCivil &&
         hasCeremonyContent(selectedEvent.ceremoniaCivil) && (
           <Box>
-            {momentTitle('Ceremonia Civil', { ceremoniaCivil: emptyCeremony })}
+            {momentTitle('Ceremonia Civil')}
             {selectedEvent.ceremoniaCivil.ingreso && (
-              <EditableData disabled={!canEditEvents}
-                type='text'
-                property='ceremoniaCivil.ingreso'
-                title='Ingreso'
-                value={selectedEvent.ceremoniaCivil.ingreso}
-              />
+              <Flex align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='ceremoniaCivil.ingreso'
+                    title='Ingreso'
+                    value={selectedEvent.ceremoniaCivil.ingreso}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  clearCeremonyField('ceremoniaCivil', 'ingreso', 'Ingreso')
+                )}
+              </Flex>
             )}
             {selectedEvent.ceremoniaCivil.firmas && (
-              <EditableData disabled={!canEditEvents}
-                type='text'
-                property='ceremoniaCivil.firmas'
-                title='Firmas'
-                value={selectedEvent.ceremoniaCivil.firmas}
-              />
+              <Flex align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='ceremoniaCivil.firmas'
+                    title='Firmas'
+                    value={selectedEvent.ceremoniaCivil.firmas}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  clearCeremonyField('ceremoniaCivil', 'firmas', 'Firmas')
+                )}
+              </Flex>
             )}
             {selectedEvent.ceremoniaCivil.salida && (
-              <EditableData disabled={!canEditEvents}
-                type='text'
-                property='ceremoniaCivil.salida'
-                title='Salida'
-                value={selectedEvent.ceremoniaCivil.salida}
-              />
+              <Flex align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='ceremoniaCivil.salida'
+                    title='Salida'
+                    value={selectedEvent.ceremoniaCivil.salida}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  clearCeremonyField('ceremoniaCivil', 'salida', 'Salida')
+                )}
+              </Flex>
             )}
             {selectedEvent.ceremoniaCivil.otros &&
               selectedEvent.ceremoniaCivil.otros.length > 0 && (
@@ -1137,6 +1217,15 @@ const MusicInformation = ({
                         marginTop: '8px'
                       }}
                     >
+                      <Flex justify='flex-end'>
+                        {deleteItemButton(() =>
+                          deleteCeremonyOtro(
+                            'ceremoniaCivil',
+                            index,
+                            item.titulo || `Otro ${index + 1}`
+                          )
+                        )}
+                      </Flex>
                       <EditableData disabled={!canEditEvents}
                         type='text'
                         property={`ceremoniaCivil.otros[${index}].titulo`}
@@ -1160,30 +1249,51 @@ const MusicInformation = ({
       {selectedEvent.ceremoniaExtra &&
         hasCeremonyContent(selectedEvent.ceremoniaExtra) && (
           <Box>
-            {momentTitle('Ceremonia Extra', { ceremoniaExtra: emptyCeremony })}
+            {momentTitle('Ceremonia Extra')}
             {selectedEvent.ceremoniaExtra.ingreso && (
-              <EditableData disabled={!canEditEvents}
-                type='text'
-                property='ceremoniaExtra.ingreso'
-                title='Ingreso'
-                value={selectedEvent.ceremoniaExtra.ingreso}
-              />
+              <Flex align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='ceremoniaExtra.ingreso'
+                    title='Ingreso'
+                    value={selectedEvent.ceremoniaExtra.ingreso}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  clearCeremonyField('ceremoniaExtra', 'ingreso', 'Ingreso')
+                )}
+              </Flex>
             )}
             {selectedEvent.ceremoniaExtra.firmas && (
-              <EditableData disabled={!canEditEvents}
-                type='text'
-                property='ceremoniaExtra.firmas'
-                title='Firmas'
-                value={selectedEvent.ceremoniaExtra.firmas}
-              />
+              <Flex align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='ceremoniaExtra.firmas'
+                    title='Firmas'
+                    value={selectedEvent.ceremoniaExtra.firmas}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  clearCeremonyField('ceremoniaExtra', 'firmas', 'Firmas')
+                )}
+              </Flex>
             )}
             {selectedEvent.ceremoniaExtra.salida && (
-              <EditableData disabled={!canEditEvents}
-                type='text'
-                property='ceremoniaExtra.salida'
-                title='Salida'
-                value={selectedEvent.ceremoniaExtra.salida}
-              />
+              <Flex align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='ceremoniaExtra.salida'
+                    title='Salida'
+                    value={selectedEvent.ceremoniaExtra.salida}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  clearCeremonyField('ceremoniaExtra', 'salida', 'Salida')
+                )}
+              </Flex>
             )}
             {selectedEvent.ceremoniaExtra.otros &&
               selectedEvent.ceremoniaExtra.otros.length > 0 && (
@@ -1197,6 +1307,15 @@ const MusicInformation = ({
                         marginTop: '8px'
                       }}
                     >
+                      <Flex justify='flex-end'>
+                        {deleteItemButton(() =>
+                          deleteCeremonyOtro(
+                            'ceremoniaExtra',
+                            index,
+                            item.titulo || `Otro ${index + 1}`
+                          )
+                        )}
+                      </Flex>
                       <EditableData disabled={!canEditEvents}
                         type='text'
                         property={`ceremoniaExtra.otros[${index}].titulo`}
@@ -1219,15 +1338,21 @@ const MusicInformation = ({
       {/* Vals */}
       {selectedEvent.vals && selectedEvent.vals.length > 0 && (
         <Box>
-          {momentTitle('Vals', { vals: [] })}
+          {momentTitle('Vals')}
           {selectedEvent.vals.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
-              key={`vals-${index}`}
-              type='text'
-              property={`vals[${index}]`}
-              title={`Vals ${index + 1}`}
-              value={song}
-            />
+            <Flex key={`vals-${index}`} align='center' gap='4px'>
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <EditableData disabled={!canEditEvents}
+                  type='text'
+                  property={`vals[${index}]`}
+                  title={`Vals ${index + 1}`}
+                  value={song}
+                />
+              </Box>
+              {deleteItemButton(() =>
+                deleteMomentItem('vals', index, `Vals ${index + 1}`)
+              )}
+            </Flex>
           ))}
         </Box>
       )}
@@ -1236,18 +1361,25 @@ const MusicInformation = ({
       {selectedEvent.openingPartySongs &&
         selectedEvent.openingPartySongs.length > 0 && (
           <Box>
-            {momentTitle('Apertura de pista', {
-              openingPartySongs: [],
-              openingPartySong: ''
-            })}
+            {momentTitle('Apertura de pista')}
             {selectedEvent.openingPartySongs.map((song, index) => (
-              <EditableData disabled={!canEditEvents}
-                key={`opening-${index}`}
-                type='text'
-                property={`openingPartySongs[${index}]`}
-                title={`Apertura de pista ${index + 1}`}
-                value={song}
-              />
+              <Flex key={`opening-${index}`} align='center' gap='4px'>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property={`openingPartySongs[${index}]`}
+                    title={`Apertura de pista ${index + 1}`}
+                    value={song}
+                  />
+                </Box>
+                {deleteItemButton(() =>
+                  deleteMomentItem(
+                    'openingPartySongs',
+                    index,
+                    `Apertura de pista ${index + 1}`
+                  )
+                )}
+              </Flex>
             ))}
           </Box>
         )}
@@ -1255,15 +1387,21 @@ const MusicInformation = ({
       {/* Canciones de cierre */}
       {selectedEvent.closingSongs && selectedEvent.closingSongs.length > 0 && (
         <Box>
-          {momentTitle('Canciones de cierre', { closingSongs: [] })}
+          {momentTitle('Canciones de cierre')}
           {selectedEvent.closingSongs.map((song, index) => (
-            <EditableData disabled={!canEditEvents}
-              key={`closing-${index}`}
-              type='text'
-              property={`closingSongs[${index}]`}
-              title={`Tema ${index + 1}`}
-              value={song}
-            />
+            <Flex key={`closing-${index}`} align='center' gap='4px'>
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <EditableData disabled={!canEditEvents}
+                  type='text'
+                  property={`closingSongs[${index}]`}
+                  title={`Tema ${index + 1}`}
+                  value={song}
+                />
+              </Box>
+              {deleteItemButton(() =>
+                deleteMomentItem('closingSongs', index, `Tema ${index + 1}`)
+              )}
+            </Flex>
           ))}
         </Box>
       )}
@@ -1272,7 +1410,7 @@ const MusicInformation = ({
       {selectedEvent.customMoments &&
         selectedEvent.customMoments.length > 0 && (
           <Box>
-            {momentTitle('Momentos', { customMoments: [] })}
+            {momentTitle('Momentos')}
             {selectedEvent.customMoments.map((item: any, index: number) => (
               <Box
                 key={`custom-${index}`}
@@ -1282,6 +1420,15 @@ const MusicInformation = ({
                   marginBottom: '12px'
                 }}
               >
+                <Flex justify='flex-end'>
+                  {deleteItemButton(() =>
+                    deleteMomentItem(
+                      'customMoments',
+                      index,
+                      item.titulo || `Momento ${index + 1}`
+                    )
+                  )}
+                </Flex>
                 <EditableData disabled={!canEditEvents}
                   type='text'
                   property={`customMoments[${index}].titulo`}
@@ -1303,7 +1450,7 @@ const MusicInformation = ({
       {selectedEvent.ambienceMusic &&
         selectedEvent.ambienceMusic.length > 0 && (
           <Box>
-            {momentTitle('Música para ambientar', { ambienceMusic: [] })}
+            {momentTitle('Música para ambientar')}
             {selectedEvent.ambienceMusic.map((category, categoryIndex) => (
               <Box
                 key={`ambience-${categoryIndex}`}
@@ -1313,6 +1460,15 @@ const MusicInformation = ({
                   marginBottom: '12px'
                 }}
               >
+                <Flex justify='flex-end'>
+                  {deleteItemButton(() =>
+                    deleteMomentItem(
+                      'ambienceMusic',
+                      categoryIndex,
+                      category.descripcion || `Momento ${categoryIndex + 1}`
+                    )
+                  )}
+                </Flex>
                 <EditableData disabled={!canEditEvents}
                   type='text'
                   property={`ambienceMusic[${categoryIndex}].descripcion`}
