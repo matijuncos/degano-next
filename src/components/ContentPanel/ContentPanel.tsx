@@ -48,9 +48,9 @@ export default function ContentPanel({
   eventEndDate?: Date | string;
   selectedEquipmentIds?: string[];
   refreshTrigger?: number;
-  // Agrega N unidades "negativas" (a alquilar) para un nombre de equipo.
+  // Agrega N unidades "negativas" (a tercerizar) para un nombre de equipo.
   onAddNegative?: (name: string, categoryId: string, qty: number) => void;
-  // Quita todos los "a alquilar" cargados para ese nombre.
+  // Quita todos los "a tercerizar" cargados para ese nombre.
   onRemoveNegative?: (name: string) => void;
   extraEquipment?: { name: string; quantity: number }[];
 }) {
@@ -208,7 +208,7 @@ export default function ContentPanel({
       const availableCount = availableItems.length;
       const selectedCount = nameItems.filter((i) => selectedEquipmentIds.includes(i._id)).length;
       const currentQty = quantityMap[name] || 1;
-      // Negativos (a alquilar) ya cargados para este nombre
+      // Negativos (a tercerizar) ya cargados para este nombre
       const negativeCount = (extraEquipment || [])
         .filter((e) => e.name === name)
         .reduce((sum, e) => sum + (e.quantity || 0), 0);
@@ -244,7 +244,7 @@ export default function ContentPanel({
               style={{ width: '72px', margin: '0 auto' }}
               allowDecimal={false}
               hideControls={false}
-              // Rojo cuando la cantidad excede el stock disponible (esos van "a alquilar")
+              // Rojo cuando la cantidad excede el stock disponible (esos van "a tercerizar")
               styles={{
                 input:
                   currentQty > availableCount
@@ -258,12 +258,12 @@ export default function ContentPanel({
           <td style={{ padding: '6px 8px', textAlign: 'center' }}>
             <Stack gap='4px' align='center'>
               {/* Botón único con auto-split: agrega hasta lo disponible como
-                  reales y el excedente automáticamente como "a alquilar". */}
+                  reales y el excedente automáticamente como "a tercerizar". */}
               <Tooltip
                 label={
                   currentQty <= availableCount
                     ? `Agregar ${currentQty}`
-                    : `Agregar ${availableCount} disponible(s) + ${currentQty - availableCount} a alquilar`
+                    : `Agregar ${availableCount} disponible(s) + ${currentQty - availableCount} a tercerizar`
                 }
               >
                 <ActionIcon
@@ -318,10 +318,10 @@ export default function ContentPanel({
                   {negativeCount > 0 && (
                     <Group gap='2px' wrap='nowrap' align='center'>
                       <Text size='xs' c='red' fw={700} style={{ whiteSpace: 'nowrap' }}>
-                        {negativeCount} a alquilar
+                        {negativeCount} a tercerizar
                       </Text>
                       {onRemoveNegative && (
-                        <Tooltip label='Quitar los "a alquilar"'>
+                        <Tooltip label='Quitar los "a tercerizar"'>
                           <ActionIcon
                             size='xs'
                             color='red'

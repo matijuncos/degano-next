@@ -82,6 +82,14 @@ const EditablePayments = () => {
     return `$ ${formatted}`;
   };
 
+  // Parsea el valor del DatePickerInput ("YYYY-MM-DD" o Date) como fecha LOCAL.
+  // Evita que new Date("YYYY-MM-DD") lo interprete como UTC y corra un día
+  // hacia atrás (Argentina es UTC-3).
+  const parseLocalDate = (val: any): Date | null => {
+    if (!val) return null;
+    return typeof val === 'string' ? new Date(`${val}T00:00:00`) : new Date(val);
+  };
+
   // Funciones para manejar anexos
   const addAnnex = () => {
     const newAnnexes = [
@@ -638,7 +646,7 @@ const EditablePayments = () => {
                         placeholder='Fecha'
                         value={editedUpfrontDate}
                         onChange={(val: any) =>
-                          setEditedUpfrontDate(val ? new Date(val) : null)
+                          setEditedUpfrontDate(parseLocalDate(val))
                         }
                         valueFormat='DD/MM/YYYY'
                         style={{ width: '150px' }}
@@ -714,7 +722,7 @@ const EditablePayments = () => {
                         <DatePickerInput
                           placeholder='Fecha de pago'
                           value={editedPaymentDate}
-                          onChange={(val: any) => setEditedPaymentDate(val ? new Date(val) : null)}
+                          onChange={(val: any) => setEditedPaymentDate(parseLocalDate(val))}
                           valueFormat='DD/MM/YYYY'
                           style={{ width: '150px' }}
                         />
@@ -786,7 +794,7 @@ const EditablePayments = () => {
                 placeholder='Fecha de pago'
                 value={payment.date ? new Date(payment.date) : null}
                 onChange={(val: any) =>
-                  updateNewPayment(payment.id, 'date', val ? new Date(val) : null)
+                  updateNewPayment(payment.id, 'date', parseLocalDate(val))
                 }
                 valueFormat='DD/MM/YYYY'
                 style={{ width: '150px' }}
