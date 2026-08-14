@@ -6,26 +6,26 @@ import {
   IconUpload,
   IconPhoto,
   IconTrash,
-  IconFile3d,
   IconFile,
   IconFileMusic,
   IconVideo,
   IconFileTypePdf,
   IconFileText,
-  IconFileZip
+  IconFileZip,
+  IconDownload
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState } from 'react';
+import { nanoid } from 'nanoid';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
 
-interface FileItem {
-  id: string;
+interface EventFile {
+  url: string;
   name: string;
-  webViewLink: string;
   mimeType: string;
-  createdTime: string;
+  uploadedAt: string;
 }
 
 interface LoadingState {
@@ -38,10 +38,9 @@ export default function FilesHandlerComponent() {
   const { can } = usePermissions();
   const canUploadFiles = can('canUploadFiles');
   const canDeleteFiles = can('canDeleteFiles');
-  const { folderName } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent } = useDeganoCtx();
   const notify = useNotification();
   const [allFiles, setAllfiles] = useState<File[]>([]);
-  const [files, setFiles] = useState<FileItem[]>([]);
   const [showUploadSection, setShowUploadSection] = useState(false);
   const [loading, setLoading] = useState<LoadingState>({
     fetchingFiles: false,
@@ -49,109 +48,138 @@ export default function FilesHandlerComponent() {
     deletingFile: null
   });
 
+  // Archivos del evento (guardados en MongoDB)
+  const files: EventFile[] = selectedEvent?.files || [];
+
   // Función para obtener el ícono según el tipo de archivo
   const getFileIcon = (mimeType: string, fileName: string) => {
     const size = 20;
 
-    // Por MIME type
-    if (mimeType?.startsWith('image/')) {
-      return <IconPhoto size={size} />;
-    }
-    if (mimeType?.startsWith('video/')) {
-      return <IconVideo size={size} />;
-    }
-    if (mimeType?.startsWith('audio/')) {
-      return <IconFileMusic size={size} />;
-    }
-    if (mimeType === 'application/pdf') {
-      return <IconFileTypePdf size={size} />;
-    }
+    if (mimeType?.startsWith('image/')) return <IconPhoto size={size} />;
+    if (mimeType?.startsWith('video/')) return <IconVideo size={size} />;
+    if (mimeType?.startsWith('audio/')) return <IconFileMusic size={size} />;
+    if (mimeType === 'application/pdf') return <IconFileTypePdf size={size} />;
 
-    // Por extensión de archivo
     const extension = fileName?.split('.').pop()?.toLowerCase();
-    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(extension || '')) {
-      return <IconFileMusic size={size} />;
-    }
-    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension || '')) {
-      return <IconVideo size={size} />;
-    }
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')) {
-      return <IconPhoto size={size} />;
-    }
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) {
-      return <IconFileZip size={size} />;
-    }
-    if (['txt', 'doc', 'docx'].includes(extension || '')) {
-      return <IconFileText size={size} />;
-    }
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(extension || '')) return <IconFileMusic size={size} />;
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension || '')) return <IconVideo size={size} />;
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')) return <IconPhoto size={size} />;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) return <IconFileZip size={size} />;
+    if (['txt', 'doc', 'docx'].includes(extension || '')) return <IconFileText size={size} />;
 
     return <IconFile size={size} />;
   };
 
-  // Cargar archivos al montar o cambiar folderName
-  useEffect(() => {
-    if (folderName) {
-      fetchFiles();
-    }
-  }, [folderName]);
-
-  const fetchFiles = async () => {
-    setLoading((prev) => ({ ...prev, fetchingFiles: true }));
-    try {
-      const response = await fetch('/api/listGoogleDriveFiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderName })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFiles(data.files || []);
-      }
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      notify({ type: 'defaultError', message: 'Error al cargar archivos' });
-    } finally {
-      setLoading((prev) => ({ ...prev, fetchingFiles: false }));
-    }
-  };
-
   const handleUploadClick = async () => {
-    if (allFiles.length === 0) return;
+    if (allFiles.length === 0 || !selectedEvent?._id) return;
 
     setLoading((prev) => ({ ...prev, uploading: true }));
     notify({ loading: true });
 
     try {
-      // Subir cada archivo
-      const uploadPromises = allFiles.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('folderName', folderName);
+      const uploadedFiles: EventFile[] = [];
 
-        const response = await fetch('/api/uploadToGoogleDrive', {
+      // folderId único para los archivos de este evento. Si el evento ya
+      // tiene uno se reutiliza; si no (eventos viejos), se genera y luego
+      // se persiste con el evento para que quede estable.
+      const folderId = selectedEvent.folderId || `evt-${nanoid()}`;
+
+      for (const file of allFiles) {
+        // 1. Obtener presigned URL de S3
+        const presignRes = await fetch('/api/uploadToS3', {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            bucket: 'events',
+            folder: folderId
+          })
         });
 
-        if (!response.ok) {
-          throw new Error(`Error subiendo ${file.name}`);
-        }
+        if (!presignRes.ok) throw new Error(`Error obteniendo URL para ${file.name}`);
+        const { signedUrl, url } = await presignRes.json();
 
-        return response.json();
+        // 2. Subir directo a S3 (sin límite de tamaño, sin pasar por Vercel)
+        const uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file
+        });
+
+        if (!uploadRes.ok) throw new Error(`Error subiendo ${file.name}`);
+
+        uploadedFiles.push({
+          url,
+          name: file.name,
+          mimeType: file.type,
+          uploadedAt: new Date().toISOString()
+        });
+      }
+
+      // 3. Guardar referencias en el evento (MongoDB).
+      // Se persiste también el folderId para que quede estable entre subidas.
+      const updatedFiles = [...files, ...uploadedFiles];
+      const saveRes = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...selectedEvent,
+          files: updatedFiles,
+          folderId
+        })
       });
 
-      await Promise.all(uploadPromises);
+      if (!saveRes.ok) throw new Error('Error guardando archivos en el evento');
 
-      // Limpiar y recargar
+      const data = await saveRes.json();
+      setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles, folderId });
+
       setAllfiles([]);
-      await fetchFiles();
       notify({ message: 'Archivos subidos correctamente' });
     } catch (error) {
       console.error('Error uploading files:', error);
       notify({ type: 'defaultError', message: 'Error al subir archivos' });
     } finally {
       setLoading((prev) => ({ ...prev, uploading: false }));
+    }
+  };
+
+  const handleDeleteFile = async (fileUrl: string, fileName: string) => {
+    if (!confirm(`¿Eliminar "${fileName}"?`)) return;
+    if (!selectedEvent?._id) return;
+
+    setLoading((prev) => ({ ...prev, deletingFile: fileUrl }));
+    try {
+      // 1. Eliminar de S3
+      await fetch('/api/deleteFromS3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: fileUrl, bucket: 'events' })
+      });
+
+      // 2. Actualizar evento en MongoDB
+      const updatedFiles = files.filter((f) => f.url !== fileUrl);
+      const saveRes = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...selectedEvent,
+          files: updatedFiles
+        })
+      });
+
+      if (saveRes.ok) {
+        const data = await saveRes.json();
+        setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles });
+      }
+
+      notify({ message: 'Archivo eliminado' });
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      notify({ type: 'defaultError', message: 'Error al eliminar archivo' });
+    } finally {
+      setLoading((prev) => ({ ...prev, deletingFile: null }));
     }
   };
 
@@ -176,12 +204,11 @@ export default function FilesHandlerComponent() {
               <Flex w='100%'>
                 <Dropzone
                   multiple
-                  onDrop={(files) => setAllfiles((prev) => [...prev, ...files])}
-                  onReject={(files) => {
-                    console.log('rejected files', files);
-                    alert(`Archivos rechazados: ${files.map(f => f.file.name).join(', ')}. Verifica que no excedan 10MB.`);
+                  onDrop={(droppedFiles) => setAllfiles((prev) => [...prev, ...droppedFiles])}
+                  onReject={(rejectedFiles) => {
+                    alert(`Archivos rechazados: ${rejectedFiles.map(f => f.file.name).join(', ')}. Verifica que no excedan 100MB.`);
                   }}
-                  maxSize={10 * 1024 ** 2}
+                  maxSize={100 * 1024 ** 2}
                   accept={{
                     'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
                     'video/*': ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv'],
@@ -229,7 +256,7 @@ export default function FilesHandlerComponent() {
                           </Text>
                           <Text size='sm' c='dimmed' inline mt={7}>
                             Adjunta la cantidad de archivos que quieras (imágenes, videos, audio, PDFs, etc.). Cada
-                            archivo no debe exceder los 10MB
+                            archivo no debe exceder los 100MB
                           </Text>
                         </div>
                       </>
@@ -244,70 +271,64 @@ export default function FilesHandlerComponent() {
                           alignItems: 'flex-start'
                         }}
                       >
-                        {allFiles.map((file) => {
-                          return (
+                        {allFiles.map((file) => (
+                          <div
+                            key={file.name}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              width: '120px',
+                              justifyContent: 'flex-start',
+                              flex: 1
+                            }}
+                          >
+                            {getFileIcon(file.type, file.name)}
                             <div
-                              key={file.name}
-                              onClick={() => console.log(file)}
                               style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                width: '120px',
-                                justifyContent: 'flex-start',
-                                flex: 1
+                                width: '100px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
                               }}
                             >
-                              <IconFile3d size={34} />
-                              <div
-                                style={{
-                                  width: '100px',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
-                                }}
-                              >
-                                {file.name}
-                              </div>
+                              {file.name}
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </Group>
                 </Dropzone>
                 {!!allFiles.length && (
                   <Flex direction='column' p='18px' gap='8px' flex={1}>
-                    {allFiles.map((file) => {
-                      return (
-                        <Flex
-                          key={file.name}
-                          gap='16px'
-                          justify='space-between'
+                    {allFiles.map((file) => (
+                      <Flex
+                        key={file.name}
+                        gap='16px'
+                        justify='space-between'
+                      >
+                        <div
+                          style={{
+                            width: '150px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
                         >
-                          <div
-                            style={{
-                              width: '150px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis'
-                            }}
-                          >
-                            <>{file.name}</>
-                          </div>
-                          {canDeleteFiles && (
-                            <IconTrash
-                              color='red'
-                              onClick={() =>
-                                setAllfiles((prev) =>
-                                  prev.filter((f) => f.name !== file.name)
-                                )
-                              }
-                            />
-                          )}
-                        </Flex>
-                      );
-                    })}
+                          {file.name}
+                        </div>
+                        <IconTrash
+                          color='red'
+                          style={{ cursor: 'pointer' }}
+                          onClick={() =>
+                            setAllfiles((prev) =>
+                              prev.filter((f) => f.name !== file.name)
+                            )
+                          }
+                        />
+                      </Flex>
+                    ))}
                   </Flex>
                 )}
               </Flex>
@@ -329,34 +350,30 @@ export default function FilesHandlerComponent() {
             </>
           )}
 
-          <Flex direction='column' gap='12px' align='flex-start'>
-            <h2>Archivos en la carpeta de este evento (Google drive)</h2>
-            {loading.fetchingFiles ? (
-              <Loader size='sm' />
+          <Flex direction='column' gap='12px' align='flex-start' pb='100px'>
+            <h2>Archivos del evento</h2>
+            {files.length === 0 ? (
+              <Text size='sm' c='dimmed'>No hay archivos subidos.</Text>
             ) : (
-              files?.map((file) => (
+              files.map((file) => (
                 <Flex
                   gap='12px'
-                  key={file.id}
+                  key={file.url}
                   justify='space-between'
                   align='center'
                   p='12px 18px'
                   flex={1}
                   w='100%'
-                  maw='350px'
+                  maw='450px'
                   style={{
                     border: 'solid 1px rgba(180, 180, 180, 0.3)',
                     borderRadius: '6px',
                     width: '100%',
-                    maxWidth: '350px',
+                    maxWidth: '450px',
                     cursor: 'pointer',
                     transition: 'background-color 0.2s, transform 0.1s'
                   }}
-                  onClick={() => {
-                    if (file.webViewLink) {
-                      window.open(file.webViewLink, '_blank');
-                    }
-                  }}
+                  onClick={() => window.open(file.url, '_blank')}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
                     e.currentTarget.style.transform = 'translateX(4px)';
@@ -369,7 +386,7 @@ export default function FilesHandlerComponent() {
                   {getFileIcon(file.mimeType, file.name)}
                   <div
                     style={{
-                      width: '250px',
+                      flex: 1,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis'
@@ -377,6 +394,48 @@ export default function FilesHandlerComponent() {
                   >
                     {file.name}
                   </div>
+                  <Flex gap='6px' align='center' style={{ flexShrink: 0 }}>
+                    <IconDownload
+                      size={18}
+                      style={{ opacity: 0.6, cursor: 'pointer' }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const res = await fetch('/api/downloadFromS3', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              url: file.url,
+                              fileName: file.name,
+                              bucket: 'events'
+                            })
+                          });
+                          const { signedUrl } = await res.json();
+                          const a = document.createElement('a');
+                          a.href = signedUrl;
+                          a.download = file.name;
+                          a.click();
+                        } catch {
+                          window.open(file.url, '_blank');
+                        }
+                      }}
+                    />
+                    {canDeleteFiles && (
+                      loading.deletingFile === file.url ? (
+                        <Loader size={16} />
+                      ) : (
+                        <IconTrash
+                          size={18}
+                          color='red'
+                          style={{ opacity: 0.6, cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFile(file.url, file.name);
+                          }}
+                        />
+                      )
+                    )}
+                  </Flex>
                 </Flex>
               ))
             )}

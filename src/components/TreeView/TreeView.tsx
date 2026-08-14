@@ -9,7 +9,8 @@ import {
   IconPlus,
   IconChevronRight,
   IconDeviceFloppy,
-  IconSearch
+  IconSearch,
+  IconLayersLinked
 } from '@tabler/icons-react';
 
 export type CategoryNode = {
@@ -201,7 +202,8 @@ export default function TreeView({
   newEvent,
   eventStartDate,
   eventEndDate,
-  disableEditOnSelect = false
+  disableEditOnSelect = false,
+  onApplySet
 }: {
   onSelect?: (n: CategoryNode | null) => void;
   selectedCategory?: CategoryNode | null;
@@ -211,6 +213,7 @@ export default function TreeView({
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
   disableEditOnSelect?: boolean;
+  onApplySet?: () => void;
 }) {
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const [searchTerm, setSearchTerm] = useState('');
@@ -306,7 +309,8 @@ export default function TreeView({
   return (
     <div
       style={{
-        height: '100vh',
+        flex: 1,
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -336,6 +340,17 @@ export default function TreeView({
         >
           Cargar equipamiento
         </Button>
+        {onApplySet && (
+          <Button
+            variant='light'
+            color='teal'
+            size='xs'
+            leftSection={<IconLayersLinked size={16} />}
+            onClick={onApplySet}
+          >
+            Aplicar set de equipamiento
+          </Button>
+        )}
       </div>
       <Divider my='sm' size={2}/>
       <Input
@@ -355,9 +370,12 @@ export default function TreeView({
         rightSectionPointerEvents="auto"
         mb="sm"
         mx="0.75rem"
+        autoComplete='off'
       />
       <div
         style={{
+          flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           overflowX: 'auto',
           paddingBottom: '30px'

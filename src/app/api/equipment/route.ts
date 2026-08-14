@@ -8,20 +8,11 @@ import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } fr
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { getPermissions } from '@/utils/roleUtils';
 
-export const GET = withAuth(async (context: AuthContext, req: Request) => {
-  const { searchParams } = new URL(req.url);
-  const eventStartDate = searchParams.get('eventStartDate');
-  const eventEndDate = searchParams.get('eventEndDate');
-
-  const client = await clientPromise;
-  const db = client.db('degano-app');
-
-  // PASO 1: Limpiar scheduledUses expirados y actualizar estados (solo si NO estamos en modo evento)
-  if (!eventStartDate && !eventEndDate) {
+// Función de cleanup en background (no bloquea la respuesta)
+async function cleanupExpiredScheduledUses(db: any, userId: string) {
+  try {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
 
-    // Buscar equipos con scheduledUses
     const equipmentWithScheduled = await db
       .collection('equipment')
       .find({
@@ -32,38 +23,27 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
     for (const eq of equipmentWithScheduled) {
       const scheduledUses = eq.scheduledUses || [];
 
-      // Filtrar usos que ya pasaron
       const activeUses = scheduledUses.filter((use: any) => {
         const endDate = new Date(use.endDate);
-        endDate.setHours(0, 0, 0, 0);
         return endDate >= now;
       });
 
       const expiredUses = scheduledUses.filter((use: any) => {
         const endDate = new Date(use.endDate);
-        endDate.setHours(0, 0, 0, 0);
         return endDate < now;
       });
 
-      // Si hubo cambios (usos expirados), actualizar
       if (expiredUses.length > 0) {
-        console.log(`=== LIMPIANDO ${expiredUses.length} USOS EXPIRADOS PARA: ${eq.name} ===`);
-
-        // Verificar si el equipo está actualmente en uso
         const isCurrentlyInUse = activeUses.some((use: any) => {
           const startDate = new Date(use.startDate);
           const endDate = new Date(use.endDate);
-          startDate.setHours(0, 0, 0, 0);
-          endDate.setHours(0, 0, 0, 0);
           return now >= startDate && now <= endDate;
         });
 
-        // Actualizar scheduledUses y estado del equipo
         const updateData: any = {
           scheduledUses: activeUses
         };
 
-        // Si ya no está en uso, limpiar estado
         if (!isCurrentlyInUse && eq.outOfService?.reason === 'En Evento') {
           updateData.location = 'Deposito';
           updateData.lastUsedStartDate = null;
@@ -74,13 +54,12 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
             details: null
           };
 
-          // Registrar en historial
           await createHistoryEntry(db, {
             equipmentId: eq._id.toString(),
             equipmentName: eq.name,
             equipmentCode: eq.code,
             action: 'cambio_estado',
-            userId: context.user?.sub || 'SYSTEM',
+            userId: userId || 'SYSTEM',
             fromValue: 'En Evento',
             toValue: 'Disponible',
             details: `Liberado automáticamente - evento finalizado`
@@ -93,10 +72,25 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
         );
       }
     }
+  } catch (error) {
+    console.error('[cleanupExpiredScheduledUses] Error:', error);
+  }
+}
+
+export const GET = withAuth(async (context: AuthContext, req: Request) => {
+  const { searchParams } = new URL(req.url);
+  const eventStartDate = searchParams.get('eventStartDate');
+  const eventEndDate = searchParams.get('eventEndDate');
+
+  const client = await clientPromise;
+  const db = client.db('degano-app');
+
+  // Cleanup en background (no bloquea la respuesta) - solo cuando NO estamos en modo evento
+  if (!eventStartDate && !eventEndDate) {
+    cleanupExpiredScheduledUses(db, context.user?.sub || 'SYSTEM');
   }
 
-  // PASO 2: Obtener equipos actualizados
-  // Ordenar por createdAt (más viejos primero) y luego alfabéticamente por nombre
+  // Obtener equipos
   const equipments = await db
     .collection('equipment')
     .find()
@@ -110,19 +104,15 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
     if (eventStartDate && eventEndDate) {
       const eStart = new Date(eventStartDate);
       const eEnd = new Date(eventEndDate);
-      eStart.setHours(0, 0, 0, 0);
-      eEnd.setHours(0, 0, 0, 0);
 
-      // Verificar conflictos con scheduledUses
+      // Verificar conflictos con scheduledUses (comparando datetime exacto con hora)
       const scheduledUses = eq.scheduledUses || [];
       const hasConflict = scheduledUses.some((use: any) => {
         const usedStart = new Date(use.startDate);
         const usedEnd = new Date(use.endDate);
-        usedStart.setHours(0, 0, 0, 0);
-        usedEnd.setHours(0, 0, 0, 0);
 
-        // Verificar si hay solapamiento entre las fechas del evento y las fechas de uso programado
-        return eStart <= usedEnd && eEnd >= usedStart;
+        // Solapamiento real: el nuevo evento empieza antes de que termine el uso, y termina después de que empieza
+        return eStart < usedEnd && eEnd > usedStart;
       });
 
       // Si hay conflicto, marcar como no disponible para este evento
@@ -130,6 +120,15 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
         return {
           ...eq,
           outOfService: { isOut: true, reason: 'En Evento' }
+        };
+      }
+
+      // Si NO hay conflicto pero el equipo está marcado como "En Evento" en la DB,
+      // mostrarlo como disponible para esta fecha (su uso actual no afecta la fecha solicitada)
+      if (eq.outOfService?.isOut && eq.outOfService?.reason === 'En Evento') {
+        return {
+          ...eq,
+          outOfService: { isOut: false, reason: null, details: null }
         };
       }
     }

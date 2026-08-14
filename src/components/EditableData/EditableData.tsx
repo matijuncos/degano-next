@@ -7,14 +7,11 @@ import {
   Input,
   Text,
   Textarea,
-  Group,
   UnstyledButton
 } from '@mantine/core';
 import { DateTimePicker, DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import {
   IconEdit,
-  IconStar,
-  IconStarFilled,
   IconPlus,
   IconX
 } from '@tabler/icons-react';
@@ -40,16 +37,14 @@ const EditableData = ({
   onSave?: (value: any) => void;
   disabled?: boolean;
 }) => {
-  const { selectedEvent } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent, updateEventInList } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const [editState, setEditState] = useState({
     showInput: false,
-    showEditableChips: false,
     showEditableRating: false,
     showEditableStringArray: false,
     showEditableDate: false,
     inputValue: value as string | any[] | Date | null,
-    newChip: '',
     newStringItem: ''
   });
   const [textHover, setTextHover] = useState(false);
@@ -78,7 +73,10 @@ const EditableData = ({
         },
         body: JSON.stringify(event)
       });
-      await response.json();
+      const data = await response.json();
+      const updatedEvent = data.event || event;
+      setSelectedEvent(updatedEvent);
+      updateEventInList(updatedEvent);
       notify();
     } catch (error) {
       notify({ type: 'defaultError' });
@@ -137,28 +135,6 @@ const EditableData = ({
 
   const handleInputChange = (e: any) => {
     setEditState((prev) => ({ ...prev, inputValue: e.target.value }));
-  };
-
-  const handleChipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditState((prev) => ({ ...prev, newChip: e.target.value }));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && Array.isArray(editState.inputValue)) {
-      setEditState((prev) => ({
-        ...prev,
-        inputValue: [...(prev.inputValue as string[]), prev.newChip],
-        newChip: ''
-      }));
-    }
-  };
-  const removeChip = (genre: string) => {
-    setEditState((prev) => ({
-      ...prev,
-      inputValue: Array.isArray(prev.inputValue)
-        ? prev.inputValue.filter((val) => val !== genre)
-        : prev.inputValue
-    }));
   };
 
   const rateGenre = (value: any, index: number) => {
@@ -247,6 +223,7 @@ const EditableData = ({
                 : ''
             }
             size='sm'
+            autoComplete='off'
           />
         ) : (
           <Text flex={1} size='sm' c='white'>
@@ -311,17 +288,8 @@ const EditableData = ({
 
   const typeChipsData = () => (
     <>
-      {editState.showEditableChips && (
-        <Input
-          mb='16px'
-          value={editState.newChip}
-          onKeyDown={handleKeyDown}
-          onChange={handleChipChange}
-          placeholder='Add new chip'
-        />
-      )}
       <Flex justify='space-between' style={{marginBottom: '10px'}}>
-        <Flex gap='8px'>
+        <Flex gap='8px' wrap='wrap' style={{width: '100%'}}>
           {Array.isArray(editState.inputValue) &&
           editState.inputValue.length > 0 ? (
             editState.inputValue.map((genre, i) => (
@@ -330,19 +298,12 @@ const EditableData = ({
                 style={{
                   borderRadius: '6px',
                   padding: '3px 6px',
-                  backgroundColor: property === 'required' ? 'green' : 'red'
+                  backgroundColor: property === 'required' ? '#2f9e44' : '#e03131'
                 }}
               >
                 <Text fw='600' c='white'>
                   {genre}
                 </Text>
-                {editState.showEditableChips && (
-                  <CloseIcon
-                    size={'22'}
-                    cursor='pointer'
-                    onClick={() => removeChip(genre)}
-                  />
-                )}
               </Flex>
             ))
           ) : (
@@ -353,24 +314,6 @@ const EditableData = ({
             </Text>
           )}
         </Flex>
-        {editState.showEditableChips ? (
-          <CheckIcon
-            style={{ marginLeft: '12px' }}
-            cursor='pointer'
-            size={22}
-            color='green'
-            onClick={() => toggleEdit('showEditableChips', 'save')}
-          />
-        ) : (
-          !disabled && (
-            <IconEdit
-              cursor='pointer'
-              style={{ marginLeft: '12px' }}
-              size={22}
-              onClick={() => toggleEdit('showEditableChips', 'open')}
-            />
-          )
-        )}
       </Flex>
     </>
   );
@@ -749,6 +692,7 @@ const EditableData = ({
               onKeyDown={handleStringArrayKeyDown}
               placeholder={`Agregar ${title?.toLowerCase() || 'elemento'}`}
               size='sm'
+              autoComplete='off'
             />
             <IconPlus
               cursor='pointer'

@@ -9,6 +9,28 @@ export interface ExtraContact {
   type: 'contact';
 }
 
+// Equipamiento "negativo" / a tercerizar (excede el stock real). Solo datos de
+// display: nombre + categoría + cantidad. No representa unidades del inventario.
+export interface ExtraEquipmentItem {
+  name: string;
+  categoryId?: string;
+  mainCategoryName?: string;
+  quantity: number;
+}
+
+export interface BudgetAnnex {
+  id: string;
+  description: string;
+  amount: string;
+}
+
+export interface BudgetFile {
+  id: string;
+  url: string;
+  fileName: string;
+  uploadedAt: string;
+}
+
 export interface ExtraClient {
   _id?: string;
   fullName: string;
@@ -54,15 +76,23 @@ export interface EventModel {
   bands: Array<Band>;
   music: Music;
   equipment: NewEquipment[];
+  // Equipamiento "negativo" / a tercerizar: cantidades por nombre que exceden el
+  // stock real disponible (se muestran en rojo). NO son unidades del inventario:
+  // no tienen _id ni scheduledUses y NO afectan la disponibilidad real.
+  extraEquipment?: ExtraEquipmentItem[];
   equipmentPrice: number;
   payment: {
     upfrontAmount: string;
+    upfrontDescription?: string; // Info extra / concepto del adelanto
     totalPaymentDate?: Date;
     totalToPay: string;
     partialPaymentDate: Date;
     partialPayed: boolean;
     totalPayed: boolean;
     subsequentPayments?: any[];
+    annexes?: BudgetAnnex[];
+    budgetFileUrl?: string;
+    budgetFiles?: BudgetFile[];
   };
   moreData: string;
   date: Date | string;
@@ -98,6 +128,19 @@ export interface EventModel {
   staffArrivalTime?: string;
   equipmentArrivalDate?: string | Date;
   equipmentArrivalTime?: string;
+  equipmentCategoryOrder?: string[];
+  // Orden de los equipos (por nombre) DENTRO de cada categoría.
+  // Mapa: nombre de categoría → lista ordenada de nombres de equipo.
+  equipmentItemOrder?: { [categoryName: string]: string[] };
+  files?: {
+    url: string;
+    name: string;
+    mimeType: string;
+    uploadedAt: string;
+  }[];
+  // Identificador único para la "carpeta" (prefijo) de archivos en S3.
+  // Independiente del _id: se genera al crear el evento y nunca cambia.
+  folderId?: string;
 }
 export interface SelectedEventType extends EventModel {
   title?: string;
@@ -128,6 +171,8 @@ export interface DeganoContextProps {
   setFolderName: Function;
   authToken: string;
   setAuthToken: Function;
+  updateEventInList: (event: EventModel) => void;
+  addEventToList: (event: EventModel) => void;
 }
 export interface DataverseProviderProps {
   children: ReactNode;

@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 30,
     fontSize: 11,
-    paddingBottom: 40 // Reducido de 60 a 40 para aprovechar mejor el espacio
+    paddingBottom: 30
   },
   header: {
     flexDirection: 'row',
@@ -53,7 +53,7 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
   event,
   categories = []
 }) => {
-  const eventTitle = `${new Date(event.date).toLocaleDateString()} - ${event.type} - ${event.lugar}`;
+  const eventTitle = `${new Date(event.date).toLocaleDateString('es-AR')} - ${event.type} - ${event.lugar}`;
 
   const PageHeader = () => (
     <View style={styles.header}>
@@ -76,7 +76,9 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
   );
   const hasTiming = event.timing && event.timing.length > 0;
   const hasMoreData = event.moreData && Object.keys(event.moreData).length > 0;
-  const hasEquipment = event.equipment && event.equipment.length > 0;
+  const hasEquipment =
+    (event.equipment && event.equipment.length > 0) ||
+    (event.extraEquipment && event.extraEquipment.length > 0);
 
   return (
     <Document>

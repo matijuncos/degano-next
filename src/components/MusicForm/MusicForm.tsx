@@ -44,6 +44,7 @@ const MusicForm = forwardRef<MusicFormRef, {
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
   hideNavigation?: boolean;
   hiddenSections?: string[];
 }>(({
@@ -51,6 +52,7 @@ const MusicForm = forwardRef<MusicFormRef, {
   onNextTab,
   onBackTab,
   updateEvent,
+  onFormDataChange,
   hideNavigation = false,
   hiddenSections = []
 }, ref) => {
@@ -142,6 +144,18 @@ const MusicForm = forwardRef<MusicFormRef, {
     }
   }, [dbGenres, event.music.genres]);
 
+  // Sincronizar spotifyLinks con musicData.playlist
+  useEffect(() => {
+    setMusicData(prev => ({ ...prev, playlist: spotifyLinks }));
+  }, [spotifyLinks]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(musicData);
+    }
+  }, [musicData, onFormDataChange]);
+
   // Expose getData function via ref
   useImperativeHandle(ref, () => ({
     getData: () => ({
@@ -205,30 +219,28 @@ const MusicForm = forwardRef<MusicFormRef, {
     });
   };
 
-  const deleteSongForbidden = (arg: any) => {
-    const newList = musicData?.music.forbidden.filter((song) => song !== arg);
+  const deleteSongForbidden = (indexToDelete: number) => {
     setMusicData((prevData: any) => {
       if (!prevData) return null;
       return {
         ...prevData,
         music: {
           ...prevData.music,
-          forbidden: newList
+          forbidden: prevData.music.forbidden.filter((_: string, i: number) => i !== indexToDelete)
         },
         allDay: prevData.allDay ?? false
       };
     });
   };
 
-  const deleteSongRequired = (arg: any) => {
-    const newList = musicData?.music.required.filter((song) => song !== arg);
+  const deleteSongRequired = (indexToDelete: number) => {
     setMusicData((prevData: any) => {
       if (!prevData) return null;
       return {
         ...prevData,
         music: {
           ...prevData.music,
-          required: newList
+          required: prevData.music.required.filter((_: string, i: number) => i !== indexToDelete)
         },
         allDay: prevData.allDay ?? false
       };
@@ -542,6 +554,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -582,6 +595,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -622,6 +636,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Firmas'
@@ -632,6 +647,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Salida'
@@ -642,6 +658,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
 
               {(musicData.ceremoniaCivil?.otros || []).length > 0 && (
@@ -666,6 +683,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <TextInput
                       label='Canción'
@@ -682,6 +700,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <ActionIcon
                       color='red'
@@ -724,6 +743,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Firmas'
@@ -734,6 +754,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <TextInput
                 label='Salida'
@@ -744,6 +765,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 }
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
 
               {(musicData.ceremoniaExtra?.otros || []).length > 0 && (
@@ -768,6 +790,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <TextInput
                       label='Canción'
@@ -784,6 +807,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <ActionIcon
                       color='red'
@@ -826,6 +850,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -866,6 +891,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -911,6 +937,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                         style={{ flex: 1 }}
                         size='sm'
                         disabled={!canEditEvents}
+                        autoComplete='off'
                       />
                       <ActionIcon
                         color='red'
@@ -953,6 +980,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                             e.currentTarget.value = '';
                           }
                         }}
+                        autoComplete='off'
                       />
                     </Box>
                   </Stack>
@@ -987,6 +1015,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                     style={{ flex: 1 }}
                     size='sm'
                     disabled={!canEditEvents}
+                    autoComplete='off'
                   />
                   <ActionIcon
                     color='red'
@@ -1035,6 +1064,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <TextInput
                       label='Canción'
@@ -1046,6 +1076,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                       style={{ flex: 1 }}
                       size='sm'
                       disabled={!canEditEvents}
+                      autoComplete='off'
                     />
                     <ActionIcon
                       color='red'
@@ -1163,6 +1194,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onKeyDown={handleForbidden}
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
               <Input
                 className={styles.input}
@@ -1171,21 +1203,19 @@ const MusicForm = forwardRef<MusicFormRef, {
                 onKeyDown={handleRequired}
                 size='sm'
                 disabled={!canEditEvents}
+                autoComplete='off'
               />
             </div>
             <div className={styles.inputPair}>
               <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
                 {musicData?.music.forbidden.map((song, index) => {
                   return (
-                    <div key={song + index} style={{ margin: '8px' }}>
+                    <div key={`forbidden-${index}`} style={{ margin: '8px' }}>
                       <Chip
                         icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-                        id='forbidden'
                         color='red'
-                        defaultChecked
-                        onClick={() => {
-                          deleteSongForbidden(song);
-                        }}
+                        checked
+                        onChange={() => deleteSongForbidden(index)}
                         size='sm'
                       >
                         {song}
@@ -1197,13 +1227,12 @@ const MusicForm = forwardRef<MusicFormRef, {
               <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
                 {musicData?.music.required.map((song, index) => {
                   return (
-                    <div key={song + index} style={{ margin: '8px' }}>
+                    <div key={`required-${index}`} style={{ margin: '8px' }}>
                       <Chip
-                        defaultChecked
+                        checked
                         color='green'
                         icon={<IconX style={{ width: rem(16), height: rem(16) }} />}
-                        id='required'
-                        onClick={() => deleteSongRequired(song)}
+                        onChange={() => deleteSongRequired(index)}
                         size='sm'
                       >
                         {song}
@@ -1231,6 +1260,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   style={{ flex: 1 }}
                   size='sm'
                   disabled={!canEditEvents}
+                  autoComplete='off'
                 />
                 <TextInput
                   placeholder='Spotify playlist URL'
@@ -1240,6 +1270,7 @@ const MusicForm = forwardRef<MusicFormRef, {
                   style={{ flex: 2 }}
                   size='sm'
                   disabled={!canEditEvents}
+                  autoComplete='off'
                 />
                 <Button size='sm' onClick={addSpotifyLinkButton} disabled={!canEditEvents}>
                   Agregar

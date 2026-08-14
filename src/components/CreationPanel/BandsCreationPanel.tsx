@@ -351,6 +351,7 @@ export default function BandsCreationPanel({
               label='Nombre de la banda'
               value={formData.bandName || ''}
               onChange={(e) => handleInput('bandName', e.currentTarget.value)}
+              autoComplete='off'
             />
             <Textarea
               label='Info de la banda'
@@ -459,16 +460,19 @@ export default function BandsCreationPanel({
               label='Rol'
               value={formData.rol || ''}
               onChange={(e) => handleInput('rol', e.currentTarget.value)}
+              autoComplete='off'
             />
             <TextInput
               label='Nombre del contacto'
               value={formData.name || ''}
               onChange={(e) => handleInput('name', e.currentTarget.value)}
+              autoComplete='off'
             />
             <TextInput
               label='Teléfono'
               value={formData.phone || ''}
               onChange={(e) => handleInput('phone', e.currentTarget.value)}
+              autoComplete='off'
             />
           </>
         )}

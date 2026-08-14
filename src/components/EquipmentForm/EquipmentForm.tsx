@@ -1,25 +1,29 @@
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
+import ApplySetModal from '@/components/ApplySetModal/ApplySetModal';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Box, Button, Modal } from '@mantine/core';
+import { Box, Button, Modal, Group } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import EquipmentList from './EquipmentList';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { IconLayersLinked } from '@tabler/icons-react';
 
 const EquipmentForm = ({
   event,
   onNextTab,
   onBackTab,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
 
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -30,6 +34,7 @@ const EquipmentForm = ({
   const [modalOpened, setModalOpened] = useState(false);
   const [previousSelection, setPreviousSelection] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [applySetModalOpen, setApplySetModalOpen] = useState(false);
 
   // Cargar categorías al montar el componente
   useEffect(() => {
@@ -51,6 +56,13 @@ const EquipmentForm = ({
       setEventEquipment(event);
     }
   }, [event]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventEquipment);
+    }
+  }, [eventEquipment, onFormDataChange]);
 
   // Estilos para ocultar scrollbar pero mantener funcionalidad
   const scrollContainerStyle = {
@@ -101,44 +113,71 @@ const EquipmentForm = ({
     setModalOpened(true);
   };
 
-  const handleEquipmentSelection = (equipmentSelected: NewEquipment) => {
-    if (equipmentSelected.outOfService.isOut) return;
+  const handleEquipmentSelection = (equipmentSelected: NewEquipment | NewEquipment[]) => {
+    const itemsToAdd = Array.isArray(equipmentSelected) ? equipmentSelected : [equipmentSelected];
+    const validItems = itemsToAdd.filter((item) => !item.outOfService?.isOut);
+    if (validItems.length === 0) return;
+
     setEventEquipment((prev) => {
-      const alreadyAdded = prev.equipment.some(
-        (eq) => eq._id === equipmentSelected._id
-      );
-      if (alreadyAdded) return prev;
-
-      // Calcular mainCategoryId y mainCategoryName
-      let mainCategoryId = '';
-      let mainCategoryName = 'Sin categoría';
-
-      if (equipmentSelected.categoryId && categories.length > 0) {
-        const mainCategory = findMainCategorySync(
-          equipmentSelected.categoryId,
-          categories
-        );
-        if (mainCategory) {
-          mainCategoryId = mainCategory.id;
-          mainCategoryName = mainCategory.name;
-        }
-      }
-
-      return {
-        ...prev,
-        equipment: [
-          ...prev.equipment,
-          {
-            ...equipmentSelected,
+      const newItems = validItems
+        .filter((item) => !prev.equipment.some((eq) => eq._id === item._id))
+        .map((item) => {
+          let mainCategoryId = '';
+          let mainCategoryName = 'Sin categoría';
+          if (item.categoryId && categories.length > 0) {
+            const mainCategory = findMainCategorySync(item.categoryId, categories);
+            if (mainCategory) {
+              mainCategoryId = mainCategory.id;
+              mainCategoryName = mainCategory.name;
+            }
+          }
+          return {
+            ...item,
             lastUsedStartDate: prev.date,
             lastUsedEndDate: prev.endDate,
             mainCategoryId,
             mainCategoryName
-          }
-        ],
+          };
+        });
+
+      if (newItems.length === 0) return prev;
+
+      return {
+        ...prev,
+        equipment: [...prev.equipment, ...newItems],
         equipmentPrice: total
       };
     });
+  };
+
+  // Agregar N "negativos" (a tercerizar) para un nombre. Array separado: no toca
+  // el inventario real ni la disponibilidad.
+  const handleAddNegative = (name: string, categoryId: string, qty: number) => {
+    if (!name || !qty || qty < 1) return;
+    let mainCategoryName = 'Sin categoría';
+    if (categoryId && categories.length > 0) {
+      const mc = findMainCategorySync(categoryId, categories);
+      if (mc) mainCategoryName = mc.name;
+    }
+    setEventEquipment((prev) => {
+      const existing = prev.extraEquipment || [];
+      const idx = existing.findIndex(
+        (e) => e.name === name && (e.mainCategoryName || 'Sin categoría') === mainCategoryName
+      );
+      const next =
+        idx >= 0
+          ? existing.map((e, i) => (i === idx ? { ...e, quantity: e.quantity + qty } : e))
+          : [...existing, { name, categoryId, mainCategoryName, quantity: qty }];
+      return { ...prev, extraEquipment: next };
+    });
+  };
+
+  // Quitar todos los "a tercerizar" cargados para un nombre.
+  const handleRemoveNegativeByName = (name: string) => {
+    setEventEquipment((prev) => ({
+      ...prev,
+      extraEquipment: (prev.extraEquipment || []).filter((e) => e.name !== name)
+    }));
   };
 
   return (
@@ -171,6 +210,7 @@ const EquipmentForm = ({
               eventStartDate={eventEquipment.date}
               eventEndDate={eventEquipment.endDate}
               disableEditOnSelect={true}
+              onApplySet={() => setApplySetModalOpen(true)}
             />
           </Box>
         </Panel>
@@ -202,12 +242,21 @@ const EquipmentForm = ({
                   equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
                 }));
               }}
+              onRemoveMultiple={(ids: string[]) => {
+                setEventEquipment((prev) => ({
+                  ...prev,
+                  equipment: prev.equipment.filter((eq) => !ids.includes(eq._id))
+                }));
+              }}
               onCancel={handleCancel}
               newEvent={true}
               eventStartDate={eventEquipment.date}
               eventEndDate={eventEquipment.endDate}
               selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
               refreshTrigger={refreshTrigger}
+              onAddNegative={handleAddNegative}
+              onRemoveNegative={handleRemoveNegativeByName}
+              extraEquipment={eventEquipment.extraEquipment}
             />
           </Box>
         </Panel>
@@ -231,6 +280,9 @@ const EquipmentForm = ({
               equipmentList={eventEquipment.equipment}
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
+              equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
+              extraEquipment={eventEquipment.extraEquipment}
+              equipmentItemOrder={eventEquipment.equipmentItemOrder}
             />
           </Box>
         </Panel>
@@ -266,6 +318,15 @@ const EquipmentForm = ({
           Siguiente
         </Button>
       </div>
+
+      <ApplySetModal
+        opened={applySetModalOpen}
+        onClose={() => setApplySetModalOpen(false)}
+        eventStartDate={eventEquipment.date}
+        eventEndDate={eventEquipment.endDate}
+        selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+        onApply={(items) => handleEquipmentSelection(items)}
+      />
     </div>
   );
 };

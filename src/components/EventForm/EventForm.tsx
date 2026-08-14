@@ -1,6 +1,6 @@
 import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { EventModel } from '@/context/types';
 import { Button, Input, Divider, Text, Select, ComboboxItem, Grid } from '@mantine/core';
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
@@ -12,7 +12,8 @@ const EventForm = ({
   onBackTab,
   validate,
   setValidate,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
@@ -20,6 +21,7 @@ const EventForm = ({
   validate: boolean;
   setValidate: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
   // Función para parsear fechas ISO sin conversión de zona horaria
   const parseISODate = (dateString: string | Date | null | undefined): Date | null => {
@@ -131,7 +133,9 @@ const EventForm = ({
   }, [event]);
 
   useEffect(() => {
-    const combined = combineDateAndTime(dateOnly, timeOnly);
+    // Guardar fecha aunque no haya hora (usar 00:00 como default)
+    const time = timeOnly || '00:00';
+    const combined = combineDateAndTime(dateOnly, time);
     if (combined) {
       const updatedData = { ...eventData, date: combined };
       setEventData(updatedData);
@@ -145,7 +149,9 @@ const EventForm = ({
   }, [dateOnly, timeOnly]);
 
   useEffect(() => {
-    const combined = combineDateAndTime(endDateOnly, endTimeOnly);
+    // Guardar fecha aunque no haya hora (usar 00:00 como default)
+    const time = endTimeOnly || '00:00';
+    const combined = combineDateAndTime(endDateOnly, time);
     if (combined) {
       const updatedData = { ...eventData, endDate: combined };
       setEventData(updatedData);
@@ -186,6 +192,13 @@ const EventForm = ({
     }
   }, [equipmentArrivalDateOnly]);
 
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventData);
+    }
+  }, [eventData, onFormDataChange]);
+
   const requiredFields: (keyof EventModel)[] = [
     'date',
     'endDate',
@@ -207,10 +220,18 @@ const EventForm = ({
     }
   };
 
+  // Valida en tiempo real si la fecha/hora de fin es anterior a la de inicio
+  const endBeforeStart = useMemo(() => {
+    const start = combineDateAndTime(dateOnly, timeOnly);
+    const end = combineDateAndTime(endDateOnly, endTimeOnly);
+    if (!start || !end) return false;
+    return end <= start;
+  }, [dateOnly, timeOnly, endDateOnly, endTimeOnly]);
+
   const validateTimes = () => {
     const timeValid = timeOnly && timeOnly.trim() !== '';
     const endTimeValid = endTimeOnly && endTimeOnly.trim() !== '';
-    return timeValid && endTimeValid;
+    return timeValid && endTimeValid && !endBeforeStart;
   };
 
   const validateRequiredFields = () => {
@@ -520,7 +541,13 @@ const EventForm = ({
             name='endTimeOnly'
             value={endTimeOnly}
             onChange={(value: string) => setEndTimeOnly(value)}
-            error={validate && !endTimeOnly}
+            error={
+              validate && !endTimeOnly
+                ? true
+                : endBeforeStart
+                ? 'La fecha y hora de finalización es anterior a la de inicio'
+                : undefined
+            }
           />
         </Grid.Col>
 

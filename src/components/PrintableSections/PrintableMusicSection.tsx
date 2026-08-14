@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6aa74f',
     paddingHorizontal: 10,
     paddingVertical: 2,
-    marginBottom: 16,
+    marginBottom: 12,
     borderRadius: 4
   },
   sectionTitle: {
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textTransform: 'uppercase'
   },
-  section: { marginBottom: 12 },
+  section: {},
   subsection: { marginBottom: 12 },
   fieldRow: {
     flexDirection: 'row',
@@ -103,7 +103,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
   <View style={styles.section}>
     {/* Canciones de Ingreso */}
     {event.welcomeSongs && event.welcomeSongs.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Canciones de Ingreso</Text>
         </View>
@@ -118,7 +118,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Canción de Rosas */}
     {event.walkIn && event.walkIn.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Canción de Rosas</Text>
         </View>
@@ -137,7 +137,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
       event.ceremoniaCivil.firmas ||
       event.ceremoniaCivil.salida ||
       (event.ceremoniaCivil.otros && event.ceremoniaCivil.otros.length > 0)) && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Ceremonia Civil</Text>
         </View>
@@ -178,7 +178,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
       event.ceremoniaExtra.firmas ||
       event.ceremoniaExtra.salida ||
       (event.ceremoniaExtra.otros && event.ceremoniaExtra.otros.length > 0)) && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Ceremonia Extra</Text>
         </View>
@@ -215,7 +215,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Vals */}
     {event.vals && event.vals.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Vals</Text>
         </View>
@@ -230,7 +230,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Apertura de Pista */}
     {event.openingPartySongs && event.openingPartySongs.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Apertura de Pista</Text>
         </View>
@@ -245,7 +245,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Canciones de Cierre */}
     {event.closingSongs && event.closingSongs.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Canciones de Cierre</Text>
         </View>
@@ -260,7 +260,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Momentos Personalizados */}
     {event.customMoments && event.customMoments.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Momentos Personalizados</Text>
         </View>
@@ -275,7 +275,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Música para Ambientar */}
     {event.ambienceMusic && event.ambienceMusic.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Música para Ambientar</Text>
         </View>
@@ -290,7 +290,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Géneros Musicales */}
     {event.music.genres && event.music.genres.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Géneros Musicales</Text>
         </View>
@@ -333,7 +333,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Canciones Prohibidas */}
     {event.music.forbidden && event.music.forbidden.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Prohibidos</Text>
         </View>
@@ -345,7 +345,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Canciones Requeridas */}
     {event.music.required && event.music.required.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Requeridos</Text>
         </View>
@@ -357,7 +357,7 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
 
     {/* Playlists de Spotify */}
     {event.playlist && event.playlist.length > 0 && (
-      <View style={styles.subsection} wrap={false}>
+      <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Playlists de Spotify</Text>
         </View>

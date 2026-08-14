@@ -8,7 +8,8 @@ export default function Sidebar({
   newEvent,
   eventStartDate,
   eventEndDate,
-  disableEditOnSelect = false
+  disableEditOnSelect = false,
+  onApplySet
 }: {
   onSelect: (node: any) => void;
   selectedCategory: any;
@@ -18,9 +19,19 @@ export default function Sidebar({
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
   disableEditOnSelect?: boolean;
+  onApplySet?: () => void;
 }) {
   return (
-    <aside className='border-r h-screen p-2 overflow-y-auto' style={{ width: '100%', height: '100%' }}>
+    <aside
+      className='border-r h-screen p-2'
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
       {!newEvent  &&
         <h2 className='font-bold text-lg mb-2' style={{ textAlign: 'center' }}>
           Equipamiento
@@ -35,6 +46,7 @@ export default function Sidebar({
         eventStartDate={eventStartDate}
         eventEndDate={eventEndDate}
         disableEditOnSelect={disableEditOnSelect}
+        onApplySet={onApplySet}
       />
     </aside>
   );

@@ -245,6 +245,7 @@ const GenresPage = () => {
               placeholder='Nombre del género'
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
+              autoComplete='off'
             />
             <Group justify='flex-end'>
               <Button variant='subtle' onClick={closeEdit} disabled={loading}>

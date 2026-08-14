@@ -15,27 +15,32 @@ const s3 = new S3Client({
 const bucketMap: Record<string, string> = {
   equipment: process.env.AWS_S3_EQUIPMENT_BUCKET_NAME!,
   bands: process.env.AWS_S3_BANDS_BUCKET_NAME!,
+  budgets: process.env.AWS_S3_BUDGETS_BUCKET_NAME!,
+  events: process.env.AWS_S3_EVENTS_BUCKET_NAME || 'degano-events-files',
 };
 
 export async function POST(req: NextRequest) {
-  const { fileName, fileType, bucket } = await req.json();
+  const { fileName, fileType, bucket, folder } = await req.json();
 
   if (!fileName || !fileType || !bucket) {
     return NextResponse.json({ error: 'Missing fileName, fileType or bucket' }, { status: 400 });
   }
 
   const uniqueFileName = `${nanoid()}-${fileName}`;
+  // Si viene un folder, se usa como prefijo => "carpeta" virtual en S3.
+  // Ej: <folder>/<nanoid>-archivo.pdf. Sin folder, queda en la raíz (compat).
+  const key = folder ? `${folder}/${uniqueFileName}` : uniqueFileName;
   const bucketName = bucketMap[bucket];
 
   const command = new PutObjectCommand({
     Bucket: bucketName!,
-    Key: uniqueFileName,
+    Key: key,
     ContentType: fileType
   });
 
   const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 });
 
-  const publicUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFileName}`;
+  const publicUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
   return NextResponse.json({ signedUrl, url: publicUrl });
 }

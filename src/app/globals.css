@@ -83,7 +83,10 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  /* clip en vez de hidden: evita el scroll horizontal igual, pero NO crea un
+     contenedor de scroll (hidden convierte overflow-y en auto y rompe el
+     position:sticky de los descendientes). */
+  overflow-x: clip;
   position: relative;
   min-height: 100%;
 }

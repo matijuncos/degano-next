@@ -227,7 +227,16 @@ export default withPageAuthRequired(function EventPage() {
               </Flex>
             </Flex>
           </Flex>
+          {/* El resaltado se hace 100% en el DOM (ver onRowClick) para NO
+              re-renderizar las 147 filas en cada click (eso causaba el delay). */}
+          <style>{`
+            .events-datatable tr.degano-row-selected td {
+              background-color: rgba(64, 192, 87, 0.15) !important;
+              transition: none !important;
+            }
+          `}</style>
           <Box
+            className='events-datatable'
             style={{
               maxHeight: 'calc(100vh - 200px)',
               overflow: 'auto',
@@ -237,6 +246,18 @@ export default withPageAuthRequired(function EventPage() {
           >
             <DataTable
               highlightOnHover
+              onRowClick={({ event }) => {
+                // Toggle de clase directo en el <tr> clickeado: sin estado React,
+                // sin re-render → resaltado instantáneo.
+                const tr = (event.currentTarget as HTMLElement).closest('tr');
+                if (!tr) return;
+                const wasSelected = tr.classList.contains('degano-row-selected');
+                tr
+                  .closest('table')
+                  ?.querySelectorAll('tr.degano-row-selected')
+                  .forEach((el) => el.classList.remove('degano-row-selected'));
+                if (!wasSelected) tr.classList.add('degano-row-selected');
+              }}
               rowColor={({ date }) => {
                 const now = new Date();
                 if (now <= new Date(date)) return 'green';
@@ -246,7 +267,7 @@ export default withPageAuthRequired(function EventPage() {
                 {
                   accessor: 'date',
                   title: 'Fecha',
-                  render: ({ date }) => new Date(date).toLocaleDateString(),
+                  render: ({ date }) => new Date(date).toLocaleDateString('es-AR'),
                   sortable: true
                 },
                 { accessor: 'type', title: 'Tipo de evento' },
@@ -254,7 +275,7 @@ export default withPageAuthRequired(function EventPage() {
                 {
                   accessor: 'date',
                   title: 'Hora',
-                  render: ({ date }) => new Date(date).toLocaleTimeString()
+                  render: ({ date }) => new Date(date).toLocaleTimeString('es-AR')
                 },
                 { accessor: 'fullName', title: 'Cliente' },
                 {

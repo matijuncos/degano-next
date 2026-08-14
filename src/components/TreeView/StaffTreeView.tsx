@@ -268,6 +268,7 @@ export default function StaffTreeView({
         rightSectionPointerEvents="auto"
         mb="sm"
         mx="0.75rem"
+        autoComplete='off'
       />
       <div
         style={{

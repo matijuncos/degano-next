@@ -1,0 +1,50 @@
+name: Backup diario de MongoDB
+
+# Hace un dump completo de la base y lo sube a S3, todos los días.
+# Independiente del plan de Atlas (funciona en cualquier tier).
+#
+# Requiere estos SECRETS en el repo de GitHub
+# (Settings → Secrets and variables → Actions → New repository secret):
+#   MONGODB_URI            → la connection string de la base
+#   AWS_ACCESS_KEY_ID      → credencial AWS con permiso de PutObject en el bucket
+#   AWS_SECRET_ACCESS_KEY  → "
+#   AWS_REGION             → ej. us-east-2
+#   BACKUP_BUCKET          → nombre del bucket de backups (ej. degano-db-backups)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC diario (~03:00 en Argentina)
+  workflow_dispatch: {}    # permite correrlo a mano desde la pestaña Actions
+
+jobs:
+  backup:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Instalar mongodump (MongoDB Database Tools)
+        run: |
+          set -euo pipefail
+          curl -fsSL https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.10.0.deb -o /tmp/mongotools.deb
+          sudo apt-get update -y
+          sudo apt-get install -y /tmp/mongotools.deb
+          mongodump --version | head -1
+
+      - name: Dump de la base + subida a S3
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y-%m-%d_%H%M%S)
+          FILE="degano-backup-${STAMP}.archive.gz"
+
+          echo "→ Generando dump comprimido: ${FILE}"
+          mongodump --uri="$MONGODB_URI" --archive="$FILE" --gzip
+
+          echo "→ Subiendo a s3://${BACKUP_BUCKET}/mongo/${FILE}"
+          aws s3 cp "$FILE" "s3://${BACKUP_BUCKET}/mongo/${FILE}"
+
+          echo "✅ Backup listo: ${FILE} ($(du -h "$FILE" | cut -f1))"

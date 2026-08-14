@@ -8,12 +8,14 @@ const ShowForm = ({
   event,
   onNextTab,
   onBackTab,
-  updateEvent
+  updateEvent,
+  onFormDataChange
 }: {
   event: EventModel;
   onNextTab: Function;
   onBackTab: Function;
   updateEvent?: Function;
+  onFormDataChange?: (data: EventModel) => void;
 }) => {
   const [eventData, setEventData] = useState<EventModel>(event);
 
@@ -23,6 +25,13 @@ const ShowForm = ({
       setEventData(event);
     }
   }, [event]);
+
+  // Notificar al padre cuando cambian los datos (para persistir al cambiar de tab)
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(eventData);
+    }
+  }, [eventData, onFormDataChange]);
 
   const next = () => {
     if (updateEvent) {

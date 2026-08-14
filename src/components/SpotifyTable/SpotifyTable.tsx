@@ -11,7 +11,7 @@ import {
 import useNotification from '@/hooks/useNotification';
 
 const SpotifyTable = () => {
-  const { selectedEvent, setSelectedEvent, setLoading } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent, setLoading, updateEventInList } = useDeganoCtx();
   const playlist = selectedEvent?.playlist;
   const notify = useNotification();
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -36,8 +36,11 @@ const SpotifyTable = () => {
         body: JSON.stringify(event)
       });
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      const updatedEvent = data.event || event;
       notify();
-      setSelectedEvent(data.event);
+      setSelectedEvent(updatedEvent);
+      updateEventInList(updatedEvent);
     } catch (error) {
       notify({type: 'defaultError'});
       console.log(error);
@@ -106,6 +109,7 @@ const SpotifyTable = () => {
                       value={editedLabel}
                       onChange={(e) => setEditedLabel(e.target.value)}
                       size='xs'
+                      autoComplete='off'
                     />
                   ) : (
                     <Text size='sm' fw={500}>
@@ -119,6 +123,7 @@ const SpotifyTable = () => {
                       value={editedUrl}
                       onChange={(e) => setEditedUrl(e.target.value)}
                       size='xs'
+                      autoComplete='off'
                     />
                   ) : (
                     <Group gap='xs'>
@@ -184,12 +189,14 @@ const SpotifyTable = () => {
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               size='sm'
+              autoComplete='off'
             />
             <TextInput
               label='Dirección'
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               size='sm'
+              autoComplete='off'
             />
             <Button onClick={handleAddNew} size='sm'>
               <IconPlus size={16} />

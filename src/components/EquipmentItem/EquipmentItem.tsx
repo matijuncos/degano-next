@@ -100,11 +100,13 @@ const EquipmentItem: React.FC<EquipmentItemProps> = ({
               placeholder='Especifica el nombre'
               onChange={(e) => setChildName(e.target.value)}
               value={childName}
+              autoComplete='off'
             />
             <Input
               placeholder='Especifica el precio'
               onChange={(e) => setChildPrice(e.target.value)}
               value={childPrice}
+              autoComplete='off'
             />
             <Button
               onClick={() => {

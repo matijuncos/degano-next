@@ -21,11 +21,13 @@ import { usePermissions } from '@/hooks/usePermissions';
 const EditableBand = ({
   band,
   allBands,
+  eventBands = [],
   onSave,
   onCancel
 }: {
   band?: Band;
   allBands: Band[];
+  eventBands?: Band[];
   onSave: (band: Band) => void;
   onCancel: () => void;
 }) => {
@@ -50,8 +52,10 @@ const EditableBand = ({
       const uniqueFiles = [...new Set(allFiles)];
 
       // Asegurar que fileUrls esté inicializado con todos los archivos
+      // Deep copy de contacts para no mutar la referencia original
       const updatedBand = {
         ...band,
+        contacts: band.contacts?.map(c => ({ ...c })) || [],
         fileUrls: uniqueFiles
       };
       setBandData(updatedBand);
@@ -180,14 +184,17 @@ const EditableBand = ({
   };
 
   const handleSaveContact = (contact: ExtraContact) => {
-    setBandData((prev) => ({
-      ...prev,
-      contacts: selectedContact
-        ? prev.contacts.map((c) =>
-            c.name === selectedContact.name ? contact : c
-          )
-        : [...prev.contacts, contact]
-    }));
+    setBandData((prev) => {
+      if (!selectedContact) {
+        return { ...prev, contacts: [...prev.contacts, contact] };
+      }
+      // Usar _id si existe, sino comparar por índice para evitar colisiones con _id vacío
+      const idx = prev.contacts.indexOf(selectedContact);
+      return {
+        ...prev,
+        contacts: prev.contacts.map((c, i) => (i === idx ? contact : c))
+      };
+    });
     setShowEditableContact(false);
     setSelectedContact(null);
   };
@@ -393,7 +400,13 @@ const EditableBand = ({
               clearable
               data={
                 allBands
-                  ?.filter((b) => b._id !== bandData._id)
+                  ?.filter((b) => {
+                    // Excluir la banda actualmente seleccionada
+                    if (b._id === bandData._id) return false;
+                    // Excluir bandas ya agregadas al evento
+                    if (eventBands.some((eb) => eb._id === b._id)) return false;
+                    return true;
+                  })
                   .sort((a, b) => a.bandName.localeCompare(b.bandName))
                   .map((b) => ({
                     value: b._id,
@@ -419,7 +432,7 @@ const EditableBand = ({
                     showTime: selected.showTime,
                     testTime: selected.testTime,
                     bandInfo: selected.bandInfo,
-                    contacts: selected.contacts,
+                    contacts: selected.contacts?.map(c => ({ ...c })) || [],
                     fileUrls: uniqueFiles
                   }));
                 }

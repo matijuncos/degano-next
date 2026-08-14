@@ -28,7 +28,8 @@ import {
   IconPhoto,
   IconFileTypePdf,
   IconFileText,
-  IconFileZip
+  IconFileZip,
+  IconEye
 } from '@tabler/icons-react';
 import { Image } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
@@ -41,11 +42,10 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { obfuscatePhone } from '@/utils/roleUtils';
 
 interface FileItem {
-  id: string;
+  url: string;
   name: string;
-  webViewLink: string;
   mimeType: string;
-  [key: string]: any;
+  uploadedAt: string;
 }
 
 interface StaffMember {
@@ -55,14 +55,13 @@ interface StaffMember {
 }
 
 const DrawerContent = () => {
-  const { selectedEvent, setSelectedEvent, folderName } = useDeganoCtx();
+  const { selectedEvent, setSelectedEvent } = useDeganoCtx();
   const router = useRouter();
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
   const { can, role } = usePermissions();
   const canViewPayments = can('canViewPayments');
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [loadingFiles, setLoadingFiles] = useState(false);
+  const files: FileItem[] = selectedEvent?.files || [];
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -222,32 +221,6 @@ const DrawerContent = () => {
     );
   };
 
-  // Fetch de archivos usando la API
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (!folderName || folderName === 'untitled') return;
-
-      setLoadingFiles(true);
-      try {
-        const response = await fetch('/api/listGoogleDriveFiles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderName })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setFiles(data.files || []);
-        }
-      } catch (error) {
-        console.error('Error fetching files:', error);
-      } finally {
-        setLoadingFiles(false);
-      }
-    };
-
-    fetchFiles();
-  }, [folderName]);
 
   const handleAddStaff = async () => {
     if (!selectedEmployee) {
@@ -294,8 +267,9 @@ const DrawerContent = () => {
         })
       });
 
-      const { event } = await response.json();
-      setSelectedEvent(event);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      setSelectedEvent(data.event);
       setIsStaffModalOpen(false);
       setSelectedEmployee(null);
       notify({ message: 'Staff agregado correctamente' });
@@ -322,8 +296,9 @@ const DrawerContent = () => {
         })
       });
 
-      const { event } = await response.json();
-      setSelectedEvent(event);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      setSelectedEvent(data.event);
       notify({ message: 'Staff eliminado correctamente' });
     } catch (error) {
       notify({ type: 'defaultError' });
@@ -358,6 +333,27 @@ const DrawerContent = () => {
       return acc;
     }, {}) || {};
 
+  // Equipamiento "a tercerizar" (negativo, excede stock) agrupado por categoría
+  const groupedExtraEquipment =
+    (selectedEvent?.extraEquipment || []).reduce((acc: any, item: any) => {
+      let mainCategoryName = item.mainCategoryName;
+      if (!mainCategoryName && item.categoryId && categories.length > 0) {
+        mainCategoryName = findMainCategorySync(item.categoryId, categories)?.name;
+      }
+      if (!mainCategoryName) mainCategoryName = 'Sin categoría';
+      if (!acc[mainCategoryName]) acc[mainCategoryName] = [];
+      acc[mainCategoryName].push(item);
+      return acc;
+    }, {}) || {};
+
+  // Unión de categorías (reales + a tercerizar) para el render del drawer
+  const allEquipmentCategories = Array.from(
+    new Set([
+      ...Object.keys(groupedEquipment),
+      ...Object.keys(groupedExtraEquipment)
+    ])
+  );
+
 
   return (
     <>
@@ -376,9 +372,9 @@ const DrawerContent = () => {
       <Stack gap='xl' style={{ padding: '0 16px', marginBottom: '20px', paddingBottom: '50px' }}>
         {/* FECHA */}
         <Text size='sm' c='dimmed'>
-          {selectedEvent?.start
+          {(selectedEvent?.date || selectedEvent?.start)
             ? capitalizeFirstLetter(
-                new Date(selectedEvent.start).toLocaleDateString('es-AR', {
+                new Date(selectedEvent.date ?? selectedEvent.start!).toLocaleDateString('es-AR', {
                   weekday: 'long',
                   day: '2-digit',
                   month: 'long',
@@ -397,18 +393,18 @@ const DrawerContent = () => {
           </Text>
           <Stack gap='xs'>
             {/* Horario de inicio */}
-            {selectedEvent?.start && (
+            {(selectedEvent?.date || selectedEvent?.start) && (
               <Text size='sm'>
                 <strong>Horario de inicio:</strong>{' '}
-                {format24Hour(selectedEvent.start)}
+                {format24Hour(selectedEvent.date || selectedEvent.start)}
               </Text>
             )}
 
             {/* Horario de finalización */}
-            {selectedEvent?.end && (
+            {selectedEvent?.endDate && (
               <Text size='sm'>
                 <strong>Horario de finalización:</strong>{' '}
-                {format24Hour(selectedEvent.end)}
+                {format24Hour(selectedEvent.endDate)}
               </Text>
             )}
 
@@ -493,6 +489,22 @@ const DrawerContent = () => {
 
         <Divider />
 
+        {/* SECCIÓN: MÁS INFORMACIÓN */}
+        {selectedEvent?.moreData && (
+          <>
+            <Box>
+              <Text fw={700} size='md' mb='sm'>
+                Más Información
+              </Text>
+              <Text size='sm' style={{ whiteSpace: 'pre-wrap' }}>
+                {selectedEvent.moreData}
+              </Text>
+            </Box>
+
+            <Divider />
+          </>
+        )}
+
         {/* SECCIÓN: STAFF */}
         <Box>
           <Group justify='space-between' mb='sm'>
@@ -547,62 +559,132 @@ const DrawerContent = () => {
               <Text fw={700} size='md' mb='sm'>
                 Presupuesto
               </Text>
+
+              {/* Presupuesto inicial */}
               {selectedEvent?.payment?.totalToPay != null && (
-                <Text size='sm' mb='xs'>
-                  Total a pagar:{' '}
-                  {formatPrice(Number(selectedEvent.payment.totalToPay))}
-                </Text>
-              )}
-              {selectedEvent?.equipmentPrice != null && (
-                <Text size='sm' mb='xs'>
-                  Equipamiento: {formatPrice(Number(selectedEvent.equipmentPrice))}
+                <Text size='sm' mb={4}>
+                  {formatPrice(Number(selectedEvent.payment.totalToPay))} - Presupuesto inicial
                 </Text>
               )}
 
+              {/* Anexos (suman al presupuesto) */}
+              {selectedEvent?.payment?.annexes?.map((annex: any, idx: number) => (
+                <Text key={annex.id || idx} size='sm' mb={4}>
+                  {formatPrice(Number(annex.amount))} - {annex.description}
+                </Text>
+              ))}
+
+              {/* Línea + Total (base + anexos) */}
               <Divider
                 variant='dashed'
                 size='sm'
-                my='md'
+                my='xs'
                 style={{ borderColor: '#C9C9C9' }}
               />
+              {(() => {
+                const baseBudget = Number(selectedEvent?.payment?.totalToPay) || 0;
+                const annexesSum = selectedEvent?.payment?.annexes?.reduce(
+                  (sum: number, annex: any) => sum + Number(annex.amount), 0
+                ) || 0;
+                const totalBudget = baseBudget + annexesSum;
 
-              <Text size='sm' fw={500} mb='xs'>
-                Pagos realizados:
-              </Text>
-              {selectedEvent?.payment?.upfrontAmount && (
-                <Text size='sm' pl='md'>
-                  - Adelanto:{' '}
-                  {formatPrice(Number(selectedEvent.payment.upfrontAmount))}
-                </Text>
-              )}
-              {selectedEvent?.payment?.subsequentPayments &&
-                selectedEvent.payment.subsequentPayments.map(
-                  (payment: any, idx: number) => (
-                    <Text key={idx} size='sm' pl='md'>
-                      - {payment.description || 'Pago'}:{' '}
-                      {formatPrice(Number(payment.amount))}
+                // Collect all payments in order
+                const allPayments: { amount: number; label: string }[] = [];
+                if (selectedEvent?.payment?.upfrontAmount) {
+                  const date = selectedEvent.payment.partialPaymentDate
+                    ? new Date(selectedEvent.payment.partialPaymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+                    : '';
+                  allPayments.push({
+                    amount: Number(selectedEvent.payment.upfrontAmount),
+                    label: `Adelanto${date ? ` ${date}` : ''}`
+                  });
+                }
+                if (selectedEvent?.payment?.subsequentPayments) {
+                  selectedEvent.payment.subsequentPayments.forEach((p: any) => {
+                    const date = p.date
+                      ? new Date(p.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+                      : '';
+                    allPayments.push({
+                      amount: Number(p.amount),
+                      label: `${p.description || 'Pago'}${date ? ` ${date}` : ''}`
+                    });
+                  });
+                }
+
+                let runningBalance = totalBudget;
+
+                return (
+                  <>
+                    <Text size='sm' fw={600} mb={4}>
+                      {formatPrice(totalBudget)}
                     </Text>
-                  )
-                )}
 
-              <Divider
-                variant='dashed'
-                size='sm'
-                my='md'
-                style={{ borderColor: '#C9C9C9' }}
-              />
+                    {allPayments.map((p, idx) => {
+                      runningBalance -= p.amount;
+                      return (
+                        <Box key={idx}>
+                          <Text size='sm' c='red' mb={4}>
+                            -{formatPrice(p.amount)} - ({p.label})
+                          </Text>
+                          <Divider
+                            variant='dashed'
+                            size='sm'
+                            my='xs'
+                            style={{ borderColor: '#C9C9C9' }}
+                          />
+                          <Text size='sm' fw={idx === allPayments.length - 1 ? 600 : 400} mb={4}>
+                            {formatPrice(runningBalance)}
+                          </Text>
+                        </Box>
+                      );
+                    })}
 
-              <Text size='sm' fw={500}>
-                Falta pagar:{' '}
-                {formatPrice(
-                  Number(selectedEvent?.payment.totalToPay) -
-                    ((selectedEvent?.payment.subsequentPayments?.reduce(
-                      (sum: number, payment: any) => sum + Number(payment.amount),
-                      0
-                    ) || 0) +
-                      Number(selectedEvent?.payment.upfrontAmount))
-                )}
-              </Text>
+                    {allPayments.length === 0 && (
+                      <Text size='sm' c='dimmed' mb={4}>
+                        Sin pagos registrados
+                      </Text>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* ARCHIVOS DE PRESUPUESTO (solo admin) */}
+              {role === 'admin' && (() => {
+                const files = selectedEvent?.payment?.budgetFiles
+                  || (selectedEvent?.payment?.budgetFileUrl
+                    ? [{ id: 'legacy', url: selectedEvent.payment.budgetFileUrl, fileName: getCleanFileName(selectedEvent.payment.budgetFileUrl) }]
+                    : []);
+                if (files.length === 0) return null;
+                return (
+                  <>
+                    <Divider
+                      variant='dashed'
+                      size='sm'
+                      my='md'
+                      style={{ borderColor: '#C9C9C9' }}
+                    />
+                    <Text size='sm' fw={500} mb='xs'>
+                      Archivos de presupuesto:
+                    </Text>
+                    {files.map((file: any) => (
+                      <Group key={file.id} gap='xs' mb='xs'>
+                        <IconFile size={16} />
+                        <Text size='sm' style={{ flex: 1 }}>
+                          {file.fileName}
+                        </Text>
+                        <ActionIcon
+                          color='blue'
+                          variant='light'
+                          size='sm'
+                          onClick={() => window.open(file.url, '_blank')}
+                        >
+                          <IconEye size={14} />
+                        </ActionIcon>
+                      </Group>
+                    ))}
+                  </>
+                );
+              })()}
             </Box>
 
             <Divider />
@@ -614,10 +696,13 @@ const DrawerContent = () => {
           <Text fw={700} size='md' mb='sm'>
             Equipamiento
           </Text>
-          {Object.keys(groupedEquipment).length > 0 ? (
+          {allEquipmentCategories.length > 0 ? (
             <Stack gap='md'>
-              {Object.keys(groupedEquipment).map((category) => {
-                const equipmentByName = groupEquipmentByNameCount(groupedEquipment[category]);
+              {allEquipmentCategories.map((category) => {
+                const equipmentByName = groupEquipmentByNameCount(
+                  groupedEquipment[category] || []
+                );
+                const extraItems = groupedExtraEquipment[category] || [];
                 return (
                   <Box key={category}>
                     <Text fw={500} size='sm' tt='uppercase' mb='xs'>
@@ -627,6 +712,11 @@ const DrawerContent = () => {
                       {Object.entries(equipmentByName).map(([name, quantity]) => (
                         <Text key={name} size='sm'>
                           {name}{quantity > 1 ? ` x ${quantity}` : ''}
+                        </Text>
+                      ))}
+                      {extraItems.map((item: any, i: number) => (
+                        <Text key={`extra-${i}`} size='sm' c='red'>
+                          {item.name}{item.quantity > 1 ? ` x ${item.quantity}` : ''} (a tercerizar)
                         </Text>
                       ))}
                     </Stack>
@@ -721,15 +811,11 @@ const DrawerContent = () => {
           <Text fw={700} size='md' mb='sm'>
             Archivos
           </Text>
-          {loadingFiles ? (
-            <Text size='sm' c='dimmed'>
-              Cargando archivos...
-            </Text>
-          ) : files.length > 0 ? (
+          {files.length > 0 ? (
             <Group gap='sm'>
               {files.map((file) => (
                 <Card
-                  key={file.id}
+                  key={file.url}
                   withBorder
                   padding='xs'
                   style={{
@@ -737,11 +823,7 @@ const DrawerContent = () => {
                     width: '80px',
                     transition: 'transform 0.1s, box-shadow 0.1s'
                   }}
-                  onClick={() => {
-                    if (file.webViewLink) {
-                      window.open(file.webViewLink, '_blank');
-                    }
-                  }}
+                  onClick={() => window.open(file.url, '_blank')}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.05)';
                     e.currentTarget.style.boxShadow =

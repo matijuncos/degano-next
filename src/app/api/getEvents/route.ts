@@ -2,9 +2,8 @@ import { MongoClient } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { withAuth, AuthContext } from '@/lib/withAuth';
-import { getPermissions, obfuscatePrices, obfuscatePhone } from '@/utils/roleUtils';
+import { getPermissions, obfuscatePhone } from '@/utils/roleUtils';
 
 export const GET = withAuth(
   async (context: AuthContext, req: NextRequest) => {
@@ -13,29 +12,34 @@ export const GET = withAuth(
         clientPromise as Promise<MongoClient>;
       const client = await typedClientPromise;
       const db = client.db('degano-app');
-      const events = await db.collection('events').find().toArray();
 
-      revalidatePath(req.nextUrl.pathname);
+      // Projection liviana: solo campos usados por calendario, lista de eventos y próximos eventos
+      // Los campos pesados (equipment, bands, payment, music, timing, staff, playlist, etc.)
+      // se cargan individualmente cuando se abre un evento via /api/getEvent?id=...
+      const events = await db.collection('events').find({}, {
+        projection: {
+          _id: 1,
+          date: 1,
+          endDate: 1,
+          type: 1,
+          lugar: 1,
+          fullName: 1,
+          phoneNumber: 1,
+          extraClients: 1,
+          createdAt: 1,
+          updatedAt: 1
+        }
+      }).sort({ date: -1 }).toArray();
 
       // Obtener permisos del usuario
       const permissions = getPermissions(context.role);
 
-      // Filtrar datos sensibles según permisos
+      // Ofuscar datos sensibles según permisos
       const filteredEvents = events.map((event) => {
-        // Ofuscar información de pagos si no tiene permiso
-        const payment = permissions.canViewPayments ? event.payment : null;
-
-        // Ofuscar precios de equipamiento si no tiene permiso
-        const equipment = permissions.canViewEquipmentPrices
-          ? event.equipment || []
-          : obfuscatePrices(event.equipment || [], context.role);
-
-        // Ofuscar teléfonos de clientes si no tiene permiso
         const phoneNumber = permissions.canViewClientPhones
           ? event.phoneNumber
           : obfuscatePhone(event.phoneNumber, context.role, 'client');
 
-        // Ofuscar teléfonos de clientes extras
         const extraClients = (event.extraClients || []).map((client: any) => ({
           ...client,
           phoneNumber: permissions.canViewClientPhones
@@ -43,24 +47,10 @@ export const GET = withAuth(
             : obfuscatePhone(client.phoneNumber, context.role, 'client'),
         }));
 
-        // Ofuscar teléfonos de contactos de bandas/shows
-        const bands = (event.bands || []).map((band: any) => ({
-          ...band,
-          contacts: (band.contacts || []).map((contact: any) => ({
-            ...contact,
-            phone: permissions.canViewShowPhones
-              ? contact.phone
-              : obfuscatePhone(contact.phone, context.role, 'show'),
-          })),
-        }));
-
         return {
           ...event,
-          payment,
-          equipment,
           phoneNumber,
           extraClients,
-          bands,
         };
       });
 
