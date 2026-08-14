@@ -126,7 +126,7 @@ const EquipmentTable = () => {
     });
   };
 
-  // Agregar N unidades "negativas" (a alquilar) para un nombre de equipo.
+  // Agregar N unidades "negativas" (a tercerizar) para un nombre de equipo.
   // Van a un array separado (extraEquipment): NO tocan el inventario real ni
   // los scheduledUses, así que no afectan la disponibilidad.
   const handleAddNegative = (name: string, categoryId: string, qty: number) => {
@@ -149,7 +149,7 @@ const EquipmentTable = () => {
     });
   };
 
-  // Quitar todos los "a alquilar" cargados para un nombre.
+  // Quitar todos los "a tercerizar" cargados para un nombre.
   const handleRemoveNegativeByName = (name: string) => {
     setEventEquipment((prev) => ({
       ...prev,
@@ -173,6 +173,24 @@ const EquipmentTable = () => {
       });
     } catch (error) {
       console.error('[saveCategoryOrder] Error:', error);
+    }
+  };
+
+  // Guardar orden de items (dentro de categorías) en background
+  const saveItemOrder = async (newItemOrder: { [categoryName: string]: string[] }) => {
+    if (!selectedEvent?._id) return;
+    setSelectedEvent((prev: any) => prev ? { ...prev, equipmentItemOrder: newItemOrder } : prev);
+    try {
+      await fetch('/api/updateEvent', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: selectedEvent._id,
+          equipmentItemOrder: newItemOrder
+        })
+      });
+    } catch (error) {
+      console.error('[saveItemOrder] Error:', error);
     }
   };
 
@@ -301,6 +319,8 @@ const EquipmentTable = () => {
                 setTotal={setTotal}
                 equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
                 extraEquipment={eventEquipment.extraEquipment}
+                equipmentItemOrder={eventEquipment.equipmentItemOrder}
+                onReorderItems={saveItemOrder}
                 allowSave={hasChanges}
                 onSave={updateEvent}
               />
@@ -430,6 +450,8 @@ const EquipmentTable = () => {
               setTotal={setTotal}
               equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
               extraEquipment={eventEquipment.extraEquipment}
+              equipmentItemOrder={eventEquipment.equipmentItemOrder}
+              onReorderItems={saveItemOrder}
               allowSave={hasChanges}
               onSave={updateEvent}
               onReorder={saveCategoryOrder}

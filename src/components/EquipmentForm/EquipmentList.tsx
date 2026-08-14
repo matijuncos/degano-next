@@ -37,10 +37,39 @@ type CategoryItemProps = {
   handleRemove: (id: string) => void;
   canViewPrices: boolean;
   isDragOverlay?: boolean;
-  // Negativos (a alquilar) de esta categoría, y cómo quitarlos
+  // Negativos (a tercerizar) de esta categoría, y cómo quitarlos
   extraForCategory?: { name: string; quantity: number; mainCategoryName?: string }[];
   handleRemoveNegative?: (name: string, mainCategoryName: string) => void;
+  // Orden de equipos (por nombre) dentro de esta categoría + callback al reordenar
+  itemOrder?: string[];
+  onReorderItems?: (categoryName: string, newNames: string[]) => void;
 };
+
+// Fila de un grupo de equipo (por nombre) arrastrable dentro de la categoría
+function SortableNameGroup({
+  id,
+  disabled = false,
+  children
+}: {
+  id: string;
+  disabled?: boolean;
+  children: (dragHandleProps: Record<string, any>) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id, disabled });
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 1 : 0
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children(disabled ? {} : { ...attributes, ...listeners })}
+    </div>
+  );
+}
 
 function SortableCategoryItem(props: CategoryItemProps) {
   const {
@@ -78,12 +107,202 @@ function CategoryContent({
   isDragOverlay = false,
   dragHandleProps,
   extraForCategory = [],
-  handleRemoveNegative
+  handleRemoveNegative,
+  itemOrder = [],
+  onReorderItems
 }: CategoryItemProps & { dragHandleProps?: Record<string, any> }) {
+  const itemSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   const categoryEquipment = groupedEquipment[categoryName] || [];
   // La categoría puede tener solo negativos (sin equipos reales)
   if (categoryEquipment.length === 0 && extraForCategory.length === 0) return null;
   const groupedByName = groupEquipmentByName(categoryEquipment);
+
+  // Orden de los grupos por nombre: respetar itemOrder guardado, y los nombres
+  // nuevos (recién agregados) van al final.
+  const currentNames = Object.keys(groupedByName);
+  const orderedNames = [
+    ...itemOrder.filter((n) => currentNames.includes(n)),
+    ...currentNames.filter((n) => !itemOrder.includes(n))
+  ];
+
+  const handleItemDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedNames.indexOf(active.id as string);
+    const newIndex = orderedNames.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    onReorderItems?.(categoryName, arrayMove(orderedNames, oldIndex, newIndex));
+  };
+
+  // Renderiza un grupo de equipo (por nombre). `grip` son los props del handle
+  // de arrastre (vacío en el overlay o si no se puede reordenar).
+  const renderNameGroup = (equipmentName: string, grip: Record<string, any>) => {
+    const equipmentGroup = groupedByName[equipmentName];
+    if (!equipmentGroup) return null;
+    const groupKey = `${categoryName}-${equipmentName}`;
+    const isExpanded = expandedGroups.has(groupKey);
+    const totalPrice = equipmentGroup.reduce(
+      (sum: number, eq: any) => sum + (eq.rentalPrice || 0),
+      0
+    );
+    const quantity = equipmentGroup.length;
+
+    const gripBtn = (
+      <ActionIcon
+        size='xs'
+        variant='transparent'
+        style={{
+          cursor: 'grab',
+          color: 'rgba(255,255,255,0.3)',
+          flexShrink: 0,
+          touchAction: 'none'
+        }}
+        title='Arrastrar para reordenar'
+        onClick={(e) => e.stopPropagation()}
+        {...grip}
+      >
+        <FaGripVertical size={9} />
+      </ActionIcon>
+    );
+
+    if (quantity === 1) {
+      const eq = equipmentGroup[0];
+      return (
+        <Stack
+          key={eq._id}
+          gap='2px'
+          style={{
+            padding: '6px 8px',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '4px',
+            borderLeft: '3px solid rgba(64, 192, 87, 0.7)'
+          }}
+        >
+          <Group justify='space-between' gap='xs'>
+            <Group gap='4px' style={{ flex: 1, minWidth: 0 }}>
+              {gripBtn}
+              <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
+                <Text size='sm' fw={600} truncate>
+                  {eq.name}
+                </Text>
+                <Text size='10px' c='dimmed'>
+                  Código: {eq.code || 'N/A'}
+                </Text>
+              </Stack>
+            </Group>
+            <Group gap='4px' style={{ flexShrink: 0 }}>
+              {canViewPrices && (
+                <Text size='xs' c='green' fw={700}>
+                  {formatPrice(eq.rentalPrice || 0)}
+                </Text>
+              )}
+              <ActionIcon
+                size='xs'
+                color='red'
+                variant='subtle'
+                onClick={() => handleRemove(eq._id)}
+                title='Quitar equipo'
+              >
+                <FaTrashAlt size={10} />
+              </ActionIcon>
+            </Group>
+          </Group>
+        </Stack>
+      );
+    }
+
+    return (
+      <Box key={groupKey}>
+        <Stack
+          gap='2px'
+          style={{
+            padding: '6px 8px',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '4px',
+            borderLeft: '3px solid rgba(64, 192, 87, 0.7)',
+            cursor: 'pointer'
+          }}
+          onClick={() => toggleGroup(groupKey)}
+        >
+          <Group justify='space-between' gap='xs'>
+            <Group gap='xs' style={{ flex: 1, minWidth: 0 }}>
+              {gripBtn}
+              <ActionIcon size='xs' variant='subtle' color='gray'>
+                {isExpanded ? (
+                  <FaChevronDown size={10} />
+                ) : (
+                  <FaChevronRight size={10} />
+                )}
+              </ActionIcon>
+              <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
+                <Text size='sm' fw={600} truncate>
+                  {equipmentName} x {quantity}
+                </Text>
+              </Stack>
+            </Group>
+            <Group gap='4px' style={{ flexShrink: 0 }}>
+              {canViewPrices && (
+                <Text size='xs' c='green' fw={700}>
+                  {formatPrice(totalPrice)}
+                </Text>
+              )}
+            </Group>
+          </Group>
+        </Stack>
+
+        {isExpanded && (
+          <Stack gap='xs' pl='md' mt='xs'>
+            {equipmentGroup.map((eq: any) => (
+              <Stack
+                key={eq._id}
+                gap='2px'
+                style={{
+                  padding: '6px 8px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: '4px',
+                  borderLeft: '2px solid rgba(64, 192, 87, 0.3)'
+                }}
+              >
+                <Group justify='space-between' gap='xs'>
+                  <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
+                    <Text size='sm' fw={500} truncate>
+                      {eq.name}
+                    </Text>
+                    <Text size='10px' c='dimmed'>
+                      Código: {eq.code || 'N/A'}
+                    </Text>
+                  </Stack>
+                  <Group gap='4px' style={{ flexShrink: 0 }}>
+                    {canViewPrices && (
+                      <Text size='xs' c='green' fw={600}>
+                        {formatPrice(eq.rentalPrice || 0)}
+                      </Text>
+                    )}
+                    <ActionIcon
+                      size='xs'
+                      color='red'
+                      variant='subtle'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(eq._id);
+                      }}
+                      title='Quitar equipo'
+                    >
+                      <FaTrashAlt size={10} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
+              </Stack>
+            ))}
+          </Stack>
+        )}
+      </Box>
+    );
+  };
 
   return (
     <Box
@@ -129,148 +348,25 @@ function CategoryContent({
       </Group>
 
       <Stack gap='xs' pl='xs'>
-        {Object.keys(groupedByName).map((equipmentName) => {
-          const equipmentGroup = groupedByName[equipmentName];
-          const groupKey = `${categoryName}-${equipmentName}`;
-          const isExpanded = expandedGroups.has(groupKey);
-          const totalPrice = equipmentGroup.reduce(
-            (sum: number, eq: any) => sum + (eq.rentalPrice || 0),
-            0
-          );
-          const quantity = equipmentGroup.length;
+        {isDragOverlay || !onReorderItems ? (
+          orderedNames.map((equipmentName) => renderNameGroup(equipmentName, {}))
+        ) : (
+          <DndContext
+            sensors={itemSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleItemDragEnd}
+          >
+            <SortableContext items={orderedNames} strategy={verticalListSortingStrategy}>
+              {orderedNames.map((equipmentName) => (
+                <SortableNameGroup key={equipmentName} id={equipmentName}>
+                  {(grip) => renderNameGroup(equipmentName, grip)}
+                </SortableNameGroup>
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
 
-          if (quantity === 1) {
-            const eq = equipmentGroup[0];
-            return (
-              <Stack
-                key={eq._id}
-                gap='2px'
-                style={{
-                  padding: '6px 8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '4px',
-                  borderLeft: '3px solid rgba(64, 192, 87, 0.7)'
-                }}
-              >
-                <Group justify='space-between' gap='xs'>
-                  <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
-                    <Text size='sm' fw={600} truncate>
-                      {eq.name}
-                    </Text>
-                    <Text size='10px' c='dimmed'>
-                      Código: {eq.code || 'N/A'}
-                    </Text>
-                  </Stack>
-                  <Group gap='4px' style={{ flexShrink: 0 }}>
-                    {canViewPrices && (
-                      <Text size='xs' c='green' fw={700}>
-                        {formatPrice(eq.rentalPrice || 0)}
-                      </Text>
-                    )}
-                    <ActionIcon
-                      size='xs'
-                      color='red'
-                      variant='subtle'
-                      onClick={() => handleRemove(eq._id)}
-                      title='Quitar equipo'
-                    >
-                      <FaTrashAlt size={10} />
-                    </ActionIcon>
-                  </Group>
-                </Group>
-              </Stack>
-            );
-          }
-
-          return (
-            <Box key={groupKey}>
-              <Stack
-                gap='2px'
-                style={{
-                  padding: '6px 8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '4px',
-                  borderLeft: '3px solid rgba(64, 192, 87, 0.7)',
-                  cursor: 'pointer'
-                }}
-                onClick={() => toggleGroup(groupKey)}
-              >
-                <Group justify='space-between' gap='xs'>
-                  <Group gap='xs' style={{ flex: 1, minWidth: 0 }}>
-                    <ActionIcon size='xs' variant='subtle' color='gray'>
-                      {isExpanded ? (
-                        <FaChevronDown size={10} />
-                      ) : (
-                        <FaChevronRight size={10} />
-                      )}
-                    </ActionIcon>
-                    <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
-                      <Text size='sm' fw={600} truncate>
-                        {equipmentName} x {quantity}
-                      </Text>
-                    </Stack>
-                  </Group>
-                  <Group gap='4px' style={{ flexShrink: 0 }}>
-                    {canViewPrices && (
-                      <Text size='xs' c='green' fw={700}>
-                        {formatPrice(totalPrice)}
-                      </Text>
-                    )}
-                  </Group>
-                </Group>
-              </Stack>
-
-              {isExpanded && (
-                <Stack gap='xs' pl='md' mt='xs'>
-                  {equipmentGroup.map((eq: any) => (
-                    <Stack
-                      key={eq._id}
-                      gap='2px'
-                      style={{
-                        padding: '6px 8px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                        borderRadius: '4px',
-                        borderLeft: '2px solid rgba(64, 192, 87, 0.3)'
-                      }}
-                    >
-                      <Group justify='space-between' gap='xs'>
-                        <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
-                          <Text size='sm' fw={500} truncate>
-                            {eq.name}
-                          </Text>
-                          <Text size='10px' c='dimmed'>
-                            Código: {eq.code || 'N/A'}
-                          </Text>
-                        </Stack>
-                        <Group gap='4px' style={{ flexShrink: 0 }}>
-                          {canViewPrices && (
-                            <Text size='xs' c='green' fw={600}>
-                              {formatPrice(eq.rentalPrice || 0)}
-                            </Text>
-                          )}
-                          <ActionIcon
-                            size='xs'
-                            color='red'
-                            variant='subtle'
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemove(eq._id);
-                            }}
-                            title='Quitar equipo'
-                          >
-                            <FaTrashAlt size={10} />
-                          </ActionIcon>
-                        </Group>
-                      </Group>
-                    </Stack>
-                  ))}
-                </Stack>
-              )}
-            </Box>
-          );
-        })}
-
-        {/* Negativos / a alquilar (en rojo) */}
+        {/* Negativos / a tercerizar (en rojo) */}
         {extraForCategory.map((neg) => (
           <Stack
             key={`neg-${neg.name}`}
@@ -288,7 +384,7 @@ function CategoryContent({
                   {neg.name} x {neg.quantity}
                 </Text>
                 <Text size='10px' c='red' style={{ opacity: 0.85 }}>
-                  A alquilar (excede stock)
+                  A tercerizar (excede stock)
                 </Text>
               </Stack>
               {!isDragOverlay && handleRemoveNegative && (
@@ -297,7 +393,7 @@ function CategoryContent({
                   color='red'
                   variant='subtle'
                   onClick={() => handleRemoveNegative(neg.name, neg.mainCategoryName || categoryName)}
-                  title='Quitar a alquilar'
+                  title='Quitar a tercerizar'
                 >
                   <FaTrashAlt size={10} />
                 </ActionIcon>
@@ -319,6 +415,8 @@ type EquipmentListProps = {
   onSave?: () => void;
   onReorder?: (newOrder: string[]) => void;
   extraEquipment?: { name: string; quantity: number; mainCategoryName?: string; categoryId?: string }[];
+  equipmentItemOrder?: { [categoryName: string]: string[] };
+  onReorderItems?: (newItemOrder: { [categoryName: string]: string[] }) => void;
 };
 
 export default function EquipmentList({
@@ -329,7 +427,9 @@ export default function EquipmentList({
   allowSave = false,
   onSave,
   onReorder,
-  extraEquipment = []
+  extraEquipment = [],
+  equipmentItemOrder = {},
+  onReorderItems
 }: EquipmentListProps) {
   const { can } = usePermissions();
   const canViewPrices = can('canViewEquipmentPrices');
@@ -369,7 +469,7 @@ export default function EquipmentList({
     }));
   };
 
-  // Quitar un negativo (a alquilar) por nombre + categoría
+  // Quitar un negativo (a tercerizar) por nombre + categoría
   const handleRemoveNegative = (name: string, mainCategoryName: string) => {
     setEventEquipment((prev) => ({
       ...prev,
@@ -377,6 +477,13 @@ export default function EquipmentList({
         (e) => !(e.name === name && (e.mainCategoryName || 'Sin categoría') === mainCategoryName)
       )
     }));
+  };
+
+  // Reordenar equipos dentro de una categoría → actualiza el mapa y persiste
+  const handleReorderItems = (categoryName: string, newNames: string[]) => {
+    const newItemOrder = { ...(equipmentItemOrder || {}), [categoryName]: newNames };
+    setEventEquipment((prev) => ({ ...prev, equipmentItemOrder: newItemOrder }));
+    onReorderItems?.(newItemOrder);
   };
 
   const toggleGroup = (groupKey: string) => {
@@ -420,7 +527,7 @@ export default function EquipmentList({
     return acc;
   }, {});
 
-  // Agrupar negativos (a alquilar) por categoría principal
+  // Agrupar negativos (a tercerizar) por categoría principal
   const extraByCategory = (extraEquipment || []).reduce(
     (acc: { [cat: string]: typeof extraEquipment }, item) => {
       let cat = item.mainCategoryName;
@@ -528,6 +635,8 @@ export default function EquipmentList({
                   canViewPrices={canViewPrices}
                   extraForCategory={extraByCategory[categoryName] || []}
                   handleRemoveNegative={handleRemoveNegative}
+                  itemOrder={equipmentItemOrder[categoryName] || []}
+                  onReorderItems={handleReorderItems}
                 />
               ))}
             </SortableContext>
@@ -561,6 +670,7 @@ export default function EquipmentList({
             handleRemove={() => {}}
             canViewPrices={canViewPrices}
             extraForCategory={extraByCategory[activeDragId] || []}
+            itemOrder={equipmentItemOrder[activeDragId] || []}
             isDragOverlay
           />
         ) : null}
