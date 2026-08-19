@@ -118,7 +118,9 @@ const EditableData = ({
         // Handle nested properties like "extraClients.0.fullName" or "timing[0].time"
         if (property.includes('.') || property.includes('[')) {
           setNestedProperty(eventCopy, property, editState.inputValue);
-        } else if (property in eventCopy) {
+        } else {
+          // Setear siempre, aunque el campo no exista todavía en el evento
+          // (ej. campos nuevos como eventProvince en eventos viejos).
           eventCopy[property] = editState.inputValue;
         }
       }
