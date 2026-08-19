@@ -5,6 +5,7 @@ import EditablePayments from '@/components/EditablePayments/EditablePayments';
 import EquipmentTable from '@/components/EquipmentTable/EquipmentTable';
 import Loader from '@/components/Loader/Loader';
 import PDFActions from '@/components/PDFActions/PDFActions';
+import GenerateRemitoButton from '@/components/RemitoRecibo/GenerateRemitoButton';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useDeganoCtx } from '@/context/DeganoContext';
 import { Band, EventModel } from '@/context/types';
@@ -541,6 +542,12 @@ const MainInformation = ({
         property='eventCity'
         title='Localidad'
         value={selectedEvent.eventCity}
+      />
+      <EditableData disabled={!canEditEvents}
+        type='text'
+        property='eventProvince'
+        title='Provincia'
+        value={selectedEvent.eventProvince || ''}
       />
       {selectedEvent.eventAddress && (
         <EditableData disabled={!canEditEvents}
@@ -2374,6 +2381,9 @@ const EventPage = () => {
             ? `${dateString} - ${selectedEvent?.type} - ${selectedEvent?.lugar}`
             : undefined
         }
+        extraActions={
+          selectedEvent ? <GenerateRemitoButton event={selectedEvent} /> : null
+        }
       >
         <EquipmentInformation />
       </PDFActions>
@@ -2470,6 +2480,12 @@ const EventPage = () => {
                 property='eventCity'
                 title='Localidad'
                 value={selectedEvent.eventCity}
+              />
+              <EditableData disabled={!canEditEvents}
+                type='text'
+                property='eventProvince'
+                title='Provincia'
+                value={selectedEvent.eventProvince || ''}
               />
               <EditableData disabled={!canEditEvents}
                 type='text'

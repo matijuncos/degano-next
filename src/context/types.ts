@@ -67,6 +67,7 @@ export interface EventModel {
   guests: string;
   eventAddress: string;
   eventCity: string;
+  eventProvince?: string;
   lugar: string;
   venueContact?: string; // Legacy - mantener para retrocompatibilidad
   venueContactName?: string; // Nuevo campo - nombre del contacto
@@ -141,6 +142,9 @@ export interface EventModel {
   // Identificador único para la "carpeta" (prefijo) de archivos en S3.
   // Independiente del _id: se genera al crear el evento y nunca cambia.
   folderId?: string;
+  // Número de remito asignado (formato "0001 - 00000097"). Se genera una vez
+  // por evento vía /api/remitoNumber y se reutiliza en cada impresión.
+  remitoNumber?: string;
 }
 export interface SelectedEventType extends EventModel {
   title?: string;

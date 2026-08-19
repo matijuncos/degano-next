@@ -21,6 +21,8 @@ interface PDFActionsProps {
   eventTitle?: string;
   showFullEventButton?: boolean;
   isAdmin?: boolean;
+  // Botones adicionales a mostrar junto a los de imprimir (ej. Generar Remito)
+  extraActions?: React.ReactNode;
 }
 
 const PDFActions: React.FC<PDFActionsProps> = ({
@@ -28,7 +30,8 @@ const PDFActions: React.FC<PDFActionsProps> = ({
   children,
   eventTitle,
   showFullEventButton = false,
-  isAdmin = false
+  isAdmin = false,
+  extraActions
 }) => {
   const { selectedEvent } = useDeganoCtx();
   const [categories, setCategories] = useState<any[]>([]);
@@ -101,6 +104,7 @@ const PDFActions: React.FC<PDFActionsProps> = ({
   return (
     <div>
       <Group justify='flex-end' my='md'>
+        {extraActions}
         {showFullEventButton && (
           <Button
             variant='filled'

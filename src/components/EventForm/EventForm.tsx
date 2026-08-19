@@ -214,7 +214,7 @@ const EventForm = ({
     setEventData(updatedData);
 
     // Guardar inmediatamente para que persista al cambiar de tab
-    if (updateEvent && ['eventCity', 'eventAddress', 'venueContact', 'venueContactName', 'venueContactPhone', 'type', 'company', 'guests'].includes(e.target.name)) {
+    if (updateEvent && ['eventCity', 'eventProvince', 'eventAddress', 'venueContact', 'venueContactName', 'venueContactPhone', 'type', 'company', 'guests'].includes(e.target.name)) {
       skipSyncRef.current = true;
       updateEvent(updatedData);
     }
@@ -256,6 +256,7 @@ const EventForm = ({
         // Si existe, hacer PUT para actualizar (solo si hay cambios)
         const hasChanges =
           existingSalon.city !== eventData.eventCity ||
+          existingSalon.province !== eventData.eventProvince ||
           existingSalon.address !== eventData.eventAddress ||
           existingSalon.contactName !== eventData.venueContactName ||
           existingSalon.contactPhone !== eventData.venueContactPhone;
@@ -270,6 +271,7 @@ const EventForm = ({
               _id: existingSalon._id,
               name: eventData.lugar,
               city: eventData.eventCity || '',
+              province: eventData.eventProvince || '',
               address: eventData.eventAddress || '',
               contactName: eventData.venueContactName || '',
               contactPhone: eventData.venueContactPhone || eventData.venueContact || ''
@@ -293,6 +295,7 @@ const EventForm = ({
           body: JSON.stringify({
             name: eventData.lugar,
             city: eventData.eventCity || '',
+            province: eventData.eventProvince || '',
             address: eventData.eventAddress || '',
             contactName: eventData.venueContactName || '',
             contactPhone: eventData.venueContactPhone || eventData.venueContact || ''
@@ -418,6 +421,7 @@ const EventForm = ({
                 updatedData = {
                   ...updatedData,
                   eventCity: selectedSalon.city || '',
+                  eventProvince: selectedSalon.province || '',
                   eventAddress: selectedSalon.address || '',
                   // Siempre usar los datos del salón (aunque sean vacíos)
                   venueContactName: selectedSalon.contactName || '',
@@ -428,6 +432,7 @@ const EventForm = ({
                 updatedData = {
                   ...updatedData,
                   eventCity: '',
+                  eventProvince: '',
                   eventAddress: '',
                   venueContactName: '',
                   venueContactPhone: ''
@@ -494,6 +499,16 @@ const EventForm = ({
             placeholder='Dirección'
             name='eventAddress'
             value={eventData.eventAddress}
+            onChange={handleInputChange}
+            autoComplete='off'
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <Input
+            type='text'
+            placeholder='Provincia'
+            name='eventProvince'
+            value={eventData.eventProvince || ''}
             onChange={handleInputChange}
             autoComplete='off'
           />

@@ -10,6 +10,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 import { BudgetAnnex, BudgetFile } from '@/context/types';
 import { IconPencil } from '@tabler/icons-react';
+import GenerateReciboButton from '@/components/RemitoRecibo/GenerateReciboButton';
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -203,19 +204,19 @@ const EditablePayments = () => {
   };
 
   const handleDeleteBudgetFile = async (fileToDelete: BudgetFile) => {
+    // Optimista: sacar el archivo de la UI al instante (feedback inmediato)
+    const newBudgetFiles = budgetFiles.filter(f => f.id !== fileToDelete.id);
+    setBudgetFiles(newBudgetFiles);
+
+    // Borrar de S3 en segundo plano (fire-and-forget; si falla, solo queda el objeto huérfano)
+    fetch('/api/deleteFromS3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: fileToDelete.url, bucket: 'budgets' })
+    }).catch((error) => console.error('Error deleting from S3:', error));
+
+    // Persistir el evento sin el archivo
     try {
-      await fetch('/api/deleteFromS3', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: fileToDelete.url,
-          bucket: 'budgets'
-        })
-      });
-
-      const newBudgetFiles = budgetFiles.filter(f => f.id !== fileToDelete.id);
-      setBudgetFiles(newBudgetFiles);
-
       const eventUpdated = {
         ...selectedEvent,
         payment: {
@@ -264,6 +265,58 @@ const EditablePayments = () => {
       setLoading(false);
     }
   };
+  // Sube un Recibo generado a S3 y lo agrega a los archivos del evento,
+  // numerado por evento (Recibo 1, Recibo 2, ...) para diferenciar cuál es el más nuevo.
+  const saveGeneratedPdf = async (blob: Blob, cliente: string) => {
+    if (budgetFiles.length >= MAX_BUDGET_FILES) {
+      notify({
+        type: 'defaultError',
+        message: `Máximo ${MAX_BUDGET_FILES} archivos. No se guardó el recibo.`
+      });
+      return;
+    }
+    // El número NO va en el nombre: se calcula dinámicamente al mostrar (por
+    // orden de creación), así al borrar uno el resto se renumera solo.
+    const fecha = new Date().toLocaleDateString('es-AR').replace(/\//g, '-');
+    const fileName = `Recibo - ${cliente || 'Cliente'} - ${fecha}.pdf`;
+    try {
+      const res = await fetch('/api/uploadToS3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName,
+          fileType: 'application/pdf',
+          bucket: 'budgets'
+        })
+      });
+      const { signedUrl, url } = await res.json();
+
+      await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: blob
+      });
+
+      const newFile: BudgetFile = {
+        id: Math.random().toString(36).slice(2, 11),
+        url,
+        fileName,
+        uploadedAt: new Date().toISOString()
+      };
+      const newBudgetFiles = [...budgetFiles, newFile];
+      setBudgetFiles(newBudgetFiles);
+
+      const eventUpdated = {
+        ...selectedEvent,
+        payment: { ...selectedEvent!.payment, budgetFiles: newBudgetFiles }
+      };
+      await updateEvent(eventUpdated);
+    } catch (error) {
+      console.error('Error guardando recibo en el evento:', error);
+      notify({ type: 'defaultError', message: 'No se pudo guardar el recibo en el evento' });
+    }
+  };
+
   const handleEdit = () => {
     if (isEditing) {
       const numericValue = parseFormattedNumber(editedTotalToPay.toString());
@@ -482,6 +535,16 @@ const EditablePayments = () => {
 
   const sumOfPayments = allPayments.reduce((sum, p) => sum + p.amount, 0);
   const remainingPayment = totalBudget - sumOfPayments;
+
+  // Numeración dinámica de recibos guardados: por orden de creación (uploadedAt).
+  // Al borrar uno, el resto se renumera solo (el que era 3 pasa a 2, etc.).
+  const reciboNumberById: Record<string, number> = {};
+  [...budgetFiles]
+    .filter((f) => /^Recibo /i.test(f.fileName))
+    .sort((a, b) => (a.uploadedAt || '').localeCompare(b.uploadedAt || ''))
+    .forEach((f, i) => {
+      reciboNumberById[f.id] = i + 1;
+    });
 
   if (!selectedEvent) return null;
 
@@ -859,7 +922,12 @@ const EditablePayments = () => {
             <Group key={file.id} mb='xs'>
               <IconFile size={20} />
               <Text size='sm' style={{ flex: 1 }}>
-                {file.fileName}
+                {reciboNumberById[file.id]
+                  ? file.fileName.replace(
+                      /^Recibo/i,
+                      `Recibo N° ${reciboNumberById[file.id]}`
+                    )
+                  : file.fileName}
               </Text>
               <ActionIcon
                 color='blue'
@@ -894,6 +962,15 @@ const EditablePayments = () => {
               {budgetFiles.length}/{MAX_BUDGET_FILES} archivos (máx. {MAX_FILE_SIZE_MB} MB c/u)
             </Text>
           )}
+
+          {/* Documentos: Recibo (solo admin). El Remito vive en la sección de equipamiento. */}
+          <Divider my='md' />
+          <Text fw={600} mb='sm'>Documentos</Text>
+          <Group>
+            {selectedEvent && (
+              <GenerateReciboButton event={selectedEvent} onSave={saveGeneratedPdf} />
+            )}
+          </Group>
         </>
       )}
     </>

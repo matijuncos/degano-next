@@ -13,6 +13,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   guests: '',
   eventAddress: '',
   eventCity: '',
+  eventProvince: '',
   lugar: '',
   date: '',
   endDate: '',

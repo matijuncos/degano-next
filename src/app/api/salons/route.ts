@@ -39,7 +39,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
 export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const body = await req.json();
-    const { name, city, address, contactName, contactPhone } = body;
+    const { name, city, address, contactName, contactPhone, province } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -67,6 +67,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     const newSalon = {
       name,
       city: city || '',
+      province: province || '',
       address: address || '',
       contactName: contactName || '',
       contactPhone: contactPhone || '',
@@ -91,7 +92,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const body = await req.json();
-    const { _id, name, city, address, contactName, contactPhone } = body;
+    const { _id, name, city, address, contactName, contactPhone, province } = body;
 
     if (!_id) {
       return NextResponse.json(
@@ -117,6 +118,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         $set: {
           name,
           city: city || '',
+          province: province || '',
           address: address || '',
           contactName: contactName || '',
           contactPhone: contactPhone || '',

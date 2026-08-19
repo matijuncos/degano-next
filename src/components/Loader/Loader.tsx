@@ -11,7 +11,7 @@ const Loader = () => {
         placeItems: 'center'
       }}
     >
-      <Spinner color='green' size='lg' />;
+      <Spinner color='green' size='lg' />
     </Box>
   );
 };
