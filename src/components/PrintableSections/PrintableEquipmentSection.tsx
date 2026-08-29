@@ -117,8 +117,7 @@ interface PrintableEquipmentSectionProps {
 export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps> = ({
   event,
   categories = [],
-  unavailableIds,
-  reasonById = {}
+  unavailableIds
 }) => {
   // Primero agrupar equipos por categoría principal
   const groupedByCategory: { [categoryName: string]: any[] } = {};
@@ -224,25 +223,16 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
                   const unavailableUnits = unavailableIds
                     ? unitsOfName.filter((eq: any) => unavailableIds.has(String(eq._id)))
                     : [];
-                  const unavailableCount = unavailableUnits.length;
-                  const reasons = Array.from(
-                    new Set(
-                      unavailableUnits
-                        .map((eq: any) => reasonById[String(eq._id)])
-                        .filter(Boolean)
-                    )
-                  ).join(', ');
 
                   return (
                   <View key={index} style={styles.equipmentTableRow} wrap={false}>
                     <View style={styles.equipmentNameCell}>
                       <Text>{name}</Text>
-                      {unavailableCount > 0 && (
-                        <Text style={styles.unavailableNote}>
-                          {unavailableCount} no disponible{unavailableCount > 1 ? 's' : ''}
-                          {reasons ? ` (${reasons})` : ''}
+                      {unavailableUnits.map((unit: any, unitIdx: number) => (
+                        <Text key={unitIdx} style={styles.unavailableNote}>
+                          {unit.name}{unit.code ? ` (${unit.code})` : ''} no disponible
                         </Text>
-                      )}
+                      ))}
                     </View>
                     <Text style={styles.equipmentQuantityCell}>
                       {quantity}

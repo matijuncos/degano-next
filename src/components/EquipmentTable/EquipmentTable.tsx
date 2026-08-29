@@ -17,7 +17,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { IconLayersLinked, IconAlertTriangle } from '@tabler/icons-react';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
-import { isEquipmentUnavailable, getUnavailabilityReason } from '@/utils/equipmentAvailability';
+import { isEquipmentUnavailable } from '@/utils/equipmentAvailability';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -83,9 +83,7 @@ const EquipmentTable = () => {
     >
       {unavailableInEvent.map((eq) => (
         <span key={eq._id} style={{ display: 'block' }}>
-          • {eq.name}
-          {eq.code ? ` (${eq.code})` : ''} —{' '}
-          {getUnavailabilityReason(statusMap.get(String(eq._id)))}
+          • {eq.name}{eq.code ? ` (${eq.code})` : ''}
         </span>
       ))}
     </Alert>

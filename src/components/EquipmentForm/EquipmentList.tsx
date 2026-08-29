@@ -31,7 +31,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
 import {
   isEquipmentUnavailable,
-  getUnavailabilityReason,
   LiveEquipmentStatus
 } from '@/utils/equipmentAvailability';
 
@@ -133,11 +132,10 @@ function CategoryContent({
   const unavailableBadge = (eq: any) => {
     const live = statusMap.get(String(eq._id));
     if (!isEquipmentUnavailable(live)) return null;
-    const reason = getUnavailabilityReason(live);
     return (
-      <Tooltip label={`No disponible: ${reason}`} withArrow>
+      <Tooltip label='No disponible (baja/reparación)' withArrow>
         <Badge color='red' variant='filled' size='xs' style={{ flexShrink: 0 }}>
-          No disponible{reason ? ` · ${reason}` : ''}
+          No disponible
         </Badge>
       </Tooltip>
     );
