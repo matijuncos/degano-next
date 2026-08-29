@@ -38,6 +38,7 @@ import { findMainCategorySync } from '@/utils/categoryUtils';
 import { groupEquipmentByNameCount } from '@/utils/equipmentGroupUtils';
 import { format24Hour } from '@/utils/dateUtils';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
+import { openS3File } from '@/utils/s3Utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { obfuscatePhone } from '@/utils/roleUtils';
 
@@ -676,7 +677,7 @@ const DrawerContent = () => {
                           color='blue'
                           variant='light'
                           size='sm'
-                          onClick={() => window.open(file.url, '_blank')}
+                          onClick={() => openS3File(file.url)}
                         >
                           <IconEye size={14} />
                         </ActionIcon>

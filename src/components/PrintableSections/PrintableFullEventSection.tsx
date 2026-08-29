@@ -47,11 +47,15 @@ const styles = StyleSheet.create({
 interface PrintableFullEventSectionProps {
   event: EventModel;
   categories?: any[];
+  unavailableIds?: Set<string>;
+  reasonById?: Record<string, string>;
 }
 
 const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
   event,
-  categories = []
+  categories = [],
+  unavailableIds,
+  reasonById
 }) => {
   const eventTitle = `${new Date(event.date).toLocaleDateString('es-AR')} - ${event.type} - ${event.lugar}`;
 
@@ -142,7 +146,12 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Equipos</Text>
           </View>
-          <PrintableEquipmentContent event={event} categories={categories} />
+          <PrintableEquipmentContent
+            event={event}
+            categories={categories}
+            unavailableIds={unavailableIds}
+            reasonById={reasonById}
+          />
         </Page>
       )}
     </Document>

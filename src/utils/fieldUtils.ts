@@ -127,7 +127,7 @@ export const SECTION_LABELS: Record<FieldConfig['section'], string> = {
   event: 'Datos del evento',
   location: 'Ubicación',
   schedule: 'Horarios',
-  client: 'Cliente'
+  client: 'Datos opcionales del cliente'
 };
 
 /**

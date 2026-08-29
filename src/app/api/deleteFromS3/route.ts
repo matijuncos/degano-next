@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { requireAuth } from '@/lib/requireAuth';
+import { rateLimit } from '@/lib/rateLimit';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION!,
@@ -17,6 +19,13 @@ const bucketMap: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, { key: 'deleteFromS3', limit: 40, windowMs: 60_000 });
+  if (limited) return limited;
+
+  // Borrar archivos: solo admin/manager (viewer no puede eliminar)
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
+
   const { url, bucket } = await req.json();
   if (!url || !bucket) {
     return NextResponse.json({ error: 'Missing URL or bucket' }, { status: 400 });

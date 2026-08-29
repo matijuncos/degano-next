@@ -11,6 +11,7 @@ import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 import { BudgetAnnex, BudgetFile } from '@/context/types';
 import { IconPencil } from '@tabler/icons-react';
 import GenerateReciboButton from '@/components/RemitoRecibo/GenerateReciboButton';
+import { openS3File } from '@/utils/s3Utils';
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -932,7 +933,7 @@ const EditablePayments = () => {
               <ActionIcon
                 color='blue'
                 variant='light'
-                onClick={() => window.open(file.url, '_blank')}
+                onClick={() => openS3File(file.url)}
               >
                 <IconEye size={16} />
               </ActionIcon>

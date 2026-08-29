@@ -3,10 +3,13 @@ import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/requireAuth';
 
 export const GET = async function handler(
   req: NextRequest
 ) {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
@@ -34,6 +37,8 @@ export const GET = async function handler(
 export const POST = async function handler(
   req: NextRequest
 ) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   try {
     const body = await req.json();
     const typedClientPromise: Promise<MongoClient> =
@@ -62,6 +67,8 @@ export const POST = async function handler(
 export const DELETE = async function handler(
   req: NextRequest
 ) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -96,6 +103,8 @@ export const DELETE = async function handler(
 export const PUT = async function handler(
   req: NextRequest
 ) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   try {
     const body = await req.json();
     const typedClientPromise: Promise<MongoClient> =

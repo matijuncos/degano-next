@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { requireAuth } from '@/lib/requireAuth';
 
 export async function GET() {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
   try {
     const client = await clientPromise;
     const db = client.db('degano-app');
@@ -18,6 +21,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   try {
     const body = await req.json();
     if (!body._id) {
@@ -38,6 +43,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   try {
     const body = await req.json();
     if (!body._id) {
@@ -60,6 +67,8 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   try {
     const { _id } = await req.json();
     if (!_id) {

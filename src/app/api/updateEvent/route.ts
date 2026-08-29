@@ -32,6 +32,47 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
     // Preparar datos para actualizar
     const { createdAt, updatedAt, ...updateData } = body;
 
+    // GUARD teléfonos: nunca persistir un teléfono ofuscado ('****'). Si un rol
+    // sin permiso para ver teléfonos edita el evento, el phoneNumber llega como
+    // '****'; restauramos el real (del evento viejo, o del cliente referenciado)
+    // para no corromper el dato. Aplica a cliente principal y clientes extra.
+    const isObfuscatedPhone = (v: any) =>
+      typeof v === 'string' && /^\*+$/.test(v.trim());
+
+    if (isObfuscatedPhone(updateData.phoneNumber)) {
+      updateData.phoneNumber = oldEvent?.phoneNumber ?? '';
+    }
+
+    if (Array.isArray(updateData.extraClients)) {
+      updateData.extraClients = await Promise.all(
+        updateData.extraClients.map(async (ec: any) => {
+          if (!isObfuscatedPhone(ec?.phoneNumber)) return ec;
+          // 1) restaurar desde el mismo extra client del evento viejo (por _id)
+          const match = Array.isArray(oldEvent?.extraClients)
+            ? oldEvent!.extraClients.find(
+                (e: any) => e?._id && ec?._id && String(e._id) === String(ec._id)
+              )
+            : null;
+          if (match) return { ...ec, phoneNumber: match.phoneNumber ?? '' };
+          // 2) si referencia un cliente existente, tomar el teléfono real
+          if (ec?._id) {
+            try {
+              const realClient = await db
+                .collection('clients')
+                .findOne({ _id: new ObjectId(String(ec._id)) });
+              if (realClient) {
+                return { ...ec, phoneNumber: realClient.phoneNumber ?? '' };
+              }
+            } catch {
+              /* _id no es ObjectId válido; caemos al default */
+            }
+          }
+          // 3) sin forma de resolverlo → no persistir '****'
+          return { ...ec, phoneNumber: '' };
+        })
+      );
+    }
+
     // Asegurar que updatedAt sea un timestamp y no sobrescribir createdAt
     const event = await db
       .collection('events')
@@ -46,8 +87,33 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         { returnDocument: 'after' }
       );
 
-    // Solo procesar diff de equipamiento si el body incluye equipment (evita corrupción en ediciones parciales)
-    if (eventEquipment !== undefined && body.date && body.endDate) {
+    // PERF: detectar si cambió algo relacionado a equipamiento. Los scheduledUses
+    // dependen de: equipos, fechas, lugar, tipo y nombre del evento. Si nada de eso
+    // cambió, NO hay que reprocesarlos (evita 2-3 updateMany pesados en cada edición
+    // de otros campos, ej. el nombre del cliente).
+    const oldEqIds = (oldEvent?.equipment || [])
+      .map((e: any) => e._id?.toString())
+      .sort();
+    const newEqIds = (eventEquipment || [])
+      .map((e: any) => e._id?.toString())
+      .sort();
+    const equipmentRelatedChanged =
+      oldEqIds.length !== newEqIds.length ||
+      oldEqIds.some((id: string, i: number) => id !== newEqIds[i]) ||
+      +new Date(oldEvent?.date as any) !== +new Date(body.date) ||
+      +new Date(oldEvent?.endDate as any) !== +new Date(body.endDate) ||
+      (oldEvent?.lugar || '') !== (body.lugar || '') ||
+      (oldEvent?.type || '') !== (body.type || '') ||
+      (oldEvent?.name || '') !== (body.name || '');
+
+    // Solo procesar diff de equipamiento si el body incluye equipment (evita
+    // corrupción en ediciones parciales) Y realmente cambió algo relevante.
+    if (
+      eventEquipment !== undefined &&
+      body.date &&
+      body.endDate &&
+      equipmentRelatedChanged
+    ) {
       const oldEquipmentIds = (oldEvent?.equipment || []).map(
         (eq: any) => eq._id.toString()
       );

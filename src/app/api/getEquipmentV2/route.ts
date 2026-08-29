@@ -2,8 +2,11 @@ import { MongoClient, ObjectId } from 'mongodb'; // Import ObjectId
 import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/requireAuth';
 
 export const GET = async function handler(req: Request) {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;

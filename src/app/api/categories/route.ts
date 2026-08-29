@@ -2,8 +2,11 @@ export const dynamic = 'force-dynamic'; // ⬅️ esto fuerza el comportamiento 
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { requireAuth } from '@/lib/requireAuth';
 
 export async function GET() {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
   const client = await clientPromise;
   const db = client.db('degano-app');
   const categories = await db.collection('categories').find().sort({name: 1}).toArray();
@@ -11,6 +14,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   const body = await req.json();
   const client = await clientPromise;
   const db = client.db('degano-app');
@@ -19,6 +24,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   const body = await req.json();
   const client = await clientPromise;
   const db = client.db('degano-app');
@@ -33,6 +40,8 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const unauth = await requireAuth(['admin', 'manager']);
+  if (unauth) return unauth;
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

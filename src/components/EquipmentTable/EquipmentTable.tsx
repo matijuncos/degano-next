@@ -16,6 +16,8 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useResponsive } from '@/hooks/useResponsive';
 import { IconLayersLinked, IconAlertTriangle } from '@tabler/icons-react';
 import { findMainCategorySync } from '@/utils/categoryUtils';
+import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
+import { isEquipmentUnavailable, getUnavailabilityReason } from '@/utils/equipmentAvailability';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -26,6 +28,7 @@ const EquipmentTable = () => {
   const { isAdmin } = usePermissions();
   const { isMobile, isTablet } = useResponsive();
   const { data: categories = [] } = useSWR<any[]>('/api/categories', fetcher);
+  const statusMap = useEquipmentStatusMap();
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
@@ -62,6 +65,31 @@ const EquipmentTable = () => {
     if (!selectedEvent) return;
     setRefreshTrigger(prev => prev + 1);
   }, [selectedEvent?.date, selectedEvent?.endDate]);
+
+  // Equipos del evento que HOY están dados de baja / en reparación (estado vivo).
+  // Se recalcula solo: si el equipo vuelve a estar disponible, desaparece del aviso.
+  const unavailableInEvent = (eventEquipment.equipment || []).filter((eq) =>
+    isEquipmentUnavailable(statusMap.get(String(eq._id)))
+  );
+
+  const unavailableBanner = unavailableInEvent.length > 0 && (
+    <Alert
+      color='red'
+      variant='light'
+      icon={<IconAlertTriangle size={18} />}
+      title={`${unavailableInEvent.length} equipo(s) de este evento no están disponibles`}
+      mb='sm'
+      py='8px'
+    >
+      {unavailableInEvent.map((eq) => (
+        <span key={eq._id} style={{ display: 'block' }}>
+          • {eq.name}
+          {eq.code ? ` (${eq.code})` : ''} —{' '}
+          {getUnavailabilityReason(statusMap.get(String(eq._id)))}
+        </span>
+      ))}
+    </Alert>
+  );
 
   const handleEdit = (item: any) => {
     setPreviousSelection(selectedCategory);
@@ -249,6 +277,7 @@ const EquipmentTable = () => {
   if (isMobile || isTablet) {
     return (
       <>
+        {unavailableInEvent.length > 0 && <Box px='md' pt='md'>{unavailableBanner}</Box>}
         {hasChanges && (
           <Alert
             color='yellow'
@@ -349,6 +378,7 @@ const EquipmentTable = () => {
   // Vista desktop: 3 columnas resizables
   return (
     <>
+      {unavailableBanner}
       {hasChanges && (
         <Alert
           color='yellow'

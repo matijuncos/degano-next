@@ -96,18 +96,29 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#666',
     fontSize: 10
+  },
+  unavailableNote: {
+    fontSize: 8,
+    color: '#c92a2a',
+    marginTop: 1
   }
 });
 
 interface PrintableEquipmentSectionProps {
   event: EventModel;
   categories?: any[];
+  // Estado vivo: ids de equipos del inventario que hoy están de baja/reparación
+  unavailableIds?: Set<string>;
+  // Motivo por id (ej. 'Reparación') para mostrar junto a la nota
+  reasonById?: Record<string, string>;
 }
 
 // Exportar contenido interno para reutilización en PrintableFullEventSection
 export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps> = ({
   event,
-  categories = []
+  categories = [],
+  unavailableIds,
+  reasonById = {}
 }) => {
   // Primero agrupar equipos por categoría principal
   const groupedByCategory: { [categoryName: string]: any[] } = {};
@@ -207,11 +218,32 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
                 </View>
 
                 {/* Equipos de esta categoría */}
-                {equipmentEntries.map(([name, quantity], index) => (
+                {equipmentEntries.map(([name, quantity], index) => {
+                  // Cuántas unidades de este nombre están hoy no disponibles
+                  const unitsOfName = equipmentArray.filter((eq: any) => eq.name === name);
+                  const unavailableUnits = unavailableIds
+                    ? unitsOfName.filter((eq: any) => unavailableIds.has(String(eq._id)))
+                    : [];
+                  const unavailableCount = unavailableUnits.length;
+                  const reasons = Array.from(
+                    new Set(
+                      unavailableUnits
+                        .map((eq: any) => reasonById[String(eq._id)])
+                        .filter(Boolean)
+                    )
+                  ).join(', ');
+
+                  return (
                   <View key={index} style={styles.equipmentTableRow} wrap={false}>
-                    <Text style={styles.equipmentNameCell}>
-                      {name}
-                    </Text>
+                    <View style={styles.equipmentNameCell}>
+                      <Text>{name}</Text>
+                      {unavailableCount > 0 && (
+                        <Text style={styles.unavailableNote}>
+                          {unavailableCount} no disponible{unavailableCount > 1 ? 's' : ''}
+                          {reasons ? ` (${reasons})` : ''}
+                        </Text>
+                      )}
+                    </View>
                     <Text style={styles.equipmentQuantityCell}>
                       {quantity}
                     </Text>
@@ -228,7 +260,8 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
                       <View style={styles.checkbox} />
                     </View>
                   </View>
-                ))}
+                  );
+                })}
 
                 {/* Equipos negativos / a tercerizar (en rojo) */}
                 {(extraByCategory[categoryName] || []).map((neg, negIndex) => (
@@ -269,7 +302,9 @@ export const PrintableEquipmentContent: React.FC<PrintableEquipmentSectionProps>
 // Componente principal con logo y header verde
 const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
   event,
-  categories = []
+  categories = [],
+  unavailableIds,
+  reasonById
 }) => (
   <Document>
     <Page size='A4' style={styles.page}>
@@ -279,7 +314,12 @@ const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Equipos</Text>
       </View>
-      <PrintableEquipmentContent event={event} categories={categories} />
+      <PrintableEquipmentContent
+        event={event}
+        categories={categories}
+        unavailableIds={unavailableIds}
+        reasonById={reasonById}
+      />
     </Page>
   </Document>
 );

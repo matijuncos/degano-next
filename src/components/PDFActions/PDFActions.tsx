@@ -14,6 +14,10 @@ import {
   PrintableTimingSection
 } from '../PrintableSections';
 import PrintableFullEventSection from '../PrintableSections/PrintableFullEventSection';
+import {
+  isEquipmentUnavailable,
+  getUnavailabilityReason
+} from '@/utils/equipmentAvailability';
 
 interface PDFActionsProps {
   sectionKey: string;
@@ -35,6 +39,9 @@ const PDFActions: React.FC<PDFActionsProps> = ({
 }) => {
   const { selectedEvent } = useDeganoCtx();
   const [categories, setCategories] = useState<any[]>([]);
+  // Estado vivo del inventario: qué equipos están hoy de baja/reparación
+  const [unavailableIds, setUnavailableIds] = useState<Set<string>>(new Set());
+  const [reasonById, setReasonById] = useState<Record<string, string>>({});
 
   // Cargar categorías para la impresión de equipamiento
   useEffect(() => {
@@ -50,6 +57,30 @@ const PDFActions: React.FC<PDFActionsProps> = ({
     fetchCategories();
   }, []);
 
+  // Cargar estado vivo de equipamiento para marcar no disponibles en el PDF
+  useEffect(() => {
+    const fetchEquipmentStatus = async () => {
+      try {
+        const response = await fetch('/api/equipment', { cache: 'no-store' });
+        const data = await response.json();
+        const ids = new Set<string>();
+        const reasons: Record<string, string> = {};
+        (data || []).forEach((eq: any) => {
+          if (isEquipmentUnavailable(eq.outOfService)) {
+            const id = String(eq._id);
+            ids.add(id);
+            reasons[id] = getUnavailabilityReason(eq.outOfService);
+          }
+        });
+        setUnavailableIds(ids);
+        setReasonById(reasons);
+      } catch (error) {
+        console.error('Error fetching equipment status:', error);
+      }
+    };
+    fetchEquipmentStatus();
+  }, []);
+
   const getPrintableComponent = () => {
     if (!selectedEvent) return null;
 
@@ -58,7 +89,7 @@ const PDFActions: React.FC<PDFActionsProps> = ({
       bands: <PrintableBandsSection event={selectedEvent} />,
       music: <PrintableMusicSection event={selectedEvent} />,
       moreInfo: <PrintableMoreInfoSection event={selectedEvent} />,
-      equipment: <PrintableEquipmentSection event={selectedEvent} categories={categories} />,
+      equipment: <PrintableEquipmentSection event={selectedEvent} categories={categories} unavailableIds={unavailableIds} reasonById={reasonById} />,
       files: <PrintableFilesSection event={selectedEvent} />,
       payments: <PrintablePaymentsSection event={selectedEvent} />,
       timing: <PrintableTimingSection event={selectedEvent} />
@@ -80,7 +111,12 @@ const PDFActions: React.FC<PDFActionsProps> = ({
     if (!selectedEvent) return;
 
     const fullEventComponent = (
-      <PrintableFullEventSection event={selectedEvent} categories={categories} />
+      <PrintableFullEventSection
+        event={selectedEvent}
+        categories={categories}
+        unavailableIds={unavailableIds}
+        reasonById={reasonById}
+      />
     );
 
     const blob = await pdf(fullEventComponent).toBlob();

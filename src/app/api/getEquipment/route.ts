@@ -3,8 +3,11 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/requireAuth';
 
 export const GET = async function handler(req: NextRequest) {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
   try {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;

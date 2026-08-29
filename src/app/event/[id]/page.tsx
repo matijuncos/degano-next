@@ -56,7 +56,7 @@ import { detectMissingFields } from '@/utils/fieldUtils';
 import useSWR from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
-import { obfuscatePhone } from '@/utils/roleUtils';
+import { obfuscatePhone, getPermissions } from '@/utils/roleUtils';
 import SortableTimingList from '@/components/TimingForm/SortableTimingList';
 
 const AccordionSet = ({
@@ -134,6 +134,11 @@ const MainInformation = ({
   const [isMissingFieldsModalOpen, setIsMissingFieldsModalOpen] =
     useState(false);
   const { setSelectedEvent, updateEventInList } = useDeganoCtx();
+
+  // Solo puede editar teléfonos de cliente quien puede verlos (no ofuscados).
+  // Evita que un manager guarde '****' pisando el teléfono real.
+  const canEditClientPhone =
+    canEditEvents && !!getPermissions(role)?.canViewClientPhones;
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
 
@@ -327,6 +332,40 @@ const MainInformation = ({
     } catch (error) {
       notify({ type: 'defaultError' });
       console.error('Error adding extra client:', error);
+    } finally {
+      setLoadingCursor(false);
+    }
+  };
+
+  const handleDeleteExtraClient = async (index: number) => {
+    if (!selectedEvent) return;
+    if (!window.confirm('¿Eliminar este cliente extra del evento?')) return;
+
+    setLoadingCursor(true);
+    notify({ loading: true });
+    try {
+      const updatedExtraClients = selectedEvent.extraClients.filter(
+        (_, i) => i !== index
+      );
+      const response = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...selectedEvent,
+          extraClients: updatedExtraClients
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      const eventToUse =
+        data.event || { ...selectedEvent, extraClients: updatedExtraClients };
+      setSelectedEvent(eventToUse);
+      updateEventInList(eventToUse);
+      notify({ message: 'Cliente extra eliminado' });
+    } catch (error) {
+      notify({ type: 'defaultError' });
+      console.error('Error deleting extra client:', error);
     } finally {
       setLoadingCursor(false);
     }
@@ -590,7 +629,7 @@ const MainInformation = ({
         title='Nombre Cliente'
         value={selectedEvent.fullName}
       />
-      <EditableData disabled={!canEditEvents}
+      <EditableData disabled={!canEditClientPhone}
         type='text'
         property='phoneNumber'
         title='Teléfono'
@@ -633,13 +672,26 @@ const MainInformation = ({
       {selectedEvent.extraClients.length > 0 &&
         selectedEvent.extraClients.map((client, index) => (
           <React.Fragment key={`extra-client-${index}`}>
+            <Flex justify='flex-end' align='center' mt='sm'>
+              <ProtectedAction requiredPermission='canEditEvents'>
+                <Button
+                  size='compact-xs'
+                  variant='subtle'
+                  color='red'
+                  leftSection={<IconTrash size={14} />}
+                  onClick={() => handleDeleteExtraClient(index)}
+                >
+                  Eliminar cliente extra {index + 1}
+                </Button>
+              </ProtectedAction>
+            </Flex>
             <EditableData disabled={!canEditEvents}
               type='text'
               property={`extraClients.${index}.fullName`}
               title={`Nombre Cliente Extra ${index + 1}`}
               value={client.fullName}
             />
-            <EditableData disabled={!canEditEvents}
+            <EditableData disabled={!canEditClientPhone}
               type='text'
               property={`extraClients.${index}.phoneNumber`}
               title={`Teléfono Cliente Extra ${index + 1}`}
@@ -2435,7 +2487,7 @@ const EventPage = () => {
         <AccordionSet value='Información Principal'>
           <Grid gutter='xl'>
             <Grid.Col span={5.5}>
-              <EditableData disabled={!canEditEvents}
+              <EditableData disabled={!(canEditEvents && getPermissions(role)?.canViewClientPhones)}
                 type='text'
                 property='phoneNumber'
                 title='Teléfono'

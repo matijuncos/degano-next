@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { formatPrice } from '@/utils/priceUtils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { IconTrash, IconPlus, IconUpload, IconFile, IconEye } from '@tabler/icons-react';
+import { openS3File } from '@/utils/s3Utils';
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -450,7 +451,7 @@ const PaymentForm = ({
               <ActionIcon
                 color="blue"
                 variant="light"
-                onClick={() => window.open(file.url, '_blank')}
+                onClick={() => openS3File(file.url)}
               >
                 <IconEye size={16} />
               </ActionIcon>

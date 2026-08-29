@@ -1,5 +1,5 @@
 'use client';
-import { ActionIcon, Group, Text, Stack, Divider, Button, Box } from '@mantine/core';
+import { ActionIcon, Group, Text, Stack, Divider, Button, Box, Badge, Tooltip } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { FaTrashAlt, FaChevronDown, FaChevronRight, FaGripVertical } from 'react-icons/fa';
 import React from 'react';
@@ -28,6 +28,12 @@ import { formatPrice } from '@/utils/priceUtils';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { groupEquipmentByName } from '@/utils/equipmentGroupUtils';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
+import {
+  isEquipmentUnavailable,
+  getUnavailabilityReason,
+  LiveEquipmentStatus
+} from '@/utils/equipmentAvailability';
 
 type CategoryItemProps = {
   categoryName: string;
@@ -36,6 +42,7 @@ type CategoryItemProps = {
   toggleGroup: (key: string) => void;
   handleRemove: (id: string) => void;
   canViewPrices: boolean;
+  statusMap: Map<string, LiveEquipmentStatus>;
   isDragOverlay?: boolean;
   // Negativos (a tercerizar) de esta categoría, y cómo quitarlos
   extraForCategory?: { name: string; quantity: number; mainCategoryName?: string }[];
@@ -104,6 +111,7 @@ function CategoryContent({
   toggleGroup,
   handleRemove,
   canViewPrices,
+  statusMap,
   isDragOverlay = false,
   dragHandleProps,
   extraForCategory = [],
@@ -120,6 +128,20 @@ function CategoryContent({
   // La categoría puede tener solo negativos (sin equipos reales)
   if (categoryEquipment.length === 0 && extraForCategory.length === 0) return null;
   const groupedByName = groupEquipmentByName(categoryEquipment);
+
+  // Badge rojo "No disponible" para un equipo dado de baja / en reparación
+  const unavailableBadge = (eq: any) => {
+    const live = statusMap.get(String(eq._id));
+    if (!isEquipmentUnavailable(live)) return null;
+    const reason = getUnavailabilityReason(live);
+    return (
+      <Tooltip label={`No disponible: ${reason}`} withArrow>
+        <Badge color='red' variant='filled' size='xs' style={{ flexShrink: 0 }}>
+          No disponible{reason ? ` · ${reason}` : ''}
+        </Badge>
+      </Tooltip>
+    );
+  };
 
   // Orden de los grupos por nombre: respetar itemOrder guardado, y los nombres
   // nuevos (recién agregados) van al final.
@@ -171,24 +193,32 @@ function CategoryContent({
 
     if (quantity === 1) {
       const eq = equipmentGroup[0];
+      const isUnavailable = isEquipmentUnavailable(statusMap.get(String(eq._id)));
       return (
         <Stack
           key={eq._id}
           gap='2px'
           style={{
             padding: '6px 8px',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backgroundColor: isUnavailable
+              ? 'rgba(250, 82, 82, 0.08)'
+              : 'rgba(255, 255, 255, 0.05)',
             borderRadius: '4px',
-            borderLeft: '3px solid rgba(64, 192, 87, 0.7)'
+            borderLeft: isUnavailable
+              ? '3px solid rgba(250, 82, 82, 0.8)'
+              : '3px solid rgba(64, 192, 87, 0.7)'
           }}
         >
           <Group justify='space-between' gap='xs'>
             <Group gap='4px' style={{ flex: 1, minWidth: 0 }}>
               {gripBtn}
               <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
-                <Text size='sm' fw={600} truncate>
-                  {eq.name}
-                </Text>
+                <Group gap='6px' wrap='nowrap'>
+                  <Text size='sm' fw={600} truncate>
+                    {eq.name}
+                  </Text>
+                  {unavailableBadge(eq)}
+                </Group>
                 <Text size='10px' c='dimmed'>
                   Código: {eq.code || 'N/A'}
                 </Text>
@@ -215,15 +245,23 @@ function CategoryContent({
       );
     }
 
+    const unavailableCount = equipmentGroup.filter((eq: any) =>
+      isEquipmentUnavailable(statusMap.get(String(eq._id)))
+    ).length;
+
     return (
       <Box key={groupKey}>
         <Stack
           gap='2px'
           style={{
             padding: '6px 8px',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backgroundColor: unavailableCount > 0
+              ? 'rgba(250, 82, 82, 0.08)'
+              : 'rgba(255, 255, 255, 0.05)',
             borderRadius: '4px',
-            borderLeft: '3px solid rgba(64, 192, 87, 0.7)',
+            borderLeft: unavailableCount > 0
+              ? '3px solid rgba(250, 82, 82, 0.8)'
+              : '3px solid rgba(64, 192, 87, 0.7)',
             cursor: 'pointer'
           }}
           onClick={() => toggleGroup(groupKey)}
@@ -239,9 +277,21 @@ function CategoryContent({
                 )}
               </ActionIcon>
               <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
-                <Text size='sm' fw={600} truncate>
-                  {equipmentName} x {quantity}
-                </Text>
+                <Group gap='6px' wrap='nowrap'>
+                  <Text size='sm' fw={600} truncate>
+                    {equipmentName} x {quantity}
+                  </Text>
+                  {unavailableCount > 0 && (
+                    <Tooltip
+                      label={`${unavailableCount} no disponible(s) por baja/reparación`}
+                      withArrow
+                    >
+                      <Badge color='red' variant='filled' size='xs' style={{ flexShrink: 0 }}>
+                        {unavailableCount} no disp.
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </Group>
               </Stack>
             </Group>
             <Group gap='4px' style={{ flexShrink: 0 }}>
@@ -256,22 +306,33 @@ function CategoryContent({
 
         {isExpanded && (
           <Stack gap='xs' pl='md' mt='xs'>
-            {equipmentGroup.map((eq: any) => (
+            {equipmentGroup.map((eq: any) => {
+              const isUnavailable = isEquipmentUnavailable(
+                statusMap.get(String(eq._id))
+              );
+              return (
               <Stack
                 key={eq._id}
                 gap='2px'
                 style={{
                   padding: '6px 8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  backgroundColor: isUnavailable
+                    ? 'rgba(250, 82, 82, 0.06)'
+                    : 'rgba(255, 255, 255, 0.02)',
                   borderRadius: '4px',
-                  borderLeft: '2px solid rgba(64, 192, 87, 0.3)'
+                  borderLeft: isUnavailable
+                    ? '2px solid rgba(250, 82, 82, 0.6)'
+                    : '2px solid rgba(64, 192, 87, 0.3)'
                 }}
               >
                 <Group justify='space-between' gap='xs'>
                   <Stack gap='2px' style={{ flex: 1, minWidth: 0 }}>
-                    <Text size='sm' fw={500} truncate>
-                      {eq.name}
-                    </Text>
+                    <Group gap='6px' wrap='nowrap'>
+                      <Text size='sm' fw={500} truncate>
+                        {eq.name}
+                      </Text>
+                      {unavailableBadge(eq)}
+                    </Group>
                     <Text size='10px' c='dimmed'>
                       Código: {eq.code || 'N/A'}
                     </Text>
@@ -297,7 +358,8 @@ function CategoryContent({
                   </Group>
                 </Group>
               </Stack>
-            ))}
+              );
+            })}
           </Stack>
         )}
       </Box>
@@ -433,6 +495,7 @@ export default function EquipmentList({
 }: EquipmentListProps) {
   const { can } = usePermissions();
   const canViewPrices = can('canViewEquipmentPrices');
+  const statusMap = useEquipmentStatusMap();
   const [categories, setCategories] = useState<any[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [categoryOrder, setCategoryOrder] = useState<string[]>(equipmentCategoryOrder || []);
@@ -633,6 +696,7 @@ export default function EquipmentList({
                   toggleGroup={toggleGroup}
                   handleRemove={handleRemove}
                   canViewPrices={canViewPrices}
+                  statusMap={statusMap}
                   extraForCategory={extraByCategory[categoryName] || []}
                   handleRemoveNegative={handleRemoveNegative}
                   itemOrder={equipmentItemOrder[categoryName] || []}
@@ -669,6 +733,7 @@ export default function EquipmentList({
             toggleGroup={() => {}}
             handleRemove={() => {}}
             canViewPrices={canViewPrices}
+            statusMap={statusMap}
             extraForCategory={extraByCategory[activeDragId] || []}
             itemOrder={equipmentItemOrder[activeDragId] || []}
             isDragOverlay

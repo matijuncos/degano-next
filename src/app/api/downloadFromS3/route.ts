@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { requireAuth } from '@/lib/requireAuth';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION!,
@@ -18,6 +19,9 @@ const bucketMap: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
+
   const { url, fileName, bucket } = await req.json();
 
   if (!url || !fileName || !bucket) {

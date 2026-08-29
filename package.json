@@ -35,7 +35,6 @@
     "firebase": "^10.9.0",
     "framer-motion": "^11.0.25",
     "gapi-script": "^1.2.0",
-    "googleapis": "^134.0.0",
     "html2canvas": "^1.4.1",
     "install": "^0.13.0",
     "jspdf": "^3.0.1",

@@ -12,7 +12,12 @@ export const GET = withAuth(async (context: AuthContext, req: NextRequest) => {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const db = client.db('degano-app');
-    const clients = await db.collection('clients').find().toArray();
+    const clients = await db
+      .collection('clients')
+      .find()
+      .collation({ locale: 'es', strength: 1 })
+      .sort({ fullName: 1 })
+      .toArray();
 
     const permissions = getPermissions(context.role);
 
