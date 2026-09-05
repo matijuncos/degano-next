@@ -143,6 +143,7 @@ export default function EquipmentPage() {
               onCancel={handleCancel}
               newEvent={false}
               refreshTrigger={refreshTrigger}
+              fillHeight
             />
           </Box>
         </Panel>
