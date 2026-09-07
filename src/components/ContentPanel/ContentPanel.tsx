@@ -34,7 +34,8 @@ export default function ContentPanel({
   refreshTrigger = 0,
   onAddNegative,
   onRemoveNegative,
-  extraEquipment = []
+  extraEquipment = [],
+  fillHeight = false
 }: {
   selectedCategory: any;
   setDisableCreateEquipment: (val: boolean) => void;
@@ -53,6 +54,10 @@ export default function ContentPanel({
   // Quita todos los "a tercerizar" cargados para ese nombre.
   onRemoveNegative?: (name: string) => void;
   extraEquipment?: { name: string; quantity: number }[];
+  // Cuando el panel vive dentro de un contenedor de alto fijo (ej. la página
+  // /equipment desktop): en vez de maxHeight:100vh, el scroll llena el alto
+  // disponible con flex para que las últimas filas no queden tapadas.
+  fillHeight?: boolean;
 }) {
   const { data: categories = [] } = useSWR('/api/categories', async (url: string) => {
     const response = await fetch(url, {
@@ -527,10 +532,27 @@ export default function ContentPanel({
   }
 
   return (
-    <Box p='md' w='100%'>
+    <Box
+      p='md'
+      w='100%'
+      style={
+        fillHeight
+          ? { height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }
+          : undefined
+      }
+    >
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
-        <Box style={{ overflow: 'auto', maxHeight: '100vh', width: '100%', paddingBottom: '70px' }}>
+        <Box
+          style={{
+            overflow: 'auto',
+            width: '100%',
+            paddingBottom: '40px',
+            ...(fillHeight
+              ? { flex: 1, minHeight: 0 }
+              : { maxHeight: '100vh' })
+          }}
+        >
           <Table
             striped
             highlightOnHover
