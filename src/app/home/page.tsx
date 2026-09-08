@@ -6,6 +6,7 @@ import HomeTile from '@/components/HomeTile/HomeTile';
 import {
   IconCalendar,
   IconCheckupList,
+  IconLayoutKanban,
   IconListCheck,
   IconMusic,
   IconPlus,
@@ -59,6 +60,11 @@ const Home = () => {
       label: 'Bandas',
       path: '/bands',
       Icon: IconVinyl
+    },
+    {
+      label: 'Comunicación interna',
+      path: '/tableros',
+      Icon: IconLayoutKanban
     }
   ];
   const itemVariants = {

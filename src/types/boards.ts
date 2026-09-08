@@ -11,6 +11,10 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   done: 'Finalizada'
 };
 
+// Visibilidad del tablero: 'all' = todos los usuarios; 'restricted' = solo el
+// dueño + los miembros de memberIds. "Solo yo" = restricted con memberIds=[owner].
+export type BoardVisibility = 'all' | 'restricted';
+
 export interface Board {
   _id: string;
   name: string;
@@ -18,6 +22,18 @@ export interface Board {
   order: number;
   createdAt: string | Date;
   createdBy?: string | null;
+  // Control de acceso
+  ownerId?: string | null; // sub (Auth0) del creador
+  visibility?: BoardVisibility;
+  memberIds?: string[]; // subs con acceso cuando visibility === 'restricted' (siempre incluye al dueño)
+}
+
+// Usuario del directorio propio (se llena al entrar cada persona)
+export interface DirectoryUser {
+  sub: string;
+  email?: string | null;
+  name?: string | null;
+  role?: string | null;
 }
 
 export interface Task {

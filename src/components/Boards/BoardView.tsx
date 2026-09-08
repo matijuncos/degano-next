@@ -11,7 +11,8 @@ import {
   ActionIcon,
   Button,
   Tooltip,
-  ScrollArea
+  ScrollArea,
+  Select
 } from '@mantine/core';
 import {
   IconPlus,
@@ -19,9 +20,10 @@ import {
   IconTrash,
   IconCheck,
   IconArrowBackUp,
-  IconGripVertical,
-  IconUser
+  IconUser,
+  IconFilter
 } from '@tabler/icons-react';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import {
   DndContext,
   DragOverlay,
@@ -159,24 +161,26 @@ function SortableTaskCard({
   task,
   onEdit,
   onDelete,
-  onToggleDone
+  onToggleDone,
+  disabled = false
 }: {
   task: Task;
   onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
   onToggleDone: (t: Task) => void;
+  disabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task._id });
+    useSortable({ id: task._id, disabled });
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    cursor: 'grab',
+    cursor: disabled ? 'default' : 'grab',
     touchAction: 'none'
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...(disabled ? {} : { ...attributes, ...listeners })}>
       <TaskCard task={task} onEdit={onEdit} onDelete={onDelete} onToggleDone={onToggleDone} />
     </div>
   );
@@ -231,8 +235,20 @@ function Column({
   );
 }
 
+// Agrupa una lista de tareas por columna (estado), ordenadas por `order`
+function groupByStatus(list: Task[]): Record<TaskStatus, Task[]> {
+  const map: Record<TaskStatus, Task[]> = { pending: [], in_progress: [], done: [] };
+  list.forEach((t) => {
+    (map[t.status] || map.pending).push(t);
+  });
+  (Object.keys(map) as TaskStatus[]).forEach((s) => map[s].sort((a, b) => a.order - b.order));
+  return map;
+}
+
 export default function BoardView({ board }: { board: Board }) {
   const notify = useNotification();
+  const { user } = useUser();
+  const myName = (user?.name || '').trim().toLowerCase();
   const swrKey = `/api/tasks?boardId=${board._id}`;
   const { data, mutate } = useSWR<{ tasks: Task[] }>(swrKey, fetcher, {
     refreshInterval: 12000,
@@ -244,6 +260,8 @@ export default function BoardView({ board }: { board: Board }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [createStatus, setCreateStatus] = useState<TaskStatus>('pending');
+  // Filtro de vista por responsable: 'all' | 'mine' | 'unassigned' | assigneeId
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const isDraggingRef = useRef(false);
 
   // Sincronizar el estado local con el servidor, salvo mientras se arrastra
@@ -252,26 +270,56 @@ export default function BoardView({ board }: { board: Board }) {
     if (data?.tasks) setTasks(data.tasks);
   }, [data]);
 
+  // Resetear el filtro al cambiar de tablero
+  useEffect(() => {
+    setAssigneeFilter('all');
+  }, [board._id]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Agrupar por columna, ordenado
-  const columns = useMemo(() => {
-    const map: Record<TaskStatus, Task[]> = {
-      pending: [],
-      in_progress: [],
-      done: []
-    };
+  const filtering = assigneeFilter !== 'all';
+
+  // ¿La tarea es "mía"? Se matchea por nombre del responsable vs el del usuario
+  // logueado (no hay vínculo formal empleado↔usuario Auth0).
+  const isMine = (t: Task) =>
+    !!myName && (t.assigneeName || '').trim().toLowerCase() === myName;
+
+  const matchesFilter = (t: Task) => {
+    if (assigneeFilter === 'all') return true;
+    if (assigneeFilter === 'mine') return isMine(t);
+    if (assigneeFilter === 'unassigned') return !t.assigneeId;
+    return t.assigneeId === assigneeFilter;
+  };
+
+  // Opciones del filtro: Todos / Mías / cada responsable presente / Sin asignar
+  const filterOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+    let hasUnassigned = false;
     tasks.forEach((t) => {
-      (map[t.status] || map.pending).push(t);
+      if (t.assigneeId && t.assigneeName) byId.set(t.assigneeId, t.assigneeName);
+      else if (!t.assigneeId) hasUnassigned = true;
     });
-    (Object.keys(map) as TaskStatus[]).forEach((s) =>
-      map[s].sort((a, b) => a.order - b.order)
-    );
-    return map;
+    const opts = [
+      { value: 'all', label: 'Todas' },
+      { value: 'mine', label: 'Mías' }
+    ];
+    Array.from(byId.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .forEach(([id, label]) => opts.push({ value: id, label }));
+    if (hasUnassigned) opts.push({ value: 'unassigned', label: 'Sin asignar' });
+    return opts;
   }, [tasks]);
+
+  // Columnas completas (para el drag&drop) y columnas de vista (filtradas)
+  const columns = useMemo(() => groupByStatus(tasks), [tasks]);
+  const viewColumns = useMemo(
+    () => groupByStatus(tasks.filter(matchesFilter)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, assigneeFilter, myName]
+  );
 
   const activeTask = activeId ? tasks.find((t) => t._id === activeId) : null;
 
@@ -315,6 +363,7 @@ export default function BoardView({ board }: { board: Board }) {
     isDraggingRef.current = false;
     const { active, over } = event;
     setActiveId(null);
+    if (filtering) return; // con filtro activo el tablero es de solo lectura
     if (!over) return;
 
     const activeTaskItem = tasks.find((t) => t._id === active.id);
@@ -400,6 +449,25 @@ export default function BoardView({ board }: { board: Board }) {
 
   return (
     <>
+      {/* Filtro por responsable */}
+      <Group mb='sm' gap='xs' wrap='wrap'>
+        <Select
+          leftSection={<IconFilter size={15} />}
+          data={filterOptions}
+          value={assigneeFilter}
+          onChange={(v) => setAssigneeFilter(v || 'all')}
+          allowDeselect={false}
+          size='xs'
+          w={220}
+          aria-label='Filtrar por responsable'
+        />
+        {filtering && (
+          <Text size='xs' c='dimmed'>
+            Vista filtrada (solo lectura). Poné “Todas” para reordenar.
+          </Text>
+        )}
+      </Group>
+
       <ScrollArea type='auto' offsetScrollbars>
         <DndContext
           sensors={sensors}
@@ -409,23 +477,24 @@ export default function BoardView({ board }: { board: Board }) {
         >
           <Group align='stretch' gap='md' wrap='nowrap' style={{ minWidth: 'min-content' }}>
             {TASK_STATUSES.map((status) => (
-              <Column key={status} status={status} tasks={columns[status]} onAdd={openCreate}>
+              <Column key={status} status={status} tasks={viewColumns[status]} onAdd={openCreate}>
                 <SortableContext
-                  items={columns[status].map((t) => t._id)}
+                  items={viewColumns[status].map((t) => t._id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {columns[status].length === 0 ? (
+                  {viewColumns[status].length === 0 ? (
                     <Text size='xs' c='dimmed' ta='center' py='md'>
                       Sin tareas
                     </Text>
                   ) : (
-                    columns[status].map((task) => (
+                    viewColumns[status].map((task) => (
                       <SortableTaskCard
                         key={task._id}
                         task={task}
                         onEdit={openEdit}
                         onDelete={handleDelete}
                         onToggleDone={toggleDone}
+                        disabled={filtering}
                       />
                     ))
                   )}
