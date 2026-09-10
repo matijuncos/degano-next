@@ -6,6 +6,7 @@ import { pdf } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
 import PrintableRemitoSection from '@/components/PrintableSections/PrintableRemitoSection';
 import useNotification from '@/hooks/useNotification';
+import { savePdfBlob } from '@/utils/savePdfBlob';
 
 // Formatea un CUIT argentino mientras se escribe: "20 - 40247019 - 5" (2-8-1).
 const formatCuit = (val: string) => {
@@ -86,14 +87,7 @@ const GenerateRemitoButton = ({ event }: { event: EventModel }) => {
     try {
       setLoading('download');
       const blob = await buildBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${fileName()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await savePdfBlob(blob, fileName());
       setOpened(false);
     } catch (e) {
       console.error('Error generando remito:', e);
