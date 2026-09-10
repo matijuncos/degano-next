@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
+import PrintableEventDate from './PrintableEventDate';
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 11 },
@@ -387,6 +388,7 @@ const PrintableMainSection: React.FC<PrintableMainSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Información Principal</Text>
       </View>
+      <PrintableEventDate event={event} />
       <PrintableMainContent event={event} />
     </Page>
   </Document>

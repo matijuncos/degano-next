@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
+import PrintableEventDate from './PrintableEventDate';
 import { EventModel } from '@/context/types';
 
 const styles = StyleSheet.create({
@@ -384,6 +385,7 @@ const PrintableMusicSection: React.FC<PrintableMusicSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Música</Text>
       </View>
+      <PrintableEventDate event={event} />
       <PrintableMusicContent event={event} />
     </Page>
   </Document>

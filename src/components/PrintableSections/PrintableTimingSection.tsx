@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
+import PrintableEventDate from './PrintableEventDate';
 import { EventModel } from '@/context/types';
 
 const styles = StyleSheet.create({
@@ -92,6 +93,7 @@ const PrintableTimingSection: React.FC<PrintableTimingSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Cronograma del Evento</Text>
       </View>
+      <PrintableEventDate event={event} />
       <PrintableTimingContent event={event} />
     </Page>
   </Document>

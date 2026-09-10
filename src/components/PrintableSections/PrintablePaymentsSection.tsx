@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
+import PrintableEventDate from './PrintableEventDate';
 import { EventModel } from '@/context/types';
 import { formatPrice } from '@/utils/priceUtils';
 
@@ -150,6 +151,7 @@ const PrintablePaymentsSection: React.FC<PrintablePaymentsSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Historial de Pagos</Text>
       </View>
+      <PrintableEventDate event={event} />
       <PrintablePaymentsContent event={event} />
     </Page>
   </Document>

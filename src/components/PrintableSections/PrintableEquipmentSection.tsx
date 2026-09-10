@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
+import PrintableEventDate from './PrintableEventDate';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { groupEquipmentByNameCount } from '@/utils/equipmentGroupUtils';
 
@@ -304,6 +305,7 @@ const PrintableEquipmentSection: React.FC<PrintableEquipmentSectionProps> = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Equipos</Text>
       </View>
+      <PrintableEventDate event={event} />
       <PrintableEquipmentContent
         event={event}
         categories={categories}
