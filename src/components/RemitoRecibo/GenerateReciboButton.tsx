@@ -14,6 +14,7 @@ import { IconReceipt, IconEye, IconDownload } from '@tabler/icons-react';
 import { pdf } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
 import PrintableReciboSection from '@/components/PrintableSections/PrintableReciboSection';
+import { savePdfBlob } from '@/utils/savePdfBlob';
 
 // Ítems por defecto a partir del presupuesto: base + anexos (los "gastos"),
 // editables luego. NO se listan equipos ni el saldo restante.
@@ -125,16 +126,7 @@ const GenerateReciboButton = ({
     try {
       setLoading('download');
       const blob = await buildBlob();
-      const name = `${fileName()}.pdf`;
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await savePdfBlob(blob, fileName());
 
       // Guardar el recibo como archivo del evento (S3 + budgetFiles).
       // El nombre guardado (numerado) lo arma el padre; acá solo pasamos el cliente.

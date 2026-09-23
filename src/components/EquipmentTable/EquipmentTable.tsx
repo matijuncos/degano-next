@@ -1,5 +1,5 @@
 import { useDeganoCtx } from '@/context/DeganoContext';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import useNotification from '@/hooks/useNotification';
 import { isEqual } from 'lodash';
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
@@ -14,10 +14,14 @@ import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useResponsive } from '@/hooks/useResponsive';
-import { IconLayersLinked, IconAlertTriangle } from '@tabler/icons-react';
+import { IconLayersLinked, IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
 import { isEquipmentUnavailable } from '@/utils/equipmentAvailability';
+import {
+  computeConvertibleExtras,
+  removeConvertedExtras
+} from '@/utils/extraEquipmentUtils';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -70,6 +74,106 @@ const EquipmentTable = () => {
   // Se recalcula solo: si el equipo vuelve a estar disponible, desaparece del aviso.
   const unavailableInEvent = (eventEquipment.equipment || []).filter((eq) =>
     isEquipmentUnavailable(statusMap.get(String(eq._id)))
+  );
+
+  // Inventario disponible para LAS FECHAS de este evento. Sirve para detectar si
+  // lo que está cargado como "a tercerizar" ya tiene stock real disponible
+  // (porque otro evento liberó equipos, se compró más, cambió de fecha, etc.).
+  const availabilityUrl =
+    selectedEvent?.date && selectedEvent?.endDate
+      ? `/api/equipment?eventStartDate=${new Date(
+          selectedEvent.date
+        ).toISOString()}&eventEndDate=${new Date(
+          selectedEvent.endDate
+        ).toISOString()}`
+      : null;
+  const { data: availableEquipment = [] } = useSWR<any[]>(
+    availabilityUrl,
+    fetcher
+  );
+
+  // Por cada "a tercerizar", qué unidades reales hay libres hoy para estas fechas.
+  // La lógica vive en utils/extraEquipmentUtils (testeada).
+  const extrasWithStock = useMemo(
+    () =>
+      computeConvertibleExtras({
+        extraEquipment: eventEquipment.extraEquipment,
+        availableEquipment,
+        assignedEquipment: eventEquipment.equipment
+      }),
+    [
+      eventEquipment.extraEquipment,
+      eventEquipment.equipment,
+      availableEquipment
+    ]
+  );
+
+  // Convierte los tercerizados que ya tienen stock real en equipamiento asignado.
+  const handleConvertExtras = () => {
+    if (extrasWithStock.length === 0) return;
+    setEventEquipment((prev) => {
+      const newReal = extrasWithStock.flatMap(({ units }) =>
+        units.map((item: any) => {
+          let mainCategoryId = item.mainCategoryId || '';
+          let mainCategoryName = item.mainCategoryName || 'Sin categoría';
+          if (!item.mainCategoryName && item.categoryId && categories.length > 0) {
+            const mc = findMainCategorySync(item.categoryId, categories);
+            if (mc) {
+              mainCategoryId = mc.id;
+              mainCategoryName = mc.name;
+            }
+          }
+          return {
+            ...item,
+            lastUsedStartDate: prev.date,
+            lastUsedEndDate: prev.endDate,
+            mainCategoryId,
+            mainCategoryName
+          };
+        })
+      );
+
+      return {
+        ...prev,
+        equipment: [...(prev.equipment || []), ...newReal],
+        extraEquipment: removeConvertedExtras(
+          prev.extraEquipment,
+          extrasWithStock
+        )
+      };
+    });
+    notify({
+      message: 'Equipos convertidos. Acordate de guardar los cambios.'
+    });
+  };
+
+  const convertibleBanner = extrasWithStock.length > 0 && (
+    <Alert
+      color='teal'
+      variant='light'
+      icon={<IconRefresh size={18} />}
+      title='Hay stock disponible para equipos que tenés a tercerizar'
+      mb='sm'
+      py='8px'
+    >
+      {extrasWithStock.map(({ extra, convertible }) => (
+        <span
+          key={`${extra.name}-${extra.mainCategoryName || ''}`}
+          style={{ display: 'block' }}
+        >
+          • {extra.name}: {convertible} de {extra.quantity} ya tiene stock real
+        </span>
+      ))}
+      <Button
+        size='compact-xs'
+        color='teal'
+        mt='xs'
+        leftSection={<IconRefresh size={14} />}
+        onClick={handleConvertExtras}
+      >
+        Convertir a equipamiento real
+      </Button>
+    </Alert>
   );
 
   const unavailableBanner = unavailableInEvent.length > 0 && (
@@ -276,6 +380,7 @@ const EquipmentTable = () => {
     return (
       <>
         {unavailableInEvent.length > 0 && <Box px='md' pt='md'>{unavailableBanner}</Box>}
+        {extrasWithStock.length > 0 && <Box px='md' pt='md'>{convertibleBanner}</Box>}
         {hasChanges && (
           <Alert
             color='yellow'
@@ -377,6 +482,7 @@ const EquipmentTable = () => {
   return (
     <>
       {unavailableBanner}
+      {convertibleBanner}
       {hasChanges && (
         <Alert
           color='yellow'

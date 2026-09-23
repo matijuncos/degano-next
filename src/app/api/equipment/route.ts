@@ -7,6 +7,7 @@ import { isDateBetweenInclusive } from '@/utils/dateUtils';
 import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } from '@/utils/equipmentHistoryUtils';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { getPermissions } from '@/utils/roleUtils';
+import { hasScheduleConflict } from '@/utils/equipmentAvailability';
 
 // Función de cleanup en background (no bloquea la respuesta)
 async function cleanupExpiredScheduledUses(db: any, userId: string) {
@@ -105,15 +106,9 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
       const eStart = new Date(eventStartDate);
       const eEnd = new Date(eventEndDate);
 
-      // Verificar conflictos con scheduledUses (comparando datetime exacto con hora)
-      const scheduledUses = eq.scheduledUses || [];
-      const hasConflict = scheduledUses.some((use: any) => {
-        const usedStart = new Date(use.startDate);
-        const usedEnd = new Date(use.endDate);
-
-        // Solapamiento real: el nuevo evento empieza antes de que termine el uso, y termina después de que empieza
-        return eStart < usedEnd && eEnd > usedStart;
-      });
+      // Verificar conflictos con scheduledUses (comparando datetime exacto con hora).
+      // La regla de solapamiento vive en utils/equipmentAvailability (testeada).
+      const hasConflict = hasScheduleConflict(eStart, eEnd, eq.scheduledUses);
 
       // Si hay conflicto, marcar como no disponible para este evento
       if (hasConflict) {
