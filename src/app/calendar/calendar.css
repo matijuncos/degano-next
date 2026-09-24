@@ -464,3 +464,12 @@ body.calendar-light-mode [data-combobox-option]:hover:where(:not([data-combobox-
 .calendar-light-theme :where([data-mantine-color-scheme]) [data-combobox-option]:hover:where(:not([data-combobox-selected], [data-combobox-disabled])) {
   background-color: #e9ecef !important;
 }
+
+/* Dropdowns del sidebar de calendarios en tema claro (la app es dark por defecto) */
+.calendar-light-dropdown .mantine-Combobox-option:hover,
+.calendar-light-dropdown .mantine-Combobox-option[data-combobox-selected] {
+  background-color: #f1f3f5;
+}
+.calendar-light-dropdown .mantine-Combobox-empty {
+  color: #868e96;
+}

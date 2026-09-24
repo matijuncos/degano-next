@@ -15,7 +15,7 @@ import {
 import { DateTimePicker, DatePickerInput } from '@mantine/dates';
 import { useState, useEffect } from 'react';
 import { IconTrash } from '@tabler/icons-react';
-import { AppCalendar } from '@/components/CalendarSidebar/CalendarSidebar';
+import { AppCalendar } from '@/types/calendars';
 import 'dayjs/locale/es';
 
 export interface CalendarEventData {
@@ -35,9 +35,13 @@ interface CalendarEventModalProps {
   onClose: () => void;
   initialData?: Partial<CalendarEventData>;
   calendars: AppCalendar[];
-  onSave: (data: Omit<CalendarEventData, '_id' | 'source' | 'calendarColor'>, id?: string) => Promise<void>;
+  onSave: (
+    data: Omit<CalendarEventData, '_id' | 'source' | 'calendarColor'>,
+    id?: string
+  ) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   isLightTheme: boolean;
+  readOnly?: boolean; // no-admin: solo ve el detalle del evento
 }
 
 export default function CalendarEventModal({
@@ -47,7 +51,8 @@ export default function CalendarEventModal({
   calendars,
   onSave,
   onDelete,
-  isLightTheme
+  isLightTheme,
+  readOnly = false
 }: CalendarEventModalProps) {
   const isEditing = !!initialData?._id;
 
@@ -65,7 +70,9 @@ export default function CalendarEventModal({
   // Inicializar / resetear al abrir
   useEffect(() => {
     if (opened) {
-      const baseStart = initialData?.start ? new Date(initialData.start) : new Date();
+      const baseStart = initialData?.start
+        ? new Date(initialData.start)
+        : new Date();
       setTitle(initialData?.title || '');
       setStart(baseStart);
       // Al editar se respeta el fin guardado; al crear, el fin sugerido es
@@ -94,7 +101,7 @@ export default function CalendarEventModal({
   const canSave = !!title.trim() && !!start && !!calendarId;
 
   const handleSave = async () => {
-    if (!canSave || !start) return;
+    if (readOnly || !canSave || !start) return;
     setSaving(true);
     try {
       await onSave(
@@ -157,6 +164,7 @@ export default function CalendarEventModal({
           value={title}
           onChange={(e) => setTitle(e.currentTarget.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          readOnly={readOnly}
           variant='unstyled'
           size='sm'
           styles={{
@@ -190,109 +198,120 @@ export default function CalendarEventModal({
         title: { flex: 1 }
       }}
     >
-      <Stack gap='md'>
+      {/* fieldset disabled: deja todos los campos en solo lectura para no-admin */}
+      <fieldset
+        disabled={readOnly}
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
+        <Stack gap='md'>
+          <Switch
+            label='Todo el día'
+            checked={allDay}
+            onChange={(e) => setAllDay(e.currentTarget.checked)}
+            color='blue'
+          />
 
-        <Switch
-          label='Todo el día'
-          checked={allDay}
-          onChange={(e) => setAllDay(e.currentTarget.checked)}
-          color='blue'
-        />
-
-        {allDay ? (
-          <Group grow>
-            <DatePickerInput
-              label='Fecha inicio'
-              value={start}
-              onChange={handleStartChange}
-              locale='es'
-              styles={inputStyles}
-            />
-            <DatePickerInput
-              label='Fecha fin'
-              value={end}
-              onChange={(val: any) => setEnd(val ? new Date(val) : null)}
-              locale='es'
-              minDate={start || undefined}
-              styles={inputStyles}
-            />
-          </Group>
-        ) : (
-          <Group grow>
-            <DateTimePicker
-              label='Inicio'
-              value={start}
-              onChange={handleStartChange}
-              locale='es'
-              styles={inputStyles}
-            />
-            <DateTimePicker
-              label='Fin'
-              value={end}
-              onChange={(val: any) => setEnd(val ? new Date(val) : null)}
-              locale='es'
-              minDate={start || undefined}
-              styles={inputStyles}
-            />
-          </Group>
-        )}
-
-        {/* Selector de calendario con swatch de color */}
-        <Stack gap='4px'>
-          <Text size='sm' fw={500} style={{ color: isLightTheme ? '#1a1b1e' : '#c1c2c5' }}>
-            Calendario
-          </Text>
-          <Group gap='xs' align='center'>
-            {selectedCalendar && (
-              <ColorSwatch color={selectedCalendar.color} size={14} />
-            )}
-            <Select
-              data={calendarOptions}
-              value={calendarId}
-              onChange={(val) => val && setCalendarId(val)}
-              style={{ flex: 1 }}
-              styles={inputStyles}
-              comboboxProps={{ withinPortal: true }}
-            />
-          </Group>
-        </Stack>
-
-        <Textarea
-          label='Descripción / Comentarios'
-          placeholder='Agregar descripción...'
-          value={description}
-          onChange={(e) => setDescription(e.currentTarget.value)}
-          minRows={2}
-          autosize
-          styles={inputStyles}
-        />
-
-        <Group justify={isEditing ? 'space-between' : 'flex-end'}>
-          {isEditing && onDelete && (
-            <Button
-              // variant='subtle'
-              color='red'
-              leftSection={<IconTrash size={14} />}
-              loading={deleting}
-              onClick={handleDelete}
-            >
-              Eliminar
-            </Button>
+          {allDay ? (
+            <Group grow>
+              <DatePickerInput
+                label='Fecha inicio'
+                value={start}
+                onChange={handleStartChange}
+                locale='es'
+                styles={inputStyles}
+              />
+              <DatePickerInput
+                label='Fecha fin'
+                value={end}
+                onChange={(val: any) => setEnd(val ? new Date(val) : null)}
+                locale='es'
+                minDate={start || undefined}
+                styles={inputStyles}
+              />
+            </Group>
+          ) : (
+            <Group grow>
+              <DateTimePicker
+                label='Inicio'
+                value={start}
+                onChange={handleStartChange}
+                locale='es'
+                styles={inputStyles}
+              />
+              <DateTimePicker
+                label='Fin'
+                value={end}
+                onChange={(val: any) => setEnd(val ? new Date(val) : null)}
+                locale='es'
+                minDate={start || undefined}
+                styles={inputStyles}
+              />
+            </Group>
           )}
-          <Group gap='xs'>
-            <Button variant='default' onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSave}
-              loading={saving}
-              disabled={!canSave}
+
+          {/* Selector de calendario con swatch de color */}
+          <Stack gap='4px'>
+            <Text
+              size='sm'
+              fw={500}
+              style={{ color: isLightTheme ? '#1a1b1e' : '#c1c2c5' }}
             >
-              {isEditing ? 'Guardar cambios' : 'Crear evento'}
-            </Button>
-          </Group>
-        </Group>
-      </Stack>
+              Calendario
+            </Text>
+            <Group gap='xs' align='center'>
+              {selectedCalendar && (
+                <ColorSwatch color={selectedCalendar.color} size={14} />
+              )}
+              <Select
+                data={calendarOptions}
+                value={calendarId}
+                onChange={(val) => val && setCalendarId(val)}
+                style={{ flex: 1 }}
+                styles={inputStyles}
+                comboboxProps={{ withinPortal: true }}
+              />
+            </Group>
+          </Stack>
+
+          <Textarea
+            label='Descripción / Comentarios'
+            placeholder='Agregar descripción...'
+            value={description}
+            onChange={(e) => setDescription(e.currentTarget.value)}
+            minRows={2}
+            autosize
+            styles={inputStyles}
+          />
+
+          {!readOnly && (
+            <Group justify={isEditing ? 'space-between' : 'flex-end'}>
+              {isEditing && onDelete && (
+                <Button
+                  // variant='subtle'
+                  color='red'
+                  leftSection={<IconTrash size={14} />}
+                  loading={deleting}
+                  onClick={handleDelete}
+                >
+                  Eliminar
+                </Button>
+              )}
+              <Group gap='xs'>
+                <Button variant='default' onClick={onClose}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  loading={saving}
+                  disabled={!canSave}
+                >
+                  {isEditing ? 'Guardar cambios' : 'Crear evento'}
+                </Button>
+              </Group>
+            </Group>
+          )}
+        </Stack>
+      </fieldset>
     </Modal>
   );
 }

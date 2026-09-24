@@ -23,7 +23,7 @@ import {
   IconUser,
   IconFilter
 } from '@tabler/icons-react';
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useMyEmployee } from '@/hooks/useMyEmployee';
 import {
   DndContext,
   DragOverlay,
@@ -247,8 +247,9 @@ function groupByStatus(list: Task[]): Record<TaskStatus, Task[]> {
 
 export default function BoardView({ board }: { board: Board }) {
   const notify = useNotification();
-  const { user } = useUser();
-  const myName = (user?.name || '').trim().toLowerCase();
+  // Mi registro de STAFF. Las tareas se asignan por id de empleado, así que
+  // "Mías" compara ids y no texto.
+  const { employeeId: myEmployeeId } = useMyEmployee();
   const swrKey = `/api/tasks?boardId=${board._id}`;
   const { data, mutate } = useSWR<{ tasks: Task[] }>(swrKey, fetcher, {
     refreshInterval: 12000,
@@ -282,10 +283,10 @@ export default function BoardView({ board }: { board: Board }) {
 
   const filtering = assigneeFilter !== 'all';
 
-  // ¿La tarea es "mía"? Se matchea por nombre del responsable vs el del usuario
-  // logueado (no hay vínculo formal empleado↔usuario Auth0).
+  // ¿La tarea es "mía"? Por id del empleado responsable: el vínculo con la cuenta
+  // de login se resuelve por email en /api/me.
   const isMine = (t: Task) =>
-    !!myName && (t.assigneeName || '').trim().toLowerCase() === myName;
+    !!myEmployeeId && String(t.assigneeId || '') === myEmployeeId;
 
   const matchesFilter = (t: Task) => {
     if (assigneeFilter === 'all') return true;
@@ -318,7 +319,7 @@ export default function BoardView({ board }: { board: Board }) {
   const viewColumns = useMemo(
     () => groupByStatus(tasks.filter(matchesFilter)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tasks, assigneeFilter, myName]
+    [tasks, assigneeFilter, myEmployeeId]
   );
 
   const activeTask = activeId ? tasks.find((t) => t._id === activeId) : null;

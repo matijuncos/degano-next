@@ -28,10 +28,11 @@ import {
   IconWorld,
   IconUsers
 } from '@tabler/icons-react';
-import { useUser } from '@auth0/nextjs-auth0/client';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Board, DirectoryUser } from '@/types/boards';
+import { useMyEmployee } from '@/hooks/useMyEmployee';
+import { EmployeeModel } from '@/context/types';
+import { Board } from '@/types/boards';
 import BoardView from './BoardView';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -47,20 +48,24 @@ function presetOf(board: Board): VisibilityPreset {
 export default function BoardsPanel() {
   const notify = useNotification();
   const { isAdmin } = usePermissions();
-  const { user } = useUser();
-  const mySub = user?.sub || null;
+  // Mi registro de STAFF: es la identidad con la que se guarda dueño y miembros.
+  const { employeeId: myEmployeeId } = useMyEmployee();
 
   const { data, mutate } = useSWR<{ boards: Board[] }>('/api/boards', fetcher, {
     revalidateOnFocus: true
   });
   const boards = useMemo(() => data?.boards || [], [data]);
 
-  // Directorio de usuarios (solo lo necesita el admin para el selector)
-  const { data: usersData } = useSWR<{ users: DirectoryUser[] }>(
-    isAdmin ? '/api/users' : null,
+  // Directorio completo (solo lo necesita el admin para el selector de miembros).
+  // directory=true incluye a quienes entran a la app sin ser personal de eventos.
+  const { data: directoryData } = useSWR<(EmployeeModel & { _id: string })[]>(
+    isAdmin ? '/api/employees?directory=true' : null,
     fetcher
   );
-  const directory = useMemo(() => usersData?.users || [], [usersData]);
+  const directory = useMemo(
+    () => (Array.isArray(directoryData) ? directoryData : []),
+    [directoryData]
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [boardModalOpen, setBoardModalOpen] = useState(false);
@@ -71,11 +76,6 @@ export default function BoardsPanel() {
   const [members, setMembers] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
-
-  // Registrar al usuario actual en el directorio (self-upsert)
-  useEffect(() => {
-    fetch('/api/users', { method: 'POST' }).catch(() => {});
-  }, []);
 
   // Seleccionar el primer tablero por defecto / al borrar el activo
   useEffect(() => {
@@ -91,12 +91,15 @@ export default function BoardsPanel() {
   const selectedBoard = boards.find((b) => b._id === selectedId) || null;
 
   // Dueño del tablero en edición (o yo, si estoy creando). Va siempre incluido.
-  const ownerSub = editingBoard ? editingBoard.ownerId || null : mySub;
+  const ownerId = editingBoard ? editingBoard.ownerId || null : myEmployeeId;
 
   // Opciones del multiselect: todos menos el dueño (que está fijo)
   const memberOptions = directory
-    .filter((u) => u.sub && u.sub !== ownerSub)
-    .map((u) => ({ value: u.sub, label: u.name || u.email || u.sub }));
+    .filter((emp) => emp._id && String(emp._id) !== ownerId)
+    .map((emp) => ({
+      value: String(emp._id),
+      label: emp.fullName || emp.email || String(emp._id)
+    }));
 
   const openCreate = () => {
     setEditingBoard(null);

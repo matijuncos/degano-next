@@ -11,6 +11,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 const initialFormState = {
   fullName: '',
   cardId: '',
+  email: '',
   rol: '',
   license: 'NO',
   licenseType: '',
@@ -48,6 +49,7 @@ export default function StaffCreationPanel({
         _id: editItem._id,
         fullName: editItem.fullName || '',
         cardId: editItem.cardId || '',
+        email: editItem.email || '',
         rol: editItem.rol || '',
         license: editItem.license || 'NO',
         licenseType: editItem.licenseType || '',
@@ -79,7 +81,13 @@ export default function StaffCreationPanel({
         body: JSON.stringify(dataToSend)
       });
 
-      if (!res.ok) throw new Error('Error en la operación');
+      if (!res.ok) {
+        // El servidor explica el motivo (ej: email ya cargado en otro empleado).
+        // Se muestra tal cual: un "error en la operación" genérico no le dice
+        // nada a quien tiene que corregir el dato.
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.error || 'Error en la operación');
+      }
 
       const updated = await res.json();
       await mutate('/api/employees', updated, { revalidate: false });
@@ -93,7 +101,12 @@ export default function StaffCreationPanel({
       onCancel?.(false);
     } catch (error) {
       console.error(error);
-      notify({ type: 'defaultError' });
+      const message = error instanceof Error ? error.message : '';
+      if (message && message !== 'Error en la operación') {
+        notify({ title: 'No se pudo guardar', message, color: 'red' });
+      } else {
+        notify({ type: 'defaultError' });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -123,6 +136,14 @@ export default function StaffCreationPanel({
           label='DNI'
           value={formData.cardId || ''}
           onChange={(e) => handleInput('cardId', e.currentTarget.value)}
+          autoComplete='off'
+        />
+        <TextInput
+          label='Email'
+          description='El mismo con el que inicia sesión. Sirve para compartirle calendarios.'
+          type='email'
+          value={formData.email || ''}
+          onChange={(e) => handleInput('email', e.currentTarget.value)}
           autoComplete='off'
         />
         <DateInput

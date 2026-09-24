@@ -60,6 +60,13 @@ function Navbar() {
   const setLoadingCursor = useLoadingCursor();
   const pathname = usePathname();
 
+  // Registrar el ingreso: vincula la cuenta de login con su registro de STAFF
+  // por email. Si no hay ninguno con ese email, se crea una entrada de directorio
+  // (isStaff:false) para poder sumar a esa persona a tableros y calendarios.
+  useEffect(() => {
+    if (user?.sub) fetch('/api/me', { method: 'POST' }).catch(() => {});
+  }, [user?.sub]);
+
   // Desactivar loading cuando cambia la ruta
   useEffect(() => {
     setLoadingCursor(false);

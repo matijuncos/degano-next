@@ -48,6 +48,7 @@ export default function StaffContentPanel({
     return (
       <tr>
         <th>DNI</th>
+        <th>Email</th>
         <th>Fecha de nacimiento</th>
         <th>Rol</th>
         <th>Carnet</th>
@@ -75,6 +76,7 @@ export default function StaffContentPanel({
         }}
       >
         <td>{item.cardId}</td>
+        <td>{item.email || '-'}</td>
         <td>{formatBirthDate(item.birthDate)}</td>
         <td>{item.rol}</td>
         <td style={{ color: item.license === 'NO' ? 'red' : 'green' }}>

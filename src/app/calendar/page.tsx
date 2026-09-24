@@ -22,7 +22,7 @@ import { es } from 'date-fns/locale/es';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useSWR, { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
-import CalendarSidebar, { AppCalendar } from '@/components/CalendarSidebar/CalendarSidebar';
+import CalendarSidebar, { AppCalendar, CalendarFormValues } from '@/components/CalendarSidebar/CalendarSidebar';
 import CalendarEventModal, { CalendarEventData } from '@/components/CalendarEventModal/CalendarEventModal';
 import useNotification from '@/hooks/useNotification';
 
@@ -47,21 +47,12 @@ export default withPageAuthRequired(function CalendarPage() {
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 }
   );
-  const allCalendarsRaw = calendarData?.calendars || [];
-  const allPersonalEventsRaw = calendarData?.events || [];
+  // El backend ya filtra por la visibilidad de cada calendario: cada usuario
+  // recibe solo los calendarios (y sus eventos) a los que tiene acceso.
+  const calendars = useMemo(() => calendarData?.calendars || [], [calendarData]);
+  const personalEvents = useMemo(() => calendarData?.events || [], [calendarData]);
   const mutateCalendars = mutateCalendarData;
   const mutatePersonalEvents = mutateCalendarData;
-
-  // Calendarios extras son solo para admin
-  const calendars = useMemo(() => {
-    if (isAdmin) return allCalendarsRaw;
-    return [];
-  }, [allCalendarsRaw, isAdmin]);
-
-  const personalEvents = useMemo(() => {
-    if (isAdmin) return allPersonalEventsRaw;
-    return [];
-  }, [allPersonalEventsRaw, isAdmin]);
 
   // Calendarios visibles (todos visibles por defecto)
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<Set<string>>(new Set());
@@ -148,13 +139,13 @@ export default withPageAuthRequired(function CalendarPage() {
   };
 
   // ──── CRUD de calendarios ────
-  const handleCreateCalendar = async (name: string, color: string) => {
+  const handleCreateCalendar = async (values: CalendarFormValues) => {
     notify({ loading: true });
     try {
       await fetch('/api/appCalendars', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color })
+        body: JSON.stringify(values)
       });
       mutateCalendars();
       notify();
@@ -163,13 +154,13 @@ export default withPageAuthRequired(function CalendarPage() {
     }
   };
 
-  const handleUpdateCalendar = async (id: string, name: string, color: string) => {
+  const handleUpdateCalendar = async (id: string, values: CalendarFormValues) => {
     notify({ loading: true });
     try {
       await fetch(`/api/appCalendars?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color })
+        body: JSON.stringify(values)
       });
       mutateCalendars();
       notify();
@@ -515,7 +506,7 @@ export default withPageAuthRequired(function CalendarPage() {
               <Badge color='green' variant='filled'>
                 {internalEvents.length} eventos
               </Badge>
-              {isAdmin && personalCalendarEvents.length > 0 && (
+              {personalCalendarEvents.length > 0 && (
                 <Badge color='blue' variant='light'>
                   {personalCalendarEvents.length} personales
                 </Badge>
@@ -627,18 +618,17 @@ export default withPageAuthRequired(function CalendarPage() {
         <DrawerContent />
       </Drawer>
 
-      {/* Modal para eventos personales (solo admin) */}
-      {isAdmin && (
-        <CalendarEventModal
-          opened={eventModalOpened}
-          onClose={() => setEventModalOpened(false)}
-          initialData={modalInitialData}
-          calendars={calendars}
-          onSave={handleSavePersonalEvent}
-          onDelete={handleDeletePersonalEvent}
-          isLightTheme={isLightTheme}
-        />
-      )}
+      {/* Modal para eventos personales (admin edita; el resto solo ve) */}
+      <CalendarEventModal
+        opened={eventModalOpened}
+        onClose={() => setEventModalOpened(false)}
+        initialData={modalInitialData}
+        calendars={calendars}
+        onSave={handleSavePersonalEvent}
+        onDelete={isAdmin ? handleDeletePersonalEvent : undefined}
+        isLightTheme={isLightTheme}
+        readOnly={!isAdmin}
+      />
     </>
   );
 });

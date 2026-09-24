@@ -3,12 +3,28 @@ import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
+import { visibleCalendarsFilter } from '@/utils/calendarVisibility';
 
-// GET — cualquier usuario autenticado puede leer los eventos
-export const GET = withAuth(async (_context: AuthContext, _req: Request) => {
+// ¿El usuario tiene acceso al calendario? (visibilidad por calendario)
+async function canAccessCalendar(db: any, context: AuthContext, calendarId: string) {
+  if (!ObjectId.isValid(calendarId)) return false;
+  const found = await db.collection('app_calendars').findOne(
+    { _id: new ObjectId(calendarId), ...await visibleCalendarsFilter(db, context.user, context.role) },
+    { projection: { _id: 1 } }
+  );
+  return !!found;
+}
+
+// GET — cada usuario ve solo los eventos de los calendarios a los que tiene acceso
+export const GET = withAuth(async (context: AuthContext, _req: Request) => {
   const client = await clientPromise;
   const db = client.db('degano-app');
-  const events = await db.collection('calendar_events').find({}, {
+  const calendars = await db
+    .collection('app_calendars')
+    .find(await visibleCalendarsFilter(db, context.user, context.role), { projection: { _id: 1 } })
+    .toArray();
+  const calendarIds = calendars.map((cal) => cal._id.toString());
+  const events = await db.collection('calendar_events').find({ calendarId: { $in: calendarIds } }, {
     projection: {
       _id: 1, title: 1, start: 1, end: 1, allDay: 1, calendarId: 1
     }
@@ -17,7 +33,7 @@ export const GET = withAuth(async (_context: AuthContext, _req: Request) => {
 });
 
 // POST — solo admin puede crear eventos
-export const POST = withAdminAuth(async (_context: AuthContext, req: Request) => {
+export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
   const { title, start, end, allDay, calendarId, description } = body;
 
@@ -27,6 +43,10 @@ export const POST = withAdminAuth(async (_context: AuthContext, req: Request) =>
 
   const client = await clientPromise;
   const db = client.db('degano-app');
+
+  if (!(await canAccessCalendar(db, context, calendarId))) {
+    return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
+  }
 
   const doc = {
     title,
@@ -43,7 +63,7 @@ export const POST = withAdminAuth(async (_context: AuthContext, req: Request) =>
 });
 
 // PUT — solo admin puede editar eventos
-export const PUT = withAdminAuth(async (_context: AuthContext, req: Request) => {
+export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 
@@ -56,6 +76,16 @@ export const PUT = withAdminAuth(async (_context: AuthContext, req: Request) => 
 
   const client = await clientPromise;
   const db = client.db('degano-app');
+
+  // Tiene que tener acceso al calendario actual del evento y al de destino
+  const current = await db.collection('calendar_events').findOne({ _id: new ObjectId(id) });
+  if (
+    !current ||
+    !(await canAccessCalendar(db, context, String(current.calendarId))) ||
+    !(await canAccessCalendar(db, context, calendarId))
+  ) {
+    return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
+  }
 
   await db.collection('calendar_events').updateOne(
     { _id: new ObjectId(id) },
@@ -76,7 +106,7 @@ export const PUT = withAdminAuth(async (_context: AuthContext, req: Request) => 
 });
 
 // DELETE — solo admin puede eliminar eventos
-export const DELETE = withAdminAuth(async (_context: AuthContext, req: Request) => {
+export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 
@@ -86,6 +116,10 @@ export const DELETE = withAdminAuth(async (_context: AuthContext, req: Request) 
 
   const client = await clientPromise;
   const db = client.db('degano-app');
+  const current = await db.collection('calendar_events').findOne({ _id: new ObjectId(id) });
+  if (!current || !(await canAccessCalendar(db, context, String(current.calendarId)))) {
+    return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
+  }
   await db.collection('calendar_events').deleteOne({ _id: new ObjectId(id) });
 
   return NextResponse.json({ success: true });

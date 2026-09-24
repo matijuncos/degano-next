@@ -8,6 +8,7 @@ import { getSession } from '@auth0/nextjs-auth0';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/requireAuth';
+import { resolveEmployee } from '@/lib/resolveEmployee';
 import { TASK_STATUSES, TaskStatus } from '@/types/boards';
 
 async function getDb() {
@@ -15,14 +16,26 @@ async function getDb() {
   return client.db('degano-app');
 }
 
-async function currentUser(): Promise<{ sub: string | null; name: string | null }> {
+// El acceso al tablero se resuelve con el id del registro de STAFF (directorio
+// único, vinculado por email), igual que en /api/boards y en calendarios.
+async function currentUser(): Promise<{
+  employeeId: string | null;
+  name: string | null;
+}> {
   try {
     const session = await getSession();
     const u: any = session?.user;
-    if (!u) return { sub: null, name: null };
-    return { sub: u.sub || null, name: u.name || u.nickname || u.email || null };
+    if (!u) return { employeeId: null, name: null };
+
+    const db = await getDb();
+    const resolved = await resolveEmployee(db, u);
+
+    return {
+      employeeId: resolved.ok ? String(resolved.employee._id) : null,
+      name: u.name || u.nickname || u.email || null
+    };
   } catch {
-    return { sub: null, name: null };
+    return { employeeId: null, name: null };
   }
 }
 
@@ -30,8 +43,12 @@ function isValidStatus(s: unknown): s is TaskStatus {
   return typeof s === 'string' && TASK_STATUSES.includes(s as TaskStatus);
 }
 
-// ¿El usuario (sub) puede ver el tablero boardId?
-async function canAccessBoard(db: any, boardId: string, sub: string | null): Promise<boolean> {
+// ¿El usuario (por su id de empleado) puede ver el tablero boardId?
+async function canAccessBoard(
+  db: any,
+  boardId: string,
+  employeeId: string | null
+): Promise<boolean> {
   if (!boardId) return false;
   let board: any;
   try {
@@ -41,8 +58,9 @@ async function canAccessBoard(db: any, boardId: string, sub: string | null): Pro
   }
   if (!board) return false;
   if (!board.visibility || board.visibility === 'all') return true;
+  if (!employeeId) return false;
   const members = (board.memberIds || []).map(String);
-  return board.ownerId === sub || members.includes(sub || '');
+  return String(board.ownerId) === employeeId || members.includes(employeeId);
 }
 
 const FORBIDDEN = NextResponse.json({ error: 'Sin acceso a este tablero' }, { status: 403 });
@@ -58,8 +76,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Falta boardId' }, { status: 400 });
     }
     const db = await getDb();
-    const { sub } = await currentUser();
-    if (!(await canAccessBoard(db, boardId, sub))) return FORBIDDEN;
+    const { employeeId } = await currentUser();
+    if (!(await canAccessBoard(db, boardId, employeeId))) return FORBIDDEN;
 
     const tasks = await db
       .collection('tasks')
@@ -86,8 +104,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'El título es obligatorio' }, { status: 400 });
     }
     const db = await getDb();
-    const { sub, name } = await currentUser();
-    if (!(await canAccessBoard(db, String(body.boardId), sub))) return FORBIDDEN;
+    const { employeeId, name } = await currentUser();
+    if (!(await canAccessBoard(db, String(body.boardId), employeeId))) return FORBIDDEN;
 
     const status: TaskStatus = isValidStatus(body.status) ? body.status : 'pending';
     const countInColumn = await db
@@ -121,7 +139,7 @@ export async function PUT(req: Request) {
   try {
     const body = await req.json();
     const db = await getDb();
-    const { sub } = await currentUser();
+    const { employeeId } = await currentUser();
 
     // Reordenamiento en lote tras drag & drop: [{ id, status, order }]
     if (Array.isArray(body.reorder)) {
@@ -142,7 +160,7 @@ export async function PUT(req: Request) {
         .toArray();
       const boardIds = Array.from(new Set(affected.map((t: any) => String(t.boardId))));
       for (const bId of boardIds) {
-        if (!(await canAccessBoard(db, bId, sub))) return FORBIDDEN;
+        if (!(await canAccessBoard(db, bId, employeeId))) return FORBIDDEN;
       }
 
       const ops = body.reorder
@@ -166,7 +184,7 @@ export async function PUT(req: Request) {
     const taskId = new ObjectId(String(body.id));
     const task = await db.collection('tasks').findOne({ _id: taskId }, { projection: { boardId: 1 } });
     if (!task) return NextResponse.json({ error: 'Tarea no encontrada' }, { status: 404 });
-    if (!(await canAccessBoard(db, String(task.boardId), sub))) return FORBIDDEN;
+    if (!(await canAccessBoard(db, String(task.boardId), employeeId))) return FORBIDDEN;
 
     const { id, _id, ...rest } = body;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -196,11 +214,11 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Falta el id de la tarea' }, { status: 400 });
     }
     const db = await getDb();
-    const { sub } = await currentUser();
+    const { employeeId } = await currentUser();
     const taskId = new ObjectId(id);
     const task = await db.collection('tasks').findOne({ _id: taskId }, { projection: { boardId: 1 } });
     if (!task) return NextResponse.json({ error: 'Tarea no encontrada' }, { status: 404 });
-    if (!(await canAccessBoard(db, String(task.boardId), sub))) return FORBIDDEN;
+    if (!(await canAccessBoard(db, String(task.boardId), employeeId))) return FORBIDDEN;
 
     await db.collection('tasks').deleteOne({ _id: taskId });
     return NextResponse.json({ success: true });

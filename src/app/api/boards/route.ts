@@ -11,6 +11,7 @@ import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/requireAuth';
 import { getUserRole } from '@/utils/roleUtils';
+import { resolveEmployee } from '@/lib/resolveEmployee';
 import { BoardVisibility } from '@/types/boards';
 
 async function getDb() {
@@ -18,19 +19,29 @@ async function getDb() {
   return client.db('degano-app');
 }
 
-// Identidad del usuario logueado (sub + rol + nombre)
-async function currentUser(): Promise<{ sub: string | null; role: string; name: string | null }> {
+// Identidad del usuario logueado. `employeeId` es el id de su registro de STAFF
+// (el directorio único), resuelto por email — es con lo que se guardan dueño y
+// miembros, igual que en calendarios.
+async function currentUser(): Promise<{
+  employeeId: string | null;
+  role: string;
+  name: string | null;
+}> {
   try {
     const session = await getSession();
     const u: any = session?.user;
-    if (!u) return { sub: null, role: 'viewer', name: null };
+    if (!u) return { employeeId: null, role: 'viewer', name: null };
+
+    const db = await getDb();
+    const resolved = await resolveEmployee(db, u);
+
     return {
-      sub: u.sub || null,
+      employeeId: resolved.ok ? String(resolved.employee._id) : null,
       role: getUserRole(u),
       name: u.name || u.nickname || u.email || null
     };
   } catch {
-    return { sub: null, role: 'viewer', name: null };
+    return { employeeId: null, role: 'viewer', name: null };
   }
 }
 
@@ -41,15 +52,17 @@ export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
   try {
-    const { sub } = await currentUser();
+    const { employeeId } = await currentUser();
     const db = await getDb();
     // Visible si: es de todos, es legacy (sin visibility), sos el dueño o sos miembro.
-    const query = {
+    // Sin vínculo con un registro de STAFF solo se ven los tableros de todos.
+    const query: Record<string, unknown> = {
       $or: [
         { visibility: 'all' },
         { visibility: { $exists: false } },
-        { ownerId: sub },
-        { memberIds: sub }
+        ...(employeeId
+          ? [{ ownerId: employeeId }, { memberIds: employeeId }]
+          : [])
       ]
     };
     const boards = await db
@@ -73,7 +86,7 @@ export async function POST(req: Request) {
     if (!body.name || !String(body.name).trim()) {
       return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 });
     }
-    const { sub, role, name: userName } = await currentUser();
+    const { employeeId, role, name: userName } = await currentUser();
     const isAdmin = role === 'admin';
 
     // La visibilidad SOLO la define un admin. Un no-admin siempre crea 'all'.
@@ -82,7 +95,7 @@ export async function POST(req: Request) {
     if (isAdmin && body.visibility === 'restricted') {
       visibility = 'restricted';
       const requested = Array.isArray(body.memberIds) ? body.memberIds.map(String) : [];
-      memberIds = uniq([sub || '', ...requested]); // el dueño siempre incluido
+      memberIds = uniq([employeeId || '', ...requested]); // el dueño siempre incluido
     }
 
     const db = await getDb();
@@ -93,7 +106,7 @@ export async function POST(req: Request) {
       order: count,
       createdAt: new Date(),
       createdBy: userName,
-      ownerId: sub,
+      ownerId: employeeId,
       visibility,
       memberIds
     };

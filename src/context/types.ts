@@ -215,6 +215,16 @@ export interface EmployeeModel {
   rol: string;
   license: string;
   licenseType?: string;
+  email?: string; // email con el que inicia sesión (vincula al empleado con su login)
+  // Directorio único: los registros creados desde STAFF son personal de eventos
+  // (isStaff true o ausente = legacy). Los que se auto-crean en el primer login
+  // de alguien sin registro quedan en false: existen solo para poder sumarlos
+  // como miembros de tableros/calendarios, y NO aparecen en ningún selector.
+  isStaff?: boolean;
+  // Se estampan en el login (ver /api/me). Sirven para saber si el email cargado
+  // corresponde a una cuenta real y si esa persona ya entró alguna vez.
+  authSub?: string;
+  lastLoginAt?: string | Date;
 }
 
 export type EventsList = EventModel[];

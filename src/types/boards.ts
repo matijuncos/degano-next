@@ -22,18 +22,12 @@ export interface Board {
   order: number;
   createdAt: string | Date;
   createdBy?: string | null;
-  // Control de acceso
-  ownerId?: string | null; // sub (Auth0) del creador
+  // Control de acceso. Dueño y miembros se guardan con el _id del registro de
+  // STAFF (directorio único), no con el sub de Auth0: el vínculo entre la cuenta
+  // de login y su empleado se resuelve por email en /api/me.
+  ownerId?: string | null; // _id del empleado que lo creó
   visibility?: BoardVisibility;
-  memberIds?: string[]; // subs con acceso cuando visibility === 'restricted' (siempre incluye al dueño)
-}
-
-// Usuario del directorio propio (se llena al entrar cada persona)
-export interface DirectoryUser {
-  sub: string;
-  email?: string | null;
-  name?: string | null;
-  role?: string | null;
+  memberIds?: string[]; // _id de empleados con acceso si visibility === 'restricted' (incluye al dueño)
 }
 
 export interface Task {
