@@ -61,8 +61,10 @@ function canSeeBoard(board: any, employeeId: string | null): boolean {
   );
 }
 
-// GET → tableros que el usuario puede ver
-export async function GET() {
+// GET → tableros que el usuario puede ver.
+// ?withTasks=1 → además trae las tareas del primer tablero en la misma request,
+// para no esperar un segundo viaje (boards → tasks) al abrir la pantalla.
+export async function GET(req: Request) {
   const unauth = await requireAuth();
   if (unauth) return unauth;
   try {
@@ -84,6 +86,18 @@ export async function GET() {
       .find(query)
       .sort({ order: 1, createdAt: 1 })
       .toArray();
+
+    // El primer tablero ya pasó el filtro de visibilidad: el usuario tiene acceso
+    const withTasks = new URL(req.url).searchParams.get('withTasks') === '1';
+    if (withTasks && boards.length > 0) {
+      const boardId = String(boards[0]._id);
+      const tasks = await db
+        .collection('tasks')
+        .find({ boardId })
+        .sort({ order: 1, createdAt: 1 })
+        .toArray();
+      return NextResponse.json({ boards, firstBoardTasks: { boardId, tasks } });
+    }
     return NextResponse.json({ boards });
   } catch (error) {
     console.error('[boards GET]', error);

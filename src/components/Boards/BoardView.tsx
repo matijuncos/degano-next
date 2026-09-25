@@ -12,7 +12,9 @@ import {
   Button,
   Tooltip,
   ScrollArea,
-  Select
+  Select,
+  Loader,
+  Center
 } from '@mantine/core';
 import {
   IconPlus,
@@ -251,7 +253,7 @@ export default function BoardView({ board }: { board: Board }) {
   // "Mías" compara ids y no texto.
   const { employeeId: myEmployeeId } = useMyEmployee();
   const swrKey = `/api/tasks?boardId=${board._id}`;
-  const { data, mutate } = useSWR<{ tasks: Task[] }>(swrKey, fetcher, {
+  const { data, mutate, isLoading } = useSWR<{ tasks: Task[] }>(swrKey, fetcher, {
     refreshInterval: 12000,
     revalidateOnFocus: true
   });
@@ -502,7 +504,11 @@ export default function BoardView({ board }: { board: Board }) {
                   items={viewColumns[status].map((t) => t._id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {viewColumns[status].length === 0 ? (
+                  {isLoading && !data ? (
+                    <Center py='md'>
+                      <Loader size='sm' />
+                    </Center>
+                  ) : viewColumns[status].length === 0 ? (
                     <Text size='xs' c='dimmed' ta='center' py='md'>
                       Sin tareas
                     </Text>

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import {
   Box,
   Group,
@@ -17,7 +17,9 @@ import {
   Paper,
   Select,
   MultiSelect,
-  Badge
+  Badge,
+  Loader,
+  Center
 } from '@mantine/core';
 import {
   IconPlus,
@@ -54,8 +56,19 @@ export default function BoardsPanel() {
   // Mi registro de STAFF: es la identidad con la que se guarda dueño y miembros.
   const { employeeId: myEmployeeId } = useMyEmployee();
 
-  const { data, mutate } = useSWR<{ boards: Board[] }>('/api/boards', fetcher, {
-    revalidateOnFocus: true
+  const { data, mutate } = useSWR<{
+    boards: Board[];
+    firstBoardTasks?: { boardId: string; tasks: any[] };
+  }>('/api/boards?withTasks=1', fetcher, {
+    revalidateOnFocus: true,
+    // Las tareas del primer tablero vienen en la misma respuesta: se cargan en
+    // la caché de SWR de ese tablero para que BoardView las muestre sin esperar
+    onSuccess: (res) => {
+      if (res?.firstBoardTasks) {
+        const { boardId, tasks } = res.firstBoardTasks;
+        globalMutate(`/api/tasks?boardId=${boardId}`, { tasks }, { revalidate: false });
+      }
+    }
   });
   const boards = useMemo(() => data?.boards || [], [data]);
 
@@ -199,8 +212,10 @@ export default function BoardsPanel() {
         </Badge>
       );
     }
+    // Mismo criterio que presetOf: el dueño no cuenta como "otro"
     const count = (board.memberIds || []).length;
-    if (count <= 1) {
+    const others = (board.memberIds || []).filter((id) => id !== board.ownerId);
+    if (others.length === 0) {
       return (
         <Badge color='grape' variant='light' size='sm' leftSection={<IconLock size={12} />}>
           Privado
@@ -226,7 +241,16 @@ export default function BoardsPanel() {
         </Button>
       </Group>
 
-      {boards.length === 0 ? (
+      {!data ? (
+        <Center py='xl'>
+          <Stack align='center' gap='xs'>
+            <Loader size='md' />
+            <Text size='sm' c='dimmed'>
+              Cargando tableros...
+            </Text>
+          </Stack>
+        </Center>
+      ) : boards.length === 0 ? (
         <Paper withBorder p='xl' radius='md' ta='center'>
           <Text c='dimmed' mb='md'>
             No hay tableros todavía. Creá el primero para empezar a organizar tareas del equipo.
