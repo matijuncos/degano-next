@@ -47,7 +47,16 @@ export async function GET() {
   try {
     const session = await getSession();
     const db = await getDb();
-    const result = await resolveEmployee(db, session?.user);
+    let result = await resolveEmployee(db, session?.user);
+
+    // No depender de que el POST de registro haya corrido antes: si todavía no
+    // hay vínculo, se registra acá y se reintenta. Sin esto, un GET que gane la
+    // carrera en el primer login deja al usuario sin identidad toda la sesión.
+    if (!result.ok && result.reason === 'not_linked') {
+      await ensureEmployeeIndexes(db);
+      await registerLogin(db, session?.user);
+      result = await resolveEmployee(db, session?.user);
+    }
 
     // Sin vínculo no es un error: el usuario simplemente no puede ser miembro de
     // tableros/calendarios restringidos. El front decide cómo mostrarlo.
