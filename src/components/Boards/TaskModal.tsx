@@ -8,7 +8,8 @@ import {
   Select,
   Button,
   Group,
-  Stack
+  Stack,
+  Loader
 } from '@mantine/core';
 import useNotification from '@/hooks/useNotification';
 import { Task, TaskStatus, TASK_STATUS_LABELS, TASK_STATUSES } from '@/types/boards';
@@ -35,7 +36,7 @@ export default function TaskModal({
   const notify = useNotification();
   const isEdit = !!task;
 
-  const { data: employees = [] } = useSWR<any[]>(
+  const { data: employees = [], isLoading: loadingEmployees } = useSWR<any[]>(
     opened ? '/api/employees' : null,
     fetcher
   );
@@ -142,7 +143,9 @@ export default function TaskModal({
         />
         <Select
           label='Responsable'
-          placeholder='Sin asignar'
+          placeholder={loadingEmployees ? 'Cargando empleados...' : 'Sin asignar'}
+          disabled={loadingEmployees}
+          rightSection={loadingEmployees ? <Loader size={14} /> : undefined}
           data={employeeOptions}
           value={assigneeId}
           onChange={setAssigneeId}

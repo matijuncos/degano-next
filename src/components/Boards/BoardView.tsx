@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { preload } from 'swr';
 import {
   Box,
   Group,
@@ -257,6 +257,12 @@ export default function BoardView({ board }: { board: Board }) {
     refreshInterval: 12000,
     revalidateOnFocus: true
   });
+
+  // Precargar empleados: el modal de tarea los necesita para "Responsable" y,
+  // si se piden recién al abrirlo, el selector aparece vacío hasta que llegan
+  useEffect(() => {
+    preload('/api/employees', fetcher);
+  }, []);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
