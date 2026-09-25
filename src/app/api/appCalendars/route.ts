@@ -9,6 +9,9 @@ import {
   currentEmployeeId
 } from '@/utils/calendarVisibility';
 
+const NO_OWNER_ERROR =
+  'Tu usuario no está vinculado a un registro de STAFF: no se puede crear un calendario restringido.';
+
 const CALENDAR_PROJECTION = { _id: 1, name: 1, color: 1, ownerId: 1, visibility: 1, memberIds: 1 };
 
 // GET — cada usuario ve solo los calendarios a los que tiene acceso
@@ -43,6 +46,10 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
   const db = client.db('degano-app');
   // El dueño se guarda con el id de su registro de STAFF, igual que los miembros
   const ownerId = await currentEmployeeId(db, context.user);
+  // Restringido sin dueño = nadie lo ve y no se puede ni editar ni borrar
+  if (access.visibility === 'restricted' && !ownerId) {
+    return NextResponse.json({ error: NO_OWNER_ERROR }, { status: 400 });
+  }
   const result = await db
     .collection('app_calendars')
     .insertOne({ name, color, ownerId, ...access });
@@ -82,6 +89,9 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
     Object.assign(updates, access);
     if (!existing.ownerId) {
       updates.ownerId = await currentEmployeeId(db, context.user);
+    }
+    if (access.visibility === 'restricted' && !(existing.ownerId || updates.ownerId)) {
+      return NextResponse.json({ error: NO_OWNER_ERROR }, { status: 400 });
     }
   }
 

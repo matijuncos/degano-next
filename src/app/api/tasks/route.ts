@@ -63,7 +63,8 @@ async function canAccessBoard(
   return String(board.ownerId) === employeeId || members.includes(employeeId);
 }
 
-const FORBIDDEN = NextResponse.json({ error: 'Sin acceso a este tablero' }, { status: 403 });
+// Una Response nueva por request: el body de una Response se puede leer una sola vez
+const forbidden = () => NextResponse.json({ error: 'Sin acceso a este tablero' }, { status: 403 });
 
 // GET ?boardId=... → tareas del tablero (si el usuario tiene acceso)
 export async function GET(req: Request) {
@@ -77,7 +78,7 @@ export async function GET(req: Request) {
     }
     const db = await getDb();
     const { employeeId } = await currentUser();
-    if (!(await canAccessBoard(db, boardId, employeeId))) return FORBIDDEN;
+    if (!(await canAccessBoard(db, boardId, employeeId))) return forbidden();
 
     const tasks = await db
       .collection('tasks')
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
     }
     const db = await getDb();
     const { employeeId, name } = await currentUser();
-    if (!(await canAccessBoard(db, String(body.boardId), employeeId))) return FORBIDDEN;
+    if (!(await canAccessBoard(db, String(body.boardId), employeeId))) return forbidden();
 
     const status: TaskStatus = isValidStatus(body.status) ? body.status : 'pending';
     const countInColumn = await db
@@ -160,7 +161,7 @@ export async function PUT(req: Request) {
         .toArray();
       const boardIds = Array.from(new Set(affected.map((t: any) => String(t.boardId))));
       for (const bId of boardIds) {
-        if (!(await canAccessBoard(db, bId, employeeId))) return FORBIDDEN;
+        if (!(await canAccessBoard(db, bId, employeeId))) return forbidden();
       }
 
       const ops = body.reorder
@@ -184,7 +185,7 @@ export async function PUT(req: Request) {
     const taskId = new ObjectId(String(body.id));
     const task = await db.collection('tasks').findOne({ _id: taskId }, { projection: { boardId: 1 } });
     if (!task) return NextResponse.json({ error: 'Tarea no encontrada' }, { status: 404 });
-    if (!(await canAccessBoard(db, String(task.boardId), employeeId))) return FORBIDDEN;
+    if (!(await canAccessBoard(db, String(task.boardId), employeeId))) return forbidden();
 
     const { id, _id, ...rest } = body;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -218,7 +219,7 @@ export async function DELETE(req: Request) {
     const taskId = new ObjectId(id);
     const task = await db.collection('tasks').findOne({ _id: taskId }, { projection: { boardId: 1 } });
     if (!task) return NextResponse.json({ error: 'Tarea no encontrada' }, { status: 404 });
-    if (!(await canAccessBoard(db, String(task.boardId), employeeId))) return FORBIDDEN;
+    if (!(await canAccessBoard(db, String(task.boardId), employeeId))) return forbidden();
 
     await db.collection('tasks').deleteOne({ _id: taskId });
     return NextResponse.json({ success: true });

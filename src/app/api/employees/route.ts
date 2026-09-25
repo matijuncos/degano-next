@@ -41,6 +41,23 @@ function duplicateEmailResponse(owner: any) {
 // su cuenta (authSub/lastLoginAt). No es un conflicto real, es la misma persona.
 const isDirectoryEntry = (doc: any) => doc?.isStaff === false;
 
+// Pasa todas las referencias de un empleado a otro (tableros, calendarios y
+// tareas guardan el _id del empleado). Se usa al fusionar una entrada de
+// directorio con el registro de STAFF de la misma persona, para que no pierda
+// sus tableros, calendarios ni tareas asignadas.
+async function migrateEmployeeRefs(db: any, fromId: string, toId: string) {
+  for (const coll of ['boards', 'app_calendars']) {
+    await db.collection(coll).updateMany({ ownerId: fromId }, { $set: { ownerId: toId } });
+    // $addToSet + $pull en dos pasos: Mongo no permite ambos sobre el mismo campo
+    await db.collection(coll).updateMany({ memberIds: fromId }, { $addToSet: { memberIds: toId } });
+    await db.collection(coll).updateMany({ memberIds: fromId }, { $pull: { memberIds: fromId } });
+  }
+  await db.collection('tasks').updateMany({ assigneeId: fromId }, { $set: { assigneeId: toId } });
+}
+
+// Datos internos del vínculo con el login: no salen de la API
+const PUBLIC_PROJECTION = { authSub: 0, lastLoginAt: 0 };
+
 async function listAllEmployees(directory = false) {
   const client = await clientPromise;
   const db = client.db('degano-app');
@@ -49,13 +66,15 @@ async function listAllEmployees(directory = false) {
   // de todos los selectores. Con ?directory=true se piden también esas, para los
   // selectores de miembros de tableros y calendarios.
   const filter = directory ? {} : { isStaff: { $ne: false } };
-  return db.collection('employees').find(filter).toArray();
+  return db.collection('employees').find(filter, { projection: PUBLIC_PROJECTION }).toArray();
 }
 
 export const GET = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
-    const directory = searchParams.get('directory') === 'true';
+    // El directorio incluye a todos los que entraron a la app: solo para admin
+    const directory =
+      searchParams.get('directory') === 'true' && context.role === 'admin';
     const employees = await listAllEmployees(directory);
     return NextResponse.json(employees);
   } catch (error) {
@@ -118,6 +137,7 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
       if (owner && isDirectoryEntry(owner)) {
         if (owner.authSub) rest.authSub = owner.authSub;
         if (owner.lastLoginAt) rest.lastLoginAt = owner.lastLoginAt;
+        await migrateEmployeeRefs(db, String(owner._id), String(_id));
         await db.collection('employees').deleteOne({ _id: owner._id });
       } else if (owner) {
         return duplicateEmailResponse(owner);

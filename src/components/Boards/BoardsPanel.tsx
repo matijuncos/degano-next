@@ -42,7 +42,10 @@ type VisibilityPreset = 'all' | 'private' | 'selected';
 // Deriva el preset de visibilidad a partir del tablero guardado
 function presetOf(board: Board): VisibilityPreset {
   if (board.visibility !== 'restricted') return 'all';
-  return (board.memberIds || []).length <= 1 ? 'private' : 'selected';
+  // El dueño va siempre en memberIds: "Solo yo" = ningún otro miembro. (Un
+  // tablero viejo sin dueño con 1 miembro es 'selected', no privado.)
+  const others = (board.memberIds || []).filter((id) => id !== board.ownerId);
+  return others.length === 0 ? 'private' : 'selected';
 }
 
 export default function BoardsPanel() {

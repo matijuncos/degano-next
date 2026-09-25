@@ -47,6 +47,20 @@ async function currentUser(): Promise<{
 
 const uniq = (arr: string[]) => Array.from(new Set(arr.filter(Boolean)));
 
+// Un tablero restringido sin dueño ni miembros no lo vería nadie (tampoco admins)
+const NO_OWNER_ERROR =
+  'Tu usuario no está vinculado a un registro de STAFF: no se puede crear un tablero privado sin miembros.';
+
+// ¿El empleado puede ver el tablero? Mismo criterio que el GET.
+function canSeeBoard(board: any, employeeId: string | null): boolean {
+  if (!board.visibility || board.visibility === 'all') return true;
+  if (!employeeId) return false;
+  return (
+    String(board.ownerId) === employeeId ||
+    (board.memberIds || []).map(String).includes(employeeId)
+  );
+}
+
 // GET → tableros que el usuario puede ver
 export async function GET() {
   const unauth = await requireAuth();
@@ -96,6 +110,9 @@ export async function POST(req: Request) {
       visibility = 'restricted';
       const requested = Array.isArray(body.memberIds) ? body.memberIds.map(String) : [];
       memberIds = uniq([employeeId || '', ...requested]); // el dueño siempre incluido
+      if (memberIds.length === 0) {
+        return NextResponse.json({ error: NO_OWNER_ERROR }, { status: 400 });
+      }
     }
 
     const db = await getDb();
@@ -127,10 +144,16 @@ export async function PUT(req: Request) {
     if (!body.id) {
       return NextResponse.json({ error: 'Falta el id del tablero' }, { status: 400 });
     }
-    const { role } = await currentUser();
+    const { employeeId, role } = await currentUser();
     const isAdmin = role === 'admin';
     const db = await getDb();
     const boardId = new ObjectId(String(body.id));
+
+    // Solo se edita un tablero que el usuario puede ver (privado = privado)
+    const existing = await db.collection('boards').findOne({ _id: boardId });
+    if (!existing || !canSeeBoard(existing, employeeId)) {
+      return NextResponse.json({ error: 'Tablero no encontrado' }, { status: 404 });
+    }
 
     const updates: Record<string, unknown> = {};
     if (typeof body.name === 'string') updates.name = body.name.trim();
@@ -143,11 +166,16 @@ export async function PUT(req: Request) {
         updates.visibility = 'all';
         updates.memberIds = [];
       } else {
-        const existing = await db.collection('boards').findOne({ _id: boardId });
-        const owner = existing?.ownerId ? String(existing.ownerId) : '';
+        // Tableros viejos sin dueño: lo toma el admin que los restringe
+        const owner = existing.ownerId ? String(existing.ownerId) : employeeId || '';
         const requested = Array.isArray(body.memberIds) ? body.memberIds.map(String) : [];
+        const memberIds = uniq([owner, ...requested]); // el dueño no se puede quitar
+        if (memberIds.length === 0) {
+          return NextResponse.json({ error: NO_OWNER_ERROR }, { status: 400 });
+        }
         updates.visibility = 'restricted';
-        updates.memberIds = uniq([owner, ...requested]); // el dueño no se puede quitar
+        updates.memberIds = memberIds;
+        if (!existing.ownerId && owner) updates.ownerId = owner;
       }
     }
 

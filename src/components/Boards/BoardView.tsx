@@ -265,6 +265,14 @@ export default function BoardView({ board }: { board: Board }) {
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const isDraggingRef = useRef(false);
 
+  // Al cambiar de tablero se vacía la lista: si no, se verían (y se podrían
+  // reordenar) las tareas del tablero anterior hasta que llegue el fetch nuevo
+  useEffect(() => {
+    setTasks([]);
+    setActiveId(null);
+    isDraggingRef.current = false;
+  }, [board._id]);
+
   // Sincronizar el estado local con el servidor, salvo mientras se arrastra
   useEffect(() => {
     if (isDraggingRef.current) return;
@@ -327,13 +335,14 @@ export default function BoardView({ board }: { board: Board }) {
   // Persistir el orden/estado completo del tablero tras un cambio
   const persist = async (next: Task[]) => {
     try {
-      await fetch('/api/tasks', {
+      const res = await fetch('/api/tasks', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reorder: next.map((t) => ({ id: t._id, status: t.status, order: t.order }))
         })
       });
+      if (!res.ok) throw new Error('Error al reordenar');
       mutate();
     } catch (error) {
       console.error(error);
@@ -353,6 +362,14 @@ export default function BoardView({ board }: { board: Board }) {
       });
     });
     return flat;
+  };
+
+  // Drag cancelado (Escape): dnd-kit no llama a onDragEnd, hay que liberar el
+  // flag a mano o el tablero deja de sincronizarse con el servidor
+  const handleDragCancel = () => {
+    isDraggingRef.current = false;
+    setActiveId(null);
+    if (data?.tasks) setTasks(data.tasks);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -427,7 +444,8 @@ export default function BoardView({ board }: { board: Board }) {
     setTasks((prev) => prev.filter((t) => t._id !== task._id)); // optimista
     notify({ loading: true });
     try {
-      await fetch(`/api/tasks?id=${task._id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/tasks?id=${task._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Error al eliminar');
       notify({ message: 'Tarea eliminada' });
       mutate();
     } catch (error) {
@@ -475,6 +493,7 @@ export default function BoardView({ board }: { board: Board }) {
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <Group align='stretch' gap='md' wrap='nowrap' style={{ minWidth: 'min-content' }}>
             {TASK_STATUSES.map((status) => (

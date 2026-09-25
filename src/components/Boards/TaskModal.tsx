@@ -71,8 +71,12 @@ export default function TaskModal({
     }
     setSaving(true);
     notify({ loading: true });
+    // Si el responsable no cambió se conserva el nombre guardado: la lista de
+    // empleados puede no haber cargado todavía o ya no incluirlo (borrado).
     const assigneeName =
-      employees.find((e) => e._id === assigneeId)?.fullName || null;
+      isEdit && assigneeId === (task?.assigneeId || null)
+        ? task?.assigneeName || null
+        : employees.find((e) => e._id === assigneeId)?.fullName || null;
     try {
       const payload: any = {
         title: title.trim(),

@@ -101,6 +101,22 @@ export default withPageAuthRequired(function CalendarPage() {
     setEventModalOpened(true);
   };
 
+  // fetch no tira error con 4xx/5xx: se valida la respuesta a mano para que el
+  // usuario vea el error real (ej. calendario restringido sin dueño)
+  const ensureOk = async (res: Response) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error || 'Algo salió mal, vuelve a intentarlo');
+    }
+    return res;
+  };
+  const notifyError = (error: unknown) =>
+    notify({
+      title: 'Operación errónea',
+      message: error instanceof Error ? error.message : 'Algo salió mal, vuelve a intentarlo',
+      color: 'red'
+    });
+
   const handleSavePersonalEvent = async (
     data: Omit<CalendarEventData, '_id' | 'source' | 'calendarColor'>,
     id?: string
@@ -108,33 +124,33 @@ export default withPageAuthRequired(function CalendarPage() {
     notify({ loading: true });
     try {
       if (id) {
-        await fetch(`/api/calendarEvents?id=${id}`, {
+        await ensureOk(await fetch(`/api/calendarEvents?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
-        });
+        }));
       } else {
-        await fetch('/api/calendarEvents', {
+        await ensureOk(await fetch('/api/calendarEvents', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
-        });
+        }));
       }
       mutatePersonalEvents();
       notify();
-    } catch {
-      notify({ type: 'defaultError' });
+    } catch (error) {
+      notifyError(error);
     }
   };
 
   const handleDeletePersonalEvent = async (id: string) => {
     notify({ loading: true });
     try {
-      await fetch(`/api/calendarEvents?id=${id}`, { method: 'DELETE' });
+      await ensureOk(await fetch(`/api/calendarEvents?id=${id}`, { method: 'DELETE' }));
       mutatePersonalEvents();
       notify();
-    } catch {
-      notify({ type: 'defaultError' });
+    } catch (error) {
+      notifyError(error);
     }
   };
 
@@ -142,37 +158,37 @@ export default withPageAuthRequired(function CalendarPage() {
   const handleCreateCalendar = async (values: CalendarFormValues) => {
     notify({ loading: true });
     try {
-      await fetch('/api/appCalendars', {
+      await ensureOk(await fetch('/api/appCalendars', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values)
-      });
+      }));
       mutateCalendars();
       notify();
-    } catch {
-      notify({ type: 'defaultError' });
+    } catch (error) {
+      notifyError(error);
     }
   };
 
   const handleUpdateCalendar = async (id: string, values: CalendarFormValues) => {
     notify({ loading: true });
     try {
-      await fetch(`/api/appCalendars?id=${id}`, {
+      await ensureOk(await fetch(`/api/appCalendars?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values)
-      });
+      }));
       mutateCalendars();
       notify();
-    } catch {
-      notify({ type: 'defaultError' });
+    } catch (error) {
+      notifyError(error);
     }
   };
 
   const handleDeleteCalendar = async (id: string) => {
     notify({ loading: true });
     try {
-      await fetch(`/api/appCalendars?id=${id}`, { method: 'DELETE' });
+      await ensureOk(await fetch(`/api/appCalendars?id=${id}`, { method: 'DELETE' }));
       mutateCalendars();
       mutatePersonalEvents();
       setVisibleCalendarIds((prev) => {
@@ -181,8 +197,8 @@ export default withPageAuthRequired(function CalendarPage() {
         return next;
       });
       notify();
-    } catch {
-      notify({ type: 'defaultError' });
+    } catch (error) {
+      notifyError(error);
     }
   };
 
