@@ -20,12 +20,14 @@ import {
   IconPlus,
   IconPencil,
   IconTrash,
-  IconCheck,
+  IconArrowRight,
   IconArrowBackUp,
   IconUser,
   IconFilter
 } from '@tabler/icons-react';
 import { useMyEmployee } from '@/hooks/useMyEmployee';
+import { useMediaQuery } from '@mantine/hooks';
+import { useResponsive } from '@/hooks/useResponsive';
 import {
   DndContext,
   DragOverlay,
@@ -51,7 +53,9 @@ import {
   Task,
   TaskStatus,
   TASK_STATUSES,
-  TASK_STATUS_LABELS
+  TASK_STATUS_LABELS,
+  nextTaskStatus,
+  prevTaskStatus
 } from '@/types/boards';
 import TaskModal from './TaskModal';
 
@@ -79,16 +83,18 @@ function TaskCard({
   task,
   onEdit,
   onDelete,
-  onToggleDone,
+  onMove,
   dragging = false
 }: {
   task: Task;
   onEdit?: (t: Task) => void;
   onDelete?: (t: Task) => void;
-  onToggleDone?: (t: Task) => void;
+  onMove?: (t: Task, target: TaskStatus) => void;
   dragging?: boolean;
 }) {
   const isDone = task.status === 'done';
+  const prev = prevTaskStatus(task.status);
+  const next = nextTaskStatus(task.status);
   return (
     <Paper
       withBorder
@@ -114,16 +120,32 @@ function TaskCard({
           {task.title}
         </Text>
         <Group gap={2} wrap='nowrap' style={{ flexShrink: 0 }}>
-          <Tooltip label={isDone ? 'Reabrir' : 'Marcar finalizada'} withArrow>
-            <ActionIcon
-              size='sm'
-              variant='subtle'
-              color={isDone ? 'gray' : 'green'}
-              onClick={() => onToggleDone?.(task)}
-            >
-              {isDone ? <IconArrowBackUp size={15} /> : <IconCheck size={15} />}
-            </ActionIcon>
-          </Tooltip>
+          {/* Volver siempre al estado anterior (no a Pendiente) */}
+          {prev && (
+            <Tooltip label={`Volver a ${TASK_STATUS_LABELS[prev]}`} withArrow>
+              <ActionIcon
+                size='sm'
+                variant='subtle'
+                color='gray'
+                onClick={() => onMove?.(task, prev)}
+              >
+                <IconArrowBackUp size={15} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {/* Avanzar un paso: Pendiente → En curso → Finalizada */}
+          {next && (
+            <Tooltip label={`Pasar a ${TASK_STATUS_LABELS[next]}`} withArrow>
+              <ActionIcon
+                size='sm'
+                variant='subtle'
+                color={next === 'done' ? 'green' : 'yellow'}
+                onClick={() => onMove?.(task, next)}
+              >
+                <IconArrowRight size={15} />
+              </ActionIcon>
+            </Tooltip>
+          )}
           <Tooltip label='Editar' withArrow>
             <ActionIcon size='sm' variant='subtle' color='blue' onClick={() => onEdit?.(task)}>
               <IconPencil size={15} />
@@ -163,13 +185,13 @@ function SortableTaskCard({
   task,
   onEdit,
   onDelete,
-  onToggleDone,
+  onMove,
   disabled = false
 }: {
   task: Task;
   onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
-  onToggleDone: (t: Task) => void;
+  onMove: (t: Task, target: TaskStatus) => void;
   disabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -179,11 +201,12 @@ function SortableTaskCard({
     transition,
     opacity: isDragging ? 0.4 : 1,
     cursor: disabled ? 'default' : 'grab',
-    touchAction: 'none'
+    // touch-action: none bloquea el scroll táctil: solo cuando se puede arrastrar
+    touchAction: disabled ? undefined : 'none'
   };
   return (
     <div ref={setNodeRef} style={style} {...(disabled ? {} : { ...attributes, ...listeners })}>
-      <TaskCard task={task} onEdit={onEdit} onDelete={onDelete} onToggleDone={onToggleDone} />
+      <TaskCard task={task} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
     </div>
   );
 }
@@ -298,6 +321,12 @@ export default function BoardView({ board }: { board: Board }) {
   );
 
   const filtering = assigneeFilter !== 'all';
+
+  // En mobile/táctil no se arrastra: el drag compite con el scroll. Las tareas
+  // se mueven con las flechas de la card.
+  const { isMobile } = useResponsive();
+  const isTouch = useMediaQuery('(pointer: coarse)');
+  const dragDisabled = filtering || !!isMobile || !!isTouch;
 
   // ¿La tarea es "mía"? Por id del empleado responsable: el vínculo con la cuenta
   // de login se resuelve por email en /api/me.
@@ -432,9 +461,9 @@ export default function BoardView({ board }: { board: Board }) {
     persist(next);
   };
 
-  // Marcar finalizada / reabrir (append al final de la columna destino)
-  const toggleDone = (task: Task) => {
-    const target: TaskStatus = task.status === 'done' ? 'pending' : 'done';
+  // Mover a otro estado con las flechas (append al final de la columna destino)
+  const moveTask = (task: Task, target: TaskStatus) => {
+    if (target === task.status) return;
     const byColumn: Record<TaskStatus, Task[]> = {
       pending: [...columns.pending],
       in_progress: [...columns.in_progress],
@@ -525,8 +554,8 @@ export default function BoardView({ board }: { board: Board }) {
                         task={task}
                         onEdit={openEdit}
                         onDelete={handleDelete}
-                        onToggleDone={toggleDone}
-                        disabled={filtering}
+                        onMove={moveTask}
+                        disabled={dragDisabled}
                       />
                     ))
                   )}

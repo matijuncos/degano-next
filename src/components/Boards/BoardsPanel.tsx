@@ -262,6 +262,14 @@ export default function BoardsPanel() {
       ) : (
         <>
           {/* Selector de tableros */}
+          <Group gap={6} mb={6}>
+            <Text size='xs' fw={700} c='dimmed' tt='uppercase'>
+              Tableros
+            </Text>
+            <Badge size='xs' variant='light' color='gray'>
+              {boards.length}
+            </Badge>
+          </Group>
           <ScrollArea type='auto' offsetScrollbars mb='md'>
             <Group gap='xs' wrap='nowrap' style={{ minWidth: 'min-content' }}>
               {boards.map((board) => (

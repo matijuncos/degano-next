@@ -43,3 +43,15 @@ export interface Task {
   updatedAt?: string | Date;
   createdBy?: string | null;
 }
+
+// Estado siguiente/anterior en el flujo Pendiente → En curso → Finalizada.
+// null = no hay a dónde avanzar/retroceder (extremos del flujo).
+export function nextTaskStatus(status: TaskStatus): TaskStatus | null {
+  const idx = TASK_STATUSES.indexOf(status);
+  return idx >= 0 && idx < TASK_STATUSES.length - 1 ? TASK_STATUSES[idx + 1] : null;
+}
+
+export function prevTaskStatus(status: TaskStatus): TaskStatus | null {
+  const idx = TASK_STATUSES.indexOf(status);
+  return idx > 0 ? TASK_STATUSES[idx - 1] : null;
+}
