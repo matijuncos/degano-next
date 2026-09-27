@@ -50,6 +50,7 @@ import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 import BandList from '@/components/BandManager/BandList';
 import EditableBand from '@/components/BandManager/EditableBand';
 import MissingFieldsModal from '@/components/MissingFieldsModal/MissingFieldsModal';
+import VenueMapsButton from '@/components/VenueMapsButton/VenueMapsButton';
 import MusicFieldsModal from '@/components/MusicFieldsModal/MusicFieldsModal';
 import useNotification from '@/hooks/useNotification';
 import { detectMissingFields } from '@/utils/fieldUtils';
@@ -221,7 +222,11 @@ const MainInformation = ({
       updateEventInList(eventToUse);
       notify();
     } catch (error) {
-      notify({ type: 'defaultError' });
+      notify({
+        title: 'Operación errónea',
+        message: (error as Error)?.message || 'Algo salió mal, vuelve a intentarlo',
+        color: 'red'
+      });
       console.error('Error updating event:', error);
     } finally {
       setLoadingCursor(false);
@@ -615,6 +620,17 @@ const MainInformation = ({
             'show'
           )}
         />
+      )}
+      {selectedEvent.venueMapsUrl && (
+        <>
+          <EditableData disabled={!canEditEvents}
+            type='text'
+            property='venueMapsUrl'
+            title='Ubicación (Google Maps)'
+            value={selectedEvent.venueMapsUrl}
+          />
+          <VenueMapsButton url={selectedEvent.venueMapsUrl} />
+        </>
       )}
 
       <Divider my='md' />
@@ -1934,7 +1950,11 @@ const TimingInformation = ({
       updateEventInList(eventToUse);
       notify();
     } catch (error) {
-      notify({ type: 'defaultError' });
+      notify({
+        title: 'Operación errónea',
+        message: (error as Error)?.message || 'Algo salió mal, vuelve a intentarlo',
+        color: 'red'
+      });
       console.error('Error updating event:', error);
     } finally {
       setLoadingCursor(false);
@@ -2539,6 +2559,17 @@ const EventPage = () => {
                 title='Provincia'
                 value={selectedEvent.eventProvince || ''}
               />
+              {selectedEvent.venueMapsUrl && (
+                <>
+                  <EditableData disabled={!canEditEvents}
+                    type='text'
+                    property='venueMapsUrl'
+                    title='Ubicación (Google Maps)'
+                    value={selectedEvent.venueMapsUrl}
+                  />
+                  <VenueMapsButton url={selectedEvent.venueMapsUrl} />
+                </>
+              )}
               <EditableData disabled={!canEditEvents}
                 type='text'
                 property='guests'

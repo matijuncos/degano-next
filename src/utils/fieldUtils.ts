@@ -47,6 +47,13 @@ export const OPTIONAL_FIELDS: FieldConfig[] = [
     type: 'text',
     placeholder: 'Teléfono del lugar'
   },
+  {
+    key: 'venueMapsUrl',
+    label: 'Ubicación (Google Maps)',
+    section: 'location',
+    type: 'text',
+    placeholder: 'https://maps.app.goo.gl/...'
+  },
 
   // Horarios
   {

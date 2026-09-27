@@ -15,6 +15,7 @@ export const INITIAL_EVENT_STATE: EventModel = {
   eventCity: '',
   eventProvince: '',
   lugar: '',
+  venueMapsUrl: '',
   date: '',
   endDate: '',
   churchDate: '',

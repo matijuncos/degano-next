@@ -72,6 +72,7 @@ export interface EventModel {
   venueContact?: string; // Legacy - mantener para retrocompatibilidad
   venueContactName?: string; // Nuevo campo - nombre del contacto
   venueContactPhone?: string; // Nuevo campo - teléfono del contacto
+  venueMapsUrl?: string; // Link de Google Maps del lugar (se autocompleta desde el salón)
   churchDate?: string;
   civil: string;
   bands: Array<Band>;

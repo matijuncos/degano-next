@@ -19,6 +19,7 @@ import {
   SECTION_LABELS,
   FieldConfig
 } from '@/utils/fieldUtils';
+import { isValidMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 
 interface MissingFieldsModalProps {
   opened: boolean;
@@ -70,6 +71,11 @@ const MissingFieldsModal = ({
         type: 'error',
         message: 'Por favor completa al menos un campo'
       });
+      return;
+    }
+
+    if (!isValidMapsUrl(formValues.venueMapsUrl)) {
+      notify({ title: 'Link inválido', message: MAPS_URL_ERROR, color: 'red' });
       return;
     }
 

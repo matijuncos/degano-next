@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
+import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 
 // Todos pueden crear eventos según especificación
 export const POST = withAuth(async (context: AuthContext, req: Request) => {
@@ -14,6 +15,14 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     const client = await typedClientPromise;
     const body = await req.json();
     const { _id, bands, equipment, createdAt, updatedAt, ...restBody } = body;
+    // Link de Google Maps del lugar: normalizar si viene, rechazar si no es de Maps
+    if ('venueMapsUrl' in restBody) {
+      const venueMapsUrl = normalizeMapsUrl(restBody.venueMapsUrl);
+      if (venueMapsUrl === null) {
+        return NextResponse.json({ error: MAPS_URL_ERROR }, { status: 400 });
+      }
+      restBody.venueMapsUrl = venueMapsUrl;
+    }
     const db = client.db('degano-app');
     const timestamp = new Date();
     const bandsWithIds = (bands || []).map((b: any) => ({

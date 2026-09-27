@@ -74,6 +74,14 @@ const EditableData = ({
         body: JSON.stringify(event)
       });
       const data = await response.json();
+      if (!response.ok) {
+        notify({
+          title: 'Operación errónea',
+          message: data.error || 'Algo salió mal, vuelve a intentarlo',
+          color: 'red'
+        });
+        return;
+      }
       const updatedEvent = data.event || event;
       setSelectedEvent(updatedEvent);
       updateEventInList(updatedEvent);

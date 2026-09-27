@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
+import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -31,6 +32,15 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
 
     // Preparar datos para actualizar
     const { createdAt, updatedAt, ...updateData } = body;
+
+    // Link de Google Maps del lugar: normalizar si viene, rechazar si no es de Maps
+    if ('venueMapsUrl' in updateData) {
+      const venueMapsUrl = normalizeMapsUrl(updateData.venueMapsUrl);
+      if (venueMapsUrl === null) {
+        return NextResponse.json({ error: MAPS_URL_ERROR }, { status: 400 });
+      }
+      updateData.venueMapsUrl = venueMapsUrl;
+    }
 
     // GUARD teléfonos: nunca persistir un teléfono ofuscado ('****'). Si un rol
     // sin permiso para ver teléfonos edita el evento, el phoneNumber llega como

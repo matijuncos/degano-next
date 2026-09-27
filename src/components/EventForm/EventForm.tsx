@@ -2,7 +2,10 @@ import 'dayjs/locale/es';
 import { EVENT_TABS } from '@/context/config';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { EventModel } from '@/context/types';
-import { Button, Input, Divider, Text, Select, ComboboxItem, Grid } from '@mantine/core';
+import { Button, Input, TextInput, Divider, Text, Select, ComboboxItem, Grid, Flex } from '@mantine/core';
+import { IconMapPin, IconTrash } from '@tabler/icons-react';
+import useNotification from '@/hooks/useNotification';
+import { isValidMapsUrl, normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import { combineDateAndTime, toTimeString } from '@/utils/dateUtils';
 
@@ -68,6 +71,8 @@ const EventForm = ({
   const [originalSalons, setOriginalSalons] = useState<string[]>([]); // Lista original de la BD
   const [loadingSalons, setLoadingSalons] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [removingMapsUrl, setRemovingMapsUrl] = useState(false);
+  const notify = useNotification();
   const skipSyncRef = useRef(false); // Para evitar sincronización cuando actualizamos nosotros
 
   // Fetch salons from API
@@ -214,7 +219,7 @@ const EventForm = ({
     setEventData(updatedData);
 
     // Guardar inmediatamente para que persista al cambiar de tab
-    if (updateEvent && ['eventCity', 'eventProvince', 'eventAddress', 'venueContact', 'venueContactName', 'venueContactPhone', 'type', 'company', 'guests'].includes(e.target.name)) {
+    if (updateEvent && ['eventCity', 'eventProvince', 'eventAddress', 'venueContact', 'venueContactName', 'venueContactPhone', 'venueMapsUrl', 'type', 'company', 'guests'].includes(e.target.name)) {
       skipSyncRef.current = true;
       updateEvent(updatedData);
     }
@@ -251,6 +256,21 @@ const EventForm = ({
     // Buscar si el salón existe en la BD
     const existingSalon = salonObjects.find(s => s.name === eventData.lugar);
 
+    // El link de Maps es opcional: si el evento no trae link, el salón conserva el suyo
+    // (nunca se borra desde acá). Solo se manda cuando hay uno cargado.
+    const mapsUrl = normalizeMapsUrl(eventData.venueMapsUrl) || '';
+    const mapsUrlField = mapsUrl ? { mapsUrl } : {};
+
+    const salonFields = {
+      name: eventData.lugar,
+      city: eventData.eventCity || '',
+      province: eventData.eventProvince || '',
+      address: eventData.eventAddress || '',
+      contactName: eventData.venueContactName || '',
+      contactPhone: eventData.venueContactPhone || eventData.venueContact || '',
+      ...mapsUrlField
+    };
+
     try {
       if (existingSalon) {
         // Si existe, hacer PUT para actualizar (solo si hay cambios)
@@ -259,7 +279,8 @@ const EventForm = ({
           existingSalon.province !== eventData.eventProvince ||
           existingSalon.address !== eventData.eventAddress ||
           existingSalon.contactName !== eventData.venueContactName ||
-          existingSalon.contactPhone !== eventData.venueContactPhone;
+          existingSalon.contactPhone !== eventData.venueContactPhone ||
+          (!!mapsUrl && (existingSalon.mapsUrl || '') !== mapsUrl);
 
         if (hasChanges) {
           const response = await fetch('/api/salons', {
@@ -267,15 +288,7 @@ const EventForm = ({
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              _id: existingSalon._id,
-              name: eventData.lugar,
-              city: eventData.eventCity || '',
-              province: eventData.eventProvince || '',
-              address: eventData.eventAddress || '',
-              contactName: eventData.venueContactName || '',
-              contactPhone: eventData.venueContactPhone || eventData.venueContact || ''
-            })
+            body: JSON.stringify({ _id: existingSalon._id, ...salonFields })
           });
 
           if (!response.ok) {
@@ -283,6 +296,10 @@ const EventForm = ({
             console.error('Error updating salon:', errorData);
           } else {
             console.log('Salón actualizado exitosamente:', eventData.lugar);
+            // Actualizar la copia local para que al volver a elegirlo se precargue lo nuevo
+            setSalonObjects((prev) =>
+              prev.map((s) => (s._id === existingSalon._id ? { ...s, ...salonFields } : s))
+            );
           }
         }
       } else if (!originalSalons.includes(eventData.lugar)) {
@@ -292,14 +309,7 @@ const EventForm = ({
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            name: eventData.lugar,
-            city: eventData.eventCity || '',
-            province: eventData.eventProvince || '',
-            address: eventData.eventAddress || '',
-            contactName: eventData.venueContactName || '',
-            contactPhone: eventData.venueContactPhone || eventData.venueContact || ''
-          })
+          body: JSON.stringify(salonFields)
         });
 
         if (!response.ok) {
@@ -309,6 +319,9 @@ const EventForm = ({
           console.log('Salón guardado exitosamente:', eventData.lugar);
           // Agregar a la lista original para que no se intente guardar de nuevo
           setOriginalSalons((prev) => [...prev, eventData.lugar]);
+          // Sumarlo a la copia local para que al volver a elegirlo se precarguen sus datos
+          const data = await response.json();
+          if (data?.salon) setSalonObjects((prev) => [...prev, data.salon]);
         }
       }
     } catch (error) {
@@ -316,11 +329,65 @@ const EventForm = ({
     }
   };
 
+  // Único camino para quitarle el link de Maps a un salón: el botón "Eliminar".
+  // Borrar el texto del input a mano NO toca el salón (conserva su link).
+  const removeMapsUrl = async () => {
+    const clearedData = { ...eventData, venueMapsUrl: '' };
+    const applyToEvent = () => {
+      setEventData(clearedData);
+      if (updateEvent) {
+        skipSyncRef.current = true;
+        updateEvent(clearedData);
+      }
+    };
+
+    const salon = salonObjects.find(s => s.name === eventData.lugar);
+    // Salón nuevo o sin link guardado: solo se limpia el campo del evento
+    if (!salon?.mapsUrl) {
+      applyToEvent();
+      return;
+    }
+
+    setRemovingMapsUrl(true);
+    try {
+      // PATCH: el server cambia SOLO mapsUrl, ningún otro dato del salón
+      const response = await fetch('/api/salons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _id: salon._id, mapsUrl: '' })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        notify({
+          title: 'Operación errónea',
+          message: data.error || 'No se pudo eliminar el link del lugar',
+          color: 'red'
+        });
+        return;
+      }
+      setSalonObjects((prev) =>
+        prev.map((s) => (s._id === salon._id ? { ...s, mapsUrl: '' } : s))
+      );
+      applyToEvent();
+      notify({ message: `Se eliminó el link de Google Maps de "${salon.name}"` });
+    } catch (error) {
+      console.error('Error removing salon maps url:', error);
+      notify({ type: 'defaultError' });
+    } finally {
+      setRemovingMapsUrl(false);
+    }
+  };
+
+  const selectedSalonHasMapsUrl = !!salonObjects.find(
+    s => s.name === eventData.lugar
+  )?.mapsUrl;
+
   const next = async () => {
     const baseValid = validateRequiredFields();
     const timesValid = validateTimes();
+    const mapsUrlValid = isValidMapsUrl(eventData.venueMapsUrl);
 
-    if (baseValid && timesValid) {
+    if (baseValid && timesValid && mapsUrlValid) {
       setValidate(false);
       await saveSalonIfNew();
       if (updateEvent) {
@@ -425,7 +492,8 @@ const EventForm = ({
                   eventAddress: selectedSalon.address || '',
                   // Siempre usar los datos del salón (aunque sean vacíos)
                   venueContactName: selectedSalon.contactName || '',
-                  venueContactPhone: selectedSalon.contactPhone || ''
+                  venueContactPhone: selectedSalon.contactPhone || '',
+                  venueMapsUrl: selectedSalon.mapsUrl || ''
                 };
               } else {
                 // Si no es un salón existente (nuevo), limpiar los campos
@@ -435,7 +503,8 @@ const EventForm = ({
                   eventProvince: '',
                   eventAddress: '',
                   venueContactName: '',
-                  venueContactPhone: ''
+                  venueContactPhone: '',
+                  venueMapsUrl: ''
                 };
               }
 
@@ -532,6 +601,32 @@ const EventForm = ({
             onChange={handleInputChange}
             autoComplete='off'
           />
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <Flex gap='sm' align='flex-start'>
+            <TextInput
+              style={{ flex: 1 }}
+              placeholder='Ubicación - link de Google Maps (opcional)'
+              name='venueMapsUrl'
+              value={eventData.venueMapsUrl || ''}
+              onChange={handleInputChange}
+              autoComplete='off'
+              leftSection={<IconMapPin size={16} />}
+              disabled={removingMapsUrl}
+              error={!isValidMapsUrl(eventData.venueMapsUrl) ? MAPS_URL_ERROR : undefined}
+            />
+            {(eventData.venueMapsUrl || selectedSalonHasMapsUrl) && (
+              <Button
+                variant='light'
+                color='red'
+                leftSection={<IconTrash size={16} />}
+                onClick={removeMapsUrl}
+                loading={removingMapsUrl}
+              >
+                Eliminar
+              </Button>
+            )}
+          </Flex>
         </Grid.Col>
       </Grid>
 

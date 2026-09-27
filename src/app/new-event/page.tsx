@@ -19,6 +19,7 @@ import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
+import { isValidMapsUrl } from '@/utils/mapsUtils';
 import { Tabs, Button, Text, Center } from '@mantine/core';
 import { nanoid } from 'nanoid';
 import { mutate } from 'swr';
@@ -105,6 +106,11 @@ const NewEventPage = () => {
     }
     if (!event.lugar || !event.lugar.trim()) {
       errors.push('Lugar');
+    }
+    // Opcional, pero si se cargó tiene que ser un link de Google Maps
+    // (se puede llegar acá salteando el "Siguiente" de la tab Evento)
+    if (!isValidMapsUrl(event.venueMapsUrl)) {
+      errors.push('Link de Google Maps inválido en tab Evento (es opcional: corregilo o borralo)');
     }
 
     return {

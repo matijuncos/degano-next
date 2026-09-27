@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image, Link } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
 import PrintableEventDate from './PrintableEventDate';
 
@@ -199,6 +199,15 @@ export const PrintableMainContent: React.FC<PrintableMainSectionProps> = ({
           <Text style={styles.fieldValue}>
             {event.venueContactPhone || event.venueContact}
           </Text>
+        </View>
+      )}
+
+      {event.venueMapsUrl && (
+        <View style={styles.fieldRow}>
+          <Text style={styles.fieldLabel}>UBICACIÓN (GOOGLE MAPS):</Text>
+          <Link src={event.venueMapsUrl} style={styles.fieldValue}>
+            {event.venueMapsUrl}
+          </Link>
         </View>
       )}
 
