@@ -9,7 +9,9 @@ import {
   IconHome,
   IconListCheck,
   IconMusic,
-  IconLayoutKanban
+  IconLayoutKanban,
+  IconCash,
+  IconReceipt
 } from '@tabler/icons-react';
 import degano from '../../assets/logo.png';
 import classes from './Navbar.module.css';
@@ -20,6 +22,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useMyEmployee } from '@/hooks/useMyEmployee';
 
 interface NavbarLinkProps {
   icon: typeof IconHome2;
@@ -49,13 +52,16 @@ const linksList = [
   { icon: IconUser, label: 'Clientes', path: '/clients' },
   { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' },
   { icon: IconMusic, label: 'Géneros de música', path: '/genres' },
-  { icon: IconLayoutKanban, label: 'Comunicación interna', path: '/tableros' }
+  { icon: IconLayoutKanban, label: 'Comunicación interna', path: '/tableros' },
+  { icon: IconCash, label: 'Cobros STAFF', path: '/cobros-staff' },
+  { icon: IconReceipt, label: 'Mis cobros', path: '/mis-cobros' }
 ];
 
 function Navbar() {
   const router = useRouter();
   const { user } = useUser();
   const { can } = usePermissions();
+  const { employee } = useMyEmployee();
   const { activeNavTab } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
   const pathname = usePathname();
@@ -91,6 +97,14 @@ function Navbar() {
     }
     if (link.path === '/new-event') {
       return can('canCreateEvents');
+    }
+    // Plata: solo admin
+    if (link.path === '/cobros-staff') {
+      return can('canEditPayments');
+    }
+    // Solo quien está vinculado a un registro de STAFF (no una entrada de directorio)
+    if (link.path === '/mis-cobros') {
+      return !!employee && employee.isStaff;
     }
     // Todos los demás links son accesibles para todos
     return true;

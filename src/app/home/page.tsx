@@ -12,7 +12,9 @@ import {
   IconPlus,
   IconUser,
   IconUsers,
-  IconVinyl
+  IconVinyl,
+  IconCash,
+  IconReceipt
 } from '@tabler/icons-react';
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
@@ -20,10 +22,12 @@ import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useMyEmployee } from '@/hooks/useMyEmployee';
 
 const Home = () => {
   const setLoadingCursor = useLoadingCursor();
   const { role, permissions, isAdmin, isManager, isViewer } = usePermissions();
+  const { employee } = useMyEmployee();
   const tiles = [
     {
       label: 'Calendario',
@@ -65,7 +69,9 @@ const Home = () => {
       label: 'Comunicación interna',
       path: '/tableros',
       Icon: IconLayoutKanban
-    }
+    },
+    ...(isAdmin ? [{ label: 'Cobros STAFF', path: '/cobros-staff', Icon: IconCash }] : []),
+    ...(employee?.isStaff ? [{ label: 'Mis cobros', path: '/mis-cobros', Icon: IconReceipt }] : [])
   ];
   const itemVariants = {
     hidden: { x: -200, opacity: 0 },
