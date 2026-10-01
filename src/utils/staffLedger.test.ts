@@ -13,6 +13,7 @@ import {
   inWindow,
   displayStatus,
   eventLabel,
+  inputDay,
   LedgerEntry,
   StaffEvent
 } from './staffLedger';
@@ -237,5 +238,18 @@ describe('displayStatus', () => {
       entry({ _id: 'p', type: 'extra', eventId: undefined, date: '2026-10-01T15:00:00.000Z', amount: 100, description: 'P' })
     ], NOW);
     expect(displayStatus(charges[0], NOW)).toBe('pendiente');
+  });
+});
+
+describe('inputDay', () => {
+  it('respeta el string YYYY-MM-DD que devuelve DateInput (sin correr el día)', () => {
+    expect(inputDay('2026-10-01')).toBe('2026-10-01');
+  });
+  it('un Date toma el día local del navegador', () => {
+    expect(inputDay(new Date(2026, 9, 1, 0, 30))).toBe('2026-10-01');
+  });
+  it('vacío → null', () => {
+    expect(inputDay(null)).toBeNull();
+    expect(inputDay('')).toBeNull();
   });
 });

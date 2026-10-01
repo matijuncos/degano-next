@@ -327,3 +327,16 @@ export function displayStatus(c: AllocatedCharge, now: Date): DisplayStatus {
   }
   return c.status;
 }
+
+// Valor de un DateInput (Mantine v8 devuelve 'YYYY-MM-DD'; un Date se toma con
+// el día local del navegador) → 'YYYY-MM-DD'. Nunca pasar un 'YYYY-MM-DD' por
+// new Date(): lo interpreta en UTC y en Argentina corre el día.
+export function inputDay(d: Date | string | null | undefined): string | null {
+  if (!d) return null;
+  if (typeof d === 'string') {
+    const m = d.match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : null;
+  }
+  if (isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
