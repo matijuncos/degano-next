@@ -1,6 +1,6 @@
 // src/utils/staffLedgerInput.test.ts
 import { describe, it, expect } from 'vitest';
-import { parseAmount, parseLedgerInput, isLedgerEligible } from './staffLedgerInput';
+import { parseAmount, parseLedgerInput, isLedgerEligible, amountForRequest, mergeLedgerUpdate } from './staffLedgerInput';
 
 describe('parseAmount', () => {
   it('acepta números y strings en formato argentino', () => {
@@ -71,5 +71,38 @@ describe('isLedgerEligible', () => {
     expect(isLedgerEligible({})).toBe(true); // legacy
     expect(isLedgerEligible({ isStaff: false })).toBe(false); // entrada de directorio
     expect(isLedgerEligible(null)).toBe(false);
+  });
+});
+
+describe('amountForRequest', () => {
+  // NumberInput de Mantine 8 devuelve un string con PUNTO decimal cuando el
+  // valor termina en 0 ("1500.50"); el servidor lee formato argentino y
+  // borraría el punto (150050). El cliente tiene que mandar un número.
+  it('string con punto decimal de NumberInput → número', () => {
+    expect(amountForRequest('1500.50')).toBe(1500.5);
+    expect(amountForRequest('2.0')).toBe(2);
+    expect(parseAmount(amountForRequest('1500.50'))).toBe(1500.5);
+  });
+  it('número → mismo número; vacío → ""', () => {
+    expect(amountForRequest(1500)).toBe(1500);
+    expect(amountForRequest('')).toBe('');
+  });
+});
+
+describe('mergeLedgerUpdate', () => {
+  const pago = { _id: 'p', type: 'pago', employeeId: 'emp1', amount: 100, method: 'efectivo', date: new Date('2026-10-01T15:00:00Z') };
+  it('permite cambiar entre pago y adelanto', () => {
+    const r = mergeLedgerUpdate(pago, { type: 'adelanto', amount: 200 });
+    expect(r).toMatchObject({ ok: true, merged: { type: 'adelanto', amount: 200, employeeId: 'emp1' } });
+  });
+  it('sin type en el body conserva el actual; el empleado no se cambia', () => {
+    const r = mergeLedgerUpdate(pago, { employeeId: 'otro' });
+    expect(r).toMatchObject({ ok: true, merged: { type: 'pago', employeeId: 'emp1' } });
+  });
+  it('rechaza cambiar un abono a cargo', () => {
+    expect(mergeLedgerUpdate(pago, { type: 'extra' })).toEqual({ ok: false, error: 'No se puede cambiar el tipo de movimiento' });
+  });
+  it('una línea de evento no se edita por acá', () => {
+    expect(mergeLedgerUpdate({ ...pago, type: 'evento' }, { amount: 5 }).ok).toBe(false);
   });
 });

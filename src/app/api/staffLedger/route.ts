@@ -13,7 +13,7 @@ import {
   loadSummaries,
   LEDGER_COLLECTION
 } from '@/lib/staffLedgerServer';
-import { parseLedgerInput, isLedgerEligible } from '@/utils/staffLedgerInput';
+import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate } from '@/utils/staffLedgerInput';
 import { eventLabel } from '@/utils/staffLedger';
 
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 });
@@ -119,12 +119,11 @@ export const PUT = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
     const coll = db.collection(LEDGER_COLLECTION);
     const existing = await coll.findOne({ _id: new ObjectId(String(body._id)) });
     if (!existing) return notFound('Movimiento no encontrado');
-    if (existing.type === 'evento') return badRequest('El monto de un evento se edita desde la fila del evento');
-
-    // Body parcial: lo que no viene se toma del documento actual. Tipo y
-    // empleado no se pueden cambiar.
-    const merged = { ...existing, ...body, type: existing.type, employeeId: existing.employeeId };
-    const parsed = parseLedgerInput(merged);
+    // Body parcial: lo que no viene se toma del documento actual. El empleado no
+    // cambia; el tipo solo entre pago y adelanto.
+    const merge = mergeLedgerUpdate(existing, body);
+    if (!merge.ok) return badRequest(merge.error);
+    const parsed = parseLedgerInput(merge.merged);
     if (!parsed.ok) return badRequest(parsed.error);
 
     const { type, employeeId, ...fields } = parsed.value;
@@ -134,7 +133,7 @@ export const PUT = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
     if (type !== 'extra' && fields.description === undefined) unset.description = '';
     await coll.updateOne(
       { _id: existing._id },
-      { $set: { ...fields, updatedAt: new Date() }, ...(Object.keys(unset).length ? { $unset: unset } : {}) }
+      { $set: { ...fields, type, updatedAt: new Date() }, ...(Object.keys(unset).length ? { $unset: unset } : {}) }
     );
 
     const employee = await findEmployee(db, employeeId);

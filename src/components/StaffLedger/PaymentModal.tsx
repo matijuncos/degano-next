@@ -5,6 +5,7 @@ import { Modal, Stack, SegmentedControl, NumberInput, Select, TextInput, Button,
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { ledgerRequest } from '@/hooks/useStaffLedger';
+import { amountForRequest } from '@/utils/staffLedgerInput';
 import { AllocatedCharge, Credit, PAYMENT_METHODS, PAYMENT_METHOD_LABELS, pendingUpTo, arDay, inputDay } from '@/utils/staffLedger';
 import { formatPrice } from '@/utils/priceUtils';
 
@@ -56,7 +57,7 @@ export default function PaymentModal({
   const save = async () => {
     setSaving(true);
     try {
-      const body = { type, employeeId, date, amount, method, description };
+      const body = { type, employeeId, date, amount: amountForRequest(amount), method, description };
       if (credit) await ledgerRequest('PUT', { _id: credit.entryId, ...body });
       else await ledgerRequest('POST', body);
       notifications.show({ color: 'teal', message: credit ? 'Movimiento actualizado' : `${type === 'pago' ? 'Pago' : 'Adelanto'} registrado` });

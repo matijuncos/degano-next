@@ -247,7 +247,9 @@ export function summarizeAccount(
   unappliedCredit: number,
   now: Date
 ): LedgerSummary {
-  const nowMs = now.getTime();
+  // "Hoy" es el día argentino completo: un cargo de hoy a las 22:00 ya es de
+  // hoy (mismo criterio que pendingUpTo y displayStatus).
+  const today = arDay(now) as string;
   const nextMonthMs = addMonths(now, 1).getTime();
   const byMonth: LedgerSummary['byMonth'] = {};
   const month = (iso: string) => (arDay(iso) as string).slice(0, 7);
@@ -257,8 +259,8 @@ export function summarizeAccount(
   let missingAmount = 0, missingAmountNextMonth = 0;
 
   for (const c of charges) {
-    const t = new Date(c.date).getTime();
-    const isNextMonth = t > nowMs && t <= nextMonthMs;
+    const isFuture = (arDay(c.date) as string) > today;
+    const isNextMonth = isFuture && new Date(c.date).getTime() <= nextMonthMs;
     if (c.amount == null) {
       missingAmount++;
       if (isNextMonth) missingAmountNextMonth++;
@@ -266,7 +268,7 @@ export function summarizeAccount(
     }
     totalCharged += c.amount;
     bucket(month(c.date)).charged = round2(bucket(month(c.date)).charged + c.amount);
-    if (t <= nowMs) pendingToDate += c.amount - c.paidAmount;
+    if (!isFuture) pendingToDate += c.amount - c.paidAmount;
     else futureTotal += c.amount;
     if (isNextMonth) nextMonthTotal += c.amount;
   }
@@ -322,7 +324,7 @@ export function inWindow(date: string | Date, w: { from: Date; to: Date }) {
 
 // Estado para mostrar: un cargo impago con fecha futura todavía no está "pendiente".
 export function displayStatus(c: AllocatedCharge, now: Date): DisplayStatus {
-  if ((c.status === 'pendiente' || c.status === 'parcial') && new Date(c.date).getTime() > now.getTime()) {
+  if ((c.status === 'pendiente' || c.status === 'parcial') && (arDay(c.date) as string) > (arDay(now) as string)) {
     return 'futuro';
   }
   return c.status;

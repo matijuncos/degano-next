@@ -88,3 +88,32 @@ export function parseLedgerInput(body: any): Result {
 export function isLedgerEligible(employee: { isStaff?: boolean } | null | undefined): boolean {
   return !!employee && employee.isStaff !== false;
 }
+
+// Lo que el cliente manda como monto/horas. El NumberInput de Mantine 8 a veces
+// devuelve un string con PUNTO decimal ("1500.50"); el servidor lee formato
+// argentino y borraría el punto. Se manda siempre un número (o '' = vacío).
+export function amountForRequest(v: number | string): number | '' {
+  if (v === '' || v === null || v === undefined) return '';
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : '';
+}
+
+const CREDIT_TYPES: LedgerType[] = ['pago', 'adelanto'];
+
+// PUT de un movimiento: lo que no viene en el body se toma del documento actual
+// (bodies parciales). El empleado no cambia. Entre pago y adelanto se puede
+// cambiar (los dos son abonos); a otro tipo no.
+export function mergeLedgerUpdate(
+  existing: any,
+  body: any
+): { ok: true; merged: any } | { ok: false; error: string } {
+  if (existing.type === 'evento') {
+    return { ok: false, error: 'El monto de un evento se edita desde la fila del evento' };
+  }
+  const type = body?.type ?? existing.type;
+  const canSwitch = CREDIT_TYPES.includes(type) && CREDIT_TYPES.includes(existing.type);
+  if (type !== existing.type && !canSwitch) {
+    return { ok: false, error: 'No se puede cambiar el tipo de movimiento' };
+  }
+  return { ok: true, merged: { ...existing, ...body, type, employeeId: existing.employeeId } };
+}

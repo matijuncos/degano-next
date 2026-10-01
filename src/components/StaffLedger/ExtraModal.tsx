@@ -5,6 +5,7 @@ import { Modal, Stack, NumberInput, TextInput, Button, Group } from '@mantine/co
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { ledgerRequest } from '@/hooks/useStaffLedger';
+import { amountForRequest } from '@/utils/staffLedgerInput';
 import { AllocatedCharge, arDay, inputDay } from '@/utils/staffLedger';
 
 const todayDay = () => arDay(new Date()) as string;
@@ -38,7 +39,7 @@ export default function ExtraModal({
   const save = async () => {
     setSaving(true);
     try {
-      const body = { type: 'extra', employeeId, date, description, hours, amount };
+      const body = { type: 'extra', employeeId, date, description, hours: amountForRequest(hours), amount: amountForRequest(amount) };
       if (extra?.entryId) await ledgerRequest('PUT', { _id: extra.entryId, ...body });
       else await ledgerRequest('POST', body);
       notifications.show({ color: 'teal', message: extra ? 'Extra actualizado' : 'Extra agregado' });

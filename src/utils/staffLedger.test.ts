@@ -253,3 +253,24 @@ describe('inputDay', () => {
     expect(inputDay('')).toBeNull();
   });
 });
+
+describe('criterio de "hoy" en día argentino', () => {
+  // NOW = 10/10 12:00 AR. Un cargo de HOY a las 22:00 AR ya es "de hoy":
+  // entra en el pendiente (igual que en "pagar hasta hoy") y no se ve futuro.
+  const today22 = '2026-10-11T01:00:00.000Z';
+  const acc = () =>
+    buildAccount(EMP, [], [
+      entry({ _id: 'h', type: 'extra', eventId: undefined, date: today22, amount: 100, description: 'Hoy' })
+    ], NOW);
+  it('cuenta en pendiente a hoy y no en futuro', () => {
+    const { summary } = acc();
+    expect(summary.pendingToDate).toBe(100);
+    expect(summary.futureTotal).toBe(0);
+    expect(summary.nextMonthTotal).toBe(0);
+  });
+  it('coincide con pendingUpTo de hoy y se ve pendiente', () => {
+    const { charges, summary } = acc();
+    expect(pendingUpTo(charges, '2026-10-10')).toBe(summary.pendingToDate);
+    expect(displayStatus(charges[0], NOW)).toBe('pendiente');
+  });
+});
