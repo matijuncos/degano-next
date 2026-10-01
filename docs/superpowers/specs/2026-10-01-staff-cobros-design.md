@@ -28,6 +28,7 @@ seguro en PDF.
 | Póliza | PDF en S3. Sube/borra solo admin. Cada empleado ve solo la suya. |
 | Cambios posteriores | Lo pagado no se toca: si cambia un monto, la diferencia queda pendiente sola. Si sacan al empleado del evento, la línea con monto queda marcada "ya no está asignado" y Juan decide. |
 | Sin monto | Se muestran como "sin monto" y los totales avisan "N eventos sin monto". |
+| Fecha de inicio | Los cobros cuentan eventos desde el **1/10/2026**. Lo anterior ya se pagó por fuera; deudas de septiembre se cargan como extra. |
 
 ## Modelo de datos
 

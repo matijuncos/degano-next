@@ -1,9 +1,10 @@
 // src/components/StaffLedger/LedgerTable.tsx
 'use client';
-import { useMemo } from 'react';
-import { Table, Text, Badge, NumberInput, Group, ActionIcon, Tooltip, Stack } from '@mantine/core';
+import { useMemo, useState } from 'react';
+import { Table, Text, Badge, NumberInput, Group, ActionIcon, Tooltip, Stack, Loader } from '@mantine/core';
 import { IconPencil, IconTrash, IconAlertTriangle } from '@tabler/icons-react';
 import { formatPrice } from '@/utils/priceUtils';
+import { amountChanged } from '@/utils/staffLedgerInput';
 import {
   AllocatedCharge,
   Credit,
@@ -50,7 +51,8 @@ export default function LedgerTable({
   credits: Credit[];
   now: Date;
   editable?: boolean;
-  onAmountSave?: (charge: AllocatedCharge, raw: string | number) => void;
+  // Devuelve si se guardó; si no, la fila vuelve a mostrar el valor del servidor
+  onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
   onEditCredit?: (credit: Credit) => void;
   onEditExtra?: (charge: AllocatedCharge) => void;
   onDeleteEntry?: (entryId: string) => void;
@@ -161,11 +163,15 @@ function ChargeRow({
   charge: AllocatedCharge;
   now: Date;
   editable: boolean;
-  onAmountSave?: (charge: AllocatedCharge, raw: string | number) => void;
+  onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
   onEditExtra?: (charge: AllocatedCharge) => void;
   onDeleteEntry?: (entryId: string) => void;
 }) {
   const status = STATUS[displayStatus(charge, now)];
+  // Estado local de la fila: indicador de guardado y, si falla, re-montar solo
+  // este input para que vuelva al valor del servidor (sin tocar las demás filas)
+  const [saving, setSaving] = useState(false);
+  const [rev, setRev] = useState(0);
   const warning = charge.unassigned
     ? 'Ya no está asignado a este evento'
     : charge.eventDeleted
@@ -194,7 +200,7 @@ function ChargeRow({
         {editable && charge.kind === 'evento' ? (
           // key con el monto: si el servidor devuelve otro valor, el input se re-monta
           <NumberInput
-            key={`${charge.key}:${charge.amount ?? ''}`}
+            key={`${charge.key}:${charge.amount ?? ''}:${rev}`}
             defaultValue={charge.amount ?? ''}
             placeholder='Cargar monto'
             prefix='$ '
@@ -204,11 +210,15 @@ function ChargeRow({
             hideControls
             size='xs'
             w={130}
-            onBlur={(e) => {
+            disabled={saving}
+            rightSection={saving ? <Loader size={12} /> : null}
+            onBlur={async (e) => {
               const raw = e.currentTarget.value.replace(/^\$\s*/, '');
-              const current = charge.amount == null ? '' : String(charge.amount);
-              const normalized = raw.replace(/\./g, '').replace(',', '.');
-              if (normalized !== current) onAmountSave?.(charge, raw);
+              if (!onAmountSave || !amountChanged(raw, charge.amount)) return;
+              setSaving(true);
+              const ok = await onAmountSave(charge, raw);
+              setSaving(false);
+              if (!ok) setRev((r) => r + 1);
             }}
           />
         ) : charge.amount != null ? (

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Group, Button, Text, Paper } from '@mantine/core';
 import { IconFileTypePdf } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { safeS3FileName } from '@/utils/staffPolicyFile';
 
 // Póliza de seguro. El admin la sube/reemplaza/quita; el empleado solo la ve.
 export default function PolicySection({
@@ -47,7 +48,9 @@ export default function PolicySection({
       const signRes = await fetch('/api/uploadToS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, fileType: file.type, bucket: 'budgets', folder: 'staff-policies' })
+        // Nombre limpio para la key de S3 (%, #, acentos rompen la URL); el
+        // original se guarda aparte para mostrarlo y descargarlo
+        body: JSON.stringify({ fileName: safeS3FileName(file.name), fileType: file.type, bucket: 'budgets', folder: 'staff-policies' })
       });
       const sign = await signRes.json().catch(() => ({}));
       if (!signRes.ok) throw new Error(sign?.error || 'No se pudo preparar la subida');

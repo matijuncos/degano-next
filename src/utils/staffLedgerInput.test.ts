@@ -1,6 +1,6 @@
 // src/utils/staffLedgerInput.test.ts
 import { describe, it, expect } from 'vitest';
-import { parseAmount, parseLedgerInput, isLedgerEligible, amountForRequest, mergeLedgerUpdate } from './staffLedgerInput';
+import { parseAmount, parseLedgerInput, isLedgerEligible, amountForRequest, mergeLedgerUpdate, amountChanged, eventAmountGuard } from './staffLedgerInput';
 
 describe('parseAmount', () => {
   it('acepta números y strings en formato argentino', () => {
@@ -104,5 +104,36 @@ describe('mergeLedgerUpdate', () => {
   });
   it('una línea de evento no se edita por acá', () => {
     expect(mergeLedgerUpdate({ ...pago, type: 'evento' }, { amount: 5 }).ok).toBe(false);
+  });
+});
+
+describe('amountChanged', () => {
+  // Texto del NumberInput de la fila vs monto actual: comparar como número
+  it('mismo valor con formato o centavos → sin cambio', () => {
+    expect(amountChanged('$ 1.500,50', 1500.5)).toBe(false);
+    expect(amountChanged('1.500,5', 1500.5)).toBe(false);
+    expect(amountChanged('', null)).toBe(false);
+  });
+  it('valor distinto, vaciado o cargado → cambió', () => {
+    expect(amountChanged('$ 200', 100)).toBe(true);
+    expect(amountChanged('', 100)).toBe(true);
+    expect(amountChanged('$ 0', null)).toBe(true);
+  });
+});
+
+describe('eventAmountGuard', () => {
+  const event = { staff: [{ employeeId: 'emp1' }] };
+  it('asignado → ok', () => {
+    expect(eventAmountGuard(event, 'emp1', false)).toBeNull();
+  });
+  it('no asignado y sin línea previa → error', () => {
+    expect(eventAmountGuard(event, 'otro', false)).toBe('El empleado no está asignado a este evento');
+  });
+  it('no asignado pero con línea previa → se puede corregir', () => {
+    expect(eventAmountGuard(event, 'otro', true)).toBeNull();
+  });
+  it('evento borrado sin línea → no encontrado; con línea → ok', () => {
+    expect(eventAmountGuard(null, 'emp1', false)).toBe('Evento no encontrado');
+    expect(eventAmountGuard(null, 'emp1', true)).toBeNull();
   });
 });

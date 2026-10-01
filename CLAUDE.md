@@ -161,6 +161,7 @@ Cuenta corriente por empleado en `staff_ledger`. Lógica pura en `/src/utils/sta
 - **Cargos** = `evento` (monto manual por evento) + `extra`. **Abonos** = `pago` + `adelanto`.
 - Las líneas de evento se **derivan** de `events.staff` al leer: solo se guarda el monto. No tocar `postEvent`/`updateEvent` para esto.
 - Imputación **FIFO**: los abonos cubren los cargos más viejos. Lo que sobra es saldo a favor.
+- **Fecha de inicio de cobros: `LEDGER_START_DAY` = 1/10/2026.** Los eventos anteriores no entran (se pagaron por fuera); una línea con monto se muestra siempre. Filtrar `date` en Mongo por string ISO **y** por `Date` (hay eventos viejos con los dos tipos).
 - Si sacan al empleado de un evento con monto, o se borra el evento, la línea queda marcada; nunca se borra sola.
 - Todo es **solo admin**. El empleado ve `/mis-cobros` solo si `isStaff !== false`, con ventana **3 meses atrás / 1 adelante recortada en el servidor**; nunca recibe el total futuro.
 - Póliza: `employees.insurancePolicy` (excluida de `GET /api/employees`). Se ve por `/api/staffPolicy` (admin o el propio empleado).

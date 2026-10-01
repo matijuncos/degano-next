@@ -3,7 +3,16 @@
 // lógica pura de utils/staffLedger: acá solo se traen los datos.
 import { Db, ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb';
-import { buildAccount, Account, LedgerEntry, LedgerSummary, StaffEvent } from '@/utils/staffLedger';
+import {
+  buildAccount,
+  groupEventsByEmployee,
+  LEDGER_START_DAY,
+  LEDGER_START_ISO,
+  Account,
+  LedgerEntry,
+  LedgerSummary,
+  StaffEvent
+} from '@/utils/staffLedger';
 
 export const LEDGER_COLLECTION = 'staff_ledger';
 
@@ -52,28 +61,47 @@ const toPlain = (doc: any) => ({ ...doc, _id: String(doc._id) });
 const toObjectIds = (ids: string[]) =>
   ids.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
 
+// Eventos desde la fecha de inicio de cobros. `date` se guarda como string ISO
+// (viene del JSON del formulario), pero puede haber eventos viejos con Date:
+// Mongo compara por tipo, así que se cubren los dos.
+const sinceLedgerStart = {
+  $or: [{ date: { $gte: LEDGER_START_ISO } }, { date: { $gte: new Date(LEDGER_START_ISO) } }]
+};
+
+// Eventos con monto cargado que no vinieron en la consulta principal (el
+// empleado ya no está asignado, o es anterior a la fecha de inicio). Se traen
+// aparte; casi nunca hay. Si no existen, el evento fue borrado.
+async function loadReferencedEvents(db: Db, entries: any[], loadedIds: Set<string>) {
+  const missing = [
+    ...new Set(
+      entries
+        .filter((e) => e.type === 'evento' && e.eventId && !loadedIds.has(e.eventId))
+        .map((e) => e.eventId as string)
+    )
+  ];
+  if (!missing.length) return [];
+  return db
+    .collection('events')
+    .find({ _id: { $in: toObjectIds(missing) } }, { projection: EVENT_PROJECTION })
+    .toArray();
+}
+
 export async function loadAccount(db: Db, employeeId: string, now: Date): Promise<Account> {
   const [entries, assigned] = await Promise.all([
     db.collection(LEDGER_COLLECTION).find({ employeeId }).toArray(),
-    db.collection('events').find({ 'staff.employeeId': employeeId }, { projection: EVENT_PROJECTION }).toArray()
+    db
+      .collection('events')
+      .find({ 'staff.employeeId': employeeId, ...sinceLedgerStart }, { projection: EVENT_PROJECTION })
+      .toArray()
   ]);
-
-  // Eventos con monto cargado donde el empleado ya no está asignado: se traen
-  // aparte (es raro, así que casi nunca hay segunda consulta). Si no vienen,
-  // el evento fue borrado.
-  const assignedIds = new Set(assigned.map((e) => String(e._id)));
-  const missing = entries
-    .filter((e: any) => e.type === 'evento' && e.eventId && !assignedIds.has(e.eventId))
-    .map((e: any) => e.eventId as string);
-  const extra = missing.length
-    ? await db.collection('events').find({ _id: { $in: toObjectIds(missing) } }, { projection: EVENT_PROJECTION }).toArray()
-    : [];
+  const extra = await loadReferencedEvents(db, entries, new Set(assigned.map((e) => String(e._id))));
 
   return buildAccount(
     employeeId,
     [...assigned, ...extra].map(toPlain) as StaffEvent[],
     entries.map(toPlain) as LedgerEntry[],
-    now
+    now,
+    LEDGER_START_DAY
   );
 }
 
@@ -84,37 +112,37 @@ export type EmployeeLedgerRow = {
   summary: Omit<LedgerSummary, 'byMonth'>;
 };
 
-// Resumen de todos los empleados de STAFF en 3 consultas en paralelo (no N).
+// Resumen de todos los empleados de STAFF: 3 consultas en paralelo (no N) y,
+// solo si hace falta, una más por los eventos referenciados por montos.
 export async function loadSummaries(db: Db, now: Date): Promise<EmployeeLedgerRow[]> {
   const [employees, entries, events] = await Promise.all([
     db.collection('employees')
       .find({ isStaff: { $ne: false } }, { projection: { fullName: 1, rol: 1 } })
       .toArray(),
     db.collection(LEDGER_COLLECTION).find({}).toArray(),
-    db.collection('events').find({ 'staff.0': { $exists: true } }, { projection: EVENT_PROJECTION }).toArray()
+    db
+      .collection('events')
+      .find({ 'staff.0': { $exists: true }, ...sinceLedgerStart }, { projection: EVENT_PROJECTION })
+      .toArray()
   ]);
+  const extra = await loadReferencedEvents(db, entries, new Set(events.map((e) => String(e._id))));
 
+  const plainEntries = entries.map(toPlain) as LedgerEntry[];
   const entriesBy = new Map<string, LedgerEntry[]>();
-  for (const e of entries) {
-    const list = entriesBy.get(e.employeeId) ?? [];
-    list.push(toPlain(e) as LedgerEntry);
-    entriesBy.set(e.employeeId, list);
-  }
-  const eventsBy = new Map<string, StaffEvent[]>();
-  for (const ev of events) {
-    const plain = toPlain(ev) as StaffEvent;
-    for (const s of plain.staff ?? []) {
-      const list = eventsBy.get(s.employeeId) ?? [];
-      list.push(plain);
-      eventsBy.set(s.employeeId, list);
-    }
-  }
+  for (const e of plainEntries) entriesBy.set(e.employeeId, [...(entriesBy.get(e.employeeId) ?? []), e]);
+  // Asignados + los que tienen monto aunque ya no esté asignado: misma base
+  // que el detalle, así los números coinciden
+  const eventsBy = groupEventsByEmployee([...events, ...extra].map(toPlain) as StaffEvent[], plainEntries);
 
   return employees.map((emp) => {
     const id = String(emp._id);
-    // En el resumen, una línea de un evento sin staff cuenta como "evento
-    // eliminado": para los totales da igual, solo cambia la etiqueta.
-    const { byMonth, ...summary } = buildAccount(id, eventsBy.get(id) ?? [], entriesBy.get(id) ?? [], now).summary;
+    const { byMonth, ...summary } = buildAccount(
+      id,
+      eventsBy.get(id) ?? [],
+      entriesBy.get(id) ?? [],
+      now,
+      LEDGER_START_DAY
+    ).summary;
     return { employeeId: id, fullName: emp.fullName || '', rol: emp.rol || '', summary };
   });
 }

@@ -106,6 +106,13 @@ export interface Account {
   summary: LedgerSummary;
 }
 
+// Fecha de inicio de cobros: los eventos anteriores no entran en la cuenta
+// (ya se pagaron por fuera de la app). Una línea con monto cargado se muestra
+// siempre, sea de la fecha que sea. LEDGER_START_ISO es la medianoche argentina
+// de ese día, para filtrar en Mongo.
+export const LEDGER_START_DAY = '2026-10-01';
+export const LEDGER_START_ISO = '2026-10-01T03:00:00.000Z';
+
 // Argentina no tiene horario de verano: el offset es fijo.
 const AR_OFFSET_MS = 3 * 60 * 60 * 1000;
 const AR_OFFSET = '-03:00';
@@ -155,7 +162,12 @@ const byDate = (a: { date: string; key?: string }, b: { date: string; key?: stri
 // `events` tiene que incluir los eventos asignados Y los referenciados por líneas
 // guardadas (aunque ya no esté asignado). Un evento referenciado que no vino es
 // un evento borrado.
-export function buildCharges(employeeId: string, events: StaffEvent[], entries: LedgerEntry[]): Charge[] {
+export function buildCharges(
+  employeeId: string,
+  events: StaffEvent[],
+  entries: LedgerEntry[],
+  startDay?: string
+): Charge[] {
   const eventLines = new Map(
     entries.filter((e) => e.type === 'evento' && e.eventId).map((e) => [String(e.eventId), e])
   );
@@ -167,6 +179,7 @@ export function buildCharges(employeeId: string, events: StaffEvent[], entries: 
     const member = ev.staff?.find((s) => s.employeeId === employeeId);
     const line = eventLines.get(id);
     if (!member && !line) continue;
+    if (!line && startDay && (arDay(ev.date) as string) < startDay) continue;
     charges.push({
       key: `evento:${id}`,
       kind: 'evento',
@@ -295,10 +308,11 @@ export function buildAccount(
   employeeId: string,
   events: StaffEvent[],
   entries: LedgerEntry[],
-  now: Date
+  now: Date,
+  startDay?: string
 ): Account {
   const credits = toCredits(entries);
-  const { charges, unappliedCredit } = allocate(buildCharges(employeeId, events, entries), credits);
+  const { charges, unappliedCredit } = allocate(buildCharges(employeeId, events, entries, startDay), credits);
   return { charges, credits, summary: summarizeAccount(charges, credits, unappliedCredit, now) };
 }
 
@@ -341,4 +355,24 @@ export function inputDay(d: Date | string | null | undefined): string | null {
   }
   if (isNaN(d.getTime())) return null;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Eventos de cada empleado para el resumen de todos: los que tiene asignados y
+// los que tienen un monto cargado aunque ya no esté asignado (así el resumen
+// usa la misma fecha que el detalle).
+export function groupEventsByEmployee(events: StaffEvent[], entries: LedgerEntry[]): Map<string, StaffEvent[]> {
+  const byId = new Map(events.map((e) => [String(e._id), e]));
+  const sets = new Map<string, Map<string, StaffEvent>>();
+  const add = (employeeId: string, ev: StaffEvent) => {
+    const m = sets.get(employeeId) ?? new Map<string, StaffEvent>();
+    m.set(String(ev._id), ev);
+    sets.set(employeeId, m);
+  };
+  for (const ev of events) for (const s of ev.staff ?? []) add(s.employeeId, ev);
+  for (const e of entries) {
+    if (e.type !== 'evento' || !e.eventId) continue;
+    const ev = byId.get(String(e.eventId));
+    if (ev) add(e.employeeId, ev);
+  }
+  return new Map([...sets].map(([id, m]) => [id, [...m.values()]]));
 }

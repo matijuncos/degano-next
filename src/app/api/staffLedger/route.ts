@@ -13,7 +13,7 @@ import {
   loadSummaries,
   LEDGER_COLLECTION
 } from '@/lib/staffLedgerServer';
-import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate } from '@/utils/staffLedgerInput';
+import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard } from '@/utils/staffLedgerInput';
 import { eventLabel } from '@/utils/staffLedger';
 
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 });
@@ -77,27 +77,34 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
         await coll.deleteOne(filter);
         return accountResponse(db, employee);
       }
-      const event = ObjectId.isValid(input.eventId!)
-        ? await db.collection('events').findOne(
-            { _id: new ObjectId(input.eventId) },
-            { projection: { date: 1, type: 1, fullName: 1 } }
-          )
-        : null;
-      if (event) {
-        // La fecha y el nombre se guardan para poder mostrar la línea si el
-        // evento se borra; mientras exista, al leer manda el evento.
-        await coll.updateOne(
-          filter,
-          {
+      const [event, existingLine] = await Promise.all([
+        ObjectId.isValid(input.eventId!)
+          ? db.collection('events').findOne(
+              { _id: new ObjectId(input.eventId) },
+              { projection: { date: 1, type: 1, fullName: 1, 'staff.employeeId': 1 } }
+            )
+          : null,
+        coll.findOne(filter, { projection: { _id: 1 } })
+      ]);
+      const guardError = eventAmountGuard(event as any, input.employeeId, !!existingLine);
+      if (guardError) return event ? badRequest(guardError) : notFound(guardError);
+
+      // La fecha y el nombre se guardan para poder mostrar la línea si el evento
+      // se borra; mientras exista, al leer manda el evento. Evento borrado: solo
+      // se corrige el monto de la línea que ya existe.
+      const update = event
+        ? {
             $set: { amount: input.amount, date: new Date(event.date), description: eventLabel(event as any), updatedAt: now },
             $setOnInsert: { createdAt: now, createdBy: ctx.user?.email || '' }
-          },
-          { upsert: true }
-        );
-      } else {
-        // Evento borrado: solo se puede corregir el monto de una línea existente
-        const res = await coll.updateOne(filter, { $set: { amount: input.amount, updatedAt: now } });
-        if (res.matchedCount === 0) return notFound('Evento no encontrado');
+          }
+        : { $set: { amount: input.amount, updatedAt: now } };
+      try {
+        await coll.updateOne(filter, update, { upsert: !!event });
+      } catch (error: any) {
+        // Dos guardados casi simultáneos de la misma fila: el segundo upsert
+        // choca con el índice único. La línea ya existe → se actualiza.
+        if (error?.code !== 11000) throw error;
+        await coll.updateOne(filter, { $set: update.$set });
       }
       return accountResponse(db, employee);
     }

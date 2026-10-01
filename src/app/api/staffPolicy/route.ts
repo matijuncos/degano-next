@@ -12,6 +12,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { resolveEmployee } from '@/lib/resolveEmployee';
 import { getDb } from '@/lib/staffLedgerServer';
+import { contentDisposition } from '@/utils/staffPolicyFile';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION!,
@@ -73,7 +74,7 @@ export const GET = withAuth(async (ctx: AuthContext, req: Request) => {
         Bucket: BUCKET,
         Key: policy.key,
         ResponseContentType: 'application/pdf',
-        ResponseContentDisposition: `inline; filename="${String(policy.fileName).replace(/"/g, '')}"`
+        ResponseContentDisposition: contentDisposition(String(policy.fileName))
       }),
       { expiresIn: 60 }
     );

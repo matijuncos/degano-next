@@ -117,3 +117,25 @@ export function mergeLedgerUpdate(
   }
   return { ok: true, merged: { ...existing, ...body, type, employeeId: existing.employeeId } };
 }
+
+// ¿El texto del NumberInput de la fila ("$ 1.500,50") cambia el monto actual?
+// Se compara como número: "1500.50" y 1500.5 son lo mismo.
+export function amountChanged(raw: string, current: number | null): boolean {
+  const next = parseAmount(raw.replace(/^\$\s*/, ''));
+  if (next === 'invalid') return true; // que el servidor responda el error
+  return next !== current;
+}
+
+// ¿Se puede cargar el monto de este evento a este empleado? Un monto nuevo
+// exige que esté asignado; una línea que ya existe se puede corregir siempre
+// (aunque lo hayan sacado del evento o el evento se haya borrado).
+export function eventAmountGuard(
+  event: { staff?: { employeeId: string }[] } | null,
+  employeeId: string,
+  lineExists: boolean
+): string | null {
+  if (lineExists) return null;
+  if (!event) return 'Evento no encontrado';
+  const assigned = (event.staff ?? []).some((s) => s.employeeId === employeeId);
+  return assigned ? null : 'El empleado no está asignado a este evento';
+}

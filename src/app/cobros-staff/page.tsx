@@ -65,20 +65,18 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
   const [editingCredit, setEditingCredit] = useState<Credit | null>(null);
   const [extraOpen, setExtraOpen] = useState(false);
   const [editingExtra, setEditingExtra] = useState<AllocatedCharge | null>(null);
-  // Los montos de la tabla son inputs no controlados: si falla un guardado se
-  // re-monta la tabla para que vuelva a mostrar el valor del servidor
-  const [tableRev, setTableRev] = useState(0);
   const now = useMemo(() => new Date(), [data]);
 
   if (error) return <Alert color='red'>{error.message}</Alert>;
   if (!data) return <Center h={300}><Loader /></Center>;
 
-  const saveAmount = async (charge: AllocatedCharge, raw: string | number) => {
+  const saveAmount = async (charge: AllocatedCharge, raw: string) => {
     try {
       await ledgerRequest('POST', { type: 'evento', employeeId, eventId: charge.eventId, amount: raw });
+      return true;
     } catch (e: any) {
       notifications.show({ color: 'red', message: e.message });
-      setTableRev((r) => r + 1);
+      return false;
     }
   };
 
@@ -115,7 +113,6 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
       <PolicySection employeeId={employeeId} policy={data.employee.insurancePolicy} canManage onChange={setPolicy} />
 
       <LedgerTable
-        key={tableRev}
         charges={data.charges}
         credits={data.credits}
         now={now}
@@ -153,7 +150,7 @@ export default withPageAuthRequired(function CobrosStaffPage() {
             <Tabs.Tab value='detail' disabled={!selected}>Detalle</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value='list' pt='md'><EmployeeList selected={selected} onSelect={select} /></Tabs.Panel>
-          <Tabs.Panel value='detail' pt='md'>{selected && <AccountDetail employeeId={selected} />}</Tabs.Panel>
+          <Tabs.Panel value='detail' pt='md'>{selected && <AccountDetail key={selected} employeeId={selected} />}</Tabs.Panel>
         </Tabs>
       </Box>
     );

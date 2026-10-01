@@ -14,6 +14,9 @@ import {
   displayStatus,
   eventLabel,
   inputDay,
+  LEDGER_START_DAY,
+  LEDGER_START_ISO,
+  groupEventsByEmployee,
   LedgerEntry,
   StaffEvent
 } from './staffLedger';
@@ -272,5 +275,40 @@ describe('criterio de "hoy" en día argentino', () => {
     const { charges, summary } = acc();
     expect(pendingUpTo(charges, '2026-10-10')).toBe(summary.pendingToDate);
     expect(displayStatus(charges[0], NOW)).toBe('pendiente');
+  });
+});
+
+describe('fecha de inicio de cobros', () => {
+  it('es el 1/10/2026 y su instante es la medianoche argentina', () => {
+    expect(LEDGER_START_DAY).toBe('2026-10-01');
+    expect(LEDGER_START_ISO).toBe('2026-10-01T03:00:00.000Z');
+  });
+  it('excluye eventos anteriores sin monto, conserva los que tienen monto', () => {
+    const old = ev({ _id: 'old', date: '2026-09-30T23:00:00.000Z' }); // 30/09 20:00 AR
+    const oldPaid = ev({ _id: 'oldPaid', date: '2026-09-20T23:00:00.000Z' });
+    const day1 = ev({ _id: 'day1', date: '2026-10-01T03:00:00.000Z' }); // 01/10 00:00 AR
+    const charges = buildCharges(EMP, [old, oldPaid, day1], [entry({ _id: 'l', eventId: 'oldPaid', amount: 50 })], LEDGER_START_DAY);
+    expect(charges.map((c) => c.eventId)).toEqual(['oldPaid', 'day1']);
+  });
+  it('sin fecha de inicio no excluye nada', () => {
+    expect(buildCharges(EMP, [ev({ date: '2025-01-01T23:00:00.000Z' })], [])).toHaveLength(1);
+  });
+  it('buildAccount pasa la fecha de inicio', () => {
+    const { summary } = buildAccount(EMP, [ev({ date: '2026-09-01T23:00:00.000Z' })], [], NOW, LEDGER_START_DAY);
+    expect(summary.missingAmount).toBe(0);
+  });
+});
+
+describe('groupEventsByEmployee', () => {
+  it('incluye los asignados y los referenciados por una línea con monto', () => {
+    const a = ev({ _id: 'a', staff: [{ employeeId: 'e1', rol: '' }] });
+    const b = ev({ _id: 'b', staff: [] }); // e1 tiene monto pero ya no está asignado
+    const map = groupEventsByEmployee([a, b], [entry({ _id: 'l', employeeId: 'e1', eventId: 'b' })]);
+    expect(map.get('e1')!.map((e) => e._id).sort()).toEqual(['a', 'b']);
+  });
+  it('no duplica un evento asignado que además tiene línea', () => {
+    const a = ev({ _id: 'a', staff: [{ employeeId: 'e1', rol: '' }] });
+    const map = groupEventsByEmployee([a], [entry({ _id: 'l', employeeId: 'e1', eventId: 'a' })]);
+    expect(map.get('e1')).toHaveLength(1);
   });
 });
