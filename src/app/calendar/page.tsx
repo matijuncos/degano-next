@@ -19,7 +19,14 @@ import { parse } from 'date-fns/parse';
 import { startOfWeek } from 'date-fns/startOfWeek';
 import { getDay } from 'date-fns/getDay';
 import { es } from 'date-fns/locale/es';
-import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import { withPageAuthRequired, useUser } from '@auth0/nextjs-auth0/client';
+import {
+  CalendarViewPrefs,
+  loadViewPrefs,
+  pruneHiddenIds,
+  saveViewPrefs,
+  viewPrefsKey
+} from '@/utils/calendarViewPrefs';
 import useSWR, { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import CalendarSidebar, { AppCalendar, CalendarFormValues } from '@/components/CalendarSidebar/CalendarSidebar';
@@ -54,29 +61,48 @@ export default withPageAuthRequired(function CalendarPage() {
   const mutateCalendars = mutateCalendarData;
   const mutatePersonalEvents = mutateCalendarData;
 
-  // Calendarios visibles (todos visibles por defecto)
-  const [visibleCalendarIds, setVisibleCalendarIds] = useState<Set<string>>(new Set());
-  const [nativeEventsVisible, setNativeEventsVisible] = useState(true);
+  // Calendarios tildados/destildados: se recuerdan por usuario en localStorage.
+  // Se guardan los ocultos, así un calendario nuevo aparece tildado.
+  // withPageAuthRequired solo renderiza en el cliente con el usuario cargado.
+  const { user } = useUser();
+  const prefsKey = viewPrefsKey(user?.sub);
+  const [viewPrefs, setViewPrefs] = useState<CalendarViewPrefs>(() => loadViewPrefs(prefsKey));
 
-  useEffect(() => {
-    if (calendars.length > 0) {
-      setVisibleCalendarIds((prev) => {
-        const next = new Set(prev);
-        calendars.forEach((cal) => {
-          if (!next.has(cal._id)) next.add(cal._id);
-        });
-        return next;
-      });
-    }
-  }, [calendars]);
-
-  const toggleVisibility = (id: string) => {
-    setVisibleCalendarIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const updateViewPrefs = (fn: (prev: CalendarViewPrefs) => CalendarViewPrefs) => {
+    setViewPrefs((prev) => {
+      const next = fn(prev);
+      saveViewPrefs(prefsKey, next);
       return next;
     });
+  };
+
+  // Limpia ids de calendarios borrados o sin acceso (solo con la data ya cargada)
+  useEffect(() => {
+    if (!calendarData) return;
+    const pruned = pruneHiddenIds(viewPrefs.hiddenCalendarIds, calendars.map((c) => c._id));
+    if (pruned.length !== viewPrefs.hiddenCalendarIds.length) {
+      updateViewPrefs((prev) => ({ ...prev, hiddenCalendarIds: pruned }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendarData]);
+
+  const visibleCalendarIds = useMemo(() => {
+    const hidden = new Set(viewPrefs.hiddenCalendarIds);
+    return new Set(calendars.map((c) => c._id).filter((id) => !hidden.has(id)));
+  }, [calendars, viewPrefs.hiddenCalendarIds]);
+  const nativeEventsVisible = !viewPrefs.nativeEventsHidden;
+
+  const toggleVisibility = (id: string) => {
+    updateViewPrefs((prev) => ({
+      ...prev,
+      hiddenCalendarIds: prev.hiddenCalendarIds.includes(id)
+        ? prev.hiddenCalendarIds.filter((x) => x !== id)
+        : [...prev.hiddenCalendarIds, id]
+    }));
+  };
+
+  const toggleNativeEvents = () => {
+    updateViewPrefs((prev) => ({ ...prev, nativeEventsHidden: !prev.nativeEventsHidden }));
   };
 
   // ──── Modal de eventos personales ────
@@ -191,11 +217,10 @@ export default withPageAuthRequired(function CalendarPage() {
       await ensureOk(await fetch(`/api/appCalendars?id=${id}`, { method: 'DELETE' }));
       mutateCalendars();
       mutatePersonalEvents();
-      setVisibleCalendarIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      updateViewPrefs((prev) => ({
+        ...prev,
+        hiddenCalendarIds: prev.hiddenCalendarIds.filter((x) => x !== id)
+      }));
       notify();
     } catch (error) {
       notifyError(error);
@@ -495,7 +520,7 @@ export default withPageAuthRequired(function CalendarPage() {
           onDeleteCalendar={handleDeleteCalendar}
           isLightTheme={isLightTheme}
           nativeEventsVisible={nativeEventsVisible}
-          onToggleNativeEvents={() => setNativeEventsVisible((v) => !v)}
+          onToggleNativeEvents={toggleNativeEvents}
           isAdmin={isAdmin}
           onCollapsedChange={setSidebarCollapsed}
         />

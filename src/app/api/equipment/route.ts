@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import { sortByName } from '@/utils/sortByName';
 import { ObjectId } from 'mongodb';
 import { isDateBetweenInclusive } from '@/utils/dateUtils';
 import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } from '@/utils/equipmentHistoryUtils';
@@ -92,11 +93,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   }
 
   // Obtener equipos
-  const equipments = await db
-    .collection('equipment')
-    .find()
-    .sort({ createdAt: 1, name: 1 })
-    .toArray();
+  const equipments = sortByName(await db.collection('equipment').find().toArray());
 
   // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara basada en scheduledUses
   const enriched = equipments.map((eq) => {

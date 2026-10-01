@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'; // ⬅️ esto fuerza el comportamiento dinámico
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import { sortByName } from '@/utils/sortByName';
 import { requireAuth } from '@/lib/requireAuth';
 
 export async function GET() {
@@ -10,11 +11,11 @@ export async function GET() {
   const db = client.db('degano-app');
 
   const [categories, equipment] = await Promise.all([
-    db.collection('categories').find().sort({ name: 1 }).toArray(),
+    db.collection('categories').find().toArray().then(sortByName),
     db.collection('equipment')
       .find({}, { projection: { _id: 1, name: 1, categoryId: 1 } })
-      .sort({ createdAt: 1, name: 1 })
       .toArray()
+      .then(sortByName)
   ]);
 
   const equipmentNodes = equipment.map(eq => ({

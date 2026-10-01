@@ -50,17 +50,26 @@ function presetOf(calendar: AppCalendar): VisibilityPreset {
   return (calendar.memberIds || []).length === 0 ? 'private' : 'selected';
 }
 
+// Ordenados por tono. Todos con contraste suficiente para texto blanco
 const PRESET_COLORS = [
-  '#e03131',
-  '#e8590c',
-  '#f08c00',
-  '#2f9e44',
-  '#0c8599',
-  '#1971c2',
-  '#6741d9',
-  '#9c36b5',
-  '#495057',
-  '#c2255c'
+  '#e03131', // rojo
+  '#a61e4d', // bordó
+  '#c2255c', // frambuesa
+  '#e64980', // rosa
+  '#9c36b5', // uva
+  '#6741d9', // violeta
+  '#3b5bdb', // índigo
+  '#1971c2', // azul
+  '#228be6', // celeste
+  '#0c8599', // cian
+  '#099268', // verde agua
+  '#2f9e44', // verde
+  '#5c940d', // lima
+  '#f08c00', // amarillo
+  '#e8590c', // naranja
+  '#8b5a2b', // marrón
+  '#868e96', // gris claro
+  '#495057' // gris oscuro
 ];
 
 const NATIVE_EVENTS_COLOR = '#37b24d';
