@@ -192,7 +192,7 @@ los eventos con staff, proyectados), no con N consultas.
 - Ventana del empleado aplicada en el servidor.
 - Póliza: `insurancePolicy.key` nunca sale en `GET /api/employees`; la URL
   firmada se emite solo al admin o al dueño.
-- Montos: validar número finito > 0; redondear a 2 decimales.
+- Montos: validar número finito y redondear a 2 decimales. `evento` admite 0 ("no se paga"); extra, pago y adelanto exigen > 0.
 
 ## Testing
 
