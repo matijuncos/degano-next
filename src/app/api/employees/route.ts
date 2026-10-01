@@ -55,8 +55,9 @@ async function migrateEmployeeRefs(db: any, fromId: string, toId: string) {
   await db.collection('tasks').updateMany({ assigneeId: fromId }, { $set: { assigneeId: toId } });
 }
 
-// Datos internos del vínculo con el login: no salen de la API
-const PUBLIC_PROJECTION = { authSub: 0, lastLoginAt: 0 };
+// Datos internos del vínculo con el login y la póliza de seguro (la ve solo el
+// admin o el propio empleado, por /api/staffPolicy): no salen de esta API
+const PUBLIC_PROJECTION = { authSub: 0, lastLoginAt: 0, insurancePolicy: 0 };
 
 async function listAllEmployees(directory = false) {
   const client = await clientPromise;
