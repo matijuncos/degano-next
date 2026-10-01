@@ -81,6 +81,9 @@ Tres roles: `admin`, `manager`, `viewer`. Definidos en `/src/types/auth.ts`.
 | Crear tableros y tareas | ✅ | ✅ | ✅ |
 | Definir visibilidad de tableros | ✅ | ❌ | ❌ |
 | Eliminar tableros | ✅ | ❌ | ❌ |
+| Cargar montos, extras, pagos y adelantos de STAFF | ✅ | ❌ | ❌ |
+| Ver sus propios cobros (si está vinculado a STAFF) | ✅ | ✅ | ✅ |
+| Subir/quitar póliza de seguro | ✅ | ❌ | ❌ |
 
 **Pagos = SOLO admin, siempre.** Todo lo que sea plata (adelanto `upfrontAmount`, `subsequentPayments[]`, presupuestos/anexos) se gatea con `can('canEditPayments')`/`can('canDeletePayments')` en el front y `withAdminAuth()` en el back. NO extender a manager/viewer salvo pedido explícito del cliente.
 
@@ -151,6 +154,18 @@ Checklist antes de dar algo por terminado:
 7. **Ante un lag visual, revisar re-renders antes que CSS.** Para cambios solo cosméticos (resaltar una fila) actualizar el DOM directo en vez de un estado que re-renderiza toda la lista.
 8. Al entregar una feature, decir cuántas requests hace y qué se muestra mientras carga.
 
+### 7. Cobros de STAFF (CRÍTICO)
+
+Cuenta corriente por empleado en `staff_ledger`. Lógica pura en `/src/utils/staffLedger.ts` (testeada).
+
+- **Cargos** = `evento` (monto manual por evento) + `extra`. **Abonos** = `pago` + `adelanto`.
+- Las líneas de evento se **derivan** de `events.staff` al leer: solo se guarda el monto. No tocar `postEvent`/`updateEvent` para esto.
+- Imputación **FIFO**: los abonos cubren los cargos más viejos. Lo que sobra es saldo a favor.
+- Si sacan al empleado de un evento con monto, o se borra el evento, la línea queda marcada; nunca se borra sola.
+- Todo es **solo admin**. El empleado ve `/mis-cobros` solo si `isStaff !== false`, con ventana **3 meses atrás / 1 adelante recortada en el servidor**; nunca recibe el total futuro.
+- Póliza: `employees.insurancePolicy` (excluida de `GET /api/employees`). Se ve por `/api/staffPolicy` (admin o el propio empleado).
+- Fechas en hora argentina (UTC-03:00 fijo): usar `arDay()`/`inputDay()`, nunca `getDate()` en el servidor.
+
 ---
 
 ## Estructura del Proyecto
@@ -178,6 +193,8 @@ src/
 │   │   ├── calendarEvents/ # CRUD eventos de calendarios extras
 │   │   ├── boards/         # CRUD tableros (?withTasks=1 trae tareas del primero)
 │   │   ├── tasks/          # CRUD tareas de tableros
+│   │   ├── staffLedger/    # Cobros de STAFF (admin) + /me (empleado)
+│   │   ├── staffPolicy/    # Póliza de seguro (PDF S3)
 │   │   └── ...
 │   ├── new-event/          # Página crear evento (formulario 10 tabs)
 │   ├── event/[id]/         # Página editar evento
@@ -223,6 +240,7 @@ src/
 | `calendar_events` | Eventos de los calendarios extras (`calendarId`) |
 | `boards` | Tableros de Comunicación Interna con `visibility`/`ownerId`/`memberIds` |
 | `tasks` | Tareas de los tableros (`boardId`, `status`, `order`, `assigneeId` = `_id` de empleado) |
+| `staff_ledger` | Cuenta corriente de cobros de STAFF: montos por evento, extras, pagos y adelantos (ver regla 7) |
 
 ## Convenciones de Código
 
