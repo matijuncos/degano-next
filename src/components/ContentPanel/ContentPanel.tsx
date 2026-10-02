@@ -23,6 +23,7 @@ import { IconPlus } from '@tabler/icons-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDragSelect } from '@/hooks/useDragSelect';
 import { summarizeSelection, SelectableEntry } from '@/utils/rowSelection';
+import { pickUnitsForSelection } from '@/utils/equipmentGroupUtils';
 
 export default function ContentPanel({
   selectedCategory,
@@ -129,7 +130,8 @@ export default function ContentPanel({
   const isCategory = categories.some((cat: any) => cat._id === selectedCategory?._id);
   const isItem = equipment.some((eq: any) => eq._id === selectedCategory?._id);
 
-  // Selección por arrastre (solo informativa): cuenta cuántos equipos de cada uno se marcaron
+  // Selección por arrastre: cuenta cuántos equipos de cada uno se marcaron.
+  // En /equipment es solo informativa; en el evento permite agregar lo seleccionado.
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const { selectedIds: dragSelectedIds, clear: clearDragSelection } = useDragSelect(
     tableContainerRef,
@@ -157,6 +159,28 @@ export default function ContentPanel({
     }
     return summarizeSelection(entries, dragSelectedIds);
   }, [dragSelectedIds, isCategory, newEvent, items, selectedEquipmentIds]);
+
+  // Evento: qué unidades se agregarían (cantidad de cada fila, con tope en lo disponible)
+  const selectionToAdd = useMemo(() => {
+    if (!newEvent || !onEdit || !selectionSummary) return null;
+    return pickUnitsForSelection(items, dragSelectedIds, selectedEquipmentIds, quantityMap);
+  }, [newEvent, onEdit, selectionSummary, items, dragSelectedIds, selectedEquipmentIds, quantityMap]);
+
+  // Después de agregar, la cantidad de esas filas vuelve a 1 (para sumar de a uno o tercerizar)
+  const resetQuantities = (names: string[]) => {
+    setQuantityMap((prev) => {
+      const next = { ...prev };
+      names.forEach((name) => delete next[name]);
+      return next;
+    });
+  };
+
+  const handleAddSelection = () => {
+    if (!selectionToAdd?.units.length) return;
+    onEdit?.(selectionToAdd.units);
+    resetQuantities(selectionToAdd.perName.map((p) => p.name));
+    clearDragSelection();
+  };
 
   if (selectedCategory) {
     setDisableCreateEquipment(isItem);
@@ -323,6 +347,7 @@ export default function ContentPanel({
                         negToAdd
                       );
                     }
+                    resetQuantities([name]);
                   }}
                 >
                   <span style={{ fontSize: '18px', fontWeight: 'bold', lineHeight: 1 }}>+</span>
@@ -635,13 +660,43 @@ export default function ContentPanel({
               </Group>
             </Group>
             <Group gap='6px' style={{ maxHeight: '25vh', overflowY: 'auto' }}>
-              {selectionSummary.rows.map((row) => (
-                <Badge key={row.name} variant='light' color='blue' size='lg' tt='none' fw={600}>
-                  {row.name} × {row.count}
-                  {newEvent && ` (${row.available} disp.)`}
-                </Badge>
-              ))}
+              {selectionSummary.rows.map((row) => {
+                const pick = selectionToAdd?.perName.find((p) => p.name === row.name);
+                const capped = !!pick && pick.added < pick.requested;
+                return (
+                  <Badge
+                    key={row.name}
+                    variant='light'
+                    color={capped ? 'yellow' : 'blue'}
+                    size='lg'
+                    tt='none'
+                    fw={600}
+                  >
+                    {row.name} × {row.count}
+                    {newEvent && ` (${row.available} disp.)`}
+                    {pick && ` → +${pick.added}`}
+                  </Badge>
+                );
+              })}
             </Group>
+            {selectionToAdd && (
+              <Group justify='space-between' wrap='nowrap' gap='md' mt='sm'>
+                <Text size='xs' c='dimmed'>
+                  {selectionToAdd.perName.some((p) => p.added < p.requested)
+                    ? 'En amarillo: se agrega solo lo disponible (sin tercerizar).'
+                    : 'Se usa la cantidad de cada fila.'}
+                </Text>
+                <Button
+                  size='xs'
+                  color='green'
+                  leftSection={<IconPlus size={14} />}
+                  disabled={selectionToAdd.units.length === 0}
+                  onClick={handleAddSelection}
+                >
+                  Agregar {selectionToAdd.units.length} al evento
+                </Button>
+              </Group>
+            )}
           </Paper>
         </Portal>
       )}
