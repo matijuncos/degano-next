@@ -13,11 +13,16 @@ import {
   Center,
   NumberInput,
   Stack,
-  Text
+  Text,
+  Paper,
+  Portal,
+  Badge
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { IconPlus } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useDragSelect } from '@/hooks/useDragSelect';
+import { summarizeSelection, SelectableEntry } from '@/utils/rowSelection';
 
 export default function ContentPanel({
   selectedCategory,
@@ -124,6 +129,35 @@ export default function ContentPanel({
   const isCategory = categories.some((cat: any) => cat._id === selectedCategory?._id);
   const isItem = equipment.some((eq: any) => eq._id === selectedCategory?._id);
 
+  // Selección por arrastre (solo informativa): cuenta cuántos equipos de cada uno se marcaron
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const { selectedIds: dragSelectedIds, clear: clearDragSelection } = useDragSelect(
+    tableContainerRef,
+    selectedCategory?._id
+  );
+  const selectionSummary = useMemo(() => {
+    if (!dragSelectedIds.length || !isCategory) return null;
+    let entries: SelectableEntry[];
+    if (newEvent) {
+      // Vista agrupada: cada fila representa todas las unidades con ese nombre
+      const byName: Record<string, SelectableEntry> = {};
+      items.forEach((item: any) => {
+        const entry = (byName[item.name] ??= { id: item.name, name: item.name, count: 0, available: 0 });
+        entry.count += 1;
+        if (!item.outOfService?.isOut && !selectedEquipmentIds.includes(item._id)) entry.available += 1;
+      });
+      entries = Object.values(byName);
+    } else {
+      entries = items.map((item: any) => ({
+        id: item._id,
+        name: item.name,
+        count: 1,
+        available: item.outOfService?.isOut ? 0 : 1
+      }));
+    }
+    return summarizeSelection(entries, dragSelectedIds);
+  }, [dragSelectedIds, isCategory, newEvent, items, selectedEquipmentIds]);
+
   if (selectedCategory) {
     setDisableCreateEquipment(isItem);
   }
@@ -221,6 +255,7 @@ export default function ContentPanel({
       return (
         <tr
           key={name}
+          data-select-id={name}
           style={{
             backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
             fontWeight: 500
@@ -392,6 +427,7 @@ export default function ContentPanel({
         return (
           <tr
             key={item._id}
+            data-select-id={item._id}
             style={{
               backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
               textAlign: 'center',
@@ -544,6 +580,7 @@ export default function ContentPanel({
       {renderTitle()}
       {(isCategory || isItem || children.length > 0) && (
         <Box
+          ref={tableContainerRef}
           style={{
             overflow: 'auto',
             width: '100%',
@@ -566,6 +603,47 @@ export default function ContentPanel({
             <tbody>{renderRows()}</tbody>
           </Table>
         </Box>
+      )}
+
+      {selectionSummary && selectionSummary.rows.length > 0 && (
+        <Portal>
+          <Paper
+            shadow='xl'
+            radius='md'
+            p='sm'
+            withBorder
+            style={{
+              position: 'fixed',
+              bottom: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 300,
+              maxWidth: 'min(720px, calc(100vw - 32px))',
+              borderColor: '#228be6',
+              background: 'rgba(20, 24, 33, 0.97)'
+            }}
+          >
+            <Group justify='space-between' wrap='nowrap' gap='md' mb='xs'>
+              <Text size='sm' fw={700} c='blue.3'>
+                {newEvent
+                  ? `${selectionSummary.rows.length} tipo(s) · ${selectionSummary.totalCount} equipos · ${selectionSummary.totalAvailable} disponibles`
+                  : `${selectionSummary.totalCount} equipo(s) seleccionado(s)`}
+              </Text>
+              <Group gap='xs' wrap='nowrap'>
+                <Text size='xs' c='dimmed' visibleFrom='sm'>Esc para limpiar</Text>
+                <Button size='compact-xs' variant='subtle' onClick={clearDragSelection}>Limpiar</Button>
+              </Group>
+            </Group>
+            <Group gap='6px' style={{ maxHeight: '25vh', overflowY: 'auto' }}>
+              {selectionSummary.rows.map((row) => (
+                <Badge key={row.name} variant='light' color='blue' size='lg' tt='none' fw={600}>
+                  {row.name} × {row.count}
+                  {newEvent && ` (${row.available} disp.)`}
+                </Badge>
+              ))}
+            </Group>
+          </Paper>
+        </Portal>
       )}
 
       <Modal
