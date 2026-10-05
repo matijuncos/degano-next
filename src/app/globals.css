@@ -296,3 +296,11 @@ textarea:not([autocomplete]) {
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
 }
+
+/* Selección por arrastre de filas (useDragSelect): resaltado azul tipo explorador */
+tr[data-selected] > td {
+  background-color: rgba(34, 139, 230, 0.35) !important;
+}
+tr[data-selected] > td:first-child {
+  box-shadow: inset 3px 0 0 #228be6;
+}

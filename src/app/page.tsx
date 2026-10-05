@@ -28,7 +28,7 @@ export default function Home() {
           <div className={styles.flex_container}>
             <div>
               <h1>Degano</h1>
-              <h2>Iluminación y sonido</h2>
+              <h2>Shows & Events</h2>
             </div>
             <div
               style={{

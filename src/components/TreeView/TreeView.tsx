@@ -1,7 +1,7 @@
 // TreeView.tsx
 'use client';
 import useSWR from 'swr';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue, memo } from 'react';
 import { Button, Divider, Input, CloseButton, Loader, Flex } from '@mantine/core';
 import {
   IconFolder,
@@ -22,7 +22,33 @@ export type CategoryNode = {
   children?: CategoryNode[];
 };
 
-function TreeNode({
+// Arma el árbol en O(n): agrupa por parentId una vez en vez de filtrar todo por cada nodo
+function buildTree(nodes: CategoryNode[]): CategoryNode[] {
+  const byParent = new Map<string | null, CategoryNode[]>();
+  nodes.forEach((n) => {
+    const list = byParent.get(n.parentId);
+    if (list) list.push(n);
+    else byParent.set(n.parentId, [n]);
+  });
+  const build = (parentId: string | null): CategoryNode[] =>
+    (byParent.get(parentId) || []).map((n) => ({ ...n, children: build(n._id) }));
+  return build(null);
+}
+
+// `term` ya viene normalizado (trim + minúsculas)
+function filterTree(nodes: CategoryNode[], term: string): CategoryNode[] {
+  if (!term) return nodes;
+  return nodes.reduce<CategoryNode[]>((acc, node) => {
+    const nodeMatches = node.name.toLowerCase().includes(term);
+    const filteredChildren = node.children ? filterTree(node.children, term) : [];
+    if (nodeMatches || filteredChildren.length > 0) {
+      acc.push({ ...node, children: nodeMatches ? node.children : filteredChildren });
+    }
+    return acc;
+  }, []);
+}
+
+const TreeNode = memo(function TreeNode({
   node,
   onSelect,
   selectedId,
@@ -42,6 +68,10 @@ function TreeNode({
   disableEditOnSelect?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Los hijos se montan recién la primera vez que se abre la carpeta (y quedan montados
+  // para la animación de cierre). Con ~2800 nodos, montarlos todos traba el buscador.
+  const [hasOpened, setHasOpened] = useState(false);
+  if (open && !hasOpened) setHasOpened(true);
   const isSelected = selectedId === node._id;
 
   // Auto-expandir cuando hay búsqueda, pero permitir cerrar manualmente
@@ -141,7 +171,7 @@ function TreeNode({
         }}
       >
         <div style={{ overflow: 'hidden' }}>
-          {Array.isArray(node.children) && node.children.length > 0 && (
+          {hasOpened && Array.isArray(node.children) && node.children.length > 0 && (
             <div style={{ position: 'relative' }}>
               {node.children.map((child) => (
                 <div key={child._id} style={{ display: 'flex' }}>
@@ -192,7 +222,7 @@ function TreeNode({
       </div>
     </div>
   );
-}
+});
 
 export default function TreeView({
   onSelect,
@@ -231,37 +261,15 @@ export default function TreeView({
 
   const isLoading = isLoadingTree || isLoadingEquipment;
 
-  const buildTree = (
-    nodes: CategoryNode[],
-    parentId: string | null = null
-  ): CategoryNode[] => {
-    return nodes
-      .filter((n) => n.parentId === parentId)
-      .map((n) => ({
-        ...n,
-        children: buildTree(nodes, n._id)
-      }));
-  };
+  // El árbol se arma una sola vez por carga de datos (no por tecla), indexando por padre
+  const tree = useMemo(() => buildTree(treeNodes), [treeNodes]);
 
-  const filterTree = (nodes: CategoryNode[], term: string): CategoryNode[] => {
-    if (!term.trim()) return nodes;
+  // El input se actualiza al instante; el filtrado y el re-render del árbol van diferidos
+  const deferredSearch = useDeferredValue(searchTerm);
+  const normalizedSearch = deferredSearch.trim().toLowerCase();
+  const filteredTree = useMemo(() => filterTree(tree, normalizedSearch), [tree, normalizedSearch]);
 
-    return nodes.reduce<CategoryNode[]>((acc, node) => {
-      const nodeMatches = node.name.toLowerCase().includes(term.toLowerCase());
-      const filteredChildren = node.children ? filterTree(node.children, term) : [];
-
-      if (nodeMatches || filteredChildren.length > 0) {
-        acc.push({
-          ...node,
-          children: nodeMatches ? node.children : filteredChildren
-        });
-      }
-      return acc;
-    }, []);
-  };
-
-  const tree = buildTree(treeNodes);
-  const filteredTree = filterTree(tree, searchTerm);
+  const handleNodeSelect = useCallback((n: CategoryNode | null) => onSelect?.(n), [onSelect]);
 
   const handleCreateCategory = () => {
     const isValidSelection =
@@ -391,11 +399,11 @@ export default function TreeView({
               <TreeNode
                 key={node._id}
                 node={node}
-                onSelect={(n) => onSelect?.(n)}
+                onSelect={handleNodeSelect}
                 selectedId={selectedCategory?._id}
                 equipmentData={equipmentFullData}
                 onEdit={onEdit}
-                forceExpanded={!!searchTerm.trim()}
+                forceExpanded={!!normalizedSearch}
                 disableEditOnSelect={disableEditOnSelect}
               />
             ))}
