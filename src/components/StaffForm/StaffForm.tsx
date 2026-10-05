@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { EventModel } from '@/context/types';
-import { Button, Select, Stack, Text, Card, Group, ActionIcon } from '@mantine/core';
+import { Button, Select, Stack, Text, Card, Group, ActionIcon, TextInput } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { EVENT_TABS } from '@/context/config';
 
@@ -75,11 +75,18 @@ const StaffForm = ({
     const newStaffMember: StaffMember = {
       employeeId: employee._id,
       employeeName: employee.fullName,
-      rol: employee.rol || 'Sin rol'
+      // Se precarga con el rol del perfil; se puede cambiar por evento
+      rol: employee.rol || ''
     };
 
     setStaffMembers((prev) => [...prev, newStaffMember]);
     setSelectedEmployee(null);
+  };
+
+  const handleRolChange = (index: number, rol: string) => {
+    setStaffMembers((prev) =>
+      prev.map((member, i) => (i === index ? { ...member, rol } : member))
+    );
   };
 
   const handleRemoveStaff = (index: number) => {
@@ -122,11 +129,16 @@ const StaffForm = ({
             <Text fw={500}>Staff asignado:</Text>
             {staffMembers.map((member, index) => (
               <Card key={index} withBorder p='xs'>
-                <Group justify='space-between'>
-                  <div>
+                <Group justify='space-between' wrap='nowrap'>
+                  <Stack gap={4} style={{ flex: 1 }}>
                     <Text size='sm' fw={500}>{member.employeeName}</Text>
-                    <Text size='xs' c='dimmed'>{member.rol}</Text>
-                  </div>
+                    <TextInput
+                      size='xs'
+                      placeholder='Rol en este evento'
+                      value={member.rol === 'Sin rol' ? '' : member.rol}
+                      onChange={(e) => handleRolChange(index, e.currentTarget.value)}
+                    />
+                  </Stack>
                   <ActionIcon
                     color='red'
                     variant='subtle'
