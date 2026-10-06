@@ -55,11 +55,13 @@ async function migrateEmployeeRefs(db: any, fromId: string, toId: string) {
   await db.collection('tasks').updateMany({ assigneeId: fromId }, { $set: { assigneeId: toId } });
 }
 
-// Datos internos del vínculo con el login y la póliza de seguro (la ve solo el
-// admin o el propio empleado, por /api/staffPolicy): no salen de esta API
+// Datos internos del vínculo con el login: no salen de esta API. La póliza de
+// seguro solo la ve el admin (nombre y fecha, para gestionarla desde STAFF); el
+// archivo se abre siempre por /api/staffPolicy
 const PUBLIC_PROJECTION = { authSub: 0, lastLoginAt: 0, insurancePolicy: 0 };
+const ADMIN_PROJECTION = { authSub: 0, lastLoginAt: 0, 'insurancePolicy.key': 0 };
 
-async function listAllEmployees(directory = false) {
+async function listAllEmployees(directory = false, isAdmin = false) {
   const client = await clientPromise;
   const db = client.db('degano-app');
   // Por defecto solo el personal de eventos. Las entradas de directorio que se
@@ -67,7 +69,8 @@ async function listAllEmployees(directory = false) {
   // de todos los selectores. Con ?directory=true se piden también esas, para los
   // selectores de miembros de tableros y calendarios.
   const filter = directory ? {} : { isStaff: { $ne: false } };
-  return db.collection('employees').find(filter, { projection: PUBLIC_PROJECTION }).toArray();
+  const projection = isAdmin ? ADMIN_PROJECTION : PUBLIC_PROJECTION;
+  return db.collection('employees').find(filter, { projection }).toArray();
 }
 
 export const GET = withAuth(async (context: AuthContext, req: Request) => {
@@ -76,7 +79,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
     // El directorio incluye a todos los que entraron a la app: solo para admin
     const directory =
       searchParams.get('directory') === 'true' && context.role === 'admin';
-    const employees = await listAllEmployees(directory);
+    const employees = await listAllEmployees(directory, context.role === 'admin');
     return NextResponse.json(employees);
   } catch (error) {
     return NextResponse.json(
@@ -91,6 +94,8 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     const client = await clientPromise;
     const db = client.db('degano-app');
     const body = normalizeEmail(await req.json());
+    // La póliza se gestiona solo por /api/staffPolicy
+    delete body.insurancePolicy;
 
     if (body.email) {
       const owner = await findEmailOwner(db, body.email);
@@ -101,7 +106,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
         await db
           .collection('employees')
           .updateOne({ _id: owner._id }, { $set: { ...body, isStaff: true } });
-        return NextResponse.json(await listAllEmployees(), { status: 201 });
+        return NextResponse.json(await listAllEmployees(false, true), { status: 201 });
       }
       if (owner) return duplicateEmailResponse(owner);
     }
@@ -109,7 +114,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     // Lo que se crea desde STAFF es personal de eventos: aparece en la lista y
     // en los selectores. (Las entradas de directorio las crea el login.)
     await db.collection('employees').insertOne({ ...body, isStaff: true });
-    const employees = await listAllEmployees();
+    const employees = await listAllEmployees(false, true);
     return NextResponse.json(employees, { status: 201 });
   } catch (error) {
     return NextResponse.json(
@@ -129,6 +134,9 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
     const emailProvided = 'email' in raw;
     const body = normalizeEmail(raw);
     const { _id, ...rest } = body;
+    // La póliza se gestiona solo por /api/staffPolicy: un body con una copia
+    // vieja no la tiene que pisar
+    delete rest.insurancePolicy;
 
     if (rest.email) {
       const owner = await findEmailOwner(db, rest.email, _id);
@@ -171,7 +179,7 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
       );
     }
 
-    const employees = await listAllEmployees();
+    const employees = await listAllEmployees(false, true);
     return NextResponse.json(employees);
   } catch (error) {
     return NextResponse.json(
@@ -206,7 +214,7 @@ export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) =
       );
     }
 
-    const employees = await listAllEmployees();
+    const employees = await listAllEmployees(false, true);
     return NextResponse.json(employees);
   } catch (error) {
     return NextResponse.json(

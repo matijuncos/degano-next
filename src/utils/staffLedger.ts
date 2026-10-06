@@ -6,8 +6,10 @@
 //
 // Modelo: los CARGOS son lo que se le debe al empleado (eventos trabajados y
 // extras laborales); los ABONOS son lo que se le dio (pagos y adelantos). Los
-// abonos cubren los cargos más viejos primero (FIFO): así Juan nunca tiene que
-// elegir a qué evento corresponde un pago.
+// abonos cubren los cargos más viejos primero (FIFO), pero solo lo que ya se
+// debe a hoy: lo que sobra queda a favor y cubre cada cargo futuro cuando llega
+// su fecha. Excepción: un abono hecho con el tilde de una línea (chargeKey)
+// cubre ESA línea, aunque sea futura (adelanto).
 import { addMonths } from 'date-fns';
 
 export type LedgerType = 'evento' | 'extra' | 'pago' | 'adelanto';
@@ -41,6 +43,7 @@ export interface LedgerEntry {
   description?: string;
   hours?: number;
   method?: PaymentMethod;
+  chargeKey?: string; // abono hecho con el tilde: la línea que paga
   createdAt?: string | Date;
 }
 
@@ -73,11 +76,12 @@ export interface Charge {
 }
 
 export type ChargeStatus = 'pagado' | 'parcial' | 'pendiente' | 'sin_monto';
-export type DisplayStatus = ChargeStatus | 'futuro';
+export type DisplayStatus = ChargeStatus | 'futuro' | 'adelantado';
 
 export interface AllocatedCharge extends Charge {
   paidAmount: number;
   status: ChargeStatus;
+  linkedCreditIds?: string[]; // abonos hechos con el tilde de esta línea
 }
 
 export interface Credit {
@@ -87,13 +91,14 @@ export interface Credit {
   amount: number;
   method?: PaymentMethod;
   description?: string;
+  chargeKey?: string;
 }
 
 export interface LedgerSummary {
   pendingToDate: number; // impago de cargos con fecha <= hoy
   balance: number; // cargos − abonos (negativo = a favor del empleado)
-  favor: number; // abonos que sobran después de cubrir todo
-  futureTotal: number; // cargos con fecha > hoy
+  favor: number; // pagos a cuenta que sobran después de cubrir lo que se debe a hoy
+  futureTotal: number; // impago de cargos con fecha > hoy
   nextMonthTotal: number; // cargos entre hoy y dentro de 1 mes
   missingAmount: number; // eventos sin monto (todos)
   missingAmountNextMonth: number; // eventos sin monto entre hoy y dentro de 1 mes
@@ -235,21 +240,54 @@ export function toCredits(entries: LedgerEntry[]): Credit[] {
       date: toISO(e.date),
       amount: e.amount,
       ...(e.method ? { method: e.method } : {}),
-      ...(e.description ? { description: e.description } : {})
+      ...(e.description ? { description: e.description } : {}),
+      ...(e.chargeKey ? { chargeKey: e.chargeKey } : {})
     }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.entryId.localeCompare(b.entryId));
 }
 
-// Imputación FIFO: el total abonado va cubriendo los cargos del más viejo al
-// más nuevo. Los cargos sin monto no participan. Lo que sobra queda a favor.
-export function allocate(charges: Charge[], credits: Credit[]) {
-  let pool = round2(credits.reduce((s, c) => s + c.amount, 0));
+// Imputación: primero cada abono del tilde cubre su línea; después el resto
+// (pagos a cuenta + lo que sobre de los del tilde) va cubriendo, del más viejo
+// al más nuevo (FIFO), los cargos con fecha hasta hoy. Los cargos futuros no se
+// cubren con pagos a cuenta: lo que sobra queda a favor. Los cargos sin monto
+// no participan. Sin `now` se cubre todo (sin corte por fecha).
+export function allocate(charges: Charge[], credits: Credit[], now?: Date) {
+  const today = now ? (arDay(now) as string) : null;
+  const payable = new Map(charges.filter((c) => c.amount != null).map((c) => [c.key, c]));
+  const linked = new Map<string, { ids: string[]; total: number }>();
+  let pool = 0;
+  for (const cr of credits) {
+    const target = cr.chargeKey ? payable.get(cr.chargeKey) : undefined;
+    if (!target) {
+      pool += cr.amount;
+      continue;
+    }
+    const l = linked.get(target.key) ?? { ids: [], total: 0 };
+    l.ids.push(cr.entryId);
+    l.total += cr.amount;
+    linked.set(target.key, l);
+  }
+
+  const direct = new Map<string, number>();
+  for (const [key, l] of linked) {
+    const amount = payable.get(key)!.amount as number;
+    const applied = round2(Math.min(l.total, amount));
+    direct.set(key, applied);
+    pool += l.total - applied;
+  }
+  pool = round2(pool);
+
   const out: AllocatedCharge[] = [...charges].sort(byDate).map((c) => {
+    const ids = linked.get(c.key)?.ids;
+    const link = ids ? { linkedCreditIds: ids } : {};
     if (c.amount == null) return { ...c, paidAmount: 0, status: 'sin_monto' as const };
-    const paid = round2(Math.min(pool, c.amount));
-    pool = round2(pool - paid);
+    const first = direct.get(c.key) ?? 0;
+    const due = !today || (arDay(c.date) as string) <= today;
+    const fromPool = due ? round2(Math.min(pool, c.amount - first)) : 0;
+    pool = round2(pool - fromPool);
+    const paid = round2(first + fromPool);
     const status: ChargeStatus = paid >= c.amount ? 'pagado' : paid > 0 ? 'parcial' : 'pendiente';
-    return { ...c, paidAmount: paid, status };
+    return { ...c, paidAmount: paid, status, ...link };
   });
   return { charges: out, unappliedCredit: pool };
 }
@@ -261,7 +299,7 @@ export function summarizeAccount(
   now: Date
 ): LedgerSummary {
   // "Hoy" es el día argentino completo: un cargo de hoy a las 22:00 ya es de
-  // hoy (mismo criterio que pendingUpTo y displayStatus).
+  // hoy (mismo criterio que displayStatus y tickCreditType).
   const today = arDay(now) as string;
   const nextMonthMs = addMonths(now, 1).getTime();
   const byMonth: LedgerSummary['byMonth'] = {};
@@ -282,7 +320,7 @@ export function summarizeAccount(
     totalCharged += c.amount;
     bucket(month(c.date)).charged = round2(bucket(month(c.date)).charged + c.amount);
     if (!isFuture) pendingToDate += c.amount - c.paidAmount;
-    else futureTotal += c.amount;
+    else futureTotal += c.amount - c.paidAmount; // lo que falta pagar de lo futuro
     if (isNextMonth) nextMonthTotal += c.amount;
   }
 
@@ -312,18 +350,8 @@ export function buildAccount(
   startDay?: string
 ): Account {
   const credits = toCredits(entries);
-  const { charges, unappliedCredit } = allocate(buildCharges(employeeId, events, entries, startDay), credits);
+  const { charges, unappliedCredit } = allocate(buildCharges(employeeId, events, entries, startDay), credits, now);
   return { charges, credits, summary: summarizeAccount(charges, credits, unappliedCredit, now) };
-}
-
-// Lo impago hasta un día (YYYY-MM-DD, inclusive). Precarga el monto de
-// "pagar hasta tal fecha" en el modal de pago.
-export function pendingUpTo(charges: AllocatedCharge[], day: string): number {
-  return round2(
-    charges
-      .filter((c) => c.amount != null && (arDay(c.date) as string) <= day)
-      .reduce((s, c) => s + ((c.amount as number) - c.paidAmount), 0)
-  );
 }
 
 // Lo que el empleado puede ver: 3 meses hacia atrás y 1 hacia adelante.
@@ -336,11 +364,12 @@ export function inWindow(date: string | Date, w: { from: Date; to: Date }) {
   return t >= w.from.getTime() && t <= w.to.getTime();
 }
 
-// Estado para mostrar: un cargo impago con fecha futura todavía no está "pendiente".
+// Estado para mostrar: un cargo futuro impago todavía no está "pendiente"; uno
+// futuro ya pagado (con su tilde) está "adelantado".
 export function displayStatus(c: AllocatedCharge, now: Date): DisplayStatus {
-  if ((c.status === 'pendiente' || c.status === 'parcial') && (arDay(c.date) as string) > (arDay(now) as string)) {
-    return 'futuro';
-  }
+  if ((arDay(c.date) as string) <= (arDay(now) as string)) return c.status;
+  if (c.status === 'pendiente' || c.status === 'parcial') return 'futuro';
+  if (c.status === 'pagado' && c.amount) return 'adelantado';
   return c.status;
 }
 
@@ -375,4 +404,30 @@ export function groupEventsByEmployee(events: StaffEvent[], entries: LedgerEntry
     if (ev) add(e.employeeId, ev);
   }
   return new Map([...sets].map(([id, m]) => [id, [...m.values()]]));
+}
+
+// Casilla "Pagado" de una línea (vista admin):
+// - none: no hay nada que pagar (sin monto o monto 0)
+// - checked: pagada con su tilde → destildar borra esos abonos
+// - locked: pagada por un pago a cuenta → no se puede destildar desde acá
+// - unchecked: impaga o parcial → tildar paga lo que falta
+export type TickState = 'none' | 'checked' | 'locked' | 'unchecked';
+export function tickState(c: AllocatedCharge): TickState {
+  if (c.amount == null || c.amount === 0) return 'none';
+  if (c.status !== 'pagado') return 'unchecked';
+  return c.linkedCreditIds?.length ? 'checked' : 'locked';
+}
+
+// Tilde: pagar un evento que ya pasó (o es de hoy) es un pago; uno futuro, un adelanto.
+export function tickCreditType(c: Pick<Charge, 'date'>, now: Date): 'pago' | 'adelanto' {
+  return (arDay(c.date) as string) > (arDay(now) as string) ? 'adelanto' : 'pago';
+}
+
+// Pago a cuenta: si se debe algo a hoy es un pago; si no, un adelanto (queda a favor).
+export function quickCreditType(summary: Pick<LedgerSummary, 'pendingToDate'>): 'pago' | 'adelanto' {
+  return summary.pendingToDate > 0 ? 'pago' : 'adelanto';
+}
+
+export function isChargeKey(v: unknown): v is string {
+  return typeof v === 'string' && /^(evento|extra):[A-Za-z0-9]+$/.test(v);
 }

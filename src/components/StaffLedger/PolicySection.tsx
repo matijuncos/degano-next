@@ -5,6 +5,7 @@ import { Group, Button, Text, Paper } from '@mantine/core';
 import { IconFileTypePdf } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { safeS3FileName } from '@/utils/staffPolicyFile';
+import { useConfirm } from '@/components/ConfirmModal/useConfirm';
 
 // Póliza de seguro. El admin la sube/reemplaza/quita; el empleado solo la ve.
 export default function PolicySection({
@@ -20,6 +21,7 @@ export default function PolicySection({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<'view' | 'upload' | 'delete' | null>(null);
+  const [confirm, confirmModal] = useConfirm();
 
   const fail = (message: string) => notifications.show({ color: 'red', message });
 
@@ -76,7 +78,12 @@ export default function PolicySection({
   };
 
   const remove = async () => {
-    if (!confirm('¿Quitar la póliza de este empleado?')) return;
+    const ok = await confirm({
+      title: '¿Quitar la póliza?',
+      message: 'Se borra el PDF de este empleado. Después podés subir otro.',
+      confirmLabel: 'Quitar'
+    });
+    if (!ok) return;
     setBusy('delete');
     try {
       const res = await fetch(`/api/staffPolicy?employeeId=${employeeId}`, { method: 'DELETE' });
@@ -94,6 +101,7 @@ export default function PolicySection({
 
   return (
     <Paper withBorder p='sm' radius='md'>
+      {confirmModal}
       <Group justify='space-between' wrap='wrap'>
         <Group gap='xs'>
           <IconFileTypePdf size={20} />

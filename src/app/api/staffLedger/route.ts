@@ -14,7 +14,7 @@ import {
   LEDGER_COLLECTION
 } from '@/lib/staffLedgerServer';
 import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard } from '@/utils/staffLedgerInput';
-import { eventLabel } from '@/utils/staffLedger';
+import { eventLabel, isChargeKey } from '@/utils/staffLedger';
 
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 });
 const notFound = (error: string) => NextResponse.json({ error }, { status: 404 });
@@ -154,10 +154,23 @@ export const PUT = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
 
 export const DELETE = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
   try {
-    const id = new URL(req.url).searchParams.get('id');
-    if (!id || !ObjectId.isValid(id)) return badRequest('Falta el movimiento');
+    const params = new URL(req.url).searchParams;
     const db = await getDb();
     const coll = db.collection(LEDGER_COLLECTION);
+
+    // Destildar una línea: se borran los abonos hechos con su tilde
+    const chargeKey = params.get('chargeKey');
+    if (chargeKey !== null) {
+      const employeeId = params.get('employeeId') || '';
+      if (!isChargeKey(chargeKey) || !employeeId) return badRequest('Falta la línea a destildar');
+      const employee = await findEmployee(db, employeeId);
+      if (!employee) return notFound('Empleado no encontrado');
+      await coll.deleteMany({ employeeId, chargeKey, type: { $in: ['pago', 'adelanto'] } });
+      return accountResponse(db, employee);
+    }
+
+    const id = params.get('id');
+    if (!id || !ObjectId.isValid(id)) return badRequest('Falta el movimiento');
     const existing = await coll.findOne({ _id: new ObjectId(id) });
     if (!existing) return notFound('Movimiento no encontrado');
     await coll.deleteOne({ _id: existing._id });

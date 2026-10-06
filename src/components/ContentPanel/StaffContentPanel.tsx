@@ -13,6 +13,7 @@ import { IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
+import PolicySection from '@/components/StaffLedger/PolicySection';
 
 export default function StaffContentPanel({
   selectedEmployee,
@@ -87,6 +88,27 @@ export default function StaffContentPanel({
     );
   };
 
+  // Póliza: el nombre viene en la lista de /api/employees (solo para admin).
+  // Al subir/quitar se actualiza esa caché y una copia local, porque el
+  // empleado seleccionado es una copia del item de la lista.
+  const [policyOverride, setPolicyOverride] = useState<{ id: string; policy: { fileName: string } | null } | null>(null);
+  const policy =
+    policyOverride && policyOverride.id === selectedEmployee?._id
+      ? policyOverride.policy
+      : selectedEmployee?.insurancePolicy ?? null;
+
+  const handlePolicyChange = (next: { fileName: string } | null) => {
+    const id = selectedEmployee._id;
+    setPolicyOverride({ id, policy: next });
+    const insurancePolicy = next ? { fileName: next.fileName, uploadedAt: new Date().toISOString() } : undefined;
+    mutate(
+      '/api/employees',
+      (list: any[] | undefined) =>
+        list?.map((emp) => (emp._id === id ? { ...emp, insurancePolicy } : emp)),
+      { revalidate: false }
+    );
+  };
+
   const handleDeleteClick = () => {
     setShowDeleteModal(true);
   };
@@ -151,6 +173,17 @@ export default function StaffContentPanel({
             </thead>
             <tbody>{renderRows()}</tbody>
           </Table>
+          {/* Póliza de seguro: solo admin (datos sensibles) */}
+          {can('canEditPayments') && (
+            <div style={{ marginTop: '1rem' }}>
+              <PolicySection
+                employeeId={selectedEmployee._id}
+                policy={policy}
+                canManage
+                onChange={handlePolicyChange}
+              />
+            </div>
+          )}
         </div>
       )}
 

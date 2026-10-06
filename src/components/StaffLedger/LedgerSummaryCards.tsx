@@ -34,7 +34,7 @@ export default function LedgerSummaryCards(
         value={formatPrice(summary.pendingToDate)}
         color={pendingColor}
       />
-      {summary.favor > 0 && <Card label='A favor (adelantado)' value={formatPrice(summary.favor)} color='blue' />}
+      {summary.favor > 0 && <Card label='Saldo a favor' value={formatPrice(summary.favor)} color='blue' />}
       {props.mode === 'admin' ? (
         <Card label='Total futuro' value={formatPrice(props.summary.futureTotal)} />
       ) : (

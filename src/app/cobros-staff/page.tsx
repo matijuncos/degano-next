@@ -14,9 +14,9 @@ import LedgerSummaryCards from '@/components/StaffLedger/LedgerSummaryCards';
 import LedgerTable from '@/components/StaffLedger/LedgerTable';
 import PaymentModal from '@/components/StaffLedger/PaymentModal';
 import ExtraModal from '@/components/StaffLedger/ExtraModal';
-import PolicySection from '@/components/StaffLedger/PolicySection';
 import { formatPrice } from '@/utils/priceUtils';
-import { AllocatedCharge, Credit } from '@/utils/staffLedger';
+import { useConfirm } from '@/components/ConfirmModal/useConfirm';
+import { AllocatedCharge, Credit, PaymentMethod, tickCreditType, arDay, round2 } from '@/utils/staffLedger';
 
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
 
@@ -66,6 +66,7 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
   const [extraOpen, setExtraOpen] = useState(false);
   const [editingExtra, setEditingExtra] = useState<AllocatedCharge | null>(null);
   const now = useMemo(() => new Date(), [data]);
+  const [confirm, confirmModal] = useConfirm();
 
   if (error) return <Alert color='red'>{error.message}</Alert>;
   if (!data) return <Center h={300}><Loader /></Center>;
@@ -80,21 +81,48 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
     }
   };
 
+  // Tilde: paga lo que falta de esa línea, con fecha de hoy. Evento futuro → adelanto.
+  const tick = async (charge: AllocatedCharge, method: PaymentMethod) => {
+    try {
+      await ledgerRequest('POST', {
+        type: tickCreditType(charge, new Date()),
+        employeeId,
+        // Día argentino: un ISO en UTC a la noche ya es el día siguiente
+        date: arDay(new Date()),
+        amount: round2((charge.amount ?? 0) - charge.paidAmount),
+        method,
+        chargeKey: charge.key
+      });
+      return true;
+    } catch (e: any) {
+      notifications.show({ color: 'red', message: e.message });
+      return false;
+    }
+  };
+
+  const untick = async (charge: AllocatedCharge) => {
+    try {
+      await ledgerRequest('DELETE', undefined, `?employeeId=${employeeId}&chargeKey=${encodeURIComponent(charge.key)}`);
+      return true;
+    } catch (e: any) {
+      notifications.show({ color: 'red', message: e.message });
+      return false;
+    }
+  };
+
   const deleteEntry = async (entryId: string) => {
-    if (!confirm('¿Borrar este movimiento?')) return;
+    const ok = await confirm({
+      title: '¿Borrar este movimiento?',
+      message: 'Se recalcula la cuenta del empleado. No se puede deshacer.',
+      confirmLabel: 'Borrar'
+    });
+    if (!ok) return;
     try {
       await ledgerRequest('DELETE', undefined, `?id=${entryId}`);
     } catch (e: any) {
       notifications.show({ color: 'red', message: e.message });
     }
   };
-
-  const setPolicy = (policy: { fileName: string } | null) =>
-    mutate<AdminAccountResponse>(
-      accountKey(employeeId),
-      (d) => d && { ...d, employee: { ...d.employee, insurancePolicy: policy ? { fileName: policy.fileName, uploadedAt: new Date().toISOString() } : null } },
-      { revalidate: false }
-    );
 
   return (
     <Stack>
@@ -105,12 +133,11 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
         </div>
         <Group>
           <Button variant='default' onClick={() => { setEditingExtra(null); setExtraOpen(true); }}>Agregar extra</Button>
-          <Button onClick={() => { setEditingCredit(null); setPaymentOpen(true); }}>Registrar pago</Button>
+          <Button onClick={() => { setEditingCredit(null); setPaymentOpen(true); }}>Pago a cuenta</Button>
         </Group>
       </Group>
 
       <LedgerSummaryCards mode='admin' summary={data.summary} />
-      <PolicySection employeeId={employeeId} policy={data.employee.insurancePolicy} canManage onChange={setPolicy} />
 
       <LedgerTable
         charges={data.charges}
@@ -121,9 +148,12 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
         onEditCredit={(c) => { setEditingCredit(c); setPaymentOpen(true); }}
         onEditExtra={(c) => { setEditingExtra(c); setExtraOpen(true); }}
         onDeleteEntry={deleteEntry}
+        onTick={tick}
+        onUntick={untick}
       />
 
-      <PaymentModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} employeeId={employeeId} charges={data.charges} credit={editingCredit} />
+      <PaymentModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} employeeId={employeeId} summary={data.summary} credit={editingCredit} />
+      {confirmModal}
       <ExtraModal opened={extraOpen} onClose={() => setExtraOpen(false)} employeeId={employeeId} extra={editingExtra} />
     </Stack>
   );

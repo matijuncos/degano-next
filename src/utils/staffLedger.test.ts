@@ -8,7 +8,6 @@ import {
   allocate,
   summarizeAccount,
   buildAccount,
-  pendingUpTo,
   employeeWindow,
   inWindow,
   displayStatus,
@@ -17,6 +16,10 @@ import {
   LEDGER_START_DAY,
   LEDGER_START_ISO,
   groupEventsByEmployee,
+  tickState,
+  tickCreditType,
+  quickCreditType,
+  isChargeKey,
   LedgerEntry,
   StaffEvent
 } from './staffLedger';
@@ -207,18 +210,6 @@ describe('summarizeAccount / buildAccount', () => {
   });
 });
 
-describe('pendingUpTo', () => {
-  it('suma lo impago hasta el día indicado inclusive', () => {
-    const { charges } = buildAccount(EMP, [], [
-      entry({ _id: 'a', type: 'extra', eventId: undefined, date: '2026-10-01T15:00:00.000Z', amount: 100, description: 'A' }),
-      entry({ _id: 'b', type: 'extra', eventId: undefined, date: '2026-10-16T02:00:00.000Z', amount: 200, description: 'B' }), // 15/10 23:00 AR
-      entry({ _id: 'c', type: 'extra', eventId: undefined, date: '2026-10-20T15:00:00.000Z', amount: 400, description: 'C' }),
-      entry({ _id: 'p', type: 'pago', eventId: undefined, date: '2026-10-02T15:00:00.000Z', amount: 50, method: 'efectivo' })
-    ], NOW);
-    expect(pendingUpTo(charges, '2026-10-15')).toBe(250);
-  });
-});
-
 describe('ventana del empleado', () => {
   it('3 meses atrás y 1 adelante', () => {
     const w = employeeWindow(NOW);
@@ -271,10 +262,10 @@ describe('criterio de "hoy" en día argentino', () => {
     expect(summary.futureTotal).toBe(0);
     expect(summary.nextMonthTotal).toBe(0);
   });
-  it('coincide con pendingUpTo de hoy y se ve pendiente', () => {
-    const { charges, summary } = acc();
-    expect(pendingUpTo(charges, '2026-10-10')).toBe(summary.pendingToDate);
+  it('se ve pendiente y el tilde lo registra como pago', () => {
+    const { charges } = acc();
     expect(displayStatus(charges[0], NOW)).toBe('pendiente');
+    expect(tickCreditType(charges[0], NOW)).toBe('pago');
   });
 });
 
@@ -310,5 +301,141 @@ describe('groupEventsByEmployee', () => {
     const a = ev({ _id: 'a', staff: [{ employeeId: 'e1', rol: '' }] });
     const map = groupEventsByEmployee([a], [entry({ _id: 'l', employeeId: 'e1', eventId: 'a' })]);
     expect(map.get('e1')).toHaveLength(1);
+  });
+});
+
+describe('pagos atados a una línea (tilde)', () => {
+  const charges = buildCharges(EMP, [], [
+    entry({ _id: 'a', type: 'extra', eventId: undefined, date: '2026-09-01T15:00:00.000Z', amount: 100, description: 'A' }),
+    entry({ _id: 'b', type: 'extra', eventId: undefined, date: '2026-09-15T15:00:00.000Z', amount: 100, description: 'B' })
+  ]);
+  const credit = (id: string, amount: number, chargeKey?: string) =>
+    entry({ _id: id, type: 'pago', eventId: undefined, amount, method: 'efectivo', date: '2026-09-20T15:00:00.000Z', ...(chargeKey ? { chargeKey } : {}) });
+
+  it('el pago del tilde cubre SU línea, no la más vieja', () => {
+    const { charges: out } = allocate(charges, toCredits([credit('t', 100, 'extra:b')]));
+    expect(out.map((c) => [c.key, c.status])).toEqual([['extra:a', 'pendiente'], ['extra:b', 'pagado']]);
+    expect(out[1].linkedCreditIds).toEqual(['t']);
+    expect(out[0].linkedCreditIds).toBeUndefined();
+  });
+  it('los pagos sueltos van por FIFO a lo que queda', () => {
+    const { charges: out } = allocate(charges, toCredits([credit('t', 100, 'extra:b'), credit('s', 60)]));
+    expect(out.map((c) => [c.status, c.paidAmount])).toEqual([['parcial', 60], ['pagado', 100]]);
+  });
+  it('si subió el monto, la línea tildada queda parcial', () => {
+    const { charges: out } = allocate(charges, toCredits([credit('t', 80, 'extra:b')]));
+    expect(out[1].status).toBe('parcial');
+    expect(out[1].paidAmount).toBe(80);
+  });
+  it('si bajó el monto, lo que sobra del tilde pasa a FIFO', () => {
+    const { charges: out } = allocate(charges, toCredits([credit('t', 150, 'extra:b')]));
+    expect(out.map((c) => [c.status, c.paidAmount])).toEqual([['parcial', 50], ['pagado', 100]]);
+  });
+  it('tilde de una línea que ya no existe → todo a FIFO', () => {
+    const { charges: out, unappliedCredit } = allocate(charges, toCredits([credit('t', 250, 'extra:zz')]));
+    expect(out.every((c) => c.status === 'pagado')).toBe(true);
+    expect(unappliedCredit).toBe(50);
+  });
+  it('tilde de una línea que quedó sin monto → a FIFO', () => {
+    const withMissing = [...buildCharges(EMP, [ev({ date: '2026-08-01T23:00:00.000Z', endDate: undefined })], []), ...charges];
+    const { charges: out } = allocate(withMissing, toCredits([credit('t', 100, 'evento:ev1')]));
+    expect(out.map((c) => c.status)).toEqual(['sin_monto', 'pagado', 'pendiente']);
+  });
+});
+
+describe('estado de la casilla', () => {
+  const base = buildCharges(EMP, [], [
+    entry({ _id: 'a', type: 'extra', eventId: undefined, date: '2026-09-01T15:00:00.000Z', amount: 100, description: 'A' }),
+    entry({ _id: 'b', type: 'extra', eventId: undefined, date: '2026-09-15T15:00:00.000Z', amount: 100, description: 'B' })
+  ]);
+  const credit = (id: string, amount: number, chargeKey?: string) =>
+    entry({ _id: id, type: 'pago', eventId: undefined, amount, method: 'efectivo', date: '2026-09-20T15:00:00.000Z', ...(chargeKey ? { chargeKey } : {}) });
+
+  it('tildada por su pago → checked; cubierta por pago a cuenta → locked; impaga → unchecked', () => {
+    const { charges: out } = allocate(base, toCredits([credit('s', 100), credit('t', 100, 'extra:b')]));
+    expect(out.map(tickState)).toEqual(['locked', 'checked']);
+    expect(allocate(base, []).charges.map(tickState)).toEqual(['unchecked', 'unchecked']);
+  });
+  it('parcial → unchecked; sin monto o monto 0 → none', () => {
+    const { charges: out } = allocate(base, toCredits([credit('t', 50, 'extra:a')]));
+    expect(tickState(out[0])).toBe('unchecked');
+    expect(tickState(allocate(buildCharges(EMP, [ev()], []), []).charges[0])).toBe('none');
+    expect(tickState(allocate(buildCharges(EMP, [ev()], [entry({ amount: 0 })]), []).charges[0])).toBe('none');
+  });
+});
+
+describe('tipo automático del abono', () => {
+  it('tilde: evento pasado o de hoy → pago; futuro → adelanto', () => {
+    const [past] = allocate(buildCharges(EMP, [ev()], [entry({})]), []).charges;
+    const [today] = allocate(buildCharges(EMP, [ev({ date: '2026-10-11T01:00:00.000Z' })], [entry({})]), []).charges; // 10/10 22:00 AR
+    const [future] = allocate(buildCharges(EMP, [ev({ date: '2026-10-11T15:00:00.000Z' })], [entry({})]), []).charges;
+    expect(tickCreditType(past, NOW)).toBe('pago');
+    expect(tickCreditType(today, NOW)).toBe('pago');
+    expect(tickCreditType(future, NOW)).toBe('adelanto');
+  });
+  it('pago a cuenta: con pendiente a hoy → pago; sin pendiente → adelanto', () => {
+    expect(quickCreditType({ pendingToDate: 10 })).toBe('pago');
+    expect(quickCreditType({ pendingToDate: 0 })).toBe('adelanto');
+  });
+  it('isChargeKey valida el formato', () => {
+    expect(isChargeKey('evento:6a97528ee467e1e8d8cb1508')).toBe(true);
+    expect(isChargeKey('extra:abc123')).toBe(true);
+    expect(isChargeKey('pago:abc')).toBe(false);
+    expect(isChargeKey('evento:')).toBe(false);
+    expect(isChargeKey({ $ne: 1 })).toBe(false);
+  });
+});
+
+describe('total futuro', () => {
+  it('no cuenta lo futuro que ya está pagado', () => {
+    const { summary } = buildAccount(EMP, [], [
+      entry({ _id: 'a', type: 'extra', eventId: undefined, date: '2026-10-02T15:00:00.000Z', amount: 100, description: 'A' }),
+      entry({ _id: 'b', type: 'extra', eventId: undefined, date: '2026-10-11T15:00:00.000Z', amount: 100, description: 'B' }),
+      entry({ _id: 'c', type: 'extra', eventId: undefined, date: '2026-10-31T15:00:00.000Z', amount: 100, description: 'C' }),
+      entry({ _id: 'p', type: 'pago', eventId: undefined, date: '2026-10-06T15:00:00.000Z', amount: 200, method: 'efectivo' })
+    ], NOW);
+    // Pagó 200 a cuenta debiendo 100 a hoy: cubre lo de hoy, 100 a favor y lo
+    // futuro sigue impago (se cubre con el saldo cuando llegue su fecha)
+    expect(summary.pendingToDate).toBe(0);
+    expect(summary.favor).toBe(100);
+    expect(summary.futureTotal).toBe(200);
+  });
+});
+
+describe('pago a cuenta no cubre lo futuro', () => {
+  const entries = [
+    entry({ _id: 'a', type: 'extra', eventId: undefined, date: '2026-10-02T15:00:00.000Z', amount: 100, description: 'A' }),
+    entry({ _id: 'b', type: 'extra', eventId: undefined, date: '2026-10-07T15:00:00.000Z', amount: 100, description: 'B' }),
+    entry({ _id: 'c', type: 'extra', eventId: undefined, date: '2026-10-31T15:00:00.000Z', amount: 100, description: 'C' }),
+    entry({ _id: 'p', type: 'pago', eventId: undefined, date: '2026-10-06T15:00:00.000Z', amount: 200, method: 'efectivo' })
+  ];
+  it('caso Julieta: 200 cubren los dos de 100 ya vencidos, sin saldo a favor', () => {
+    const { charges, summary } = buildAccount(EMP, [], entries, NOW);
+    expect(charges.map((c) => c.status)).toEqual(['pagado', 'pagado', 'pendiente']);
+    expect(summary.favor).toBe(0);
+    expect(summary.futureTotal).toBe(100);
+    expect(displayStatus(charges[2], NOW)).toBe('futuro');
+  });
+  it('50 más a cuenta sin nada vencido → saldo a favor, el futuro sigue impago', () => {
+    const extra = entry({ _id: 'q', type: 'adelanto', eventId: undefined, date: '2026-10-10T15:00:00.000Z', amount: 50, method: 'efectivo' });
+    const { charges, summary } = buildAccount(EMP, [], [...entries, extra], NOW);
+    expect(summary.favor).toBe(50);
+    expect(charges[2].status).toBe('pendiente');
+  });
+  it('cuando llega la fecha, el saldo a favor cubre el cargo solo', () => {
+    const extra = entry({ _id: 'q', type: 'adelanto', eventId: undefined, date: '2026-10-10T15:00:00.000Z', amount: 50, method: 'efectivo' });
+    const { charges, summary } = buildAccount(EMP, [], [...entries, extra], new Date('2026-11-01T15:00:00.000Z'));
+    expect(charges[2].status).toBe('parcial');
+    expect(charges[2].paidAmount).toBe(50);
+    expect(summary.favor).toBe(0);
+    expect(summary.pendingToDate).toBe(50);
+  });
+  it('tilde en un futuro → pagado y se muestra "adelantado"', () => {
+    const tick = entry({ _id: 't', type: 'adelanto', eventId: undefined, date: '2026-10-10T15:00:00.000Z', amount: 100, method: 'efectivo', chargeKey: 'extra:c' });
+    const { charges, summary } = buildAccount(EMP, [], [...entries, tick], NOW);
+    expect(charges[2].status).toBe('pagado');
+    expect(displayStatus(charges[2], NOW)).toBe('adelantado');
+    expect(summary.favor).toBe(0);
+    expect(summary.futureTotal).toBe(0);
   });
 });

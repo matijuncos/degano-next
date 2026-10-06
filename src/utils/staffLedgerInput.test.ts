@@ -137,3 +137,18 @@ describe('eventAmountGuard', () => {
     expect(eventAmountGuard(null, 'emp1', true)).toBeNull();
   });
 });
+
+describe('parseLedgerInput: pago atado a una línea', () => {
+  const base = { type: 'pago', employeeId: 'e1', amount: 100, date: '2026-10-05', method: 'efectivo' };
+  it('guarda chargeKey válido', () => {
+    const r = parseLedgerInput({ ...base, chargeKey: 'evento:abc123' });
+    expect(r.ok && r.value.chargeKey).toBe('evento:abc123');
+  });
+  it('rechaza chargeKey inválido', () => {
+    expect(parseLedgerInput({ ...base, chargeKey: 'otra:cosa' }).ok).toBe(false);
+  });
+  it('sin chargeKey es un pago a cuenta', () => {
+    const r = parseLedgerInput(base);
+    expect(r.ok && 'chargeKey' in r.value).toBe(false);
+  });
+});

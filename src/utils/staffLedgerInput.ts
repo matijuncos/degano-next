@@ -1,6 +1,6 @@
 // src/utils/staffLedgerInput.ts
 // Validación de lo que llega a /api/staffLedger. Pura para poder testearla.
-import { LedgerType, PaymentMethod, PAYMENT_METHODS, round2 } from './staffLedger';
+import { LedgerType, PaymentMethod, PAYMENT_METHODS, round2, isChargeKey } from './staffLedger';
 
 const TYPES: LedgerType[] = ['evento', 'extra', 'pago', 'adelanto'];
 
@@ -39,6 +39,7 @@ export type LedgerInput = {
   description?: string;
   hours?: number;
   method?: PaymentMethod;
+  chargeKey?: string;
 };
 
 type Result = { ok: true; value: LedgerInput } | { ok: false; error: string };
@@ -77,9 +78,16 @@ export function parseLedgerInput(body: any): Result {
 
   const method = body.method as PaymentMethod;
   if (!PAYMENT_METHODS.includes(method)) return fail('Forma de pago inválida');
+  // Abono hecho con el tilde de una línea: queda atado a esa línea
+  const hasChargeKey = body.chargeKey !== undefined && body.chargeKey !== null;
+  if (hasChargeKey && !isChargeKey(body.chargeKey)) return fail('Línea a pagar inválida');
   return {
     ok: true,
-    value: { type, employeeId, amount, date, method, ...(description ? { description } : {}) }
+    value: {
+      type, employeeId, amount, date, method,
+      ...(description ? { description } : {}),
+      ...(hasChargeKey ? { chargeKey: body.chargeKey } : {})
+    }
   };
 }
 
