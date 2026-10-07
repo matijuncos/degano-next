@@ -15,7 +15,8 @@ import {
   Select,
   Card,
   ActionIcon,
-  Badge
+  Badge,
+  TextInput
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -29,7 +30,8 @@ import {
   IconFileTypePdf,
   IconFileText,
   IconFileZip,
-  IconEye
+  IconEye,
+  IconPencil
 } from '@tabler/icons-react';
 import { Image } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
@@ -65,6 +67,10 @@ const DrawerContent = () => {
   const files: FileItem[] = selectedEvent?.files || [];
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  // Rol en ESTE evento (es el que muestra Cobros STAFF). Se precarga con el del
+  // perfil. editingStaffIndex != null → el modal edita el rol de alguien ya asignado
+  const [staffRol, setStaffRol] = useState('');
+  const [editingStaffIndex, setEditingStaffIndex] = useState<number | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -223,7 +229,63 @@ const DrawerContent = () => {
   };
 
 
-  const handleAddStaff = async () => {
+  const closeStaffModal = () => {
+    setIsStaffModalOpen(false);
+    setSelectedEmployee(null);
+    setStaffRol('');
+    setEditingStaffIndex(null);
+  };
+
+  const openEditStaffRol = (index: number) => {
+    setEditingStaffIndex(index);
+    const current = staffMembers[index]?.rol || '';
+    setStaffRol(current === 'Sin rol' ? '' : current);
+    setIsStaffModalOpen(true);
+  };
+
+  const handleSelectEmployee = (id: string | null) => {
+    setSelectedEmployee(id);
+    const employee = employees.find((emp) => emp._id === id);
+    setStaffRol(employee?.rol || '');
+  };
+
+  const saveStaff = async (updatedStaff: StaffMember[], successMessage: string) => {
+    try {
+      setLoadingCursor(true);
+      const response = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          _id: selectedEvent?._id,
+          staff: updatedStaff
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      setStaffMembers(updatedStaff);
+      setSelectedEvent(data.event);
+      closeStaffModal();
+      notify({ message: successMessage });
+    } catch (error) {
+      notify({ type: 'defaultError' });
+      console.error('Error saving staff:', error);
+    } finally {
+      setLoadingCursor(false);
+    }
+  };
+
+  const handleSaveStaffModal = async () => {
+    const rol = staffRol.trim();
+
+    if (editingStaffIndex !== null) {
+      const updatedStaff = staffMembers.map((member, i) =>
+        i === editingStaffIndex ? { ...member, rol } : member
+      );
+      await saveStaff(updatedStaff, 'Rol actualizado');
+      return;
+    }
+
     if (!selectedEmployee) {
       notify({
         type: 'defaultError',
@@ -250,36 +312,9 @@ const DrawerContent = () => {
     const newStaffMember: StaffMember = {
       employeeId: employee._id,
       employeeName: employee.fullName,
-      rol: employee.rol || 'Sin rol'
+      rol
     };
-
-    const updatedStaff = [...staffMembers, newStaffMember];
-    setStaffMembers(updatedStaff);
-
-    // Update event in database
-    try {
-      setLoadingCursor(true);
-      const response = await fetch('/api/updateEvent', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          _id: selectedEvent?._id,
-          staff: updatedStaff
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
-      setSelectedEvent(data.event);
-      setIsStaffModalOpen(false);
-      setSelectedEmployee(null);
-      notify({ message: 'Staff agregado correctamente' });
-    } catch (error) {
-      notify({ type: 'defaultError' });
-      console.error('Error adding staff:', error);
-    } finally {
-      setLoadingCursor(false);
-    }
+    await saveStaff([...staffMembers, newStaffMember], 'Staff agregado correctamente');
   };
 
   const handleRemoveStaff = async (index: number) => {
@@ -529,17 +564,26 @@ const DrawerContent = () => {
                 <Group key={index} justify='space-between'>
                   <Box>
                     <Text size='sm' fw={500}>
-                      {member.rol} - {member.employeeName}
+                      {member.rol?.trim() || 'Sin rol'} - {member.employeeName}
                     </Text>
                   </Box>
                   {can('canEditEvents') && (
-                    <ActionIcon
-                      color='red'
-                      variant='subtle'
-                      onClick={() => handleRemoveStaff(index)}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
+                    <Group gap={4} wrap='nowrap'>
+                      <ActionIcon
+                        variant='subtle'
+                        aria-label='Editar rol'
+                        onClick={() => openEditStaffRol(index)}
+                      >
+                        <IconPencil size={16} />
+                      </ActionIcon>
+                      <ActionIcon
+                        color='red'
+                        variant='subtle'
+                        onClick={() => handleRemoveStaff(index)}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Group>
                   )}
                 </Group>
               ))}
@@ -883,42 +927,47 @@ const DrawerContent = () => {
         </Button>
       </Stack>
 
-      {/* MODAL: AGREGAR STAFF */}
+      {/* MODAL: AGREGAR STAFF / EDITAR ROL */}
       <Modal
         opened={isStaffModalOpen}
-        onClose={() => {
-          setIsStaffModalOpen(false);
-          setSelectedEmployee(null);
-        }}
-        title='Agregar Staff'
+        onClose={closeStaffModal}
+        title={
+          editingStaffIndex !== null
+            ? `Rol de ${staffMembers[editingStaffIndex]?.employeeName ?? ''}`
+            : 'Agregar Staff'
+        }
       >
         <Stack gap='md'>
-          <Select
-            label='Empleado'
-            placeholder='Seleccionar empleado'
-            data={employees.map((emp) => ({
-              value: emp._id,
-              label: `${emp.rol || 'Sin rol'} - ${emp.fullName}`
-            }))}
-            value={selectedEmployee}
-            onChange={setSelectedEmployee}
-            searchable
+          {editingStaffIndex === null && (
+            <Select
+              label='Empleado'
+              placeholder='Seleccionar empleado'
+              data={employees.map((emp) => ({
+                value: emp._id,
+                label: `${emp.rol || 'Sin rol'} - ${emp.fullName}`
+              }))}
+              value={selectedEmployee}
+              onChange={handleSelectEmployee}
+              searchable
+            />
+          )}
+          <TextInput
+            label='Rol en este evento'
+            description='Uno o varios, ej: DJ, Sonido. Es el que se ve en Cobros STAFF.'
+            placeholder='Sin rol'
+            value={staffRol}
+            onChange={(e) => setStaffRol(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveStaffModal();
+            }}
           />
-          <Text size='sm' c='dimmed'>
-            El rol se asignará automáticamente según el rol del empleado en la
-            base de datos.
-          </Text>
           <Group justify='flex-end'>
-            <Button
-              variant='light'
-              onClick={() => {
-                setIsStaffModalOpen(false);
-                setSelectedEmployee(null);
-              }}
-            >
+            <Button variant='light' onClick={closeStaffModal}>
               Cancelar
             </Button>
-            <Button onClick={handleAddStaff}>Agregar</Button>
+            <Button onClick={handleSaveStaffModal}>
+              {editingStaffIndex !== null ? 'Guardar' : 'Agregar'}
+            </Button>
           </Group>
         </Stack>
       </Modal>

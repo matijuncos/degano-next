@@ -134,7 +134,7 @@ const StaffForm = ({
                     <Text size='sm' fw={500}>{member.employeeName}</Text>
                     <TextInput
                       size='xs'
-                      placeholder='Rol en este evento'
+                      placeholder='Rol en este evento (ej: DJ, Sonido)'
                       value={member.rol === 'Sin rol' ? '' : member.rol}
                       onChange={(e) => handleRolChange(index, e.currentTarget.value)}
                     />
