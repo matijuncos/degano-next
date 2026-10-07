@@ -25,6 +25,7 @@ export default function ExtraModal({
   const [date, setDate] = useState(todayDay());
   const [description, setDescription] = useState('');
   const [hours, setHours] = useState<number | string>('');
+  const [rol, setRol] = useState('');
   const [amount, setAmount] = useState<number | string>('');
   const [saving, setSaving] = useState(false);
 
@@ -33,13 +34,14 @@ export default function ExtraModal({
     setDate(extra ? (arDay(extra.date) as string) : todayDay());
     setDescription(extra?.label ?? '');
     setHours(extra?.hours ?? '');
+    setRol(extra?.rol ?? '');
     setAmount(extra?.amount ?? '');
   }, [opened, extra]);
 
   const save = async () => {
     setSaving(true);
     try {
-      const body = { type: 'extra', employeeId, date, description, hours: amountForRequest(hours), amount: amountForRequest(amount) };
+      const body = { type: 'extra', employeeId, date, description, rol, hours: amountForRequest(hours), amount: amountForRequest(amount) };
       if (extra?.entryId) await ledgerRequest('PUT', { _id: extra.entryId, ...body });
       else await ledgerRequest('POST', body);
       notifications.show({ color: 'teal', message: extra ? 'Extra actualizado' : 'Extra agregado' });
@@ -56,6 +58,12 @@ export default function ExtraModal({
       <Stack>
         <DateInput label='Fecha' value={date} onChange={(d) => setDate(inputDay(d) ?? date)} valueFormat='DD/MM/YYYY' />
         <TextInput label='Descripción' placeholder='Ej: Depósito' value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
+        <TextInput
+          label='Rol (opcional)'
+          placeholder='Si lo dejás vacío figura como Extra'
+          value={rol}
+          onChange={(e) => setRol(e.currentTarget.value)}
+        />
         <NumberInput label='Horas (opcional)' value={hours} onChange={setHours} min={0} decimalScale={1} hideControls />
         <NumberInput label='Monto' value={amount} onChange={setAmount} prefix='$ ' thousandSeparator='.' decimalSeparator=',' min={0} hideControls />
         <Group justify='flex-end'>

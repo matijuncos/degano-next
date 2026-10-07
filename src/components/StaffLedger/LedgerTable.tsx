@@ -256,7 +256,20 @@ function ChargeRow({
           )}
         </Group>
       </Table.Td>
-      <Table.Td>{charge.kind === 'extra' ? 'Extra' : charge.rol ?? '—'}</Table.Td>
+      <Table.Td>
+        {charge.kind === 'extra' ? (
+          charge.rol ? (
+            <>
+              <Text size='sm'>{charge.rol}</Text>
+              <Text size='xs' c='dimmed'>Extra</Text>
+            </>
+          ) : (
+            'Extra'
+          )
+        ) : (
+          charge.rol ?? '—'
+        )}
+      </Table.Td>
       <Table.Td>{charge.hours != null ? `${charge.hours} h` : '—'}</Table.Td>
       <Table.Td>
         {editable && charge.kind === 'evento' ? (

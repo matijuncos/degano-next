@@ -38,6 +38,7 @@ export type LedgerInput = {
   date?: Date;
   description?: string;
   hours?: number;
+  rol?: string;
   method?: PaymentMethod;
   chargeKey?: string;
 };
@@ -70,9 +71,14 @@ export function parseLedgerInput(body: any): Result {
     if (!description) return fail('Falta la descripción del extra');
     const hours = parseAmount(body.hours);
     if (hours === 'invalid') return fail('Horas inválidas');
+    const rol = typeof body.rol === 'string' ? body.rol.trim() : '';
     return {
       ok: true,
-      value: { type, employeeId, amount, date, description, ...(hours !== null ? { hours } : {}) }
+      value: {
+        type, employeeId, amount, date, description,
+        ...(hours !== null ? { hours } : {}),
+        ...(rol ? { rol } : {})
+      }
     };
   }
 

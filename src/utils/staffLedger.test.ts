@@ -386,6 +386,16 @@ describe('tipo automático del abono', () => {
   });
 });
 
+describe('rol de un extra', () => {
+  it('con rol lo muestra; sin rol queda sin rol (la tabla dice "Extra")', () => {
+    const charges = buildCharges(EMP, [], [
+      entry({ _id: 'a', type: 'extra', eventId: undefined, amount: 100, description: 'Depósito', rol: '  Técnico ' }),
+      entry({ _id: 'b', type: 'extra', eventId: undefined, amount: 100, description: 'Traslado', date: '2026-10-04T15:00:00.000Z' })
+    ]);
+    expect(charges.map((c) => c.rol)).toEqual(['Técnico', undefined]);
+  });
+});
+
 describe('total futuro', () => {
   it('no cuenta lo futuro que ya está pagado', () => {
     const { summary } = buildAccount(EMP, [], [

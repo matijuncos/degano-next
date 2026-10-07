@@ -42,6 +42,7 @@ export interface LedgerEntry {
   eventId?: string;
   description?: string;
   hours?: number;
+  rol?: string; // extra: rol opcional (sin rol la tabla dice "Extra")
   method?: PaymentMethod;
   chargeKey?: string; // abono hecho con el tilde: la línea que paga
   createdAt?: string | Date;
@@ -224,6 +225,7 @@ export function buildCharges(
       date: toISO(e.date),
       amount: e.amount,
       label: e.description || 'Extra',
+      ...(e.rol?.trim() ? { rol: e.rol.trim() } : {}),
       hours: typeof e.hours === 'number' ? e.hours : null
     });
   }

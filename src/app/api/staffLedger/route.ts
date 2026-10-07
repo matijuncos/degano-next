@@ -137,6 +137,7 @@ export const PUT = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
     const unset: Record<string, ''> = {};
     // Campos opcionales borrados → se sacan (nunca en $set y $unset a la vez)
     if (type === 'extra' && fields.hours === undefined) unset.hours = '';
+    if (type === 'extra' && fields.rol === undefined) unset.rol = '';
     if (type !== 'extra' && fields.description === undefined) unset.description = '';
     await coll.updateOne(
       { _id: existing._id },

@@ -152,3 +152,17 @@ describe('parseLedgerInput: pago atado a una línea', () => {
     expect(r.ok && 'chargeKey' in r.value).toBe(false);
   });
 });
+
+describe('parseLedgerInput: rol del extra', () => {
+  const base = { type: 'extra', employeeId: 'e1', amount: 100, date: '2026-10-05', description: 'Depósito' };
+  it('guarda el rol si viene, recortado', () => {
+    const r = parseLedgerInput({ ...base, rol: ' DJ, Sonido ' });
+    expect(r.ok && r.value.rol).toBe('DJ, Sonido');
+  });
+  it('rol vacío o ausente → sin rol', () => {
+    const r1 = parseLedgerInput({ ...base, rol: '  ' });
+    const r2 = parseLedgerInput(base);
+    expect(r1.ok && 'rol' in r1.value).toBe(false);
+    expect(r2.ok && 'rol' in r2.value).toBe(false);
+  });
+});
