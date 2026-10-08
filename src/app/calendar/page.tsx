@@ -10,7 +10,7 @@ import 'moment/locale/es';
 import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box, LoadingOverlay } from '@mantine/core';
 import { IconSearch, IconX } from '@tabler/icons-react';
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { useDeganoCtx } from '@/context/DeganoContext';
+import { useDeganoCtx, calendarDataFetcher } from '@/context/DeganoContext';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -33,7 +33,6 @@ import CalendarSidebar, { AppCalendar, CalendarFormValues } from '@/components/C
 import CalendarEventModal, { CalendarEventData } from '@/components/CalendarEventModal/CalendarEventModal';
 import useNotification from '@/hooks/useNotification';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default withPageAuthRequired(function CalendarPage() {
   const router = useRouter();
@@ -49,9 +48,10 @@ export default withPageAuthRequired(function CalendarPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   // ──── Calendarios y eventos personales (una sola request) ────
+  // Precargado al abrir la app (DeganoContext): acá suele estar ya en caché
   const { data: calendarData, mutate: mutateCalendarData } = useSWR<{ calendars: AppCalendar[]; events: any[] }>(
     '/api/calendarData',
-    fetcher,
+    calendarDataFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 }
   );
   // El backend ya filtra por la visibilidad de cada calendario: cada usuario
@@ -524,6 +524,7 @@ export default withPageAuthRequired(function CalendarPage() {
           onToggleNativeEvents={toggleNativeEvents}
           isAdmin={isAdmin}
           onCollapsedChange={setSidebarCollapsed}
+          loading={!calendarData}
         />
 
         {/* Contenido principal */}

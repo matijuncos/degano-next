@@ -10,10 +10,17 @@ import {
 } from './types';
 import { usePathname } from 'next/navigation';
 import { EVENT_TABS } from './config';
-import useSWR from 'swr';
+import useSWR, { preload } from 'swr';
 
 const eventsFetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => r.json()).then((d) => d.events || []);
+
+// Misma key y misma respuesta que /calendar (SWR comparte la caché por key)
+export const calendarDataFetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('No se pudieron cargar los calendarios');
+  return res.json();
+};
 
 export const DeganoContext = createContext<DeganoContextProps | null>(null);
 
@@ -30,6 +37,15 @@ export const DeganoProvider: ({
       dedupingInterval: 30000
     }
   );
+
+  // Calendarios extra + sus eventos: se piden al abrir la app, en paralelo con
+  // los eventos (no los retrasa). Así /calendar los tiene en caché y aparecen
+  // junto con los eventos principales en vez de un rato después.
+  // Sin sesión (401) la precarga falla y no queda nada en caché: /calendar la
+  // vuelve a pedir al entrar.
+  useEffect(() => {
+    preload('/api/calendarData', calendarDataFetcher).catch(() => {});
+  }, []);
 
   const pathname = usePathname();
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventType | null>(

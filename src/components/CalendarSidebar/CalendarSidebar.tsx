@@ -12,7 +12,8 @@ import {
   Box,
   Select,
   MultiSelect,
-  Switch
+  Switch,
+  Loader
 } from '@mantine/core';
 import {
   IconPlus,
@@ -87,6 +88,7 @@ interface CalendarSidebarProps {
   onToggleNativeEvents: () => void;
   isAdmin: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
+  loading?: boolean; // calendarios todavía sin llegar: loader en vez de "vacío"
 }
 
 export default function CalendarSidebar({
@@ -100,7 +102,8 @@ export default function CalendarSidebar({
   nativeEventsVisible,
   onToggleNativeEvents,
   isAdmin,
-  onCollapsedChange
+  onCollapsedChange,
+  loading = false
 }: CalendarSidebarProps) {
   const { isMobile } = useResponsive();
   const [showNewForm, setShowNewForm] = useState(false);
@@ -408,7 +411,14 @@ export default function CalendarSidebar({
             );
           })}
 
-          {calendars.length === 0 && !showNewForm && isAdmin && (
+          {loading && (
+            <Group gap='xs' justify='center' mt='xs'>
+              <Loader size='xs' />
+              <Text size='xs' style={{ color: mutedColor }}>Cargando calendarios...</Text>
+            </Group>
+          )}
+
+          {!loading && calendars.length === 0 && !showNewForm && isAdmin && (
             <Text size='xs' style={{ color: mutedColor }} ta='center' mt='xs'>
               Creá calendarios extras con el +
             </Text>

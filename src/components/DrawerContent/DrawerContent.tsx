@@ -564,7 +564,7 @@ const DrawerContent = () => {
                 <Group key={index} justify='space-between'>
                   <Box>
                     <Text size='sm' fw={500}>
-                      {member.rol?.trim() || 'Sin rol'} - {member.employeeName}
+                      {member.employeeName} - {member.rol?.trim() || 'Sin rol'}
                     </Text>
                   </Box>
                   {can('canEditEvents') && (
