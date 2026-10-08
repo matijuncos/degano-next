@@ -12,7 +12,7 @@
 // cubre ESA línea, aunque sea futura (adelanto).
 import { addMonths } from 'date-fns';
 
-export type LedgerType = 'evento' | 'extra' | 'pago' | 'adelanto';
+export type LedgerType = 'evento' | 'extra' | 'fijo' | 'pago' | 'adelanto';
 export type PaymentMethod = 'efectivo' | 'transferencia_tercero' | 'transferencia_degano';
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
@@ -42,9 +42,13 @@ export interface LedgerEntry {
   eventId?: string;
   description?: string;
   hours?: number;
-  rol?: string; // extra: rol opcional (sin rol la tabla dice "Extra")
+  rol?: string; // extra/fijo: rol opcional (sin rol la tabla dice "Extra"/"Fijo")
+  dayOfMonth?: number; // fijo: día del mes (1-31; si el mes es más corto, el último)
+  fromMonth?: string; // fijo: 'YYYY-MM' desde
+  toMonth?: string; // fijo: 'YYYY-MM' hasta (inclusive); sin valor = sigue
   method?: PaymentMethod;
   chargeKey?: string; // abono hecho con el tilde: la línea que paga
+  source?: 'calendar'; // línea 'evento' de un evento de calendario extra
   createdAt?: string | Date;
 }
 
@@ -59,11 +63,12 @@ export interface StaffEvent {
   staffArrivalDate?: string | Date;
   staffArrivalTime?: string;
   staff?: { employeeId: string; employeeName?: string; rol?: string }[];
+  source?: 'calendar'; // viene de un calendario extra (calendar_events)
 }
 
 export interface Charge {
-  key: string; // estable para React: 'evento:<eventId>' | 'extra:<entryId>'
-  kind: 'evento' | 'extra';
+  key: string; // estable: 'evento:<eventId>' | 'extra:<entryId>' | 'fijo:<entryId>:<YYYY-MM>'
+  kind: 'evento' | 'extra' | 'fijo';
   entryId?: string; // _id en staff_ledger (no existe si el evento todavía no tiene monto)
   eventId?: string;
   date: string; // ISO
@@ -74,6 +79,7 @@ export interface Charge {
   hours: number | null;
   unassigned?: true; // tiene monto pero el empleado ya no está en el evento
   eventDeleted?: true; // tiene monto pero el evento ya no existe
+  source?: 'calendar'; // evento de un calendario extra (monto y rol se guardan allá)
 }
 
 export type ChargeStatus = 'pagado' | 'parcial' | 'pendiente' | 'sin_monto';
@@ -106,9 +112,21 @@ export interface LedgerSummary {
   byMonth: Record<string, { charged: number; paid: number }>; // 'YYYY-MM'
 }
 
+// Definición de un fijo mensual (un documento; los meses se generan al leer)
+export interface FixedDef {
+  entryId: string;
+  description: string;
+  amount: number;
+  dayOfMonth: number;
+  fromMonth: string;
+  toMonth?: string;
+  rol?: string;
+}
+
 export interface Account {
   charges: AllocatedCharge[];
   credits: Credit[];
+  fixed: FixedDef[];
   summary: LedgerSummary;
 }
 
@@ -172,7 +190,8 @@ export function buildCharges(
   employeeId: string,
   events: StaffEvent[],
   entries: LedgerEntry[],
-  startDay?: string
+  startDay?: string,
+  horizonDay?: string // fijos: se generan hasta este día (sin valor, ninguno)
 ): Charge[] {
   const eventLines = new Map(
     entries.filter((e) => e.type === 'evento' && e.eventId).map((e) => [String(e.eventId), e])
@@ -197,7 +216,8 @@ export function buildCharges(
       ...(ev.lugar ? { venue: ev.lugar } : {}),
       ...(member ? { rol: member.rol?.trim() || 'Sin rol' } : {}),
       hours: computeStaffHours(ev),
-      ...(member ? {} : { unassigned: true as const })
+      ...(member ? {} : { unassigned: true as const }),
+      ...(ev.source ? { source: ev.source } : {})
     });
   }
 
@@ -212,7 +232,8 @@ export function buildCharges(
       amount: line.amount,
       label: line.description || 'Evento eliminado',
       hours: null,
-      eventDeleted: true
+      eventDeleted: true,
+      ...(line.source ? { source: line.source } : {})
     });
   }
 
@@ -230,7 +251,62 @@ export function buildCharges(
     });
   }
 
+  if (horizonDay) {
+    for (const def of toFixedDefs(entries)) {
+      for (const day of fixedMonthDates(def, startDay ?? '0000-00-00', horizonDay)) {
+        charges.push({
+          key: `fijo:${def.entryId}:${day.slice(0, 7)}`,
+          kind: 'fijo',
+          entryId: def.entryId,
+          date: `${day}T15:00:00.000Z`, // mediodía argentino
+          amount: def.amount,
+          label: def.description,
+          ...(def.rol ? { rol: def.rol } : {}),
+          hours: null
+        });
+      }
+    }
+  }
+
   return charges.sort(byDate);
+}
+
+// Días (YYYY-MM-DD) en que cae un fijo, desde su mes de inicio hasta su mes de
+// fin (o el horizonte), sin incluir lo anterior al inicio de cobros. Si el día
+// no existe en el mes (31 en noviembre), va el último día del mes.
+export function fixedMonthDates(
+  def: Pick<FixedDef, 'dayOfMonth' | 'fromMonth' | 'toMonth'>,
+  startDay: string,
+  horizonDay: string
+): string[] {
+  const out: string[] = [];
+  let [y, m] = def.fromMonth.split('-').map(Number);
+  const last = def.toMonth && def.toMonth < horizonDay.slice(0, 7) ? def.toMonth : horizonDay.slice(0, 7);
+  for (let guard = 0; guard < 600; guard++) {
+    const ym = `${y}-${String(m).padStart(2, '0')}`;
+    if (ym > last) break;
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const day = `${ym}-${String(Math.min(def.dayOfMonth, daysInMonth)).padStart(2, '0')}`;
+    if (day >= startDay && day <= horizonDay) out.push(day);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+export function toFixedDefs(entries: LedgerEntry[]): FixedDef[] {
+  return entries
+    .filter((e) => e.type === 'fijo' && e.dayOfMonth && e.fromMonth)
+    .map((e) => ({
+      entryId: String(e._id),
+      description: e.description || 'Fijo',
+      amount: e.amount,
+      dayOfMonth: e.dayOfMonth as number,
+      fromMonth: e.fromMonth as string,
+      ...(e.toMonth ? { toMonth: e.toMonth } : {}),
+      ...(e.rol?.trim() ? { rol: e.rol.trim() } : {})
+    }))
+    .sort((a, b) => a.fromMonth.localeCompare(b.fromMonth) || a.entryId.localeCompare(b.entryId));
 }
 
 export function toCredits(entries: LedgerEntry[]): Credit[] {
@@ -352,8 +428,19 @@ export function buildAccount(
   startDay?: string
 ): Account {
   const credits = toCredits(entries);
-  const { charges, unappliedCredit } = allocate(buildCharges(employeeId, events, entries, startDay), credits, now);
-  return { charges, credits, summary: summarizeAccount(charges, credits, unappliedCredit, now) };
+  // Los fijos se generan hasta 1 mes adelante (lo mismo que ve el empleado)
+  const horizonDay = arDay(addMonths(now, 1)) as string;
+  const { charges, unappliedCredit } = allocate(
+    buildCharges(employeeId, events, entries, startDay, horizonDay),
+    credits,
+    now
+  );
+  return {
+    charges,
+    credits,
+    fixed: toFixedDefs(entries),
+    summary: summarizeAccount(charges, credits, unappliedCredit, now)
+  };
 }
 
 // Lo que el empleado puede ver: 3 meses hacia atrás y 1 hacia adelante.
@@ -431,5 +518,48 @@ export function quickCreditType(summary: Pick<LedgerSummary, 'pendingToDate'>): 
 }
 
 export function isChargeKey(v: unknown): v is string {
-  return typeof v === 'string' && /^(evento|extra):[A-Za-z0-9]+$/.test(v);
+  return typeof v === 'string' && /^((evento|extra):[A-Za-z0-9]+|fijo:[A-Za-z0-9]+:\d{4}-\d{2})$/.test(v);
+}
+
+// Evento de un calendario extra que cuenta para cobros (ej. Logística Técnica)
+// → misma forma que un evento: título como concepto, el calendario como lugar.
+// Todo el día → sin horas.
+export function calendarEventToStaffEvent(
+  ev: {
+    _id: string;
+    title?: string;
+    start: string | Date;
+    end?: string | Date;
+    allDay?: boolean;
+    staff?: { employeeId: string; employeeName?: string; rol?: string }[];
+  },
+  calendarName: string
+): StaffEvent {
+  return {
+    _id: String(ev._id),
+    type: ev.title || 'Evento',
+    lugar: calendarName,
+    date: ev.start,
+    ...(ev.allDay || !ev.end ? {} : { endDate: ev.end }),
+    staff: ev.staff ?? [],
+    source: 'calendar'
+  };
+}
+
+// Staff de un evento de calendario, como llega del cliente: sin duplicados ni
+// basura. Rol vacío o "Sin rol" → ''.
+export function normalizeEventStaff(raw: unknown): { employeeId: string; employeeName: string; rol: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: { employeeId: string; employeeName: string; rol: string }[] = [];
+  for (const m of raw) {
+    if (!m || typeof m !== 'object') continue;
+    const employeeId = typeof (m as any).employeeId === 'string' ? (m as any).employeeId.trim() : '';
+    if (!employeeId || seen.has(employeeId)) continue;
+    seen.add(employeeId);
+    const employeeName = typeof (m as any).employeeName === 'string' ? (m as any).employeeName.trim().slice(0, 120) : '';
+    const rolRaw = typeof (m as any).rol === 'string' ? (m as any).rol.trim().slice(0, 100) : '';
+    out.push({ employeeId, employeeName, rol: rolRaw === 'Sin rol' ? '' : rolRaw });
+  }
+  return out;
 }

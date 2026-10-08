@@ -1,3 +1,4 @@
+import { normalizeCivil, CIVIL_INGRESO_FIELDS, CivilIngresoField } from '@/utils/civilCeremony';
 import {
   Box,
   Button,
@@ -73,12 +74,7 @@ const MusicForm = forwardRef<MusicFormRef, {
       openingPartySongs: Array.isArray(event.openingPartySongs) ? event.openingPartySongs : [],
       closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
       customMoments: Array.isArray(event.customMoments) ? event.customMoments : [],
-      ceremoniaCivil: event.ceremoniaCivil || {
-        ingreso: '',
-        firmas: '',
-        salida: '',
-        otros: []
-      },
+      ceremoniaCivil: normalizeCivil(event.ceremoniaCivil),
       ceremoniaExtra: event.ceremoniaExtra || {
         ingreso: '',
         firmas: '',
@@ -105,12 +101,7 @@ const MusicForm = forwardRef<MusicFormRef, {
         openingPartySongs: Array.isArray(event.openingPartySongs) ? event.openingPartySongs : [],
         closingSongs: Array.isArray(event.closingSongs) ? event.closingSongs : [],
         customMoments: Array.isArray(event.customMoments) ? event.customMoments : [],
-        ceremoniaCivil: event.ceremoniaCivil || {
-          ingreso: '',
-          firmas: '',
-          salida: '',
-          otros: []
-        },
+        ceremoniaCivil: normalizeCivil(event.ceremoniaCivil),
         ceremoniaExtra: event.ceremoniaExtra || {
           ingreso: '',
           firmas: '',
@@ -428,7 +419,7 @@ const MusicForm = forwardRef<MusicFormRef, {
   // Ceremonia handlers
   const updateCeremony = (
     type: 'ceremoniaCivil' | 'ceremoniaExtra',
-    field: 'ingreso' | 'firmas' | 'salida',
+    field: 'ingreso' | 'firmas' | 'salida' | CivilIngresoField,
     value: string
   ) => {
     setMusicData((prevData) => ({
@@ -627,17 +618,23 @@ const MusicForm = forwardRef<MusicFormRef, {
           <Accordion.Control>Ceremonia Civil</Accordion.Control>
           <Accordion.Panel>
             <Stack gap='xs'>
-              <TextInput
-                label='Ingreso'
-                placeholder='Canción de ingreso'
-                value={musicData.ceremoniaCivil?.ingreso || ''}
-                onChange={(e) =>
-                  updateCeremony('ceremoniaCivil', 'ingreso', e.target.value)
-                }
-                size='sm'
-                disabled={!canEditEvents}
-                autoComplete='off'
-              />
+              <Text size='xs' c='dimmed'>
+                Si entran juntos completá &ldquo;Ingreso novios&rdquo;; si entran por separado, uno cada uno.
+              </Text>
+              {CIVIL_INGRESO_FIELDS.map(({ key, label }) => (
+                <TextInput
+                  key={key}
+                  label={label}
+                  placeholder='Canción de ingreso'
+                  value={musicData.ceremoniaCivil?.[key] || ''}
+                  onChange={(e) =>
+                    updateCeremony('ceremoniaCivil', key, e.target.value)
+                  }
+                  size='sm'
+                  disabled={!canEditEvents}
+                  autoComplete='off'
+                />
+              ))}
               <TextInput
                 label='Firmas'
                 placeholder='Canción de firmas'

@@ -10,10 +10,12 @@ import {
   Switch,
   Text,
   ColorSwatch,
-  Divider
+  Divider,
+  ActionIcon
 } from '@mantine/core';
 import { DateTimePicker, DatePickerInput } from '@mantine/dates';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import useSWR from 'swr';
 import { IconTrash } from '@tabler/icons-react';
 import { AppCalendar } from '@/types/calendars';
 import 'dayjs/locale/es';
@@ -28,7 +30,17 @@ export interface CalendarEventData {
   description: string;
   source?: string;
   calendarColor?: string;
+  // Staff + rol: solo en calendarios que cuentan para Cobros de STAFF
+  staff?: CalendarEventStaff[];
 }
+
+export interface CalendarEventStaff {
+  employeeId: string;
+  employeeName: string;
+  rol: string;
+}
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface CalendarEventModalProps {
   opened: boolean;
@@ -64,6 +76,7 @@ export default function CalendarEventModal({
   const [allDay, setAllDay] = useState(false);
   const [calendarId, setCalendarId] = useState(defaultCalendarId);
   const [description, setDescription] = useState('');
+  const [staff, setStaff] = useState<CalendarEventStaff[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -85,6 +98,7 @@ export default function CalendarEventModal({
       setAllDay(initialData?.allDay || false);
       setCalendarId(initialData?.calendarId || defaultCalendarId);
       setDescription(initialData?.description || '');
+      setStaff(initialData?.staff || []);
     }
   }, [opened, initialData, defaultCalendarId, isEditing]);
 
@@ -111,7 +125,9 @@ export default function CalendarEventModal({
           end: end || start,
           allDay,
           calendarId,
-          description
+          description,
+          // Calendario que no cuenta para cobros → sin staff
+          staff: staffPayable ? staff : []
         },
         initialData?._id
       );
@@ -153,6 +169,32 @@ export default function CalendarEventModal({
   }));
 
   const selectedCalendar = calendars.find((c) => c._id === calendarId);
+  const staffPayable = !!selectedCalendar?.staffPayable;
+
+  // Empleados de STAFF para el selector (misma key que la barra lateral: SWR
+  // la reutiliza, no hay request extra). Solo admin edita.
+  const { data: employeesData } = useSWR<any[]>(
+    staffPayable && !readOnly ? '/api/employees?directory=true' : null,
+    fetcher
+  );
+  const staffOptions = useMemo(
+    () =>
+      (Array.isArray(employeesData) ? employeesData : [])
+        .filter((emp) => emp.isStaff !== false && !staff.some((m) => m.employeeId === String(emp._id)))
+        .map((emp) => ({ value: String(emp._id), label: emp.fullName }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [employeesData, staff]
+  );
+
+  const addStaff = (employeeId: string | null) => {
+    const emp = (employeesData || []).find((e: any) => String(e._id) === employeeId);
+    if (!emp) return;
+    setStaff((prev) => [...prev, { employeeId: String(emp._id), employeeName: emp.fullName, rol: emp.rol || '' }]);
+  };
+  const setStaffRol = (index: number, rol: string) =>
+    setStaff((prev) => prev.map((m, i) => (i === index ? { ...m, rol } : m)));
+  const removeStaff = (index: number) => setStaff((prev) => prev.filter((_, i) => i !== index));
+  const textColor = isLightTheme ? '#1a1b1e' : '#c1c2c5';
 
   return (
     <Modal
@@ -272,6 +314,63 @@ export default function CalendarEventModal({
               />
             </Group>
           </Stack>
+
+          {/* Staff + rol: entra en Cobros de STAFF */}
+          {staffPayable && (
+            <Stack gap='xs'>
+              <Divider label='Staff (cuenta para Cobros)' labelPosition='left' color={isLightTheme ? '#dee2e6' : '#373a40'} styles={{ label: { color: textColor } }} />
+              {!readOnly && (
+                <Select
+                  placeholder={employeesData ? 'Agregar persona del staff' : 'Cargando staff...'}
+                  data={staffOptions}
+                  value={null}
+                  onChange={addStaff}
+                  searchable
+                  disabled={!employeesData}
+                  nothingFoundMessage='Sin resultados'
+                  styles={inputStyles}
+                  classNames={{ dropdown: isLightTheme ? 'calendar-light-dropdown' : undefined }}
+                  comboboxProps={{ withinPortal: true }}
+                />
+              )}
+              {staff.length === 0 && (
+                <Text size='xs' style={{ color: isLightTheme ? '#868e96' : '#909296' }}>
+                  Sin staff asignado
+                </Text>
+              )}
+              {staff.map((m, index) => (
+                <Group key={m.employeeId} gap='xs' wrap='nowrap'>
+                  <Text size='sm' style={{ color: textColor, flex: 1, minWidth: 0 }} truncate>
+                    {m.employeeName}
+                  </Text>
+                  {readOnly ? (
+                    <Text size='sm' style={{ color: isLightTheme ? '#868e96' : '#909296' }}>
+                      {m.rol || 'Sin rol'}
+                    </Text>
+                  ) : (
+                    <>
+                      <TextInput
+                        placeholder='Rol (ej: DJ, Sonido)'
+                        value={m.rol}
+                        onChange={(e) => setStaffRol(index, e.currentTarget.value)}
+                        size='xs'
+                        w={170}
+                        styles={inputStyles}
+                      />
+                      <ActionIcon
+                        color='red'
+                        variant='subtle'
+                        aria-label='Quitar'
+                        onClick={() => removeStaff(index)}
+                      >
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </>
+                  )}
+                </Group>
+              ))}
+            </Stack>
+          )}
 
           <Textarea
             label='Descripción / Comentarios'

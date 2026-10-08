@@ -2,6 +2,7 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import PrintableEventDate from './PrintableEventDate';
 import { EventModel } from '@/context/types';
+import { normalizeCivil, hasCivilContent, CIVIL_INGRESO_FIELDS } from '@/utils/civilCeremony';
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 11 },
@@ -100,7 +101,9 @@ const getGenreLabel = (value: number): string => {
 // Exportar contenido interno para reutilización en PrintableFullEventSection
 export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
   event
-}) => (
+}) => {
+  const civil = normalizeCivil(event.ceremoniaCivil);
+  return (
   <View style={styles.section}>
     {/* Canciones de Ingreso */}
     {event.welcomeSongs && event.welcomeSongs.length > 0 && (
@@ -132,37 +135,35 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
       </View>
     )}
 
-    {/* Ceremonia Civil */}
-    {event.ceremoniaCivil &&
-     (event.ceremoniaCivil.ingreso ||
-      event.ceremoniaCivil.firmas ||
-      event.ceremoniaCivil.salida ||
-      (event.ceremoniaCivil.otros && event.ceremoniaCivil.otros.length > 0)) && (
+    {/* Ceremonia Civil (eventos viejos: su ingreso único se muestra como "Ingreso novios") */}
+    {hasCivilContent(event.ceremoniaCivil) && (
       <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={styles.subsectionTitle}>Ceremonia Civil</Text>
         </View>
-        {event.ceremoniaCivil.ingreso && (
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>INGRESO:</Text>
-            <Text style={styles.fieldValue}>{event.ceremoniaCivil.ingreso}</Text>
-          </View>
+        {CIVIL_INGRESO_FIELDS.map(({ key, label }) =>
+          civil[key] ? (
+            <View key={key} style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>{label.toUpperCase()}:</Text>
+              <Text style={styles.fieldValue}>{civil[key]}</Text>
+            </View>
+          ) : null
         )}
-        {event.ceremoniaCivil.firmas && (
+        {civil.firmas && (
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>FIRMAS:</Text>
-            <Text style={styles.fieldValue}>{event.ceremoniaCivil.firmas}</Text>
+            <Text style={styles.fieldValue}>{civil.firmas}</Text>
           </View>
         )}
-        {event.ceremoniaCivil.salida && (
+        {civil.salida && (
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>SALIDA:</Text>
-            <Text style={styles.fieldValue}>{event.ceremoniaCivil.salida}</Text>
+            <Text style={styles.fieldValue}>{civil.salida}</Text>
           </View>
         )}
-        {event.ceremoniaCivil.otros && event.ceremoniaCivil.otros.length > 0 && (
+        {civil.otros && civil.otros.length > 0 && (
           <>
-            {event.ceremoniaCivil.otros.map((momento, index) => (
+            {civil.otros.map((momento, index) => (
               <View key={index} style={styles.fieldRow}>
                 <Text style={styles.fieldLabel}>{momento.titulo?.toUpperCase() || 'SIN TÍTULO'}:</Text>
                 <Text style={styles.fieldValue}>{momento.cancion || ''}</Text>
@@ -371,7 +372,8 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
       </View>
     )}
   </View>
-);
+  );
+};
 
 // Componente principal con logo y header verde
 const PrintableMusicSection: React.FC<PrintableMusicSectionProps> = ({

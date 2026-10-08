@@ -12,7 +12,7 @@ import {
 const NO_OWNER_ERROR =
   'Tu usuario no está vinculado a un registro de STAFF: no se puede crear un calendario restringido.';
 
-const CALENDAR_PROJECTION = { _id: 1, name: 1, color: 1, ownerId: 1, visibility: 1, memberIds: 1 };
+const CALENDAR_PROJECTION = { _id: 1, name: 1, color: 1, ownerId: 1, visibility: 1, memberIds: 1, staffPayable: 1 };
 
 // GET — cada usuario ve solo los calendarios a los que tiene acceso
 export const GET = withAuth(async (context: AuthContext, _req: Request) => {
@@ -50,9 +50,11 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
   if (access.visibility === 'restricted' && !ownerId) {
     return NextResponse.json({ error: NO_OWNER_ERROR }, { status: 400 });
   }
+  // "Cuenta para Cobros de STAFF": sus eventos llevan staff y entran en cobros
+  const staffPayable = body.staffPayable === true;
   const result = await db
     .collection('app_calendars')
-    .insertOne({ name, color, ownerId, ...access });
+    .insertOne({ name, color, ownerId, ...access, ...(staffPayable ? { staffPayable } : {}) });
   const created = await db.collection('app_calendars').findOne({ _id: result.insertedId });
   return NextResponse.json(created, { status: 201 });
 });
@@ -82,6 +84,7 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
   const updates: Record<string, unknown> = {};
   if (typeof body.name === 'string' && body.name.trim()) updates.name = body.name.trim();
   if (typeof body.color === 'string' && body.color) updates.color = body.color;
+  if (typeof body.staffPayable === 'boolean') updates.staffPayable = body.staffPayable;
 
   // Los calendarios viejos no tienen dueño: lo toma el admin que define la visibilidad
   const access = normalizeCalendarVisibility(body);

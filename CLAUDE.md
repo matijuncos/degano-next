@@ -158,7 +158,9 @@ Checklist antes de dar algo por terminado:
 
 Cuenta corriente por empleado en `staff_ledger`. Lógica pura en `/src/utils/staffLedger.ts` (testeada).
 
-- **Cargos** = `evento` (monto manual por evento) + `extra`. **Abonos** = `pago` + `adelanto`.
+- **Cargos** = `evento` (monto manual por evento) + `extra` + `fijo`. **Abonos** = `pago` + `adelanto`.
+- **Calendarios que cuentan para cobros** (`app_calendars.staffPayable`, ej. Logística Técnica): sus eventos llevan `staff[]` (`{employeeId, employeeName, rol}`, igual que `events.staff`) y entran en la cuenta como eventos (`calendarEventToStaffEvent`, `source: 'calendar'`). La línea de monto guarda `source: 'calendar'`; monto y rol se guardan en `calendar_events`. Calendario sin `staffPayable` → el servidor no guarda staff.
+- **Fijo mensual:** UN documento `type: 'fijo'` (`amount`, `dayOfMonth`, `fromMonth`, `toMonth?`, `rol?`); los meses se generan al leer (`fixedMonthDates`, hasta 1 mes adelante, nunca antes del inicio de cobros; día inexistente → último del mes). Clave de cada mes: `fijo:<id>:YYYY-MM`. "Cambiar monto desde un mes" = el viejo termina el mes anterior (`toMonth`) y se crea uno nuevo (`replacesId`); editar el fijo cambia TODOS sus meses.
 - Las líneas de evento se **derivan** de `events.staff` al leer: solo se guarda el monto. No tocar `postEvent`/`updateEvent` para esto.
 - Imputación: un abono hecho con el **tilde "Pagado"** de una línea (`chargeKey` = `evento:<id>` | `extra:<id>`) cubre esa línea aunque sea futura (estado "Adelantado"). El resto (pagos a cuenta + sobrantes) va **FIFO** solo a los cargos con fecha **hasta hoy**; lo que sobra es **saldo a favor** y cubre cada cargo futuro cuando llega su fecha. Destildar borra los abonos con ese `chargeKey`.
 - Tipo automático: tilde en evento pasado/hoy → `pago`, futuro → `adelanto`. Pago a cuenta → `pago` si hay pendiente a hoy, si no `adelanto`.
@@ -239,7 +241,7 @@ src/
 | `genres` | Géneros musicales |
 | `salons` | Salones/venues |
 | `app_calendars` | Calendarios extras con `visibility`/`ownerId`/`memberIds`. Ver regla 5 |
-| `calendar_events` | Eventos de los calendarios extras (`calendarId`) |
+| `calendar_events` | Eventos de los calendarios extras (`calendarId`; `staff[]` con rol si el calendario tiene `staffPayable`) |
 | `boards` | Tableros de Comunicación Interna con `visibility`/`ownerId`/`memberIds` |
 | `tasks` | Tareas de los tableros (`boardId`, `status`, `order`, `assigneeId` = `_id` de empleado) |
 | `staff_ledger` | Cuenta corriente de cobros de STAFF: montos por evento, extras, pagos y adelantos (ver regla 7) |

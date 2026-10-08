@@ -11,6 +11,7 @@ export interface AppCalendar {
   ownerId?: string | null; // _id del empleado que lo creó (mismo criterio que memberIds)
   visibility?: CalendarVisibility; // ausente = calendario viejo → se trata como 'admins'
   memberIds?: string[]; // _id de empleados de STAFF con acceso cuando visibility === 'restricted'
+  staffPayable?: boolean; // sus eventos llevan staff + rol y entran en Cobros de STAFF
 }
 
 // Lo que envía el formulario de crear/editar calendario
@@ -19,4 +20,5 @@ export interface CalendarFormValues {
   color: string;
   visibility: CalendarVisibility;
   memberIds: string[];
+  staffPayable: boolean;
 }

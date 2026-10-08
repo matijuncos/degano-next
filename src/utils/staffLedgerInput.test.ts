@@ -1,6 +1,6 @@
 // src/utils/staffLedgerInput.test.ts
 import { describe, it, expect } from 'vitest';
-import { parseAmount, parseLedgerInput, isLedgerEligible, amountForRequest, mergeLedgerUpdate, amountChanged, eventAmountGuard } from './staffLedgerInput';
+import { parseAmount, parseLedgerInput, isLedgerEligible, amountForRequest, mergeLedgerUpdate, amountChanged, eventAmountGuard, parseEventRolInput } from './staffLedgerInput';
 
 describe('parseAmount', () => {
   it('acepta números y strings en formato argentino', () => {
@@ -164,5 +164,37 @@ describe('parseLedgerInput: rol del extra', () => {
     const r2 = parseLedgerInput(base);
     expect(r1.ok && 'rol' in r1.value).toBe(false);
     expect(r2.ok && 'rol' in r2.value).toBe(false);
+  });
+});
+
+describe('parseLedgerInput: fijo', () => {
+  const base = { type: 'fijo', employeeId: 'e1', amount: 200, description: 'Mantenimiento', dayOfMonth: 5, fromMonth: '2026-10' };
+  it('válido, con rol y mes de fin opcionales', () => {
+    const r = parseLedgerInput({ ...base, rol: ' Depósito ', toMonth: '2026-12' });
+    expect(r.ok && r.value).toMatchObject({ type: 'fijo', amount: 200, dayOfMonth: 5, fromMonth: '2026-10', toMonth: '2026-12', rol: 'Depósito' });
+  });
+  it('exige descripción, día 1-31, mes válido y fin >= inicio', () => {
+    expect(parseLedgerInput({ ...base, description: '' }).ok).toBe(false);
+    expect(parseLedgerInput({ ...base, dayOfMonth: 0 }).ok).toBe(false);
+    expect(parseLedgerInput({ ...base, dayOfMonth: 32 }).ok).toBe(false);
+    expect(parseLedgerInput({ ...base, fromMonth: '2026-13' }).ok).toBe(false);
+    expect(parseLedgerInput({ ...base, toMonth: '2026-09' }).ok).toBe(false);
+    expect(parseLedgerInput({ ...base, amount: 0 }).ok).toBe(false);
+  });
+});
+
+describe('parseEventRolInput', () => {
+  it('válido: recorta el rol; vacío o "Sin rol" → rol vacío', () => {
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', rol: ' DJ, Sonido ' })).toEqual({ ok: true, value: { employeeId: 'e1', eventId: 'ev1', rol: 'DJ, Sonido' } });
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', rol: '' })).toEqual({ ok: true, value: { employeeId: 'e1', eventId: 'ev1', rol: '' } });
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', rol: 'Sin rol' })).toEqual({ ok: true, value: { employeeId: 'e1', eventId: 'ev1', rol: '' } });
+  });
+  it('exige empleado, evento y rol de texto', () => {
+    expect(parseEventRolInput({ eventId: 'ev1', rol: 'DJ' }).ok).toBe(false);
+    expect(parseEventRolInput({ employeeId: 'e1', rol: 'DJ' }).ok).toBe(false);
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', rol: { $set: 1 } }).ok).toBe(false);
+  });
+  it('limita el largo', () => {
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', rol: 'x'.repeat(101) }).ok).toBe(false);
   });
 });

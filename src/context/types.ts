@@ -48,6 +48,14 @@ export interface CeremonyMusic {
   otros?: { titulo: string; cancion: string }[];
 }
 
+// Ceremonia civil: el ingreso se desglosa (ver utils/civilCeremony.ts).
+// `ingreso` queda solo por eventos viejos.
+export interface CivilCeremonyMusic extends CeremonyMusic {
+  ingresoNovios?: string;
+  ingresoNovio?: string;
+  ingresoNovia?: string;
+}
+
 export interface AmbienceMusicItem {
   descripcion: string; // ej: "Recepción", "Cena"
   generos: string[]; // ej: ["Chill out", "electro pop", "Sunset"]
@@ -113,7 +121,7 @@ export interface EventModel {
   openingPartySongs?: string[]; // Apertura de pista - Tema 1, Tema 2, etc.
   closingSongs?: string[]; // Canciones para cierre de evento - Tema 1, Tema 2, etc.
   customMoments?: { titulo: string; cancion: string }[]; // Momentos personalizados del usuario
-  ceremoniaCivil?: CeremonyMusic;
+  ceremoniaCivil?: CivilCeremonyMusic;
   ceremoniaExtra?: CeremonyMusic;
   ambienceMusic?: AmbienceMusicItem[];
   timing?: {

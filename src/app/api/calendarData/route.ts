@@ -13,7 +13,7 @@ export const GET = withAuth(async (context: AuthContext, _req: Request) => {
   const calendars = await db
     .collection('app_calendars')
     .find(await visibleCalendarsFilter(db, context.user, context.role), {
-      projection: { _id: 1, name: 1, color: 1, ownerId: 1, visibility: 1, memberIds: 1 }
+      projection: { _id: 1, name: 1, color: 1, ownerId: 1, visibility: 1, memberIds: 1, staffPayable: 1 }
     })
     .toArray();
 
@@ -24,7 +24,7 @@ export const GET = withAuth(async (context: AuthContext, _req: Request) => {
         .find(
           { calendarId: { $in: calendarIds } },
           {
-            projection: { _id: 1, title: 1, start: 1, end: 1, allDay: 1, calendarId: 1, description: 1 }
+            projection: { _id: 1, title: 1, start: 1, end: 1, allDay: 1, calendarId: 1, description: 1, staff: 1 }
           }
         )
         .toArray()

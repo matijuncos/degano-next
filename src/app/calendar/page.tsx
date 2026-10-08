@@ -122,7 +122,8 @@ export default withPageAuthRequired(function CalendarPage() {
       end: new Date(event.end),
       allDay: event.allDay,
       calendarId: event.calendarId,
-      description: event.description || ''
+      description: event.description || '',
+      staff: Array.isArray(event.staff) ? event.staff : []
     });
     setEventModalOpened(true);
   };

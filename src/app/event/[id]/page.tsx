@@ -1,6 +1,7 @@
 'use client';
 import 'dayjs/locale/es';
 import EditableData from '@/components/EditableData/EditableData';
+import { normalizeCivil, hasCivilContent, CIVIL_INGRESO_FIELDS, CivilIngresoField } from '@/utils/civilCeremony';
 import EditablePayments from '@/components/EditablePayments/EditablePayments';
 import EquipmentTable from '@/components/EquipmentTable/EquipmentTable';
 import Loader from '@/components/Loader/Loader';
@@ -1072,6 +1073,8 @@ const MusicInformation = ({
   };
 
   const emptyCeremony = { ingreso: '', firmas: '', salida: '', otros: [] };
+  // Civil normalizada: eventos viejos muestran su ingreso único como "Ingreso novios"
+  const civil = normalizeCivil(selectedEvent.ceremoniaCivil);
 
   // Persiste el evento completo con los cambios dados. Reutilizado por los
   // borrados de ítems individuales dentro de cada momento.
@@ -1120,13 +1123,18 @@ const MusicInformation = ({
   };
 
   // Elimina un campo suelto de una ceremonia (ingreso/firmas/salida) → vacío.
+  // La civil se normaliza: un evento viejo pasa su ingreso único a "novios".
   const clearCeremonyField = async (
     ceremonyKey: 'ceremoniaCivil' | 'ceremoniaExtra',
-    field: 'ingreso' | 'firmas' | 'salida',
+    field: 'ingreso' | 'firmas' | 'salida' | CivilIngresoField,
     label: string
   ) => {
     if (!window.confirm(`¿Eliminar "${label}"?`)) return;
-    const current = (selectedEvent[ceremonyKey] || emptyCeremony) as any;
+    const current = (
+      ceremonyKey === 'ceremoniaCivil'
+        ? normalizeCivil(selectedEvent.ceremoniaCivil)
+        : selectedEvent[ceremonyKey] || emptyCeremony
+    ) as any;
     await persistEventUpdate(
       { [ceremonyKey]: { ...current, [field]: '' } } as Partial<EventModel>,
       'Elemento eliminado'
@@ -1248,33 +1256,34 @@ const MusicInformation = ({
       )}
 
       {/* Ceremonia Civil */}
-      {selectedEvent.ceremoniaCivil &&
-        hasCeremonyContent(selectedEvent.ceremoniaCivil) && (
+      {hasCivilContent(selectedEvent.ceremoniaCivil) && (
           <Box>
             {momentTitle('Ceremonia Civil')}
-            {selectedEvent.ceremoniaCivil.ingreso && (
-              <Flex align='center' gap='4px'>
-                <Box style={{ flex: 1, minWidth: 0 }}>
-                  <EditableData disabled={!canEditEvents}
-                    type='text'
-                    property='ceremoniaCivil.ingreso'
-                    title='Ingreso'
-                    value={selectedEvent.ceremoniaCivil.ingreso}
-                  />
-                </Box>
-                {deleteItemButton(() =>
-                  clearCeremonyField('ceremoniaCivil', 'ingreso', 'Ingreso')
-                )}
-              </Flex>
+            {CIVIL_INGRESO_FIELDS.map(({ key, label }) =>
+              civil[key] ? (
+                <Flex key={key} align='center' gap='4px'>
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <EditableData disabled={!canEditEvents}
+                      type='text'
+                      property={`ceremoniaCivil.${key}`}
+                      title={label}
+                      value={civil[key]}
+                    />
+                  </Box>
+                  {deleteItemButton(() =>
+                    clearCeremonyField('ceremoniaCivil', key, label)
+                  )}
+                </Flex>
+              ) : null
             )}
-            {selectedEvent.ceremoniaCivil.firmas && (
+            {civil.firmas && (
               <Flex align='center' gap='4px'>
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <EditableData disabled={!canEditEvents}
                     type='text'
                     property='ceremoniaCivil.firmas'
                     title='Firmas'
-                    value={selectedEvent.ceremoniaCivil.firmas}
+                    value={civil.firmas}
                   />
                 </Box>
                 {deleteItemButton(() =>
@@ -1282,14 +1291,14 @@ const MusicInformation = ({
                 )}
               </Flex>
             )}
-            {selectedEvent.ceremoniaCivil.salida && (
+            {civil.salida && (
               <Flex align='center' gap='4px'>
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <EditableData disabled={!canEditEvents}
                     type='text'
                     property='ceremoniaCivil.salida'
                     title='Salida'
-                    value={selectedEvent.ceremoniaCivil.salida}
+                    value={civil.salida}
                   />
                 </Box>
                 {deleteItemButton(() =>
@@ -1297,10 +1306,10 @@ const MusicInformation = ({
                 )}
               </Flex>
             )}
-            {selectedEvent.ceremoniaCivil.otros &&
-              selectedEvent.ceremoniaCivil.otros.length > 0 && (
+            {civil.otros &&
+              civil.otros.length > 0 && (
                 <>
-                  {selectedEvent.ceremoniaCivil.otros.map((item, index) => (
+                  {civil.otros.map((item, index) => (
                     <Box
                       key={`civil-otro-${index}`}
                       style={{

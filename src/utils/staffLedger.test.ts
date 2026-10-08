@@ -20,6 +20,9 @@ import {
   tickCreditType,
   quickCreditType,
   isChargeKey,
+  fixedMonthDates,
+  calendarEventToStaffEvent,
+  normalizeEventStaff,
   LedgerEntry,
   StaffEvent
 } from './staffLedger';
@@ -447,5 +450,95 @@ describe('pago a cuenta no cubre lo futuro', () => {
     expect(displayStatus(charges[2], NOW)).toBe('adelantado');
     expect(summary.favor).toBe(0);
     expect(summary.futureTotal).toBe(0);
+  });
+});
+
+describe('fijo mensual', () => {
+  const fijo = (over: Partial<LedgerEntry> = {}) =>
+    entry({
+      _id: 'f1', type: 'fijo', eventId: undefined, amount: 200, description: 'Mantenimiento',
+      dayOfMonth: 5, fromMonth: '2026-10', date: '2026-10-01T15:00:00.000Z', ...over
+    });
+
+  it('fechas: un día por mes, con el último día si el mes es corto', () => {
+    expect(fixedMonthDates({ dayOfMonth: 31, fromMonth: '2026-10' }, '2026-10-01', '2027-02-28')).toEqual([
+      '2026-10-31', '2026-11-30', '2026-12-31', '2027-01-31', '2027-02-28'
+    ]);
+  });
+  it('fechas: respeta el inicio de cobros, el horizonte y el mes de fin', () => {
+    expect(fixedMonthDates({ dayOfMonth: 5, fromMonth: '2026-08' }, '2026-10-01', '2026-12-04')).toEqual([
+      '2026-10-05', '2026-11-05'
+    ]);
+    expect(fixedMonthDates({ dayOfMonth: 5, fromMonth: '2026-10', toMonth: '2026-10' }, '2026-10-01', '2027-06-01')).toEqual([
+      '2026-10-05'
+    ]);
+  });
+  it('genera una línea por mes hasta 1 mes adelante, con clave por mes', () => {
+    const { charges } = buildAccount(EMP, [], [fijo({ rol: 'Depósito' })], NOW); // hoy 10/10 → hasta 10/11
+    expect(charges.map((c) => [c.key, arDay(c.date), c.amount, c.kind, c.rol])).toEqual([
+      ['fijo:f1:2026-10', '2026-10-05', 200, 'fijo', 'Depósito'],
+      ['fijo:f1:2026-11', '2026-11-05', 200, 'fijo', 'Depósito']
+    ]);
+  });
+  it('se paga con el tilde como cualquier línea; el mes futuro no entra en pendiente', () => {
+    const tick = entry({ _id: 't', type: 'pago', eventId: undefined, amount: 200, method: 'efectivo', date: '2026-10-06T15:00:00.000Z', chargeKey: 'fijo:f1:2026-10' });
+    const { charges, summary } = buildAccount(EMP, [], [fijo(), tick], NOW);
+    expect(charges[0].status).toBe('pagado');
+    expect(summary.pendingToDate).toBe(0);
+    expect(summary.futureTotal).toBe(200);
+  });
+  it('la cuenta devuelve las definiciones de fijos', () => {
+    const { fixed } = buildAccount(EMP, [], [fijo()], NOW);
+    expect(fixed).toEqual([{ entryId: 'f1', description: 'Mantenimiento', amount: 200, dayOfMonth: 5, fromMonth: '2026-10' }]);
+  });
+  it('isChargeKey acepta la clave de un mes de fijo', () => {
+    expect(isChargeKey('fijo:abc123:2026-10')).toBe(true);
+    expect(isChargeKey('fijo:abc123')).toBe(false);
+  });
+});
+
+describe('eventos de calendario (ej. Logística Técnica)', () => {
+  const calEv = {
+    _id: 'c1', title: 'Armado escenario', calendarId: 'cal1',
+    start: '2026-10-05T12:00:00.000Z', end: '2026-10-05T18:00:00.000Z', allDay: false,
+    staff: [{ employeeId: EMP, employeeName: 'Ana', rol: 'Armado' }]
+  };
+
+  it('se convierte en un evento de cobros con el calendario como lugar y marca de origen', () => {
+    expect(calendarEventToStaffEvent(calEv, 'Logística Técnica')).toEqual({
+      _id: 'c1', type: 'Armado escenario', lugar: 'Logística Técnica', date: calEv.start, endDate: calEv.end,
+      staff: calEv.staff, source: 'calendar'
+    });
+  });
+  it('todo el día → sin horas', () => {
+    const ev = calendarEventToStaffEvent({ ...calEv, allDay: true }, 'Logística Técnica');
+    expect(ev.endDate).toBeUndefined();
+    expect(computeStaffHours(ev)).toBeNull();
+  });
+  it('entra en la cuenta como evento, con horas, rol y origen', () => {
+    const ev = calendarEventToStaffEvent(calEv, 'Logística Técnica');
+    const [c] = buildCharges(EMP, [ev], [entry({ eventId: 'c1', amount: 50, source: 'calendar' })]);
+    expect(c).toMatchObject({ key: 'evento:c1', label: 'Armado escenario', venue: 'Logística Técnica', rol: 'Armado', hours: 6, amount: 50, source: 'calendar' });
+  });
+  it('si se borró el evento del calendario, la línea con monto queda con su origen', () => {
+    const [c] = buildCharges(EMP, [], [entry({ eventId: 'c9', amount: 50, source: 'calendar', description: 'Armado' })]);
+    expect(c).toMatchObject({ eventDeleted: true, source: 'calendar' });
+  });
+});
+
+describe('normalizeEventStaff', () => {
+  it('limpia y valida la lista de staff del evento de calendario', () => {
+    expect(normalizeEventStaff([
+      { employeeId: ' e1 ', employeeName: 'Ana', rol: ' DJ ' },
+      { employeeId: 'e1', employeeName: 'Ana dup', rol: 'x' }, // duplicado → fuera
+      { employeeId: '', employeeName: 'Sin id' }, // sin id → fuera
+      { employeeId: 'e2', employeeName: 'Beto', rol: 'Sin rol' },
+      'basura'
+    ])).toEqual([
+      { employeeId: 'e1', employeeName: 'Ana', rol: 'DJ' },
+      { employeeId: 'e2', employeeName: 'Beto', rol: '' }
+    ]);
+    expect(normalizeEventStaff(undefined)).toEqual([]);
+    expect(normalizeEventStaff({ $ne: 1 })).toEqual([]);
   });
 });

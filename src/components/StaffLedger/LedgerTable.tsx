@@ -1,7 +1,7 @@
 // src/components/StaffLedger/LedgerTable.tsx
 'use client';
 import { useMemo, useState } from 'react';
-import { Table, Text, Badge, NumberInput, Group, ActionIcon, Tooltip, Stack, Loader, Checkbox, Popover, Button, Collapse, UnstyledButton } from '@mantine/core';
+import { Table, Text, Badge, NumberInput, TextInput, Group, ActionIcon, Tooltip, Stack, Loader, Checkbox, Popover, Button, Collapse, UnstyledButton } from '@mantine/core';
 import { IconPencil, IconTrash, IconAlertTriangle, IconChevronDown } from '@tabler/icons-react';
 import { formatPrice } from '@/utils/priceUtils';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
@@ -58,6 +58,7 @@ export default function LedgerTable({
   now,
   editable = false,
   onAmountSave,
+  onRolSave,
   onEditCredit,
   onEditExtra,
   onDeleteEntry,
@@ -70,6 +71,8 @@ export default function LedgerTable({
   editable?: boolean;
   // Devuelve si se guardó; si no, la fila vuelve a mostrar el valor del servidor
   onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
+  // Rol en el evento (se guarda en el evento). Devuelve si se guardó.
+  onRolSave?: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
   onEditCredit?: (credit: Credit) => void;
   onEditExtra?: (charge: AllocatedCharge) => void;
   onDeleteEntry?: (entryId: string) => void;
@@ -160,6 +163,7 @@ export default function LedgerTable({
                         now={now}
                         editable={editable}
                         onAmountSave={onAmountSave}
+                        onRolSave={onRolSave}
                         onEditExtra={onEditExtra}
                         onDeleteEntry={onDeleteEntry}
                         onTick={onTick}
@@ -213,6 +217,7 @@ function ChargeRow({
   now,
   editable,
   onAmountSave,
+  onRolSave,
   onEditExtra,
   onDeleteEntry,
   onTick,
@@ -224,6 +229,7 @@ function ChargeRow({
   editable: boolean;
   confirm: ConfirmFn;
   onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
+  onRolSave?: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
   onEditExtra?: (charge: AllocatedCharge) => void;
   onDeleteEntry?: (entryId: string) => void;
   onTick?: (charge: AllocatedCharge, method: PaymentMethod) => Promise<boolean>;
@@ -257,15 +263,20 @@ function ChargeRow({
         </Group>
       </Table.Td>
       <Table.Td>
-        {charge.kind === 'extra' ? (
+        {charge.kind !== 'evento' ? (
+          // Extra / fijo: el rol si lo tiene, con el tipo abajo; si no, el tipo
           charge.rol ? (
             <>
               <Text size='sm'>{charge.rol}</Text>
-              <Text size='xs' c='dimmed'>Extra</Text>
+              <Text size='xs' c='dimmed'>{charge.kind === 'fijo' ? 'Fijo' : 'Extra'}</Text>
             </>
+          ) : charge.kind === 'fijo' ? (
+            'Fijo'
           ) : (
             'Extra'
           )
+        ) : editable && onRolSave && !charge.unassigned && !charge.eventDeleted ? (
+          <RolInput charge={charge} onSave={onRolSave} />
         ) : (
           charge.rol ?? '—'
         )}
@@ -416,5 +427,44 @@ function TickCell({
         </Stack>
       </Popover.Dropdown>
     </Popover>
+  );
+}
+
+// Rol del empleado en el evento, editable en la fila (admin). Guarda al salir
+// del campo o con Enter; si falla, vuelve al valor del servidor.
+function RolInput({
+  charge,
+  onSave
+}: {
+  charge: AllocatedCharge;
+  onSave: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
+}) {
+  const current = charge.rol === 'Sin rol' ? '' : charge.rol ?? '';
+  const [saving, setSaving] = useState(false);
+  const [rev, setRev] = useState(0);
+
+  const commit = async (value: string) => {
+    if (value.trim() === current) return;
+    setSaving(true);
+    const ok = await onSave(charge, value);
+    setSaving(false);
+    if (!ok) setRev((r) => r + 1);
+  };
+
+  return (
+    <TextInput
+      key={`${charge.key}:${current}:${rev}`}
+      defaultValue={current}
+      placeholder='Sin rol'
+      size='xs'
+      w={130}
+      disabled={saving}
+      rightSection={saving ? <Loader size={12} /> : null}
+      aria-label='Rol en el evento'
+      onBlur={(e) => commit(e.currentTarget.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+    />
   );
 }

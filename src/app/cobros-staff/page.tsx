@@ -14,9 +14,11 @@ import LedgerSummaryCards from '@/components/StaffLedger/LedgerSummaryCards';
 import LedgerTable from '@/components/StaffLedger/LedgerTable';
 import PaymentModal from '@/components/StaffLedger/PaymentModal';
 import ExtraModal from '@/components/StaffLedger/ExtraModal';
+import FixedModal, { FixedModalMode } from '@/components/StaffLedger/FixedModal';
+import FixedList from '@/components/StaffLedger/FixedList';
 import { formatPrice } from '@/utils/priceUtils';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
-import { AllocatedCharge, Credit, PaymentMethod, tickCreditType, arDay, round2 } from '@/utils/staffLedger';
+import { AllocatedCharge, Credit, FixedDef, PaymentMethod, tickCreditType, arDay, round2 } from '@/utils/staffLedger';
 
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
 
@@ -65,6 +67,7 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
   const [editingCredit, setEditingCredit] = useState<Credit | null>(null);
   const [extraOpen, setExtraOpen] = useState(false);
   const [editingExtra, setEditingExtra] = useState<AllocatedCharge | null>(null);
+  const [fixedModal, setFixedModal] = useState<{ mode: FixedModalMode; fixed: FixedDef | null } | null>(null);
   const now = useMemo(() => new Date(), [data]);
   const [confirm, confirmModal] = useConfirm();
 
@@ -73,7 +76,18 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
 
   const saveAmount = async (charge: AllocatedCharge, raw: string) => {
     try {
-      await ledgerRequest('POST', { type: 'evento', employeeId, eventId: charge.eventId, amount: raw });
+      await ledgerRequest('POST', { type: 'evento', employeeId, eventId: charge.eventId, amount: raw, source: charge.source });
+      return true;
+    } catch (e: any) {
+      notifications.show({ color: 'red', message: e.message });
+      return false;
+    }
+  };
+
+  // Rol en el evento: se guarda en el evento (lo ven la vista del evento y el calendario)
+  const saveRol = async (charge: AllocatedCharge, rol: string) => {
+    try {
+      await ledgerRequest('POST', { action: 'eventRol', employeeId, eventId: charge.eventId, rol, source: charge.source });
       return true;
     } catch (e: any) {
       notifications.show({ color: 'red', message: e.message });
@@ -132,6 +146,7 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
           {data.employee.rol && <Text c='dimmed' size='sm'>{data.employee.rol}</Text>}
         </div>
         <Group>
+          <Button variant='default' onClick={() => setFixedModal({ mode: 'create', fixed: null })}>Agregar fijo</Button>
           <Button variant='default' onClick={() => { setEditingExtra(null); setExtraOpen(true); }}>Agregar extra</Button>
           <Button onClick={() => { setEditingCredit(null); setPaymentOpen(true); }}>Pago a cuenta</Button>
         </Group>
@@ -139,12 +154,31 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
 
       <LedgerSummaryCards mode='admin' summary={data.summary} />
 
+      <FixedList
+        fixed={data.fixed ?? []}
+        onAction={(mode, fixed) => setFixedModal({ mode, fixed })}
+        onDelete={async (fixed) => {
+          const ok = await confirm({
+            title: '¿Borrar este fijo?',
+            message: `Se borran TODOS los meses de "${fixed.description}", también los pasados. Si solo querés que deje de generarse, usá "Dar de baja".`,
+            confirmLabel: 'Borrar'
+          });
+          if (!ok) return;
+          try {
+            await ledgerRequest('DELETE', undefined, `?id=${fixed.entryId}`);
+          } catch (e: any) {
+            notifications.show({ color: 'red', message: e.message });
+          }
+        }}
+      />
+
       <LedgerTable
         charges={data.charges}
         credits={data.credits}
         now={now}
         editable
         onAmountSave={saveAmount}
+        onRolSave={saveRol}
         onEditCredit={(c) => { setEditingCredit(c); setPaymentOpen(true); }}
         onEditExtra={(c) => { setEditingExtra(c); setExtraOpen(true); }}
         onDeleteEntry={deleteEntry}
@@ -154,6 +188,13 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
 
       <PaymentModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} employeeId={employeeId} summary={data.summary} credit={editingCredit} />
       {confirmModal}
+      <FixedModal
+        opened={!!fixedModal}
+        onClose={() => setFixedModal(null)}
+        employeeId={employeeId}
+        mode={fixedModal?.mode ?? 'create'}
+        fixed={fixedModal?.fixed}
+      />
       <ExtraModal opened={extraOpen} onClose={() => setExtraOpen(false)} employeeId={employeeId} extra={editingExtra} />
     </Stack>
   );

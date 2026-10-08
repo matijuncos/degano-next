@@ -11,7 +11,8 @@ import {
   Tooltip,
   Box,
   Select,
-  MultiSelect
+  MultiSelect,
+  Switch
 } from '@mantine/core';
 import {
   IconPlus,
@@ -446,6 +447,7 @@ function CalendarForm({
     calendar ? presetOf(calendar) : 'admins'
   );
   const [members, setMembers] = useState<string[]>(calendar?.memberIds || []);
+  const [staffPayable, setStaffPayable] = useState<boolean>(!!calendar?.staffPayable);
 
   // Opciones del multiselect: empleados de STAFF. Se pueden elegir aunque no
   // tengan email; el aviso recuerda que sin email todavía no ven el calendario.
@@ -471,7 +473,8 @@ function CalendarForm({
         visibility === 'private' || visibility === 'selected'
           ? 'restricted'
           : visibility,
-      memberIds: visibility === 'selected' ? validMembers : []
+      memberIds: visibility === 'selected' ? validMembers : [],
+      staffPayable
     });
   };
 
@@ -557,6 +560,18 @@ function CalendarForm({
           comboboxProps={{ withinPortal: true }}
         />
       )}
+      {/* Sus eventos llevan staff + rol y entran en Cobros de STAFF (ej. Logística Técnica) */}
+      <Switch
+        size='xs'
+        label='Cuenta para Cobros de STAFF'
+        description='Sus eventos llevan staff y rol, y se pagan desde Cobros STAFF'
+        checked={staffPayable}
+        onChange={(e) => setStaffPayable(e.currentTarget.checked)}
+        styles={{
+          label: { color: textColor },
+          description: { color: isLightTheme ? '#868e96' : '#909296' }
+        }}
+      />
       <Group gap='xs'>
         <Button
           size='xs'

@@ -13,8 +13,14 @@ import {
   loadSummaries,
   LEDGER_COLLECTION
 } from '@/lib/staffLedgerServer';
-import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard } from '@/utils/staffLedgerInput';
+import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard, parseEventRolInput } from '@/utils/staffLedgerInput';
 import { eventLabel, isChargeKey } from '@/utils/staffLedger';
+
+// 'YYYY-MM' → mes anterior
+function previousMonth(ym: string) {
+  const [y, m] = ym.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+}
 
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 });
 const notFound = (error: string) => NextResponse.json({ error }, { status: 404 });
@@ -59,7 +65,28 @@ export const GET = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
 
 export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
   try {
-    const parsed = parseLedgerInput(await req.json());
+    const body = await req.json();
+
+    // Rol del empleado en un evento: se guarda en el EVENTO (events.staff[].rol),
+    // el mismo dato que se edita en la vista del evento y en el calendario
+    if (body?.action === 'eventRol') {
+      const rolInput = parseEventRolInput(body);
+      if (!rolInput.ok) return badRequest(rolInput.error);
+      const { employeeId, eventId, rol } = rolInput.value;
+      if (!ObjectId.isValid(eventId)) return badRequest('Evento inválido');
+      const db = await getDb();
+      const employee = await findEmployee(db, employeeId);
+      if (!employee) return notFound('Empleado no encontrado');
+      // Evento de calendario extra (Logística Técnica, etc.) → calendar_events
+      const eventsColl = body.source === 'calendar' ? 'calendar_events' : 'events';
+      const result = await db
+        .collection(eventsColl)
+        .updateOne({ _id: new ObjectId(eventId), 'staff.employeeId': employeeId }, { $set: { 'staff.$.rol': rol } });
+      if (result.matchedCount === 0) return notFound('El empleado ya no está asignado a ese evento');
+      return accountResponse(db, employee);
+    }
+
+    const parsed = parseLedgerInput(body);
     if (!parsed.ok) return badRequest(parsed.error);
     const input = parsed.value;
 
@@ -72,20 +99,28 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
     const now = new Date();
 
     if (input.type === 'evento') {
+      const isCalendar = body.source === 'calendar';
       const filter = { employeeId: input.employeeId, eventId: input.eventId, type: 'evento' };
       if (input.amount === null) {
         await coll.deleteOne(filter);
         return accountResponse(db, employee);
       }
-      const [event, existingLine] = await Promise.all([
-        ObjectId.isValid(input.eventId!)
-          ? db.collection('events').findOne(
+      const [found, existingLine] = await Promise.all([
+        !ObjectId.isValid(input.eventId!)
+          ? null
+          : isCalendar
+          ? db.collection('calendar_events').findOne(
+              { _id: new ObjectId(input.eventId) },
+              { projection: { start: 1, title: 1, 'staff.employeeId': 1 } }
+            )
+          : db.collection('events').findOne(
               { _id: new ObjectId(input.eventId) },
               { projection: { date: 1, type: 1, fullName: 1, 'staff.employeeId': 1 } }
-            )
-          : null,
+            ),
         coll.findOne(filter, { projection: { _id: 1 } })
       ]);
+      // Un evento de calendario se guarda igual que uno normal (fecha + nombre)
+      const event: any = found && isCalendar ? { ...found, date: found.start, type: found.title } : found;
       const guardError = eventAmountGuard(event as any, input.employeeId, !!existingLine);
       if (guardError) return event ? badRequest(guardError) : notFound(guardError);
 
@@ -94,7 +129,13 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
       // se corrige el monto de la línea que ya existe.
       const update = event
         ? {
-            $set: { amount: input.amount, date: new Date(event.date), description: eventLabel(event as any), updatedAt: now },
+            $set: {
+              amount: input.amount,
+              date: new Date(event.date),
+              description: eventLabel(event as any),
+              ...(isCalendar ? { source: 'calendar' } : {}),
+              updatedAt: now
+            },
             $setOnInsert: { createdAt: now, createdBy: ctx.user?.email || '' }
           }
         : { $set: { amount: input.amount, updatedAt: now } };
@@ -107,6 +148,22 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
         await coll.updateOne(filter, { $set: update.$set });
       }
       return accountResponse(db, employee);
+    }
+
+    // Cambio de monto de un fijo desde un mes: el viejo termina el mes anterior
+    // y el nuevo arranca ese mes (lo ya generado no cambia)
+    if (input.type === 'fijo' && body.replacesId) {
+      if (!ObjectId.isValid(String(body.replacesId))) return badRequest('Fijo inválido');
+      const old = await coll.findOne({
+        _id: new ObjectId(String(body.replacesId)),
+        employeeId: input.employeeId,
+        type: 'fijo'
+      });
+      if (!old) return notFound('Fijo no encontrado');
+      const prevMonth = previousMonth(input.fromMonth!);
+      if (prevMonth < old.fromMonth) return badRequest('El cambio tiene que ser posterior al mes de inicio del fijo');
+      if (old.toMonth && input.fromMonth! > old.toMonth) return badRequest('Ese fijo ya terminó antes de ese mes');
+      await coll.updateOne({ _id: old._id }, { $set: { toMonth: prevMonth, updatedAt: now } });
     }
 
     await coll.insertOne({ ...input, createdAt: now, updatedAt: now, createdBy: ctx.user?.email || '' });
@@ -137,7 +194,8 @@ export const PUT = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
     const unset: Record<string, ''> = {};
     // Campos opcionales borrados → se sacan (nunca en $set y $unset a la vez)
     if (type === 'extra' && fields.hours === undefined) unset.hours = '';
-    if (type === 'extra' && fields.rol === undefined) unset.rol = '';
+    if ((type === 'extra' || type === 'fijo') && fields.rol === undefined) unset.rol = '';
+    if (type === 'fijo' && fields.toMonth === undefined) unset.toMonth = '';
     if (type !== 'extra' && fields.description === undefined) unset.description = '';
     await coll.updateOne(
       { _id: existing._id },

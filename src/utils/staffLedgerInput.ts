@@ -2,7 +2,7 @@
 // Validación de lo que llega a /api/staffLedger. Pura para poder testearla.
 import { LedgerType, PaymentMethod, PAYMENT_METHODS, round2, isChargeKey } from './staffLedger';
 
-const TYPES: LedgerType[] = ['evento', 'extra', 'pago', 'adelanto'];
+const TYPES: LedgerType[] = ['evento', 'extra', 'fijo', 'pago', 'adelanto'];
 
 // Monto: número o string ("15.000,50"). Vacío → null (en una línea de evento
 // significa "borrar el monto"). Cualquier otra cosa no numérica → 'invalid'.
@@ -39,6 +39,9 @@ export type LedgerInput = {
   description?: string;
   hours?: number;
   rol?: string;
+  dayOfMonth?: number;
+  fromMonth?: string;
+  toMonth?: string;
   method?: PaymentMethod;
   chargeKey?: string;
 };
@@ -63,6 +66,31 @@ export function parseLedgerInput(body: any): Result {
   }
 
   if (amount === null || amount <= 0) return fail('El monto tiene que ser mayor a 0');
+
+  if (type === 'fijo') {
+    const description = typeof body.description === 'string' ? body.description.trim() : '';
+    if (!description) return fail('Falta la descripción del fijo');
+    const dayOfMonth = Number(body.dayOfMonth);
+    if (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) return fail('El día tiene que ser entre 1 y 31');
+    const isMonth = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+    if (!isMonth(body.fromMonth)) return fail('Falta el mes de inicio');
+    const hasTo = body.toMonth !== undefined && body.toMonth !== null && body.toMonth !== '';
+    if (hasTo && !isMonth(body.toMonth)) return fail('Mes de fin inválido');
+    if (hasTo && body.toMonth < body.fromMonth) return fail('El mes de fin no puede ser anterior al de inicio');
+    const rol = typeof body.rol === 'string' ? body.rol.trim() : '';
+    return {
+      ok: true,
+      value: {
+        type, employeeId, amount, description, dayOfMonth,
+        fromMonth: body.fromMonth,
+        // Para el índice por fecha: el día 1 del mes de inicio
+        date: parseDay(`${body.fromMonth}-01`) as Date,
+        ...(hasTo ? { toMonth: body.toMonth } : {}),
+        ...(rol ? { rol } : {})
+      }
+    };
+  }
+
   const date = parseDay(body.date);
   if (!date) return fail('Falta la fecha');
   const description = typeof body.description === 'string' ? body.description.trim() : '';
@@ -152,4 +180,20 @@ export function eventAmountGuard(
   if (!event) return 'Evento no encontrado';
   const assigned = (event.staff ?? []).some((s) => s.employeeId === employeeId);
   return assigned ? null : 'El empleado no está asignado a este evento';
+}
+
+// Rol de un empleado en un evento, editado desde Cobros STAFF. Se guarda en
+// events.staff[].rol (el mismo dato que se edita en el evento y el calendario).
+// Vacío o "Sin rol" → '' (se muestra "Sin rol").
+export function parseEventRolInput(
+  body: any
+): { ok: true; value: { employeeId: string; eventId: string; rol: string } } | { ok: false; error: string } {
+  const employeeId = typeof body?.employeeId === 'string' ? body.employeeId.trim() : '';
+  const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
+  if (!employeeId) return { ok: false, error: 'Falta el empleado' };
+  if (!eventId) return { ok: false, error: 'Falta el evento' };
+  if (typeof body.rol !== 'string') return { ok: false, error: 'Rol inválido' };
+  const trimmed = body.rol.trim();
+  if (trimmed.length > 100) return { ok: false, error: 'El rol es demasiado largo' };
+  return { ok: true, value: { employeeId, eventId, rol: trimmed === 'Sin rol' ? '' : trimmed } };
 }
