@@ -19,7 +19,8 @@ import {
   Portal,
   Badge
 } from '@mantine/core';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconArrowUp, IconArrowDown } from '@tabler/icons-react';
+import { sortEquipment, EquipmentSortKey, SortDir } from '@/utils/sortByName';
 import { IconPlus } from '@tabler/icons-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDragSelect } from '@/hooks/useDragSelect';
@@ -157,6 +158,33 @@ export default function ContentPanel({
 
   const children = categories.filter((cat: any) => cat.parentId === selectedCategory?._id);
   const items = equipment.filter((eq: any) => eq.categoryId === selectedCategory?._id);
+
+  // Orden de la tabla (vista de equipamiento): click en Nombre o Código.
+  // Mismo header = invierte el sentido; otro header = empieza ascendente.
+  const [sort, setSort] = useState<{ key: EquipmentSortKey; dir: SortDir }>({ key: 'name', dir: 'asc' });
+  const sortedItems = useMemo(
+    () => sortEquipment(items, sort.key, sort.dir),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [equipment, selectedCategory?._id, sort]
+  );
+  const toggleSort = (key: EquipmentSortKey) =>
+    setSort((prev) => ({ key, dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc' }));
+  const sortableHeader = (key: EquipmentSortKey, label: string) => {
+    const active = sort.key === key;
+    const Arrow = sort.dir === 'asc' ? IconArrowUp : IconArrowDown;
+    return (
+      <th
+        onClick={() => toggleSort(key)}
+        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+        title={`Ordenar por ${label.toLowerCase()}`}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {label}
+          {active && <Arrow size={14} />}
+        </span>
+      </th>
+    );
+  };
   const isCategory = categories.some((cat: any) => cat._id === selectedCategory?._id);
   const isItem = equipment.some((eq: any) => eq._id === selectedCategory?._id);
 
@@ -254,10 +282,10 @@ export default function ContentPanel({
       }
       return (
         <tr>
-          <th>Nombre</th>
+          {sortableHeader('name', 'Nombre')}
           <th>Stock total</th>
           <th>Disponible</th>
-          <th>Código</th>
+          {sortableHeader('code', 'Código')}
           <th>Marca</th>
           <th>Modelo</th>
           <th>N° Serie</th>
@@ -476,8 +504,7 @@ export default function ContentPanel({
       const dynamicTotalStock = items.length;
       const dynamicAvailableStock = items.filter((item: any) => !item.outOfService?.isOut).length;
 
-      return items.map((item: any, index: number) => {
-        const isSelected = selectedEquipmentIds.includes(item._id);
+      return sortedItems.map((item: any, index: number) => {
         const status = getEquipmentStatus(item);
         return (
           <tr
