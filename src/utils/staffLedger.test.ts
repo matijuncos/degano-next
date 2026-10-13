@@ -24,7 +24,8 @@ import {
   calendarEventToStaffEvent,
   normalizeEventStaff,
   LedgerEntry,
-  StaffEvent
+  StaffEvent,
+  countMissingAmount
 } from './staffLedger';
 
 const EMP = 'emp1';
@@ -195,6 +196,29 @@ describe('summarizeAccount / buildAccount', () => {
     const { summary } = buildAccount(EMP, events, entries, NOW);
     expect(summary.missingAmount).toBe(2);
     expect(summary.missingAmountNextMonth).toBe(1);
+    // los dos sin monto son futuros
+    expect(summary.missingAmountFuture).toBe(2);
+    expect(summary.missingAmountToDate).toBe(0);
+  });
+  it('separa sin monto de hoy/pasados de los próximos', () => {
+    const withPast = [...events, ev({ _id: 'past2', date: '2026-10-08T23:00:00.000Z', endDate: '2026-10-09T05:00:00.000Z' })];
+    const { summary } = buildAccount(EMP, withPast, entries, NOW);
+    expect(summary.missingAmount).toBe(3);
+    expect(summary.missingAmountToDate).toBe(1);
+    expect(summary.missingAmountFuture).toBe(2);
+  });
+  it('countMissingAmount: hoy cuenta como "a hoy", mañana como próximo', () => {
+    const now = new Date('2026-10-13T15:00:00.000Z'); // 12:00 AR
+    const r = countMissingAmount(
+      [
+        { date: '2026-10-01T23:00:00.000Z', amount: null }, // pasado
+        { date: '2026-10-14T02:00:00.000Z', amount: null }, // 13/10 23:00 AR = hoy
+        { date: '2026-10-14T13:00:00.000Z', amount: null }, // mañana
+        { date: '2026-10-20T23:00:00.000Z', amount: 500 } // con monto: no cuenta
+      ],
+      now
+    );
+    expect(r).toEqual({ toDate: 2, future: 1 });
   });
   it('agrupa por mes lo generado y lo pagado', () => {
     const { summary } = buildAccount(EMP, events, withFutureAmounts, NOW);

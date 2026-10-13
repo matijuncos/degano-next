@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { resolveEmployee, RESOLVE_MESSAGES } from '@/lib/resolveEmployee';
 import { getDb, ensureLedgerIndexes, loadAccount } from '@/lib/staffLedgerServer';
-import { employeeWindow, inWindow } from '@/utils/staffLedger';
+import { employeeWindow, inWindow, countMissingAmount } from '@/utils/staffLedger';
 import { isLedgerEligible } from '@/utils/staffLedgerInput';
 
 export const GET = withAuth(async (ctx: AuthContext) => {
@@ -31,6 +31,7 @@ export const GET = withAuth(async (ctx: AuthContext) => {
     const account = await loadAccount(db, employeeId, now);
     const window = employeeWindow(now);
     const charges = account.charges.filter((c) => inWindow(c.date, window));
+    const missing = countMissingAmount(charges, now);
 
     return NextResponse.json({
       linked: true,
@@ -43,7 +44,9 @@ export const GET = withAuth(async (ctx: AuthContext) => {
         pendingToDate: account.summary.pendingToDate,
         favor: account.summary.favor,
         nextMonthTotal: account.summary.nextMonthTotal,
-        missingAmount: charges.filter((c) => c.amount == null).length
+        missingAmount: missing.toDate + missing.future,
+        missingAmountToDate: missing.toDate,
+        missingAmountFuture: missing.future
       },
       window: { from: window.from.toISOString(), to: window.to.toISOString() },
       policy: employee.insurancePolicy ? { fileName: employee.insurancePolicy.fileName } : null

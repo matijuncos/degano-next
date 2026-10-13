@@ -33,6 +33,8 @@ export interface NewEquipment {
   imageUrl: string;
   pdfUrl: string;
   pdfFileName: string | null;
+  // Nota del equipo PARA UN EVENTO (vive en events.equipment[], no en equipment)
+  note?: string;
   categoryId?: string;
   mainCategoryId?: string;
   mainCategoryName?: string;

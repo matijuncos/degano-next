@@ -108,6 +108,8 @@ export interface LedgerSummary {
   futureTotal: number; // impago de cargos con fecha > hoy
   nextMonthTotal: number; // cargos entre hoy y dentro de 1 mes
   missingAmount: number; // eventos sin monto (todos)
+  missingAmountToDate: number; // sin monto con fecha <= hoy (hay que cargarlos ya)
+  missingAmountFuture: number; // sin monto con fecha > hoy (informativo)
   missingAmountNextMonth: number; // eventos sin monto entre hoy y dentro de 1 mes
   byMonth: Record<string, { charged: number; paid: number }>; // 'YYYY-MM'
 }
@@ -385,13 +387,14 @@ export function summarizeAccount(
   const bucket = (m: string) => (byMonth[m] ??= { charged: 0, paid: 0 });
 
   let pendingToDate = 0, futureTotal = 0, nextMonthTotal = 0, totalCharged = 0;
-  let missingAmount = 0, missingAmountNextMonth = 0;
+  let missingAmount = 0, missingAmountNextMonth = 0, missingAmountFuture = 0;
 
   for (const c of charges) {
     const isFuture = (arDay(c.date) as string) > today;
     const isNextMonth = isFuture && new Date(c.date).getTime() <= nextMonthMs;
     if (c.amount == null) {
       missingAmount++;
+      if (isFuture) missingAmountFuture++;
       if (isNextMonth) missingAmountNextMonth++;
       continue;
     }
@@ -415,9 +418,27 @@ export function summarizeAccount(
     futureTotal: round2(futureTotal),
     nextMonthTotal: round2(nextMonthTotal),
     missingAmount,
+    missingAmountToDate: missingAmount - missingAmountFuture,
+    missingAmountFuture,
     missingAmountNextMonth,
     byMonth
   };
+}
+
+// Cargos sin monto separados en "a hoy" (fecha <= hoy, hora AR) y "próximos".
+// Mismo criterio que el resumen; lo usa la vista del empleado sobre su ventana.
+export function countMissingAmount(
+  charges: { date: string; amount: number | null }[],
+  now: Date
+): { toDate: number; future: number } {
+  const today = arDay(now) as string;
+  let toDate = 0, future = 0;
+  for (const c of charges) {
+    if (c.amount != null) continue;
+    if ((arDay(c.date) as string) > today) future++;
+    else toDate++;
+  }
+  return { toDate, future };
 }
 
 export function buildAccount(

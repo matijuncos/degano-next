@@ -31,13 +31,15 @@ import {
   IconFileText,
   IconFileZip,
   IconEye,
-  IconPencil
+  IconPencil,
+  IconNote
 } from '@tabler/icons-react';
 import { Image } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
 import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
-import { groupEquipmentByNameCount } from '@/utils/equipmentGroupUtils';
+import { groupEquipmentByName } from '@/utils/equipmentGroupUtils';
+import EquipmentNoteModal, { NoteUnit } from '@/components/EquipmentNoteModal/EquipmentNoteModal';
 import { format24Hour } from '@/utils/dateUtils';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 import { openS3File } from '@/utils/s3Utils';
@@ -241,6 +243,31 @@ const DrawerContent = () => {
     const current = staffMembers[index]?.rol || '';
     setStaffRol(current === 'Sin rol' ? '' : current);
     setIsStaffModalOpen(true);
+  };
+
+  // Notas por equipo (para este evento). Se guardan al instante con un
+  // endpoint que actualiza SOLO esa nota (no reenvía el array de equipos).
+  const canEditNotes = can('canEditEvents');
+  const [noteUnits, setNoteUnits] = useState<NoteUnit[] | null>(null);
+  const saveEquipmentNote = async (unitId: string, note: string) => {
+    try {
+      setLoadingCursor(true);
+      const response = await fetch('/api/eventEquipmentNote', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: selectedEvent?._id, equipmentId: unitId, note })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Error al guardar la nota');
+      setSelectedEvent(data.event);
+      notify({ message: note.trim() ? 'Nota guardada' : 'Nota quitada' });
+      return true;
+    } catch (error: any) {
+      notify({ type: 'defaultError', message: error?.message || 'Error al guardar la nota' });
+      return false;
+    } finally {
+      setLoadingCursor(false);
+    }
   };
 
   const handleSelectEmployee = (id: string | null) => {
@@ -744,7 +771,7 @@ const DrawerContent = () => {
           {allEquipmentCategories.length > 0 ? (
             <Stack gap='md'>
               {allEquipmentCategories.map((category) => {
-                const equipmentByName = groupEquipmentByNameCount(
+                const equipmentByName = groupEquipmentByName(
                   groupedEquipment[category] || []
                 );
                 const extraItems = groupedExtraEquipment[category] || [];
@@ -754,11 +781,51 @@ const DrawerContent = () => {
                       {category}:
                     </Text>
                     <Stack gap={4} pl='md'>
-                      {Object.entries(equipmentByName).map(([name, quantity]) => (
-                        <Text key={name} size='sm'>
-                          {name}{quantity > 1 ? ` x ${quantity}` : ''}
-                        </Text>
-                      ))}
+                      {Object.entries(equipmentByName).map(([name, units]) => {
+                        const quantity = units.length;
+                        const withNote = units.filter((u: any) => u.note);
+                        return (
+                          <Box key={name}>
+                            <Group gap={4} wrap='nowrap'>
+                              <Text
+                                size='sm'
+                                style={canEditNotes ? { cursor: 'pointer' } : undefined}
+                                onClick={canEditNotes ? () => setNoteUnits(units) : undefined}
+                              >
+                                {name}{quantity > 1 ? ` x ${quantity}` : ''}
+                              </Text>
+                              {canEditNotes && (
+                                <ActionIcon
+                                  size='xs'
+                                  variant='subtle'
+                                  color={withNote.length ? 'yellow' : 'gray'}
+                                  onClick={() => setNoteUnits(units)}
+                                  title={withNote.length ? 'Editar nota' : 'Agregar nota'}
+                                >
+                                  <IconNote size={13} />
+                                </ActionIcon>
+                              )}
+                            </Group>
+                            {withNote.map((u: any) => (
+                              <Text
+                                key={u._id}
+                                size='11px'
+                                c='yellow.3'
+                                fs='italic'
+                                pl='xs'
+                                style={{
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  cursor: canEditNotes ? 'pointer' : undefined
+                                }}
+                                onClick={canEditNotes ? () => setNoteUnits(units) : undefined}
+                              >
+                                📝 {quantity > 1 ? `${u.code || 'Sin código'}: ` : ''}{u.note}
+                              </Text>
+                            ))}
+                          </Box>
+                        );
+                      })}
                       {extraItems.map((item: any, i: number) => (
                         <Text key={`extra-${i}`} size='sm' c='red'>
                           {item.name}{item.quantity > 1 ? ` x ${item.quantity}` : ''} (a tercerizar)
@@ -971,6 +1038,13 @@ const DrawerContent = () => {
           </Group>
         </Stack>
       </Modal>
+
+      <EquipmentNoteModal
+        units={noteUnits}
+        onClose={() => setNoteUnits(null)}
+        onApply={saveEquipmentNote}
+        hint='Se guarda al instante.'
+      />
     </>
   );
 };

@@ -1,5 +1,6 @@
 'use client';
 import { ActionIcon, Group, Text, Stack, Divider, Button, Box, Badge, Tooltip } from '@mantine/core';
+import { IconNote } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { FaTrashAlt, FaChevronDown, FaChevronRight, FaGripVertical } from 'react-icons/fa';
 import React from 'react';
@@ -33,6 +34,8 @@ import {
   isEquipmentUnavailable,
   LiveEquipmentStatus
 } from '@/utils/equipmentAvailability';
+import { setEquipmentNote } from '@/utils/equipmentNotes';
+import EquipmentNoteModal, { NoteUnit } from '@/components/EquipmentNoteModal/EquipmentNoteModal';
 
 type CategoryItemProps = {
   categoryName: string;
@@ -49,6 +52,8 @@ type CategoryItemProps = {
   // Orden de equipos (por nombre) dentro de esta categoría + callback al reordenar
   itemOrder?: string[];
   onReorderItems?: (categoryName: string, newNames: string[]) => void;
+  // Abre el editor de la nota de un equipo para este evento
+  onEditNote?: (eq: any) => void;
 };
 
 // Fila de un grupo de equipo (por nombre) arrastrable dentro de la categoría
@@ -116,7 +121,8 @@ function CategoryContent({
   extraForCategory = [],
   handleRemoveNegative,
   itemOrder = [],
-  onReorderItems
+  onReorderItems,
+  onEditNote
 }: CategoryItemProps & { dragHandleProps?: Record<string, any> }) {
   const itemSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -140,6 +146,41 @@ function CategoryContent({
       </Tooltip>
     );
   };
+
+  // Botón de nota del equipo (resaltado si ya tiene una)
+  const noteButton = (eq: any) =>
+    onEditNote && (
+      <ActionIcon
+        size='xs'
+        variant='subtle'
+        color={eq.note ? 'yellow' : 'gray'}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEditNote(eq);
+        }}
+        title={eq.note ? 'Editar nota' : 'Agregar nota'}
+      >
+        <IconNote size={13} />
+      </ActionIcon>
+    );
+
+  // Texto de la nota debajo del código (click para editarla)
+  const noteText = (eq: any) =>
+    eq.note && (
+      <Text
+        size='11px'
+        c='yellow.3'
+        fs='italic'
+        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: onEditNote ? 'pointer' : undefined }}
+        onClick={(e) => {
+          if (!onEditNote) return;
+          e.stopPropagation();
+          onEditNote(eq);
+        }}
+      >
+        📝 {eq.note}
+      </Text>
+    );
 
   // Orden de los grupos por nombre: respetar itemOrder guardado, y los nombres
   // nuevos (recién agregados) van al final.
@@ -196,6 +237,7 @@ function CategoryContent({
         <Stack
           key={eq._id}
           gap='2px'
+          onClick={onEditNote ? () => onEditNote(eq) : undefined}
           style={{
             padding: '6px 8px',
             backgroundColor: isUnavailable
@@ -204,7 +246,8 @@ function CategoryContent({
             borderRadius: '4px',
             borderLeft: isUnavailable
               ? '3px solid rgba(250, 82, 82, 0.8)'
-              : '3px solid rgba(64, 192, 87, 0.7)'
+              : '3px solid rgba(64, 192, 87, 0.7)',
+            cursor: onEditNote ? 'pointer' : undefined
           }}
         >
           <Group justify='space-between' gap='xs'>
@@ -220,6 +263,7 @@ function CategoryContent({
                 <Text size='10px' c='dimmed'>
                   Código: {eq.code || 'N/A'}
                 </Text>
+                {noteText(eq)}
               </Stack>
             </Group>
             <Group gap='4px' style={{ flexShrink: 0 }}>
@@ -228,11 +272,15 @@ function CategoryContent({
                   {formatPrice(eq.rentalPrice || 0)}
                 </Text>
               )}
+              {noteButton(eq)}
               <ActionIcon
                 size='xs'
                 color='red'
                 variant='subtle'
-                onClick={() => handleRemove(eq._id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemove(eq._id);
+                }}
                 title='Quitar equipo'
               >
                 <FaTrashAlt size={10} />
@@ -246,6 +294,7 @@ function CategoryContent({
     const unavailableCount = equipmentGroup.filter((eq: any) =>
       isEquipmentUnavailable(statusMap.get(String(eq._id)))
     ).length;
+    const notesCount = equipmentGroup.filter((eq: any) => !!eq.note).length;
 
     return (
       <Box key={groupKey}>
@@ -289,6 +338,13 @@ function CategoryContent({
                       </Badge>
                     </Tooltip>
                   )}
+                  {notesCount > 0 && (
+                    <Tooltip label='Unidades con nota (desplegá para verlas)' withArrow>
+                      <Badge color='yellow' variant='light' size='xs' style={{ flexShrink: 0 }}>
+                        {notesCount} {notesCount === 1 ? 'nota' : 'notas'}
+                      </Badge>
+                    </Tooltip>
+                  )}
                 </Group>
               </Stack>
             </Group>
@@ -312,7 +368,16 @@ function CategoryContent({
               <Stack
                 key={eq._id}
                 gap='2px'
+                onClick={
+                  onEditNote
+                    ? (e) => {
+                        e.stopPropagation();
+                        onEditNote(eq);
+                      }
+                    : undefined
+                }
                 style={{
+                  cursor: onEditNote ? 'pointer' : undefined,
                   padding: '6px 8px',
                   backgroundColor: isUnavailable
                     ? 'rgba(250, 82, 82, 0.06)'
@@ -334,6 +399,7 @@ function CategoryContent({
                     <Text size='10px' c='dimmed'>
                       Código: {eq.code || 'N/A'}
                     </Text>
+                    {noteText(eq)}
                   </Stack>
                   <Group gap='4px' style={{ flexShrink: 0 }}>
                     {canViewPrices && (
@@ -341,6 +407,7 @@ function CategoryContent({
                         {formatPrice(eq.rentalPrice || 0)}
                       </Text>
                     )}
+                    {noteButton(eq)}
                     <ActionIcon
                       size='xs'
                       color='red'
@@ -523,6 +590,17 @@ export default function EquipmentList({
     fetchCategories();
   }, []);
 
+  // Editor de nota por equipo (para este evento). Se guarda con "Guardar Cambios".
+  const [noteUnits, setNoteUnits] = useState<NoteUnit[] | null>(null);
+  const openNoteEditor = (eq: any) => setNoteUnits([eq]);
+  const applyNote = (unitId: string, text: string) => {
+    setEventEquipment((prev) => {
+      const equipment = setEquipmentNote(prev.equipment, unitId, text);
+      return equipment === prev.equipment ? prev : { ...prev, equipment };
+    });
+    return true;
+  };
+
   const handleRemove = (id: string) => {
     setEventEquipment((prev) => ({
       ...prev,
@@ -699,6 +777,7 @@ export default function EquipmentList({
                   handleRemoveNegative={handleRemoveNegative}
                   itemOrder={equipmentItemOrder[categoryName] || []}
                   onReorderItems={handleReorderItems}
+                  onEditNote={openNoteEditor}
                 />
               ))}
             </SortableContext>
@@ -738,6 +817,8 @@ export default function EquipmentList({
           />
         ) : null}
       </DragOverlay>
+
+      <EquipmentNoteModal units={noteUnits} onClose={() => setNoteUnits(null)} onApply={applyNote} />
     </DndContext>
   );
 }

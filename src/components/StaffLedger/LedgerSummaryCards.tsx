@@ -1,10 +1,12 @@
 // src/components/StaffLedger/LedgerSummaryCards.tsx
 'use client';
-import { Group, Paper, Text, Badge } from '@mantine/core';
+import { Group, Paper, Text, Badge, Tooltip } from '@mantine/core';
 import { formatPrice } from '@/utils/priceUtils';
 
-type AdminSummary = { pendingToDate: number; favor: number; futureTotal: number; missingAmount: number; balance: number };
-type EmployeeSummary = { pendingToDate: number; favor: number; nextMonthTotal: number; missingAmount: number };
+// Sin monto: los de hoy/pasados (amarillo, hay que cargarlos) y los próximos (celeste, informativo)
+type MissingCounts = { missingAmountToDate: number; missingAmountFuture: number };
+type AdminSummary = MissingCounts & { pendingToDate: number; favor: number; futureTotal: number; balance: number };
+type EmployeeSummary = MissingCounts & { pendingToDate: number; favor: number; nextMonthTotal: number };
 
 function Card({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
@@ -21,10 +23,24 @@ export default function LedgerSummaryCards(
   const { summary } = props;
   // El pendiente se resalta: es lo que hay que pagar / cobrar ya
   const pendingColor = summary.pendingToDate > 0 ? 'orange' : 'teal';
-  const missing = summary.missingAmount > 0 && (
-    <Badge color='yellow' variant='light' size='lg'>
-      {summary.missingAmount} {summary.missingAmount === 1 ? 'evento sin monto' : 'eventos sin monto'}
-    </Badge>
+  const { missingAmountToDate: toDate, missingAmountFuture: future } = summary;
+  const missing = (toDate > 0 || future > 0) && (
+    <>
+      {toDate > 0 && (
+        <Tooltip label='Eventos de hoy o pasados que todavía no tienen monto cargado'>
+          <Badge color='yellow' variant='light' size='lg'>
+            {toDate} {toDate === 1 ? 'evento sin monto' : 'eventos sin monto'}
+          </Badge>
+        </Tooltip>
+      )}
+      {future > 0 && (
+        <Tooltip label='Eventos que todavía no ocurrieron y no tienen monto (informativo)'>
+          <Badge color='cyan' variant='light' size='lg'>
+            {future} {future === 1 ? 'próximo sin monto' : 'próximos sin monto'}
+          </Badge>
+        </Tooltip>
+      )}
+    </>
   );
 
   return (
@@ -40,7 +56,7 @@ export default function LedgerSummaryCards(
       ) : (
         <Card label='Estimado próximo mes' value={formatPrice(props.summary.nextMonthTotal)} />
       )}
-      {missing && <Group align='center'>{missing}</Group>}
+      {missing && <Group align='center' gap='xs'>{missing}</Group>}
     </Group>
   );
 }

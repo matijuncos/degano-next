@@ -3,7 +3,7 @@ import { Modal, Stack, Paper, Text, Group, Button, Badge } from '@mantine/core';
 import { IconExternalLink, IconCalendarEvent, IconMapPin } from '@tabler/icons-react';
 import { BusyUse, formatUseRange } from '@/utils/equipmentAvailability';
 
-// Modal "¿Dónde está en uso?": lista las reservas que ocupan un equipo.
+// Modal de un equipo "En Uso": lista las reservas que ocupan un equipo.
 // Los datos vienen ya en el equipo (`busyWith`, del GET /api/equipment), así
 // que abre al instante sin hacer requests.
 export default function EquipmentBusyModal({
@@ -22,7 +22,7 @@ export default function EquipmentBusyModal({
       centered
       title={
         <Text fw={600}>
-          ¿Dónde está en uso? — {item?.name}
+          {item?.name}
           {item?.code ? ` (${item.code})` : ''}
         </Text>
       }

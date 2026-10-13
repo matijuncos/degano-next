@@ -23,7 +23,14 @@ export type MyLedgerResponse =
       fullName: string;
       charges: AllocatedCharge[];
       credits: Credit[];
-      summary: { pendingToDate: number; favor: number; nextMonthTotal: number; missingAmount: number };
+      summary: {
+        pendingToDate: number;
+        favor: number;
+        nextMonthTotal: number;
+        missingAmount: number;
+        missingAmountToDate: number;
+        missingAmountFuture: number;
+      };
       window: { from: string; to: string };
       policy: { fileName: string } | null;
     };
