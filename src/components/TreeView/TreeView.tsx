@@ -1,5 +1,6 @@
 // TreeView.tsx
 'use client';
+import { equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
 import useSWR from 'swr';
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, memo } from 'react';
 import { Button, Divider, Input, CloseButton, Loader, Flex } from '@mantine/core';
@@ -232,6 +233,7 @@ export default function TreeView({
   newEvent,
   eventStartDate,
   eventEndDate,
+  editingEventId,
   disableEditOnSelect = false,
   onApplySet
 }: {
@@ -242,6 +244,7 @@ export default function TreeView({
   newEvent: boolean;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  editingEventId?: string;
   disableEditOnSelect?: boolean;
   onApplySet?: () => void;
 }) {
@@ -253,9 +256,7 @@ export default function TreeView({
   );
 
   // Construir URL con parámetros de fecha si están presentes
-  const equipmentUrl = eventStartDate && eventEndDate
-    ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
-    : '/api/equipment';
+  const equipmentUrl = equipmentAvailabilityUrl(eventStartDate, eventEndDate, editingEventId);
 
   const { data: equipmentFullData = [], isLoading: isLoadingEquipment } = useSWR(equipmentUrl, fetcher);
 

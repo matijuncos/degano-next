@@ -17,7 +17,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { IconLayersLinked, IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
-import { isEquipmentUnavailable } from '@/utils/equipmentAvailability';
+import { isEquipmentUnavailable, equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
 import {
   computeConvertibleExtras,
   removeConvertedExtras
@@ -81,11 +81,11 @@ const EquipmentTable = () => {
   // (porque otro evento liberó equipos, se compró más, cambió de fecha, etc.).
   const availabilityUrl =
     selectedEvent?.date && selectedEvent?.endDate
-      ? `/api/equipment?eventStartDate=${new Date(
-          selectedEvent.date
-        ).toISOString()}&eventEndDate=${new Date(
-          selectedEvent.endDate
-        ).toISOString()}`
+      ? equipmentAvailabilityUrl(
+          selectedEvent.date,
+          selectedEvent.endDate,
+          selectedEvent._id
+        )
       : null;
   const { data: availableEquipment = [] } = useSWR<any[]>(
     availabilityUrl,
@@ -358,7 +358,7 @@ const EquipmentTable = () => {
           body: JSON.stringify({ paths: ['/equipment', '/api/equipment'] })
         }),
         mutate('/api/equipment'),
-        mutate('/api/equipment?eventStartDate=' + new Date(selectedEvent?.date || '').toISOString() + '&eventEndDate=' + new Date(selectedEvent?.endDate || '').toISOString()),
+        mutate(equipmentAvailabilityUrl(selectedEvent?.date, selectedEvent?.endDate, selectedEvent?._id)),
         mutate('/api/categories'),
         mutate('/api/categoryTreeData'),
         mutate('/api/treeData'),
@@ -410,6 +410,7 @@ const EquipmentTable = () => {
                 newEvent={true}
                 eventStartDate={selectedEvent?.date}
                 eventEndDate={selectedEvent?.endDate}
+                editingEventId={selectedEvent?._id}
                 disableEditOnSelect={true}
                 onApplySet={() => setApplySetModalOpen(true)}
               />
@@ -436,6 +437,7 @@ const EquipmentTable = () => {
                 newEvent={true}
                 eventStartDate={selectedEvent?.date}
                 eventEndDate={selectedEvent?.endDate}
+                editingEventId={selectedEvent?._id}
                 selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
                 refreshTrigger={refreshTrigger}
                 onAddNegative={handleAddNegative}
@@ -513,6 +515,7 @@ const EquipmentTable = () => {
               newEvent={true}
               eventStartDate={selectedEvent?.date}
               eventEndDate={selectedEvent?.endDate}
+              editingEventId={selectedEvent?._id}
               disableEditOnSelect={true}
               onApplySet={() => setApplySetModalOpen(true)}
             />
@@ -557,6 +560,7 @@ const EquipmentTable = () => {
               newEvent={true}
               eventStartDate={selectedEvent?.date}
               eventEndDate={selectedEvent?.endDate}
+              editingEventId={selectedEvent?._id}
               selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
               refreshTrigger={refreshTrigger}
               onAddNegative={handleAddNegative}
@@ -614,6 +618,7 @@ const EquipmentTable = () => {
         onClose={() => setApplySetModalOpen(false)}
         eventStartDate={selectedEvent?.date}
         eventEndDate={selectedEvent?.endDate}
+        editingEventId={selectedEvent?._id}
         selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
         onApply={(items) => handleEquipmentSelection(items)}
       />

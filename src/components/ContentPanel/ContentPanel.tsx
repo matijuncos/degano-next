@@ -1,5 +1,6 @@
 // ContentPanel.tsx
 'use client';
+import { equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
 import useSWR, { mutate } from 'swr';
 import {
   Table,
@@ -24,6 +25,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDragSelect } from '@/hooks/useDragSelect';
 import { summarizeSelection, SelectableEntry } from '@/utils/rowSelection';
 import { pickUnitsForSelection } from '@/utils/equipmentGroupUtils';
+import EquipmentBusyModal from '@/components/EquipmentBusyModal/EquipmentBusyModal';
 
 export default function ContentPanel({
   selectedCategory,
@@ -36,6 +38,7 @@ export default function ContentPanel({
   newEvent,
   eventStartDate,
   eventEndDate,
+  editingEventId,
   selectedEquipmentIds = [],
   refreshTrigger = 0,
   onAddNegative,
@@ -53,6 +56,8 @@ export default function ContentPanel({
   newEvent: boolean;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  // Evento que se está editando (sus reservas fantasma no bloquean)
+  editingEventId?: string;
   selectedEquipmentIds?: string[];
   refreshTrigger?: number;
   // Agrega N unidades "negativas" (a tercerizar) para un nombre de equipo.
@@ -96,11 +101,9 @@ export default function ContentPanel({
   }, [selectedCategory?._id]);
 
   useEffect(() => {
-    const url = eventStartDate && eventEndDate
-      ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
-      : '/api/equipment';
+    const url = equipmentAvailabilityUrl(eventStartDate, eventEndDate, editingEventId);
     setEquipmentUrl(url);
-  }, [eventStartDate, eventEndDate]);
+  }, [eventStartDate, eventEndDate, editingEventId]);
 
   useEffect(() => {
     if (!equipmentUrl) return;
@@ -123,6 +126,33 @@ export default function ContentPanel({
   }, [equipmentUrl, refreshTrigger]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // Equipo cuyo "En Uso" se clickeó (modal "¿Dónde está en uso?")
+  const [busyItem, setBusyItem] = useState<any>(null);
+
+  // Celda de Estado: si está "En Uso" se puede clickear para ver dónde
+  const renderStatusCell = (item: any, status: { label: string; color: string }) => {
+    const isBusy = status.label === 'En Uso';
+    return (
+      <td
+        style={{
+          color: status.color,
+          padding: '0 5px',
+          ...(isBusy && { textDecoration: 'underline dotted', cursor: 'pointer' })
+        }}
+        title={isBusy ? 'Ver dónde está en uso' : undefined}
+        onClick={
+          isBusy
+            ? (e) => {
+                e.stopPropagation();
+                setBusyItem(item);
+              }
+            : undefined
+        }
+      >
+        {status.label}
+      </td>
+    );
+  };
   const [equipmentToDelete, setEquipmentToDelete] = useState<any>(null);
 
   const children = categories.filter((cat: any) => cat.parentId === selectedCategory?._id);
@@ -471,7 +501,7 @@ export default function ContentPanel({
             <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
             <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
             <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
-            <td style={{ color: status.color, padding: '0 5px' }}>{status.label}</td>
+            {renderStatusCell(item, status)}
             <td style={{ padding: '0 5px', textAlign: 'center' }}>
               {item.propiedad === 'Alquilado' && (
                 <Tooltip label='Eliminar equipo alquilado'>
@@ -506,7 +536,7 @@ export default function ContentPanel({
           <td style={{ padding: '0 5px' }}>{item.serialNumber}</td>
           <td style={{ padding: '0 5px' }}>{item.propiedad || 'Degano'}</td>
           <td style={{ padding: '0 5px' }}>{item.location || '-'}</td>
-          <td style={{ color: status.color, padding: '0 5px' }}>{status.label}</td>
+          {renderStatusCell(item, status)}
         </tr>
       );
     }
@@ -723,6 +753,8 @@ export default function ContentPanel({
           <Button color='red' onClick={confirmDelete}>Eliminar</Button>
         </Group>
       </Modal>
+
+      <EquipmentBusyModal item={busyItem} onClose={() => setBusyItem(null)} />
     </Box>
   );
 }

@@ -73,8 +73,20 @@ export function hasScheduleConflict(
   scheduledUses?: ScheduledUse[] | null,
   options?: { ignoreEventId?: string }
 ): boolean {
-  const uses = scheduledUses || [];
-  return uses.some((use) => {
+  return conflictingUses(eventStart, eventEnd, scheduledUses, options).length > 0;
+}
+
+/**
+ * Las reservas que ocupan el equipo en el rango pedido (misma regla que
+ * `hasScheduleConflict`). Sirve para mostrar DÓNDE está en uso.
+ */
+export function conflictingUses(
+  eventStart: Date | string,
+  eventEnd: Date | string,
+  scheduledUses?: ScheduledUse[] | null,
+  options?: { ignoreEventId?: string }
+): ScheduledUse[] {
+  return (scheduledUses || []).filter((use) => {
     if (!use) return false;
     if (
       options?.ignoreEventId &&
@@ -85,4 +97,82 @@ export function hasScheduleConflict(
     }
     return rangesOverlap(eventStart, eventEnd, use.startDate, use.endDate);
   });
+}
+
+/**
+ * Reservas en curso en este momento (empezaron y no terminaron, bordes
+ * incluidos). Es el "En Uso" de la vista general, sin fechas de evento.
+ */
+export function usesInProgress(
+  scheduledUses?: ScheduledUse[] | null,
+  now: Date = new Date()
+): ScheduledUse[] {
+  const t = now.getTime();
+  return (scheduledUses || []).filter(
+    (use) =>
+      !!use &&
+      new Date(use.startDate).getTime() <= t &&
+      new Date(use.endDate).getTime() >= t
+  );
+}
+
+/** Reserva que ocupa un equipo, tal como la ve el modal "¿Dónde está en uso?" */
+export interface BusyUse {
+  eventId: string;
+  eventType?: string;
+  clientName?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+}
+
+// Hora argentina fija (UTC-03:00), igual que el resto de la app. Se arma a
+// mano porque toLocaleDateString cambia el formato según el navegador.
+const AR_OFFSET_MS = -3 * 60 * 60 * 1000;
+const WEEKDAYS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Rango legible en hora argentina, ej. "sáb 07/11 18:30 → dom 08/11 04:00".
+ * Si termina el mismo día: "dom 08/11 13:00 → 18:00".
+ */
+export function formatUseRange(start: Date | string, end: Date | string): string {
+  const ar = (v: Date | string) => new Date(new Date(v).getTime() + AR_OFFSET_MS);
+  const day = (d: Date) =>
+    `${WEEKDAYS[d.getUTCDay()]} ${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`;
+  const time = (d: Date) => `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  const s = ar(start);
+  const e = ar(end);
+  const sameDay = day(s) === day(e);
+  return `${day(s)} ${time(s)} → ${sameDay ? '' : day(e) + ' '}${time(e)}`;
+}
+
+/**
+ * Al editar un evento, ¿qué reserva hay que ignorar para este equipo?
+ * Solo la del propio evento, y solo si el equipo NO está guardado en él: esa
+ * reserva es una fantasma (quedó de una edición anterior) y no debe bloquear
+ * volver a agregarlo. Si el equipo sí está en el evento se sigue mostrando
+ * "En Evento" como siempre (no cambian los conteos de stock en pantalla).
+ */
+export function ghostEventIdToIgnore(
+  equipmentId: string,
+  eventId: string | null | undefined,
+  savedEventEquipmentIds: Set<string>
+): string | undefined {
+  if (!eventId) return undefined;
+  return savedEventEquipmentIds.has(String(equipmentId)) ? undefined : eventId;
+}
+
+/**
+ * URL de `/api/equipment` en modo evento. `eventId` (opcional) es el evento
+ * que se está editando; sin fechas devuelve la URL general.
+ */
+export function equipmentAvailabilityUrl(
+  eventStartDate?: Date | string | null,
+  eventEndDate?: Date | string | null,
+  eventId?: string | null
+): string {
+  if (!eventStartDate || !eventEndDate) return '/api/equipment';
+  const base = `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`;
+  return eventId ? `${base}&excludeEventId=${encodeURIComponent(eventId)}` : base;
 }

@@ -8,6 +8,7 @@ export default function Sidebar({
   newEvent,
   eventStartDate,
   eventEndDate,
+  editingEventId,
   disableEditOnSelect = false,
   onApplySet
 }: {
@@ -18,6 +19,8 @@ export default function Sidebar({
   newEvent: boolean;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  // Evento que se está editando (sus reservas fantasma no bloquean)
+  editingEventId?: string;
   disableEditOnSelect?: boolean;
   onApplySet?: () => void;
 }) {
@@ -45,6 +48,7 @@ export default function Sidebar({
         newEvent={newEvent}
         eventStartDate={eventStartDate}
         eventEndDate={eventEndDate}
+        editingEventId={editingEventId}
         disableEditOnSelect={disableEditOnSelect}
         onApplySet={onApplySet}
       />

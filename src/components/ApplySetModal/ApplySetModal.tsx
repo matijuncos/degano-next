@@ -1,4 +1,5 @@
 'use client';
+import { equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
 import {
   Modal, Stack, Text, Group, Button, Badge,
   ScrollArea, Box, Divider, Loader, Center
@@ -19,6 +20,7 @@ interface ApplySetModalProps {
   onClose: () => void;
   eventStartDate?: Date | string;
   eventEndDate?: Date | string;
+  editingEventId?: string;
   selectedEquipmentIds: string[];
   onApply: (items: any[]) => void;
 }
@@ -28,6 +30,7 @@ export default function ApplySetModal({
   onClose,
   eventStartDate,
   eventEndDate,
+  editingEventId,
   selectedEquipmentIds,
   onApply
 }: ApplySetModalProps) {
@@ -48,11 +51,7 @@ export default function ApplySetModal({
       try {
         const [setsRes, eqRes] = await Promise.all([
           fetch('/api/equipmentSets').then((r) => r.json()),
-          fetch(
-            eventStartDate && eventEndDate
-              ? `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`
-              : '/api/equipment'
-          ).then((r) => r.json())
+          fetch(equipmentAvailabilityUrl(eventStartDate, eventEndDate, editingEventId)).then((r) => r.json())
         ]);
         setSets(setsRes);
         setAllEquipment(Array.isArray(eqRes) ? eqRes : []);
@@ -61,7 +60,7 @@ export default function ApplySetModal({
       }
     };
     load();
-  }, [opened, eventStartDate, eventEndDate]);
+  }, [opened, eventStartDate, eventEndDate, editingEventId]);
 
   const handleSelectSet = (set: EquipmentSet) => {
     setSelectedSet(set);
