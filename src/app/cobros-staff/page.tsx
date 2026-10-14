@@ -48,7 +48,6 @@ function EmployeeList({ selected, onSelect }: { selected: string | null; onSelec
           rightSection={
             <Group gap={4} wrap='nowrap'>
               {r.summary.missingAmountToDate > 0 && <Badge size='xs' color='yellow' variant='light'>{r.summary.missingAmountToDate} sin monto</Badge>}
-              {r.summary.missingAmountFuture > 0 && <Badge size='xs' color='cyan' variant='light'>{r.summary.missingAmountFuture} próx.</Badge>}
               {r.summary.pendingToDate > 0 ? (
                 <Badge color='orange' variant='light'>{formatPrice(r.summary.pendingToDate)}</Badge>
               ) : r.summary.favor > 0 ? (

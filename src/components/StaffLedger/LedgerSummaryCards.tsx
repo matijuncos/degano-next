@@ -51,9 +51,8 @@ export default function LedgerSummaryCards(
         color={pendingColor}
       />
       {summary.favor > 0 && <Card label='Saldo a favor' value={formatPrice(summary.favor)} color='blue' />}
-      {props.mode === 'admin' ? (
-        <Card label='Total futuro' value={formatPrice(props.summary.futureTotal)} />
-      ) : (
+      {/* Lo futuro del admin NO va en tarjeta: está en el bloque "Próximos" de la tabla */}
+      {props.mode === 'employee' && (
         <Card label='Estimado próximo mes' value={formatPrice(props.summary.nextMonthTotal)} />
       )}
       {missing && <Group align='center' gap='xs'>{missing}</Group>}

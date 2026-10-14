@@ -474,6 +474,26 @@ export function inWindow(date: string | Date, w: { from: Date; to: Date }) {
   return t >= w.from.getTime() && t <= w.to.getTime();
 }
 
+// Separa movimientos en "próximos" (fecha > hoy, día AR) y "hoy y pasados".
+// Es el corte de la tabla: lo próximo va en un bloque aparte, plegado.
+export function splitByToday<T extends { date: string }>(
+  items: T[],
+  now: Date
+): { upcoming: T[]; current: T[] } {
+  const today = arDay(now) as string;
+  const upcoming: T[] = [];
+  const current: T[] = [];
+  for (const it of items) ((arDay(it.date) as string) > today ? upcoming : current).push(it);
+  return { upcoming, current };
+}
+
+// Lo que falta pagar de una lista de cargos (sin contar los sin monto).
+export function unpaidTotal(charges: { amount: number | null; paidAmount: number }[]): number {
+  return round2(
+    charges.reduce((s, c) => (c.amount == null ? s : s + Math.max(0, c.amount - c.paidAmount)), 0)
+  );
+}
+
 // Estado para mostrar: un cargo futuro impago todavía no está "pendiente"; uno
 // futuro ya pagado (con su tilde) está "adelantado".
 export function displayStatus(c: AllocatedCharge, now: Date): DisplayStatus {

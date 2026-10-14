@@ -25,7 +25,9 @@ import {
   normalizeEventStaff,
   LedgerEntry,
   StaffEvent,
-  countMissingAmount
+  countMissingAmount,
+  splitByToday,
+  unpaidTotal
 } from './staffLedger';
 
 const EMP = 'emp1';
@@ -564,5 +566,32 @@ describe('normalizeEventStaff', () => {
     ]);
     expect(normalizeEventStaff(undefined)).toEqual([]);
     expect(normalizeEventStaff({ $ne: 1 })).toEqual([]);
+  });
+});
+
+describe('splitByToday', () => {
+  const now = new Date('2026-10-14T15:00:00.000Z'); // 12:00 AR
+  it('hoy y pasados van a current; mañana (día AR) a upcoming', () => {
+    const items = [
+      { id: 'pasado', date: '2026-10-01T23:00:00.000Z' },
+      { id: 'hoy-noche', date: '2026-10-15T02:00:00.000Z' }, // 14/10 23:00 AR
+      { id: 'mañana', date: '2026-10-15T13:00:00.000Z' }
+    ];
+    const r = splitByToday(items, now);
+    expect(r.current.map((x) => x.id)).toEqual(['pasado', 'hoy-noche']);
+    expect(r.upcoming.map((x) => x.id)).toEqual(['mañana']);
+  });
+});
+
+describe('unpaidTotal', () => {
+  it('suma lo que falta pagar e ignora los sin monto', () => {
+    expect(
+      unpaidTotal([
+        { amount: 1000, paidAmount: 0 },
+        { amount: 500, paidAmount: 500 },
+        { amount: 800, paidAmount: 300 },
+        { amount: null, paidAmount: 0 }
+      ])
+    ).toBe(1500);
   });
 });

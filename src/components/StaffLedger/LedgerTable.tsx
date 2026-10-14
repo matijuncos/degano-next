@@ -1,7 +1,7 @@
 // src/components/StaffLedger/LedgerTable.tsx
 'use client';
 import { useMemo, useState } from 'react';
-import { Table, Text, Badge, NumberInput, TextInput, Group, ActionIcon, Tooltip, Stack, Loader, Checkbox, Popover, Button, Collapse, UnstyledButton } from '@mantine/core';
+import { Table, Text, Badge, NumberInput, TextInput, Group, ActionIcon, Tooltip, Stack, Loader, Checkbox, Popover, Button, Collapse, UnstyledButton, Paper } from '@mantine/core';
 import { IconPencil, IconTrash, IconAlertTriangle, IconChevronDown } from '@tabler/icons-react';
 import { formatPrice } from '@/utils/priceUtils';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
@@ -12,6 +12,8 @@ import {
   DisplayStatus,
   arDay,
   displayStatus,
+  splitByToday,
+  unpaidTotal,
   tickState,
   round2,
   PaymentMethod,
@@ -31,8 +33,8 @@ const STATUS: Record<DisplayStatus, { label: string; color: string; variant?: st
   pagado: { label: 'Pagado', color: 'teal' },
   parcial: { label: 'Parcial', color: 'yellow' },
   pendiente: { label: 'A pagar', color: 'orange' },
-  futuro: { label: 'Futuro', color: 'gray' },
-  adelantado: { label: 'Adelantado', color: 'blue' },
+  futuro: { label: 'Próximo', color: 'gray' },
+  adelantado: { label: 'Pagado por adelantado', color: 'blue' },
   sin_monto: { label: 'Sin monto', color: 'gray', variant: 'outline' }
 };
 
@@ -57,6 +59,7 @@ export default function LedgerTable({
   credits,
   now,
   editable = false,
+  showHours = true,
   onAmountSave,
   onRolSave,
   onEditCredit,
@@ -69,6 +72,8 @@ export default function LedgerTable({
   credits: Credit[];
   now: Date;
   editable?: boolean;
+  // Columna Horas: solo admin (el empleado no ve las horas)
+  showHours?: boolean;
   // Devuelve si se guardó; si no, la fila vuelve a mostrar el valor del servidor
   onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
   // Rol en el evento (se guarda en el evento). Devuelve si se guardó.
@@ -97,125 +102,184 @@ export default function LedgerTable({
   // Para mostrar en cada abono del tilde qué línea pagó
   const labelByKey = useMemo(() => new Map(charges.map((c) => [c.key, c.label])), [charges]);
 
-  // Agrupado por mes, más nuevo arriba. Subtotal = lo generado en el mes.
-  const months = useMemo(() => {
-    const rows: Row[] = [
-      ...charges.map((c) => ({ kind: 'charge' as const, date: c.date, charge: c })),
-      ...credits.map((c) => ({ kind: 'credit' as const, date: c.date, credit: c }))
-    ].sort((a, b) => b.date.localeCompare(a.date));
-    const map = new Map<string, Row[]>();
-    for (const r of rows) {
-      const m = (arDay(r.date) as string).slice(0, 7);
-      map.set(m, [...(map.get(m) ?? []), r]);
-    }
-    return [...map.entries()];
-  }, [charges, credits]);
+  // Lo próximo (fecha > hoy) va en un bloque aparte, plegado y SIN montos a la
+  // vista: lo primero que se ve es solo lo que corresponde pagar hoy.
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const split = useMemo(() => {
+    const ch = splitByToday(charges, now);
+    const cr = splitByToday(credits, now);
+    return {
+      upcoming: groupByMonth(ch.upcoming, cr.upcoming),
+      current: groupByMonth(ch.current, cr.current),
+      upcomingCount: ch.upcoming.length + cr.upcoming.length,
+      upcomingUnpaid: unpaidTotal(ch.upcoming)
+    };
+  }, [charges, credits, now]);
 
-  if (!months.length) {
+  if (!split.upcoming.length && !split.current.length) {
     return <Text c='dimmed' ta='center' py='lg'>No hay movimientos en este período.</Text>;
   }
+
+  // `prefix` separa el estado abierto/cerrado de cada bloque: un mismo mes
+  // puede tener días pasados y días próximos.
+  const renderMonths = (months: [string, Row[]][], prefix: string, openByDefault: (ym: string) => boolean) =>
+    months.map(([ym, rows]) => {
+      const generated = rows.reduce(
+        (s, r) => (r.kind === 'charge' && r.charge.amount != null ? s + r.charge.amount : s),
+        0
+      );
+      const key = prefix + ym;
+      const open = openByDefault(ym) !== toggled.has(key);
+      return (
+        <div key={key}>
+          <UnstyledButton onClick={() => toggleMonth(key)} w='100%' mb={4} aria-expanded={open}>
+            <Group justify='space-between'>
+              <Group gap={6}>
+                <IconChevronDown
+                  size={18}
+                  style={{ transform: open ? undefined : 'rotate(-90deg)', transition: 'transform 150ms' }}
+                />
+                <Text fw={700} tt='capitalize'>{monthTitle(ym)}</Text>
+                {!open && <Text size='xs' c='dimmed'>({rows.length} {rows.length === 1 ? 'movimiento' : 'movimientos'})</Text>}
+              </Group>
+              <Text size='sm' c='dimmed'>Generado: {formatPrice(generated)}</Text>
+            </Group>
+          </UnstyledButton>
+          <Collapse in={open}>
+          <Table.ScrollContainer minWidth={640}>
+            <Table striped withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Fecha</Table.Th>
+                  <Table.Th>Concepto</Table.Th>
+                  <Table.Th>Rol</Table.Th>
+                  {showHours && <Table.Th>Horas</Table.Th>}
+                  <Table.Th>Monto</Table.Th>
+                  {editable && <Table.Th>Pagado</Table.Th>}
+                  <Table.Th>Estado</Table.Th>
+                  {editable && <Table.Th />}
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.map((r) =>
+                  r.kind === 'charge' ? (
+                    <ChargeRow
+                      key={r.charge.key}
+                      charge={r.charge}
+                      now={now}
+                      editable={editable}
+                      showHours={showHours}
+                      onAmountSave={onAmountSave}
+                      onRolSave={onRolSave}
+                      onEditExtra={onEditExtra}
+                      onDeleteEntry={onDeleteEntry}
+                      onTick={onTick}
+                      onUntick={onUntick}
+                      confirm={confirm}
+                    />
+                  ) : (
+                    <Table.Tr key={r.credit.entryId} style={{ background: 'var(--mantine-color-blue-light)' }}>
+                      <Table.Td>{dayLabel(r.credit.date)}</Table.Td>
+                      <Table.Td>
+                        <Text size='sm' fw={500}>{CREDIT_TYPE_LABELS[r.credit.kind]}</Text>
+                        <Text size='xs' c='dimmed'>
+                          {r.credit.method ? PAYMENT_METHOD_LABELS[r.credit.method] : ''}
+                          {r.credit.chargeKey ? ` · ${labelByKey.get(r.credit.chargeKey) ?? 'línea'}` : ''}
+                          {r.credit.description ? ` · ${r.credit.description}` : ''}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td />
+                      {showHours && <Table.Td />}
+                      <Table.Td>− {formatPrice(r.credit.amount)}</Table.Td>
+                      {editable && <Table.Td />}
+                      <Table.Td />
+                      {editable && (
+                        <Table.Td>
+                          <Group gap={4} wrap='nowrap'>
+                            <ActionIcon variant='subtle' onClick={() => onEditCredit?.(r.credit)} aria-label='Editar'>
+                              <IconPencil size={16} />
+                            </ActionIcon>
+                            <ActionIcon variant='subtle' color='red' onClick={() => onDeleteEntry?.(r.credit.entryId)} aria-label='Borrar'>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
+                        </Table.Td>
+                      )}
+                    </Table.Tr>
+                  )
+                )}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+          </Collapse>
+        </div>
+      );
+    });
 
   return (
     <Stack gap='lg'>
       {confirmModal}
-      {months.map(([ym, rows]) => {
-        const generated = rows.reduce(
-          (s, r) => (r.kind === 'charge' && r.charge.amount != null ? s + r.charge.amount : s),
-          0
-        );
-        const open = (ym === currentMonth) !== toggled.has(ym);
-        return (
-          <div key={ym}>
-            <UnstyledButton onClick={() => toggleMonth(ym)} w='100%' mb={4} aria-expanded={open}>
-              <Group justify='space-between'>
-                <Group gap={6}>
-                  <IconChevronDown
-                    size={18}
-                    style={{ transform: open ? undefined : 'rotate(-90deg)', transition: 'transform 150ms' }}
-                  />
-                  <Text fw={700} tt='capitalize'>{monthTitle(ym)}</Text>
-                  {!open && <Text size='xs' c='dimmed'>({rows.length} {rows.length === 1 ? 'movimiento' : 'movimientos'})</Text>}
-                </Group>
-                <Text size='sm' c='dimmed'>Generado: {formatPrice(generated)}</Text>
+
+      {split.upcomingCount > 0 && (
+        <Paper withBorder radius='md' p='sm'>
+          <UnstyledButton onClick={() => setUpcomingOpen((o) => !o)} w='100%' aria-expanded={upcomingOpen}>
+            <Group gap={6}>
+              <IconChevronDown
+                size={18}
+                style={{ transform: upcomingOpen ? undefined : 'rotate(-90deg)', transition: 'transform 150ms' }}
+              />
+              <Text fw={700}>Próximos ({split.upcomingCount})</Text>
+              <Text size='xs' c='dimmed'>
+                {upcomingOpen ? 'Todavía no se deben' : 'Todavía no se deben · click para ver'}
+              </Text>
+            </Group>
+          </UnstyledButton>
+          <Collapse in={upcomingOpen}>
+            {/* Apagado: no compite con lo que hay que pagar hoy */}
+            <Stack gap='lg' mt='sm' style={{ opacity: 0.7 }}>
+              <Text size='xs' c='dimmed'>
+                Eventos y cargos que todavía no ocurrieron. Se pagan cuando llega su fecha
+                {editable ? ' (o se pueden adelantar con el tilde de “Pagado”).' : '.'}
+              </Text>
+              {renderMonths(split.upcoming, 'up:', () => true)}
+              <Group justify='flex-end'>
+                <Text size='sm' c='dimmed'>
+                  Total próximo sin pagar: <b>{formatPrice(split.upcomingUnpaid)}</b>
+                </Text>
               </Group>
-            </UnstyledButton>
-            <Collapse in={open}>
-            <Table.ScrollContainer minWidth={640}>
-              <Table striped withTableBorder>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Fecha</Table.Th>
-                    <Table.Th>Concepto</Table.Th>
-                    <Table.Th>Rol</Table.Th>
-                    <Table.Th>Horas</Table.Th>
-                    <Table.Th>Monto</Table.Th>
-                    {editable && <Table.Th>Pagado</Table.Th>}
-                    <Table.Th>Estado</Table.Th>
-                    {editable && <Table.Th />}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {rows.map((r) =>
-                    r.kind === 'charge' ? (
-                      <ChargeRow
-                        key={r.charge.key}
-                        charge={r.charge}
-                        now={now}
-                        editable={editable}
-                        onAmountSave={onAmountSave}
-                        onRolSave={onRolSave}
-                        onEditExtra={onEditExtra}
-                        onDeleteEntry={onDeleteEntry}
-                        onTick={onTick}
-                        onUntick={onUntick}
-                        confirm={confirm}
-                      />
-                    ) : (
-                      <Table.Tr key={r.credit.entryId} style={{ background: 'var(--mantine-color-blue-light)' }}>
-                        <Table.Td>{dayLabel(r.credit.date)}</Table.Td>
-                        <Table.Td>
-                          <Text size='sm' fw={500}>{CREDIT_TYPE_LABELS[r.credit.kind]}</Text>
-                          <Text size='xs' c='dimmed'>
-                            {r.credit.method ? PAYMENT_METHOD_LABELS[r.credit.method] : ''}
-                            {r.credit.chargeKey ? ` · ${labelByKey.get(r.credit.chargeKey) ?? 'línea'}` : ''}
-                            {r.credit.description ? ` · ${r.credit.description}` : ''}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td />
-                        <Table.Td />
-                        <Table.Td>− {formatPrice(r.credit.amount)}</Table.Td>
-                        {editable && <Table.Td />}
-                        <Table.Td />
-                        {editable && (
-                          <Table.Td>
-                            <Group gap={4} wrap='nowrap'>
-                              <ActionIcon variant='subtle' onClick={() => onEditCredit?.(r.credit)} aria-label='Editar'>
-                                <IconPencil size={16} />
-                              </ActionIcon>
-                              <ActionIcon variant='subtle' color='red' onClick={() => onDeleteEntry?.(r.credit.entryId)} aria-label='Borrar'>
-                                <IconTrash size={16} />
-                              </ActionIcon>
-                            </Group>
-                          </Table.Td>
-                        )}
-                      </Table.Tr>
-                    )
-                  )}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-            </Collapse>
-          </div>
-        );
-      })}
+            </Stack>
+          </Collapse>
+        </Paper>
+      )}
+
+      {split.current.length > 0 ? (
+        renderMonths(split.current, '', (ym) => ym === currentMonth)
+      ) : (
+        <Text c='dimmed' ta='center' py='md'>No hay movimientos hasta hoy.</Text>
+      )}
     </Stack>
   );
+}
+
+// Agrupado por mes, más nuevo arriba.
+function groupByMonth(charges: AllocatedCharge[], credits: Credit[]): [string, Row[]][] {
+  const rows: Row[] = [
+    ...charges.map((c) => ({ kind: 'charge' as const, date: c.date, charge: c })),
+    ...credits.map((c) => ({ kind: 'credit' as const, date: c.date, credit: c }))
+  ].sort((a, b) => b.date.localeCompare(a.date));
+  const map = new Map<string, Row[]>();
+  for (const r of rows) {
+    const m = (arDay(r.date) as string).slice(0, 7);
+    map.set(m, [...(map.get(m) ?? []), r]);
+  }
+  return [...map.entries()];
 }
 
 function ChargeRow({
   charge,
   now,
   editable,
+  showHours,
   onAmountSave,
   onRolSave,
   onEditExtra,
@@ -227,6 +291,7 @@ function ChargeRow({
   charge: AllocatedCharge;
   now: Date;
   editable: boolean;
+  showHours: boolean;
   confirm: ConfirmFn;
   onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
   onRolSave?: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
@@ -281,7 +346,7 @@ function ChargeRow({
           charge.rol ?? '—'
         )}
       </Table.Td>
-      <Table.Td>{charge.hours != null ? `${charge.hours} h` : '—'}</Table.Td>
+      {showHours && <Table.Td>{charge.hours != null ? `${charge.hours} h` : '—'}</Table.Td>}
       <Table.Td>
         {editable && charge.kind === 'evento' ? (
           // key con el monto: si el servidor devuelve otro valor, el input se re-monta

@@ -27,7 +27,7 @@ export default withPageAuthRequired(function MisCobrosPage() {
         </div>
         <LedgerSummaryCards mode='employee' summary={data.summary} />
         <PolicySection employeeId={data.employeeId} policy={data.policy} canManage={false} />
-        <LedgerTable charges={data.charges} credits={data.credits} now={now} />
+        <LedgerTable charges={data.charges} credits={data.credits} now={now} showHours={false} />
       </Stack>
     </Box>
   );
