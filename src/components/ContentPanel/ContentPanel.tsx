@@ -1,6 +1,7 @@
 // ContentPanel.tsx
 'use client';
 import { equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
+import { EQUIPMENT_SWR_OPTS } from '@/hooks/useEquipmentStatusMap';
 import useSWR, { mutate } from 'swr';
 import {
   Table,
@@ -27,6 +28,12 @@ import { useDragSelect } from '@/hooks/useDragSelect';
 import { summarizeSelection, SelectableEntry } from '@/utils/rowSelection';
 import { pickUnitsForSelection } from '@/utils/equipmentGroupUtils';
 import EquipmentBusyModal from '@/components/EquipmentBusyModal/EquipmentBusyModal';
+
+const equipmentFetcher = async (url: string) => {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Error al cargar el equipamiento');
+  return res.json();
+};
 
 export default function ContentPanel({
   selectedCategory,
@@ -89,9 +96,25 @@ export default function ContentPanel({
     return { label: 'Disponible', color: 'green' };
   };
 
-  const [equipment, setEquipment] = useState<any[]>([]);
-  const [isLoadingEquipment, setIsLoadingEquipment] = useState(false);
-  const [equipmentUrl, setEquipmentUrl] = useState<string>('');
+  // Equipos (con disponibilidad si hay fechas de evento). PERF: misma clave
+  // SWR que TreeView → una sola request compartida (antes eran dos idénticas).
+  const equipmentUrl = equipmentAvailabilityUrl(eventStartDate, eventEndDate, editingEventId);
+  const {
+    data: equipmentData,
+    isLoading: isLoadingEquipment,
+    mutate: mutateEquipment
+  } = useSWR(equipmentUrl, equipmentFetcher, EQUIPMENT_SWR_OPTS);
+  const equipment: any[] = Array.isArray(equipmentData) ? equipmentData : [];
+
+  // refreshTrigger: el padre pide recargar (ej. después de guardar)
+  const firstRefresh = useRef(true);
+  useEffect(() => {
+    if (firstRefresh.current) {
+      firstRefresh.current = false;
+      return;
+    }
+    mutateEquipment();
+  }, [refreshTrigger, mutateEquipment]);
 
   // Mapa de cantidades por nombre de equipo (para el selector de cantidad en newEvent)
   const [quantityMap, setQuantityMap] = useState<Record<string, number>>({});
@@ -100,31 +123,6 @@ export default function ContentPanel({
   useEffect(() => {
     setQuantityMap({});
   }, [selectedCategory?._id]);
-
-  useEffect(() => {
-    const url = equipmentAvailabilityUrl(eventStartDate, eventEndDate, editingEventId);
-    setEquipmentUrl(url);
-  }, [eventStartDate, eventEndDate, editingEventId]);
-
-  useEffect(() => {
-    if (!equipmentUrl) return;
-    const fetchEquipment = async () => {
-      setIsLoadingEquipment(true);
-      try {
-        const response = await fetch(equipmentUrl, {
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        });
-        const data = await response.json();
-        setEquipment(data);
-      } catch (error) {
-        console.error('Error fetching equipment:', error);
-      } finally {
-        setIsLoadingEquipment(false);
-      }
-    };
-    fetchEquipment();
-  }, [equipmentUrl, refreshTrigger]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   // Equipo cuyo "En Uso" se clickeó (modal "¿Dónde está en uso?")
@@ -240,9 +238,12 @@ export default function ContentPanel({
     clearDragSelection();
   };
 
-  if (selectedCategory) {
-    setDisableCreateEquipment(isItem);
-  }
+  // Avisar al padre si hay un equipo (no carpeta) seleccionado. En un efecto:
+  // hacerlo durante el render actualiza otro componente a mitad de render.
+  useEffect(() => {
+    if (selectedCategory) setDisableCreateEquipment(isItem);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, isItem]);
 
   const handleEquipmentClick = (item: any) => {
     if (item.categoryId) {

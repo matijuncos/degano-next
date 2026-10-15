@@ -15,6 +15,7 @@ import {
   ScheduledUse,
   BusyUse
 } from '@/utils/equipmentAvailability';
+import { stripPriceFields, PRICE_FIELDS } from '@/utils/equipmentPrices';
 
 // Función de cleanup en background (no bloquea la respuesta).
 // IMPORTANTE: todas las escrituras son atómicas en Mongo ($pull / update
@@ -211,7 +212,11 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
     return { ...eq, busyWith };
   });
 
-  return NextResponse.json(withBusy, {
+  // Precios: solo admin. A los demás no les llegan (regla de ofuscación).
+  const canViewPrices = getPermissions(context.role).canViewEquipmentPrices;
+  const response = canViewPrices ? withBusy : withBusy.map(stripPriceFields);
+
+  return NextResponse.json(response, {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
@@ -257,13 +262,22 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   const { _id, scheduledUses: _ignored, busyWith: _busy, ...rest } = body;
   const objectId = new ObjectId(String(_id));
 
+  // Precios: quien no los puede ver tampoco los puede pisar (su formulario
+  // los manda vacíos porque nunca le llegaron).
+  const canViewPrices = getPermissions(context.role).canViewEquipmentPrices;
+  if (!canViewPrices) for (const f of PRICE_FIELDS) delete rest[f];
+
   const oldItem = await db.collection('equipment').findOne({ _id: objectId });
 
   await db.collection('equipment').updateOne({ _id: objectId }, { $set: rest });
 
   // Detectar cambios y registrar en historial
   if (oldItem) {
-    const changes = detectEquipmentChanges(oldItem, rest);
+    // Sin permiso de precios, los precios no cambiaron: comparar con los viejos
+    const compared = canViewPrices
+      ? rest
+      : { ...rest, rentalPrice: oldItem.rentalPrice, investmentPrice: oldItem.investmentPrice };
+    const changes = detectEquipmentChanges(oldItem, compared);
 
     if (changes.length > 0) {
       const specialAction = determineSpecialAction(changes);
@@ -311,7 +325,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   const updatedItem = await db
     .collection('equipment')
     .findOne({ _id: objectId });
-  return NextResponse.json(updatedItem);
+  return NextResponse.json(updatedItem && !canViewPrices ? stripPriceFields(updatedItem) : updatedItem);
 }, { requiredPermission: 'canEditEquipment' });
 
 export const DELETE = withAuth(async (context: AuthContext, req: Request) => {

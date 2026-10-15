@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Modal, Group, Stack, TextInput, Text } from '@mantine/core';
+import { Button, Modal, Group, Stack, TextInput, Text, Select } from '@mantine/core';
+import { IVA_OPTIONS } from '@/utils/remitoLayout';
 import { IconFileInvoice, IconEye, IconDownload } from '@tabler/icons-react';
 import { pdf } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
@@ -27,20 +28,24 @@ const GenerateRemitoButton = ({ event }: { event: EventModel }) => {
   // Campos editables (se prellenan al abrir el modal)
   const [domicilio, setDomicilio] = useState('');
   const [localidad, setLocalidad] = useState('');
+  const [destinatarioIva, setDestinatarioIva] = useState<string | null>(null);
+  const [destinatarioCuit, setDestinatarioCuit] = useState('');
+  const [destinatarioIngBrutos, setDestinatarioIngBrutos] = useState('');
   const [transportista, setTransportista] = useState('');
   const [transportistaDomicilio, setTransportistaDomicilio] = useState('');
-  const [cuit, setCuit] = useState('');
-  const [ingBrutos, setIngBrutos] = useState('');
-  const [iva, setIva] = useState('');
+  const [transportistaCuit, setTransportistaCuit] = useState('');
+  const [transportistaIngBrutos, setTransportistaIngBrutos] = useState('');
 
   const openModal = () => {
     setDomicilio(event.eventAddress || event.address || '');
     setLocalidad(event.eventCity || '');
+    setDestinatarioIva(null);
+    setDestinatarioCuit('');
+    setDestinatarioIngBrutos('');
     setTransportista('');
     setTransportistaDomicilio('');
-    setCuit('');
-    setIngBrutos('');
-    setIva('');
+    setTransportistaCuit('');
+    setTransportistaIngBrutos('');
     setOpened(true);
   };
 
@@ -56,11 +61,13 @@ const GenerateRemitoButton = ({ event }: { event: EventModel }) => {
         remitoNumber={data.remitoNumber}
         domicilio={domicilio}
         localidad={localidad}
+        destinatarioIva={destinatarioIva || undefined}
+        destinatarioCuit={destinatarioCuit}
+        destinatarioIngBrutos={destinatarioIngBrutos}
         transportista={transportista}
         transportistaDomicilio={transportistaDomicilio}
-        cuit={cuit}
-        ingBrutos={ingBrutos}
-        iva={iva}
+        transportistaCuit={transportistaCuit}
+        transportistaIngBrutos={transportistaIngBrutos}
       />
     ).toBlob();
   };
@@ -132,6 +139,27 @@ const GenerateRemitoButton = ({ event }: { event: EventModel }) => {
               onChange={(e) => setLocalidad(e.target.value)}
             />
           </Group>
+          <Group grow>
+            <Select
+              label='Condición frente al IVA'
+              placeholder='Sin marcar'
+              data={[...IVA_OPTIONS]}
+              value={destinatarioIva}
+              onChange={setDestinatarioIva}
+              clearable
+              comboboxProps={{ withinPortal: true }}
+            />
+            <TextInput
+              label='CUIT'
+              value={destinatarioCuit}
+              onChange={(e) => setDestinatarioCuit(formatCuit(e.target.value))}
+            />
+            <TextInput
+              label='Ing. Brutos'
+              value={destinatarioIngBrutos}
+              onChange={(e) => setDestinatarioIngBrutos(e.target.value)}
+            />
+          </Group>
 
           <Text fw={600} size='sm' mt='xs'>
             Transportista
@@ -151,18 +179,13 @@ const GenerateRemitoButton = ({ event }: { event: EventModel }) => {
           <Group grow>
             <TextInput
               label='CUIT'
-              value={cuit}
-              onChange={(e) => setCuit(formatCuit(e.target.value))}
+              value={transportistaCuit}
+              onChange={(e) => setTransportistaCuit(formatCuit(e.target.value))}
             />
             <TextInput
               label='Ing. Brutos'
-              value={ingBrutos}
-              onChange={(e) => setIngBrutos(e.target.value)}
-            />
-            <TextInput
-              label='IVA'
-              value={iva}
-              onChange={(e) => setIva(e.target.value)}
+              value={transportistaIngBrutos}
+              onChange={(e) => setTransportistaIngBrutos(e.target.value)}
             />
           </Group>
 

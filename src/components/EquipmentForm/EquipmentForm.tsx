@@ -219,7 +219,7 @@ const EquipmentForm = ({
         <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
         {/* ContentPanel - Lista de equipos - 55% inicial */}
-        <Panel defaultSize={55} minSize={20} maxSize={80}>
+        <Panel defaultSize={47} minSize={20} maxSize={80}>
           <Box
             className='hide-scrollbar'
             style={{
@@ -265,7 +265,7 @@ const EquipmentForm = ({
         <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
         {/* EquipmentList - Equipos agregados al evento - 20% inicial */}
-        <Panel defaultSize={20} minSize={10} maxSize={50}>
+        <Panel defaultSize={28} minSize={18} maxSize={50}>
           <Box
             className='hide-scrollbar'
             style={{

@@ -6,6 +6,9 @@ import { withAuth, AuthContext } from '@/lib/withAuth';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
+import { getPermissions } from '@/utils/roleUtils';
+import { withRealEquipmentPrices } from '@/lib/equipmentPriceGuard';
+import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
 
 // Todos pueden crear eventos según especificación
 export const POST = withAuth(async (context: AuthContext, req: Request) => {
@@ -14,7 +17,8 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const { _id, bands, equipment, createdAt, updatedAt, ...restBody } = body;
+    const { _id, bands, createdAt, updatedAt, ...restBody } = body;
+    let equipment = body.equipment;
     // Link de Google Maps del lugar: normalizar si viene, rechazar si no es de Maps
     if ('venueMapsUrl' in restBody) {
       const venueMapsUrl = normalizeMapsUrl(restBody.venueMapsUrl);
@@ -24,6 +28,14 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       restBody.venueMapsUrl = venueMapsUrl;
     }
     const db = client.db('degano-app');
+    // Precios: quien no los ve arma el evento con equipos sin precio → se
+    // completan con los reales de la base (y el total de alquiler).
+    if (!getPermissions(context.role).canViewEquipmentPrices && Array.isArray(equipment)) {
+      const priced = await withRealEquipmentPrices(db, equipment, []);
+      equipment = priced.equipment;
+      restBody.equipmentPrice = priced.equipmentPrice;
+    }
+    delete restBody.equipment;
     const timestamp = new Date();
     const bandsWithIds = (bands || []).map((b: any) => ({
       ...b,
@@ -187,7 +199,7 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       }
     }
 
-    return NextResponse.json({ event: newEvent }, { status: 200 });
+    return NextResponse.json({ event: sanitizeEventForRole(newEvent, context.role) }, { status: 200 });
   } catch (error) {
     console.error('Error creating event:', error);
     return NextResponse.json(

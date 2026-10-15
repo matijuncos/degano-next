@@ -11,6 +11,7 @@ import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box, LoadingOv
 import { IconSearch, IconX } from '@tabler/icons-react';
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useDeganoCtx, calendarDataFetcher } from '@/context/DeganoContext';
+import { parseCalendarDateParam, formatCalendarDateParam } from '@/utils/calendarDateParam';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -281,10 +282,7 @@ export default withPageAuthRequired(function CalendarPage() {
   const viewParam = searchParams.get('view') as 'mes' | 'semana' | 'dia' | null;
   const dateParam = searchParams.get('date');
 
-  const [date, setDate] = useState(() => {
-    if (dateParam) return new Date(dateParam);
-    return new Date();
-  });
+  const [date, setDate] = useState(() => parseCalendarDateParam(dateParam));
 
   const [view, setView] = useState(() => {
     if (viewParam && ['mes', 'semana', 'dia'].includes(viewParam)) {
@@ -471,7 +469,7 @@ export default withPageAuthRequired(function CalendarPage() {
     const spanishViewName = viewMapping[viewName] || 'mes';
     const params = new URLSearchParams();
     params.set('view', spanishViewName);
-    params.set('date', currentDate.toISOString());
+    params.set('date', formatCalendarDateParam(currentDate));
     router.push(`/calendar?${params.toString()}`, { scroll: false });
   };
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
 import { Button, Group } from '@mantine/core';
 import { IconPrinter } from '@tabler/icons-react';
 import { pdf } from '@react-pdf/renderer';
@@ -40,8 +41,6 @@ const PDFActions: React.FC<PDFActionsProps> = ({
   const { selectedEvent } = useDeganoCtx();
   const [categories, setCategories] = useState<any[]>([]);
   // Estado vivo del inventario: qué equipos están hoy de baja/reparación
-  const [unavailableIds, setUnavailableIds] = useState<Set<string>>(new Set());
-  const [reasonById, setReasonById] = useState<Record<string, string>>({});
 
   // Cargar categorías para la impresión de equipamiento
   useEffect(() => {
@@ -57,29 +56,21 @@ const PDFActions: React.FC<PDFActionsProps> = ({
     fetchCategories();
   }, []);
 
-  // Cargar estado vivo de equipamiento para marcar no disponibles en el PDF
-  useEffect(() => {
-    const fetchEquipmentStatus = async () => {
-      try {
-        const response = await fetch('/api/equipment', { cache: 'no-store' });
-        const data = await response.json();
-        const ids = new Set<string>();
-        const reasons: Record<string, string> = {};
-        (data || []).forEach((eq: any) => {
-          if (isEquipmentUnavailable(eq.outOfService)) {
-            const id = String(eq._id);
-            ids.add(id);
-            reasons[id] = getUnavailabilityReason(eq.outOfService);
-          }
-        });
-        setUnavailableIds(ids);
-        setReasonById(reasons);
-      } catch (error) {
-        console.error('Error fetching equipment status:', error);
+  // Estado vivo de equipamiento para marcar no disponibles en el PDF.
+  // PERF: caché SWR compartida (antes cada sección hacía su propio fetch de
+  // los ~2500 equipos).
+  const statusMap = useEquipmentStatusMap();
+  const { unavailableIds, reasonById } = useMemo(() => {
+    const ids = new Set<string>();
+    const reasons: Record<string, string> = {};
+    statusMap.forEach((status, id) => {
+      if (isEquipmentUnavailable(status)) {
+        ids.add(id);
+        reasons[id] = getUnavailabilityReason(status);
       }
-    };
-    fetchEquipmentStatus();
-  }, []);
+    });
+    return { unavailableIds: ids, reasonById: reasons };
+  }, [statusMap]);
 
   const getPrintableComponent = () => {
     if (!selectedEvent) return null;

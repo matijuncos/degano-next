@@ -18,6 +18,7 @@ import { IconLayersLinked, IconAlertTriangle, IconRefresh } from '@tabler/icons-
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { useEquipmentStatusMap } from '@/hooks/useEquipmentStatusMap';
 import { isEquipmentUnavailable, equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
+import { EQUIPMENT_SWR_OPTS } from '@/hooks/useEquipmentStatusMap';
 import {
   computeConvertibleExtras,
   removeConvertedExtras
@@ -64,11 +65,9 @@ const EquipmentTable = () => {
     setHasChanges(equipChanged || extraChanged);
   }, [eventEquipment.equipment, eventEquipment.extraEquipment, selectedEvent?.equipment, selectedEvent?.extraEquipment]);
 
-  // Detectar cuando cambian las fechas del evento y forzar refresh
-  useEffect(() => {
-    if (!selectedEvent) return;
-    setRefreshTrigger(prev => prev + 1);
-  }, [selectedEvent?.date, selectedEvent?.endDate]);
+  // (Antes un efecto forzaba recargar al cambiar las fechas. Ya no hace falta:
+  // la URL de disponibilidad incluye las fechas, así que si cambian SWR pide
+  // sola; y el efecto, al montarse, duplicaba la request.)
 
   // Equipos del evento que HOY están dados de baja / en reparación (estado vivo).
   // Se recalcula solo: si el equipo vuelve a estar disponible, desaparece del aviso.
@@ -89,7 +88,8 @@ const EquipmentTable = () => {
       : null;
   const { data: availableEquipment = [] } = useSWR<any[]>(
     availabilityUrl,
-    fetcher
+    fetcher,
+    EQUIPMENT_SWR_OPTS
   );
 
   // Por cada "a tercerizar", qué unidades reales hay libres hoy para estas fechas.
@@ -528,7 +528,7 @@ const EquipmentTable = () => {
         {/* ContentPanel - Lista de equipos - 55% inicial */}
         {/* overflow:visible sobrescribe el overflow:hidden que el Panel setea
             por defecto, para que el sticky del contenido no quede atrapado. */}
-        <Panel defaultSize={55} minSize={20} maxSize={80} style={{ overflow: 'visible' }}>
+        <Panel defaultSize={47} minSize={20} maxSize={80} style={{ overflow: 'visible' }}>
           {/* Box sticky de alto-contenido (SIN height:100%). Su bloque
               contenedor es el Panel, que se estira a la columna más larga
               (categorías), así el sticky tiene recorrido y acompaña el
@@ -574,7 +574,7 @@ const EquipmentTable = () => {
         <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
         {/* EquipmentList - Equipos agregados al evento - 20% inicial */}
-        <Panel defaultSize={20} minSize={10} maxSize={50}>
+        <Panel defaultSize={28} minSize={18} maxSize={50}>
           <Box
             style={{
               display: 'flex',

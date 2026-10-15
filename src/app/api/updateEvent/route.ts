@@ -6,6 +6,9 @@ import { withAuth, AuthContext } from '@/lib/withAuth';
 import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
+import { getPermissions } from '@/utils/roleUtils';
+import { withRealEquipmentPrices } from '@/lib/equipmentPriceGuard';
+import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -81,6 +84,22 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
           return { ...ec, phoneNumber: '' };
         })
       );
+    }
+
+    // GUARD datos ocultos: lo que el rol no puede ver le llega vacío/null desde
+    // getEvent, así que NUNCA se persiste lo que manda (pisaría lo real).
+    const permissions = getPermissions(context.role);
+    // Pagos/presupuesto: solo admin. Al resto le llega payment: null.
+    if (!permissions.canViewPayments) delete updateData.payment;
+    // Precios de equipos: solo admin. Se completan con los reales.
+    if (!permissions.canViewEquipmentPrices) {
+      if (Array.isArray(updateData.equipment)) {
+        const priced = await withRealEquipmentPrices(db, updateData.equipment, oldEvent?.equipment);
+        updateData.equipment = priced.equipment;
+        updateData.equipmentPrice = priced.equipmentPrice;
+      } else {
+        delete updateData.equipmentPrice;
+      }
     }
 
     // Asegurar que updatedAt sea un timestamp y no sobrescribir createdAt
@@ -339,7 +358,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         }
       }
     }
-    return NextResponse.json({ event }, { status: 201 });
+    return NextResponse.json({ event: sanitizeEventForRole(event, context.role) }, { status: 201 });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
@@ -389,7 +408,7 @@ export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
         { returnDocument: 'after' }
       );
 
-    return NextResponse.json({ event }, { status: 200 });
+    return NextResponse.json({ event: sanitizeEventForRole(event, context.role) }, { status: 200 });
   } catch (error) {
     console.error('Error updating equipment order:', error);
     return NextResponse.json(

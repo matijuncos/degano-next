@@ -3,7 +3,7 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
-import { getPermissions, obfuscatePhone, obfuscatePrices } from '@/utils/roleUtils';
+import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,35 +29,8 @@ export const GET = withAuth(async (context: AuthContext, req: NextRequest) => {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    const permissions = getPermissions(context.role);
-
-    // Ofuscar datos sensibles según permisos
-    const filteredEvent = {
-      ...event,
-      // Pagos
-      payment: permissions.canViewPayments ? event.payment : null,
-
-      // Teléfono de cliente
-      phoneNumber: obfuscatePhone(event.phoneNumber, context.role, 'client'),
-
-      // Teléfonos de clientes extras
-      extraClients: (event.extraClients || []).map((client: any) => ({
-        ...client,
-        phoneNumber: obfuscatePhone(client.phoneNumber, context.role, 'client'),
-      })),
-
-      // Teléfonos de shows
-      bands: (event.bands || []).map((band: any) => ({
-        ...band,
-        contacts: (band.contacts || []).map((contact: any) => ({
-          ...contact,
-          phone: obfuscatePhone(contact.phone, context.role, 'show'),
-        })),
-      })),
-
-      // Precios de equipamiento
-      equipment: obfuscatePrices(event.equipment || [], context.role),
-    };
+    // Ofuscar datos sensibles según permisos (misma regla en todas las respuestas)
+    const filteredEvent = sanitizeEventForRole(event, context.role);
 
     return NextResponse.json(
       { event: filteredEvent },

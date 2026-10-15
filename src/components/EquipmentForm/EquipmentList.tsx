@@ -263,7 +263,6 @@ function CategoryContent({
                 <Text size='10px' c='dimmed'>
                   Código: {eq.code || 'N/A'}
                 </Text>
-                {noteText(eq)}
               </Stack>
             </Group>
             <Group gap='4px' style={{ flexShrink: 0 }}>
@@ -287,6 +286,8 @@ function CategoryContent({
               </ActionIcon>
             </Group>
           </Group>
+          {/* Nota a todo el ancho de la tarjeta (el panel es angosto) */}
+          {noteText(eq)}
         </Stack>
       );
     }
@@ -399,7 +400,6 @@ function CategoryContent({
                     <Text size='10px' c='dimmed'>
                       Código: {eq.code || 'N/A'}
                     </Text>
-                    {noteText(eq)}
                   </Stack>
                   <Group gap='4px' style={{ flexShrink: 0 }}>
                     {canViewPrices && (
@@ -422,6 +422,7 @@ function CategoryContent({
                     </ActionIcon>
                   </Group>
                 </Group>
+                {noteText(eq)}
               </Stack>
               );
             })}

@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { withManagerAuth, AuthContext } from '@/lib/withAuth';
 import { normalizeEquipmentNote } from '@/utils/equipmentNotes';
+import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
 
 // Nota de UN equipo dentro de UN evento (events.equipment[].note).
 // Actualiza solo esa nota, de forma atómica: no reenvía el array de equipos,
 // así no pisa cambios hechos en otro lado ni toca reservas (scheduledUses).
-export const PUT = withManagerAuth(async (_context: AuthContext, req: Request) => {
+export const PUT = withManagerAuth(async (context: AuthContext, req: Request) => {
   try {
     const { eventId, equipmentId, note } = await req.json();
     if (!eventId || !ObjectId.isValid(String(eventId)) || !equipmentId) {
@@ -35,7 +36,7 @@ export const PUT = withManagerAuth(async (_context: AuthContext, req: Request) =
         { status: 404 }
       );
     }
-    return NextResponse.json({ event });
+    return NextResponse.json({ event: sanitizeEventForRole(event, context.role) });
   } catch (error) {
     console.error('[eventEquipmentNote PUT]', error);
     return NextResponse.json({ error: 'Error al guardar la nota' }, { status: 500 });

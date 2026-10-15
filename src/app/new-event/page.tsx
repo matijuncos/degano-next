@@ -15,15 +15,19 @@ import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import { withPageAuthRequired, useUser } from '@auth0/nextjs-auth0/client';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
 import { isValidMapsUrl } from '@/utils/mapsUtils';
-import { Tabs, Button, Text, Center } from '@mantine/core';
+import { Tabs, Button, Text, Center, Alert, Group, CloseButton } from '@mantine/core';
+import { IconDeviceFloppy } from '@tabler/icons-react';
 import { nanoid } from 'nanoid';
 import { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEventDraft } from '@/hooks/useEventDraft';
+import { draftAgeLabel, hasDraftContent } from '@/utils/eventDraft';
+import { useConfirm } from '@/components/ConfirmModal/useConfirm';
 
 const NewEventPage = () => {
   const {
@@ -48,14 +52,88 @@ const NewEventPage = () => {
   // Ref para mantener los datos del formulario actual sin causar re-renders
   const currentFormDataRef = useRef<EventModel>(event);
 
+  // ── Borrador: si se vuelve atrás / se cierra la pestaña por error, no se
+  // pierde lo cargado. Se guarda TODO en el navegador (por usuario) con refs,
+  // sin re-renders. Ver hooks/useEventDraft.
+  const { user } = useUser();
+  const draft = useEventDraft(user?.sub);
+  const [confirm, confirmModal] = useConfirm();
+  const [draftReady, setDraftReady] = useState(false); // ya se intentó recuperar
+  const [restoredAt, setRestoredAt] = useState<number | null>(null);
+  const [formKey, setFormKey] = useState(0); // remonta los formularios al empezar de cero
+  const formStateRef = useRef(formState);
+  formStateRef.current = formState;
+  // Solo se guarda cuando hay algo cargado: un formulario recién abierto (igual
+  // al estado inicial) no genera borrador. Una vez que hubo un cambio, no se
+  // vuelve a comparar (barato).
+  const pristineRef = useRef<EventModel>(event);
+  const dirtyRef = useRef(false);
+  const saveDraft = useCallback(
+    (data: EventModel, tab: number) => {
+      if (!dirtyRef.current) {
+        if (!hasDraftContent(data, pristineRef.current)) return;
+        dirtyRef.current = true;
+      }
+      draft.schedule(data, tab);
+    },
+    [draft.schedule]
+  );
+
   const updateEvent = useCallback((data: EventModel) => {
     setEvent(data);
   }, []);
 
   // Callback para que los formularios actualicen la ref (sin causar re-render)
-  const onFormDataChange = useCallback((data: EventModel) => {
-    currentFormDataRef.current = data;
-  }, []);
+  const onFormDataChange = useCallback(
+    (data: EventModel) => {
+      currentFormDataRef.current = data;
+      saveDraft(data, formStateRef.current);
+    },
+    [saveDraft]
+  );
+
+  // Al entrar: recuperar el borrador vigente (y la tab donde estaban)
+  useEffect(() => {
+    if (!user?.sub || draftReady) return;
+    const saved = draft.load();
+    if (saved) {
+      setEvent(saved.event);
+      currentFormDataRef.current = saved.event;
+      const restorable = saved.tab >= EVENT_TABS.CLIENT && saved.tab <= EVENT_TABS.PAYMENT;
+      setFormState(restorable ? saved.tab : EVENT_TABS.CLIENT);
+      setRestoredAt(saved.savedAt);
+      dirtyRef.current = true;
+    } else {
+      setFormState(EVENT_TABS.CLIENT);
+    }
+    setDraftReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.sub]);
+
+  // Cambio de tab: guardar también en qué tab están
+  useEffect(() => {
+    if (draftReady) saveDraft(currentFormDataRef.current, formState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState, draftReady]);
+
+  const startOver = async () => {
+    const ok = await confirm({
+      title: '¿Empezar de cero?',
+      message: 'Se borra todo lo cargado en este evento nuevo. No se puede deshacer.',
+      confirmLabel: 'Empezar de cero'
+    });
+    if (!ok) return;
+    draft.clear();
+    const fresh: EventModel = { ...INITIAL_EVENT_STATE, folderId: `evt-${nanoid()}` };
+    currentFormDataRef.current = fresh;
+    pristineRef.current = fresh;
+    dirtyRef.current = false;
+    setEvent(fresh);
+    setFormState(EVENT_TABS.CLIENT);
+    setValidate(false);
+    setRestoredAt(null);
+    setFormKey((k) => k + 1);
+  };
 
   const handleTabChange = (value: string | null) => {
     if (value !== null) {
@@ -130,10 +208,6 @@ const NewEventPage = () => {
     setValidate(false); // Resetear validación al cambiar de pestaña
   };
 
-  useEffect(() => {
-    setFormState(EVENT_TABS.CLIENT);
-  }, []);
-
   // Actualizar folderName cuando los campos necesarios estén disponibles
   useEffect(() => {
     if (event.date && event.type && event.lugar) {
@@ -185,6 +259,9 @@ const NewEventPage = () => {
           year: '2-digit'
         })} - ${newEvent.type} - ${newEvent.lugar}`
       );
+      // Creado: el borrador ya no hace falta
+      draft.finish();
+      setRestoredAt(null);
       addEventToList(data.event);
       setEvent(data.event);
 
@@ -351,8 +428,9 @@ const NewEventPage = () => {
     }
   };
 
-  // Verificar permisos
-  if (isLoading) {
+  // Verificar permisos (y esperar a recuperar el borrador antes de montar los
+  // formularios, para que arranquen ya con lo guardado)
+  if (isLoading || (can('canCreateEvents') && !draftReady)) {
     return <Center h="100vh"><Text>Cargando...</Text></Center>;
   }
 
@@ -399,7 +477,35 @@ const NewEventPage = () => {
           </Tabs.List>
         </Tabs>
       </div>
-      {getTabContent()}
+      {confirmModal}
+      {restoredAt && (
+        <Alert
+          color='blue'
+          variant='light'
+          icon={<IconDeviceFloppy size={18} />}
+          mb='md'
+          styles={{ body: { justifyContent: 'center' } }}
+        >
+          {/* El cerrar va en la misma fila que el botón (el withCloseButton de
+              Mantine queda fijo arriba y se desfasa) */}
+          <Group justify='space-between' align='center' gap='xs' wrap='nowrap'>
+            <Text size='sm'>
+              Se recuperó lo que estabas cargando ({draftAgeLabel(restoredAt, Date.now())}).
+            </Text>
+            <Group gap={6} align='center' wrap='nowrap'>
+              <Button size='xs' variant='light' color='red' onClick={startOver}>
+                Empezar de cero
+              </Button>
+              <CloseButton
+                size='sm'
+                aria-label='Cerrar aviso'
+                onClick={() => setRestoredAt(null)}
+              />
+            </Group>
+          </Group>
+        </Alert>
+      )}
+      <div key={formKey}>{getTabContent()}</div>
     </div>
   );
 };
