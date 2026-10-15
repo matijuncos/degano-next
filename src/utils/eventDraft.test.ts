@@ -54,6 +54,10 @@ describe('isDraftUsable', () => {
   it('vigente dentro del plazo', () => {
     expect(isDraftUsable({ v: DRAFT_VERSION, savedAt: now - 10 * 60_000, tab: 2 }, now)).toBe(true);
   });
+  it('dura 30 minutos desde el último cambio', () => {
+    expect(isDraftUsable({ v: DRAFT_VERSION, savedAt: now - 29 * 60_000, tab: 0 }, now)).toBe(true);
+    expect(isDraftUsable({ v: DRAFT_VERSION, savedAt: now - 31 * 60_000, tab: 0 }, now)).toBe(false);
+  });
   it('vencido, de otra versión o inexistente: no se usa', () => {
     expect(isDraftUsable({ v: DRAFT_VERSION, savedAt: now - DRAFT_TTL_MS - 1, tab: 0 }, now)).toBe(false);
     expect(isDraftUsable({ v: DRAFT_VERSION + 1, savedAt: now, tab: 0 }, now)).toBe(false);

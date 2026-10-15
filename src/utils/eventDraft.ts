@@ -10,8 +10,8 @@
  */
 
 export const DRAFT_VERSION = 1;
-// Es para recuperar en el momento, no para retomar otro día
-export const DRAFT_TTL_MS = 4 * 60 * 60 * 1000;
+// Es para recuperar en el momento (definido con Juan: 30 min desde el último cambio)
+export const DRAFT_TTL_MS = 30 * 60 * 1000;
 
 export interface DraftMeta {
   v: number;
