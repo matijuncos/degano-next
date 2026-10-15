@@ -277,6 +277,8 @@ const EquipmentForm = ({
             }}
           >
             <EquipmentList
+              eventStartDate={eventEquipment.date}
+              eventEndDate={eventEquipment.endDate}
               equipmentList={eventEquipment.equipment}
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
@@ -325,7 +327,10 @@ const EquipmentForm = ({
         eventStartDate={eventEquipment.date}
         eventEndDate={eventEquipment.endDate}
         selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
-        onApply={(items) => handleEquipmentSelection(items)}
+        onApply={(items, extras) => {
+          if (items.length) handleEquipmentSelection(items);
+          extras.forEach((e) => handleAddNegative(e.name, e.categoryId || '', e.quantity));
+        }}
       />
     </div>
   );

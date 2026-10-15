@@ -4,9 +4,10 @@ import { IconCheck, IconX } from '@tabler/icons-react';
 
 const useNotification = () => {
   const notify = useCallback(
+    /** @param {{ title?: string, message?: string, color?: string, type?: string, loading?: boolean }} [opts] */
     ({
       title = 'Operación exitosa',
-      message = 'Se ha guardado correctamente',
+      message,
       color = 'teal',
       type = 'success',
       loading = false
@@ -26,7 +27,7 @@ const useNotification = () => {
           id: 'notify-notification',
           loading,
           title,
-          message,
+          message: message ?? 'Se ha guardado correctamente',
           color,
           icon: color === 'teal' ? <IconCheck /> : <IconX />,
           autoClose: 4000,
@@ -37,7 +38,9 @@ const useNotification = () => {
           notificationProps = {
             ...notificationProps,
             title: 'Operación errónea',
-            message: 'Algo salió mal, vuelve a intentarlo',
+            // Si se pasa un mensaje (ej. el error real del servidor) se muestra ese
+            message: message ?? 'Algo salió mal, vuelve a intentarlo',
+            autoClose: message ? 8000 : 4000,
             color: 'red',
             icon: <IconX />,
           };

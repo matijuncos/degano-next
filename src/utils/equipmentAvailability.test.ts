@@ -8,7 +8,8 @@ import {
   equipmentAvailabilityUrl,
   conflictingUses,
   usesInProgress,
-  formatUseRange
+  formatUseRange,
+  releaseDecision
 } from './equipmentAvailability';
 
 // Helper: fechas legibles
@@ -188,5 +189,23 @@ describe('formatUseRange', () => {
   });
   it('si termina el mismo día no repite la fecha', () => {
     expect(formatUseRange('2026-11-08T16:00:00Z', '2026-11-08T21:00:00Z')).toBe('dom 08/11 13:00 → 18:00');
+  });
+});
+
+describe('releaseDecision', () => {
+  const now = new Date('2026-10-15T15:00:00');
+  it('figuraba En Evento y no tiene otro uso hoy → free', () => {
+    expect(releaseDecision({ scheduledUses: [], outOfService: { isOut: true, reason: 'En Evento' } }, now)).toBe('free');
+  });
+  it('tiene otro uso en curso hoy → active', () => {
+    const uses = [{ startDate: '2026-10-15T10:00:00', endDate: '2026-10-15T23:00:00' }];
+    expect(releaseDecision({ scheduledUses: uses, outOfService: { isOut: true, reason: 'En Evento' } }, now)).toBe('active');
+  });
+  it('dado de baja / en reparación → keep (no se libera)', () => {
+    expect(releaseDecision({ scheduledUses: [], outOfService: { isOut: true, reason: 'Reparación' } }, now)).toBe('keep');
+    expect(releaseDecision({ scheduledUses: [], outOfService: { isOut: true, reason: '' } }, now)).toBe('keep');
+  });
+  it('ya disponible → keep (no se toca ubicación)', () => {
+    expect(releaseDecision({ scheduledUses: [], outOfService: { isOut: false, reason: null } }, now)).toBe('keep');
   });
 });

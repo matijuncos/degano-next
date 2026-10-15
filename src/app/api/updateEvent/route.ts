@@ -3,12 +3,14 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
-import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
+import { createHistoryEntries } from '@/utils/equipmentHistoryUtils';
+import { releaseEquipmentFromEvent } from '@/lib/equipmentRelease';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 import { getPermissions } from '@/utils/roleUtils';
 import { withRealEquipmentPrices } from '@/lib/equipmentPriceGuard';
 import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
+import { checkBookingConflicts } from '@/lib/bookingGuard';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -84,6 +86,23 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
           return { ...ec, phoneNumber: '' };
         })
       );
+    }
+
+    // GUARD doble asignación: los equipos NUEVOS del evento (o todos, si
+    // cambiaron las fechas) no pueden estar reservados por otro evento en
+    // esas fechas. Se valida ANTES de escribir nada.
+    if (Array.isArray(eventEquipment) && body.date && body.endDate) {
+      const prevIds = new Set((oldEvent?.equipment || []).map((e: any) => String(e._id)));
+      const datesChanged =
+        +new Date(oldEvent?.date as any) !== +new Date(body.date) ||
+        +new Date(oldEvent?.endDate as any) !== +new Date(body.endDate);
+      const toCheck = eventEquipment
+        .map((e: any) => String(e._id))
+        .filter((id: string) => datesChanged || !prevIds.has(id));
+      const conflictMsg = await checkBookingConflicts(db, toCheck, body.date, body.endDate, eventId);
+      if (conflictMsg) {
+        return NextResponse.json({ error: conflictMsg }, { status: 409 });
+      }
     }
 
     // GUARD datos ocultos: lo que el rol no puede ver le llega vacío/null desde
@@ -269,14 +288,16 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
           );
         }
 
-        // Registrar en historial
-        for (const eq of eventEquipment) {
-          if (addedEquipmentIds.includes(eq._id.toString())) {
-            await createHistoryEntry(db, {
+        // Registrar en historial: UNA sola escritura (antes una por equipo)
+        await createHistoryEntries(
+          db,
+          eventEquipment
+            .filter((eq: any) => addedEquipmentIds.includes(eq._id.toString()))
+            .map((eq: any) => ({
               equipmentId: eq._id,
               equipmentName: eq.name,
               equipmentCode: eq.code,
-              action: 'uso_evento',
+              action: 'uso_evento' as const,
               userId: context.user?.sub,
               eventId: eventId,
               eventName: body.type,
@@ -285,77 +306,41 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
               eventLocation: body.lugar,
               eventClientName: body.fullName,
               details: `${isCurrentOrPast ? 'Agregado a' : 'Programado para'} ${body.type} - ${body.lugar}`
-            });
-          }
-        }
+            }))
+        );
       }
 
-      // PASO 3: Remover scheduledUse para equipos REMOVIDOS
+      // PASO 3: Equipos REMOVIDOS: sacar la reserva de este evento y liberar
+      // los que figuraban "En Evento" sin otro uso hoy (nunca los dados de
+      // baja / en reparación). Escrituras agrupadas (ver lib/equipmentRelease).
       if (removedEquipmentIds.length > 0) {
-        const removedObjectIds = removedEquipmentIds.map((id: string) => new ObjectId(id));
-
-        // Remover el scheduledUse de este evento
-        await db.collection<NewEquipment>('equipment').updateMany(
-          { _id: { $in: removedObjectIds } },
-          {
-            $pull: { scheduledUses: { eventId: eventId } }
-          }
+        const released = await releaseEquipmentFromEvent(db, removedEquipmentIds, eventId);
+        const oldById = new Map(
+          (oldEvent?.equipment || []).map((eq: any) => [eq._id.toString(), eq])
         );
-
-        // Verificar si los equipos removidos tienen otros usos activos
-        for (const eqId of removedEquipmentIds) {
-          const equipment = await db.collection('equipment').findOne({
-            _id: new ObjectId(eqId)
-          });
-
-          if (equipment) {
-            const nowDate = new Date();
-            nowDate.setHours(0, 0, 0, 0);
-            const hasActiveUse = (equipment.scheduledUses || []).some((use: any) => {
-              const startDate = new Date(use.startDate);
-              const endDate = new Date(use.endDate);
-              startDate.setHours(0, 0, 0, 0);
-              endDate.setHours(0, 0, 0, 0);
-              return nowDate >= startDate && nowDate <= endDate;
-            });
-
-            // Si no tiene otros usos activos, limpiar estado
-            if (!hasActiveUse) {
-              await db.collection('equipment').updateOne(
-                { _id: new ObjectId(eqId) },
-                {
-                  $set: {
-                    location: 'Deposito',
-                    lastUsedStartDate: null,
-                    lastUsedEndDate: null,
-                    outOfService: {
-                      isOut: false,
-                      reason: null,
-                      details: null
-                    }
-                  }
-                }
-              );
-            }
-
-            // Registrar en historial
-            const equipmentData = oldEvent?.equipment?.find(
-              (eq: any) => eq._id.toString() === eqId
-            );
-            if (equipmentData) {
-              await createHistoryEntry(db, {
-                equipmentId: eqId,
-                equipmentName: equipmentData.name,
-                equipmentCode: equipmentData.code,
-                action: 'cambio_estado',
+        await createHistoryEntries(
+          db,
+          released
+            .filter((r) => oldById.has(r._id.toString()))
+            .map((r) => {
+              const old: any = oldById.get(r._id.toString());
+              return {
+                equipmentId: r._id.toString(),
+                equipmentName: old.name,
+                equipmentCode: old.code,
+                action: 'cambio_estado' as const,
                 userId: context.user?.sub,
                 fromValue: 'En Evento',
-                toValue: hasActiveUse ? 'En Evento (otro)' : 'Disponible',
+                toValue:
+                  r.decision === 'active'
+                    ? 'En Evento (otro)'
+                    : r.decision === 'free'
+                    ? 'Disponible'
+                    : 'Sin cambios (fuera de servicio o ya disponible)',
                 details: `Removido de ${oldEvent?.type} - ${oldEvent?.lugar}`
-              });
-            }
-          }
-        }
+              };
+            })
+        );
       }
     }
     return NextResponse.json({ event: sanitizeEventForRole(event, context.role) }, { status: 201 });

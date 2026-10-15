@@ -35,6 +35,11 @@ import {
   LiveEquipmentStatus
 } from '@/utils/equipmentAvailability';
 import { setEquipmentNote } from '@/utils/equipmentNotes';
+import useSWR from 'swr';
+import { Alert, Menu } from '@mantine/core';
+import { equipmentAvailabilityUrl, getUnavailabilityReason } from '@/utils/equipmentAvailability';
+import { suggestReplacements, ReplacementSuggestion } from '@/utils/equipmentSuggestions';
+import { EQUIPMENT_SWR_OPTS } from '@/hooks/useEquipmentStatusMap';
 import EquipmentNoteModal, { NoteUnit } from '@/components/EquipmentNoteModal/EquipmentNoteModal';
 
 type CategoryItemProps = {
@@ -54,6 +59,11 @@ type CategoryItemProps = {
   onReorderItems?: (categoryName: string, newNames: string[]) => void;
   // Abre el editor de la nota de un equipo para este evento
   onEditNote?: (eq: any) => void;
+  // Unidades con problema (baja u ocupada en otro evento) y su reemplazo sugerido
+  suggestions?: Map<string, ReplacementSuggestion>;
+  onReplace?: (oldId: string, unit?: any) => void;
+  // Quitar la unidad del evento y cargarla como "a tercerizar"
+  onTercerizar?: (oldId: string) => void;
 };
 
 // Fila de un grupo de equipo (por nombre) arrastrable dentro de la categoría
@@ -122,7 +132,10 @@ function CategoryContent({
   handleRemoveNegative,
   itemOrder = [],
   onReorderItems,
-  onEditNote
+  onEditNote,
+  suggestions,
+  onReplace,
+  onTercerizar
 }: CategoryItemProps & { dragHandleProps?: Record<string, any> }) {
   const itemSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -182,6 +195,112 @@ function CategoryContent({
       </Text>
     );
 
+  // Problema de una unidad: dada de baja / en reparación, u ocupada en otro
+  // evento en estas fechas (con su reemplazo sugerido, si hay)
+  const problemOf = (eq: any) => suggestions?.get(String(eq._id));
+  const isProblem = (eq: any) =>
+    isEquipmentUnavailable(statusMap.get(String(eq._id))) || !!problemOf(eq);
+  const problemLine = (eq: any) => {
+    const s = problemOf(eq);
+    if (!s) return null;
+    const p = s.problem;
+    const text =
+      p.kind === 'baja'
+        ? `No disponible: ${p.reason}`
+        : `Ocupado en otro evento: ${[p.busyWith[0]?.eventType || p.busyWith[0]?.eventName, p.busyWith[0]?.location]
+            .filter(Boolean)
+            .join(' - ')}`;
+    return (
+      <Group gap={6} wrap='wrap' onClick={(e) => e.stopPropagation()}>
+        <Text size='11px' c='red.4'>
+          {text}
+        </Text>
+        <Group gap={0} wrap='nowrap'>
+          {s.replacement && (
+            <Button
+              size='compact-xs'
+              variant='light'
+              color='yellow'
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+              onClick={() => onReplace?.(String(eq._id))}
+            >
+              Reemplazar por {s.replacement.code || 'otra unidad'}
+            </Button>
+          )}
+          {/* Más opciones: otra unidad, otro modelo equivalente o tercerizar */}
+          <Menu shadow='md' position='bottom-end' withinPortal>
+            <Menu.Target>
+              <Button
+                size='compact-xs'
+                variant='light'
+                color='yellow'
+                px={s.replacement ? 6 : 8}
+                style={
+                  s.replacement
+                    ? { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: '1px solid rgba(0,0,0,0.25)' }
+                    : undefined
+                }
+                title='Más opciones'
+                aria-label='Elegir otra unidad'
+                rightSection={s.replacement ? undefined : <FaChevronDown size={9} />}
+              >
+                {s.replacement ? <FaChevronDown size={9} /> : 'Reemplazar o tercerizar'}
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {s.alternatives.length > 0 && (
+                <>
+                  <Menu.Label>Otra unidad igual</Menu.Label>
+                  {s.alternatives.map(({ unit, sameDay }) => (
+                    <Menu.Item key={unit._id} onClick={() => onReplace?.(String(eq._id), unit)}>
+                      <Group gap={6} wrap='nowrap'>
+                        <Text size='sm'>{unit.code || 'Sin código'}</Text>
+                        {s.replacement && unit._id === s.replacement._id && (
+                          <Badge size='xs' color='green' variant='light'>sugerida</Badge>
+                        )}
+                        {sameDay && (
+                          <Tooltip label='Libre en ese horario, pero ese día se usa en otro evento' withArrow>
+                            <Badge size='xs' color='yellow' variant='light'>se usa ese día</Badge>
+                          </Tooltip>
+                        )}
+                      </Group>
+                    </Menu.Item>
+                  ))}
+                </>
+              )}
+              {s.equivalents.length > 0 && (
+                <>
+                  <Menu.Label>Otro modelo (misma categoría)</Menu.Label>
+                  {s.equivalents.map(({ name, unit, sameDay, freeCount }) => (
+                    <Menu.Item key={unit._id} onClick={() => onReplace?.(String(eq._id), unit)}>
+                      <Group gap={6} wrap='nowrap'>
+                        <Text size='sm'>
+                          {name} · {unit.code || 'Sin código'}
+                        </Text>
+                        <Text size='xs' c='dimmed'>
+                          ({freeCount} libre{freeCount === 1 ? '' : 's'})
+                        </Text>
+                        {sameDay && (
+                          <Tooltip label='Libre en ese horario, pero ese día se usa en otro evento' withArrow>
+                            <Badge size='xs' color='yellow' variant='light'>se usa ese día</Badge>
+                          </Tooltip>
+                        )}
+                      </Group>
+                    </Menu.Item>
+                  ))}
+                </>
+              )}
+              {(s.alternatives.length > 0 || s.equivalents.length > 0) && <Menu.Divider />}
+              <Menu.Item color='red' onClick={() => onTercerizar?.(String(eq._id))}>
+                Tercerizar (quitar esta unidad)
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </Group>
+    );
+  };
+
   // Orden de los grupos por nombre: respetar itemOrder guardado, y los nombres
   // nuevos (recién agregados) van al final.
   const currentNames = Object.keys(groupedByName);
@@ -232,7 +351,7 @@ function CategoryContent({
 
     if (quantity === 1) {
       const eq = equipmentGroup[0];
-      const isUnavailable = isEquipmentUnavailable(statusMap.get(String(eq._id)));
+      const isUnavailable = isProblem(eq);
       return (
         <Stack
           key={eq._id}
@@ -288,13 +407,12 @@ function CategoryContent({
           </Group>
           {/* Nota a todo el ancho de la tarjeta (el panel es angosto) */}
           {noteText(eq)}
+          {problemLine(eq)}
         </Stack>
       );
     }
 
-    const unavailableCount = equipmentGroup.filter((eq: any) =>
-      isEquipmentUnavailable(statusMap.get(String(eq._id)))
-    ).length;
+    const unavailableCount = equipmentGroup.filter((eq: any) => isProblem(eq)).length;
     const notesCount = equipmentGroup.filter((eq: any) => !!eq.note).length;
 
     return (
@@ -331,7 +449,7 @@ function CategoryContent({
                   </Text>
                   {unavailableCount > 0 && (
                     <Tooltip
-                      label={`${unavailableCount} no disponible(s) por baja/reparación`}
+                      label={`${unavailableCount} no disponible(s) (baja u ocupado en otro evento) — desplegá para reemplazar`}
                       withArrow
                     >
                       <Badge color='red' variant='filled' size='xs' style={{ flexShrink: 0 }}>
@@ -362,9 +480,7 @@ function CategoryContent({
         {isExpanded && (
           <Stack gap='xs' pl='md' mt='xs'>
             {equipmentGroup.map((eq: any) => {
-              const isUnavailable = isEquipmentUnavailable(
-                statusMap.get(String(eq._id))
-              );
+              const isUnavailable = isProblem(eq);
               return (
               <Stack
                 key={eq._id}
@@ -423,6 +539,7 @@ function CategoryContent({
                   </Group>
                 </Group>
                 {noteText(eq)}
+                {problemLine(eq)}
               </Stack>
               );
             })}
@@ -545,6 +662,10 @@ type EquipmentListProps = {
   extraEquipment?: { name: string; quantity: number; mainCategoryName?: string; categoryId?: string }[];
   equipmentItemOrder?: { [categoryName: string]: string[] };
   onReorderItems?: (newItemOrder: { [categoryName: string]: string[] }) => void;
+  // Fechas y id del evento: para detectar unidades ocupadas y sugerir reemplazo
+  eventStartDate?: Date | string;
+  eventEndDate?: Date | string;
+  editingEventId?: string;
 };
 
 export default function EquipmentList({
@@ -557,7 +678,10 @@ export default function EquipmentList({
   onReorder,
   extraEquipment = [],
   equipmentItemOrder = {},
-  onReorderItems
+  onReorderItems,
+  eventStartDate,
+  eventEndDate,
+  editingEventId
 }: EquipmentListProps) {
   const { can } = usePermissions();
   const canViewPrices = can('canViewEquipmentPrices');
@@ -600,6 +724,83 @@ export default function EquipmentList({
       return equipment === prev.equipment ? prev : { ...prev, equipment };
     });
     return true;
+  };
+
+  // ── Sugerencias de reemplazo. PERF: misma clave SWR que el árbol y la tabla
+  // (disponibilidad para las fechas del evento) → no suma requests.
+  const availabilityUrl =
+    eventStartDate && eventEndDate
+      ? equipmentAvailabilityUrl(eventStartDate, eventEndDate, editingEventId)
+      : null;
+  const { data: pool } = useSWR<any[]>(
+    availabilityUrl,
+    (url: string) => fetch(url, { cache: 'no-store' }).then((r) => r.json()),
+    EQUIPMENT_SWR_OPTS
+  );
+  const suggestions = React.useMemo(
+    () =>
+      Array.isArray(pool)
+        ? suggestReplacements(equipmentList as any[], pool, {
+            start: eventStartDate,
+            end: eventEndDate,
+            eventId: editingEventId,
+            liveUnavailableReason: (id) => getUnavailabilityReason(statusMap.get(id)) || null
+          })
+        : new Map<string, ReplacementSuggestion>(),
+    [pool, equipmentList, eventStartDate, eventEndDate, editingEventId, statusMap]
+  );
+  const replaceable = Array.from(suggestions.entries()).filter(([, s]) => s.replacement);
+
+  // Reemplaza unidades en el evento (en memoria; se guarda con "Guardar
+  // Cambios" → updateEvent quita la reserva vieja y agrega la nueva, con
+  // historial). La nueva hereda categoría y nota de la anterior.
+  const replaceUnits = (pairs: [string, any][]) => {
+    const byOld = new Map(pairs);
+    setEventEquipment((prev) => ({
+      ...prev,
+      equipment: prev.equipment.map((eq: any) => {
+        const repl = byOld.get(String(eq._id));
+        if (!repl) return eq;
+        const { busyWith: _b, ...fresh } = repl;
+        return {
+          ...fresh,
+          lastUsedStartDate: prev.date,
+          lastUsedEndDate: prev.endDate,
+          mainCategoryId: eq.mainCategoryId,
+          mainCategoryName: eq.mainCategoryName,
+          ...(eq.note ? { note: eq.note } : {})
+        };
+      })
+    }));
+  };
+  // Tercerizar: la unidad sale del evento (al guardar se libera su reserva) y
+  // se suma 1 "a tercerizar" de ese equipo; cuando haya stock real, el aviso
+  // de conversión de los tercerizados lo ofrece solo.
+  const handleTercerizar = (oldId: string) => {
+    setEventEquipment((prev) => {
+      const unit: any = prev.equipment.find((e: any) => String(e._id) === String(oldId));
+      if (!unit) return prev;
+      const mainCategoryName = unit.mainCategoryName || 'Sin categoría';
+      const extras = prev.extraEquipment || [];
+      const idx = extras.findIndex(
+        (e) => e.name === unit.name && (e.mainCategoryName || 'Sin categoría') === mainCategoryName
+      );
+      const extraEquipment =
+        idx >= 0
+          ? extras.map((e, i) => (i === idx ? { ...e, quantity: e.quantity + 1 } : e))
+          : [...extras, { name: unit.name, categoryId: unit.categoryId, mainCategoryName, quantity: 1 }];
+      return {
+        ...prev,
+        equipment: prev.equipment.filter((e: any) => String(e._id) !== String(oldId)),
+        extraEquipment
+      };
+    });
+  };
+
+  // Sin `unit` → la sugerida; con `unit` → la que eligió el usuario
+  const handleReplace = (oldId: string, unit?: any) => {
+    const chosen = unit ?? suggestions.get(oldId)?.replacement;
+    if (chosen) replaceUnits([[oldId, chosen]]);
   };
 
   const handleRemove = (id: string) => {
@@ -760,6 +961,25 @@ export default function EquipmentList({
       <Stack gap={0} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Box style={{ flex: 1, overflowY: 'auto', padding: '0 4px' }}>
           <Stack gap='md'>
+            {replaceable.length > 0 && (
+              <Alert color='yellow' variant='light' p='xs'>
+                <Stack gap={6}>
+                  <Text size='xs'>
+                    {replaceable.length === 1
+                      ? '1 equipo no está disponible y hay otra unidad igual libre.'
+                      : `${replaceable.length} equipos no están disponibles y hay otras unidades iguales libres.`}
+                  </Text>
+                  <Button
+                    size='compact-xs'
+                    variant='light'
+                    color='yellow'
+                    onClick={() => replaceUnits(replaceable.map(([oldId, sug]) => [oldId, sug.replacement]))}
+                  >
+                    Reemplazar {replaceable.length === 1 ? '' : 'todos'}
+                  </Button>
+                </Stack>
+              </Alert>
+            )}
             <SortableContext
               items={orderedCategories}
               strategy={verticalListSortingStrategy}
@@ -779,6 +999,9 @@ export default function EquipmentList({
                   itemOrder={equipmentItemOrder[categoryName] || []}
                   onReorderItems={handleReorderItems}
                   onEditNote={openNoteEditor}
+                  suggestions={suggestions}
+                  onReplace={handleReplace}
+                  onTercerizar={handleTercerizar}
                 />
               ))}
             </SortableContext>

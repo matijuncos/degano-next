@@ -3,12 +3,13 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
-import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
+import { createHistoryEntries } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 import { getPermissions } from '@/utils/roleUtils';
 import { withRealEquipmentPrices } from '@/lib/equipmentPriceGuard';
 import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
+import { checkBookingConflicts } from '@/lib/bookingGuard';
 
 // Todos pueden crear eventos según especificación
 export const POST = withAuth(async (context: AuthContext, req: Request) => {
@@ -36,6 +37,30 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       restBody.equipmentPrice = priced.equipmentPrice;
     }
     delete restBody.equipment;
+
+    // IDEMPOTENCIA: si la request anterior se cortó (timeout) el evento puede
+    // haber quedado creado. El folderId es único por formulario: si ya existe
+    // un evento con ese folderId es un REINTENTO → no se crea otro, se
+    // completa lo que haya quedado a medias y se devuelve el existente.
+    const folderId =
+      typeof restBody.folderId === 'string' && restBody.folderId ? restBody.folderId : null;
+    const existing = folderId ? await db.collection('events').findOne({ folderId }) : null;
+
+    // GUARD doble asignación: ningún equipo puede estar reservado por otro
+    // evento en esas fechas. Se valida ANTES de crear nada. (En un reintento,
+    // las reservas del propio evento no cuentan.)
+    if (Array.isArray(equipment) && equipment.length && restBody.date && restBody.endDate) {
+      const conflictMsg = await checkBookingConflicts(
+        db,
+        equipment.map((e: any) => String(e._id)),
+        restBody.date,
+        restBody.endDate,
+        existing ? String(existing._id) : null
+      );
+      if (conflictMsg) {
+        return NextResponse.json({ error: conflictMsg }, { status: 409 });
+      }
+    }
     const timestamp = new Date();
     const bandsWithIds = (bands || []).map((b: any) => ({
       ...b,
@@ -48,10 +73,11 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       ...(!_id && { createdAt: timestamp }),
       updatedAt: timestamp
     };
-    const event = await db.collection('events').insertOne(document);
-    const newEvent = await db
-      .collection('events')
-      .findOne({ _id: event.insertedId });
+    let newEvent = existing;
+    if (!newEvent) {
+      const event = await db.collection('events').insertOne(document);
+      newEvent = await db.collection('events').findOne({ _id: event.insertedId });
+    }
 
     if (equipment?.length && newEvent) {
       const eventStart = new Date(document.date);
@@ -77,9 +103,13 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       // Determinar si el evento empieza HOY o ya empezó
       const isCurrentOrPast = eventStartDate <= nowDate;
 
-      // PASO 1: Agregar scheduledUse a todos los equipos
+      // PASO 1: Agregar scheduledUse a todos los equipos (sin duplicar: en un
+      // reintento los que ya la tienen no se tocan)
       await db.collection<NewEquipment>('equipment').updateMany(
-        { _id: { $in: equipment.map((eq: any) => new ObjectId(eq._id)) } },
+        {
+          _id: { $in: equipment.map((eq: any) => new ObjectId(eq._id)) },
+          'scheduledUses.eventId': { $ne: newEvent._id.toString() }
+        },
         {
           $push: { scheduledUses: scheduledUse }
         }
@@ -104,23 +134,41 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
         );
       }
 
-      // Registrar uso en evento para cada equipo
-      for (const eq of equipment) {
-        await createHistoryEntry(db, {
-          equipmentId: eq._id,
-          equipmentName: eq.name,
-          equipmentCode: eq.code,
-          action: 'uso_evento',
-          userId: context.user?.sub,
-          eventId: newEvent._id.toString(),
-          eventName: document.type,
-          eventDate: eventStart,
-          eventEndDate: eventEnd,
-          eventLocation: document.lugar,
-          eventClientName: document.fullName,
-          details: `${isCurrentOrPast ? 'Usado' : 'Programado para usar'} en ${document.type} - ${document.lugar}`
-        });
-      }
+      // Registrar uso en evento para cada equipo: UNA sola escritura (antes era
+      // una por equipo y en eventos grandes la request se cortaba por tiempo).
+      // En un reintento solo se agregan las que faltan.
+      const alreadyLogged = existing
+        ? new Set(
+            (
+              await db
+                .collection('equipmentHistory')
+                .find(
+                  { eventId: newEvent._id.toString(), action: 'uso_evento' },
+                  { projection: { equipmentId: 1 } }
+                )
+                .toArray()
+            ).map((h: any) => String(h.equipmentId))
+          )
+        : new Set<string>();
+      await createHistoryEntries(
+        db,
+        equipment
+          .filter((eq: any) => !alreadyLogged.has(String(eq._id)))
+          .map((eq: any) => ({
+            equipmentId: eq._id,
+            equipmentName: eq.name,
+            equipmentCode: eq.code,
+            action: 'uso_evento' as const,
+            userId: context.user?.sub,
+            eventId: newEvent!._id.toString(),
+            eventName: document.type,
+            eventDate: eventStart,
+            eventEndDate: eventEnd,
+            eventLocation: document.lugar,
+            eventClientName: document.fullName,
+            details: `${isCurrentOrPast ? 'Usado' : 'Programado para usar'} en ${document.type} - ${document.lugar}`
+          }))
+      );
     }
 
     const existingClient = await db

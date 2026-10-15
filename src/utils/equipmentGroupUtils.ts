@@ -43,7 +43,9 @@ export function pickUnitsForSelection(
   items: any[],
   selectedNames: string[],
   alreadyInEventIds: string[],
-  quantityByName: Record<string, number>
+  quantityByName: Record<string, number>,
+  // Orden de preferencia de las unidades libres (ej. rankUnitsForEvent)
+  rank: (units: any[]) => any[] = (u) => u
 ): { units: any[]; perName: { name: string; requested: number; added: number }[] } {
   const selected = new Set(selectedNames);
   const inEvent = new Set(alreadyInEventIds);
@@ -58,7 +60,7 @@ export function pickUnitsForSelection(
   const perName: { name: string; requested: number; added: number }[] = [];
   availableByName.forEach((available, name) => {
     const requested = Math.max(1, Math.floor(quantityByName[name] || 1));
-    const toAdd = available.slice(0, requested);
+    const toAdd = rank(available).slice(0, requested);
     units.push(...toAdd);
     perName.push({ name, requested, added: toAdd.length });
   });

@@ -176,3 +176,29 @@ export function equipmentAvailabilityUrl(
   const base = `/api/equipment?eventStartDate=${new Date(eventStartDate).toISOString()}&eventEndDate=${new Date(eventEndDate).toISOString()}`;
   return eventId ? `${base}&excludeEventId=${encodeURIComponent(eventId)}` : base;
 }
+
+/**
+ * Qué hacer con un equipo que se QUITA de un evento (o cuyo evento se borra),
+ * ya sin la reserva de ese evento:
+ *  - 'active': tiene otro uso en curso hoy → no se toca
+ *  - 'free': figuraba "En Evento" y ya no tiene uso hoy → vuelve a Depósito/Disponible
+ *  - 'keep': dado de baja / en reparación / ya disponible → NO se toca
+ *    (antes se lo marcaba "Disponible" aunque estuviera roto)
+ * Comparación por día (igual que antes), con la fecha del servidor.
+ */
+export function releaseDecision(
+  equipment: { scheduledUses?: ScheduledUse[] | null; outOfService?: LiveEquipmentStatus | null },
+  now: Date = new Date()
+): 'active' | 'free' | 'keep' {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const hasActiveUse = (equipment.scheduledUses || []).some((use) => {
+    const s = new Date(use.startDate);
+    const e = new Date(use.endDate);
+    s.setHours(0, 0, 0, 0);
+    e.setHours(0, 0, 0, 0);
+    return today >= s && today <= e;
+  });
+  if (hasActiveUse) return 'active';
+  return equipment.outOfService?.reason === 'En Evento' ? 'free' : 'keep';
+}

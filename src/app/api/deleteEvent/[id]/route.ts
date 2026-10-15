@@ -2,7 +2,8 @@ import clientPromise from '@/lib/mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
-import { createHistoryEntry } from '@/utils/equipmentHistoryUtils';
+import { createHistoryEntries } from '@/utils/equipmentHistoryUtils';
+import { releaseEquipmentFromEvent } from '@/lib/equipmentRelease';
 
 // Solo admin y manager pueden eliminar eventos
 export const DELETE = withAuth(
@@ -38,67 +39,26 @@ export const DELETE = withAuth(
       .collection('events')
       .deleteOne({ _id: new ObjectId(eventId) });
 
-    // PASO 3: Limpiar scheduledUses de los equipos que estaban en el evento
+    // PASO 3: Sacar la reserva de este evento de todos sus equipos y liberar
+    // los que figuraban "En Evento" sin otro uso hoy (nunca los dados de baja /
+    // en reparación). Escrituras agrupadas (ver lib/equipmentRelease).
     if (eventEquipmentIds.length > 0) {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-
-      // Remover el scheduledUse de este evento de todos los equipos
-      await db.collection('equipment').updateMany(
-        { _id: { $in: eventEquipmentIds.map((id: string) => new ObjectId(id)) } },
-        {
-          $pull: { scheduledUses: { eventId: eventId } } as any
-        }
+      const released = await releaseEquipmentFromEvent(db, eventEquipmentIds, eventId);
+      await createHistoryEntries(
+        db,
+        released
+          .filter((r) => r.decision === 'free')
+          .map((r) => ({
+            equipmentId: r._id.toString(),
+            equipmentName: r.name || '',
+            equipmentCode: r.code || '',
+            action: 'cambio_estado' as const,
+            userId: context.user?.sub || 'SYSTEM',
+            fromValue: 'En Evento',
+            toValue: 'Disponible',
+            details: `Liberado automáticamente - evento "${event.type || event.name}" eliminado`
+          }))
       );
-
-      // PASO 4: Verificar cada equipo para ver si debe volver a estado disponible
-      for (const eqId of eventEquipmentIds) {
-        const equipment = await db.collection('equipment').findOne({
-          _id: new ObjectId(eqId)
-        });
-
-        if (equipment) {
-          // Verificar si tiene otros eventos activos
-          const hasActiveUse = (equipment.scheduledUses || []).some((use: any) => {
-            const startDate = new Date(use.startDate);
-            const endDate = new Date(use.endDate);
-            startDate.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0);
-            return now >= startDate && now <= endDate;
-          });
-
-          // Si no tiene otros eventos activos, limpiar estado
-          if (!hasActiveUse) {
-            await db.collection('equipment').updateOne(
-              { _id: new ObjectId(eqId) },
-              {
-                $set: {
-                  location: 'Deposito',
-                  lastUsedStartDate: null,
-                  lastUsedEndDate: null,
-                  outOfService: {
-                    isOut: false,
-                    reason: null,
-                    details: null
-                  }
-                }
-              }
-            );
-
-            // Registrar en historial
-            await createHistoryEntry(db, {
-              equipmentId: eqId,
-              equipmentName: equipment.name,
-              equipmentCode: equipment.code,
-              action: 'cambio_estado',
-              userId: context.user?.sub || 'SYSTEM',
-              fromValue: 'En Evento',
-              toValue: 'Disponible',
-              details: `Liberado automáticamente - evento "${event.type || event.name}" eliminado`
-            });
-          }
-        }
-      }
     }
 
     return NextResponse.json({

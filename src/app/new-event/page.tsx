@@ -29,6 +29,11 @@ import { useEventDraft } from '@/hooks/useEventDraft';
 import { draftAgeLabel, hasDraftContent } from '@/utils/eventDraft';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
 
+// El servidor no duplica eventos (reconoce el reintento), así que se puede
+// volver a apretar Finalizar con seguridad.
+const RETRY_SAFE_MSG =
+  'No se pudo confirmar la creación del evento. Volvé a apretar Finalizar: si ya se había creado, no se va a duplicar.';
+
 const NewEventPage = () => {
   const {
     formState,
@@ -229,21 +234,40 @@ const NewEventPage = () => {
     setLoadingCursor(true);
     notify({ loading: true });
     try {
-      const response = await fetch('/api/postEvent', {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newEvent)
-      });
-
-      // Si el server no confirma la creación, es un error real
-      if (!response.ok) {
-        throw new Error(`postEvent respondió con status ${response.status}`);
+      // Si la request se corta (timeout / error del servidor / red) el evento
+      // pudo haber quedado creado: se reintenta UNA vez. Es seguro: el servidor
+      // reconoce el reintento por el folderId y devuelve el mismo evento (no
+      // duplica) completando lo que haya quedado a medias.
+      const post = () =>
+        fetch('/api/postEvent', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEvent)
+        });
+      let response: Response | null = null;
+      try {
+        response = await post();
+      } catch {
+        response = null; // error de red
+      }
+      if (!response || response.status >= 500) {
+        await new Promise((r) => setTimeout(r, 1500));
+        response = await post().catch(() => null);
+      }
+      if (!response) {
+        throw new Error(RETRY_SAFE_MSG);
       }
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+
+      // Si el server no confirma la creación, es un error real (y se muestra
+      // su motivo, ej. un equipo que ya está reservado en esas fechas)
+      if (!response.ok) {
+        throw new Error(
+          response.status >= 500 ? RETRY_SAFE_MSG : data?.error || `postEvent respondió con status ${response.status}`
+        );
+      }
 
       if (!data?.event) {
         throw new Error('postEvent no devolvió el evento creado');
@@ -293,7 +317,7 @@ const NewEventPage = () => {
         console.error('failed to revalidate SWR cache ', err);
       });
     } catch (err) {
-      notify({ type: 'defaultError' });
+      notify({ type: 'defaultError', message: (err as any)?.message?.startsWith('postEvent') ? undefined : (err as any)?.message });
       console.error('failed to save the event ', err);
     } finally {
       setLoadingCursor(false);

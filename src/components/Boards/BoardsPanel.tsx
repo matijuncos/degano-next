@@ -300,7 +300,7 @@ export default function BoardsPanel() {
                     {visibilityBadge(selectedBoard)}
                   </Group>
                   {selectedBoard.description && (
-                    <Text size='sm' c='dimmed'>
+                    <Text size='sm' c='dimmed' style={{ whiteSpace: 'pre-line' }}>
                       {selectedBoard.description}
                     </Text>
                   )}

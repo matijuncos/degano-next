@@ -5,15 +5,15 @@ import {
   ScrollArea, Box, Divider, Loader, Center
 } from '@mantine/core';
 import { IconCheck, IconAlertTriangle, IconX } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Select } from '@mantine/core';
 import { EquipmentSet } from '@/components/EquipmentSetsPanel/EquipmentSetsPanel';
-
-interface StockCheck {
-  equipmentName: string;
-  required: number;
-  available: number;
-  itemsToAdd: any[];
-}
+import {
+  rankUnitsForEvent,
+  planSet,
+  resolveSetApplication,
+  MissingChoice
+} from '@/utils/equipmentSuggestions';
 
 interface ApplySetModalProps {
   opened: boolean;
@@ -22,8 +22,22 @@ interface ApplySetModalProps {
   eventEndDate?: Date | string;
   editingEventId?: string;
   selectedEquipmentIds: string[];
-  onApply: (items: any[]) => void;
+  // units: unidades reales a agregar · extras: "a tercerizar" (nombre + cantidad)
+  onApply: (
+    units: any[],
+    extras: { name: string; categoryId: string | null; quantity: number }[]
+  ) => void;
 }
+
+// Valor del selector de faltantes ↔ MissingChoice
+const choiceToValue = (c?: MissingChoice) =>
+  !c || c.kind === 'tercerizar' ? 'tercerizar' : c.kind === 'omitir' ? 'omitir' : `eq:${c.name}`;
+const valueToChoice = (v: string | null): MissingChoice =>
+  !v || v === 'tercerizar'
+    ? { kind: 'tercerizar' }
+    : v === 'omitir'
+    ? { kind: 'omitir' }
+    : { kind: 'equivalente', name: v.slice(3) };
 
 export default function ApplySetModal({
   opened,
@@ -38,13 +52,14 @@ export default function ApplySetModal({
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
   const [loadingSets, setLoadingSets] = useState(false);
   const [selectedSet, setSelectedSet] = useState<EquipmentSet | null>(null);
-  const [stockChecks, setStockChecks] = useState<StockCheck[]>([]);
+  // Qué hacer con lo que falta de cada ítem (por defecto: tercerizar)
+  const [choices, setChoices] = useState<Record<string, MissingChoice>>({});
 
   // Cargar sets y equipamiento al abrir
   useEffect(() => {
     if (!opened) return;
     setSelectedSet(null);
-    setStockChecks([]);
+    setChoices({});
 
     const load = async () => {
       setLoadingSets(true);
@@ -64,35 +79,36 @@ export default function ApplySetModal({
 
   const handleSelectSet = (set: EquipmentSet) => {
     setSelectedSet(set);
-
-    // Calcular disponibilidad por ítem
-    const checks: StockCheck[] = set.items.map((item) => {
-      const available = allEquipment.filter(
-        (e) =>
-          e.name === item.equipmentName &&
-          !e.outOfService?.isOut &&
-          !selectedEquipmentIds.includes(e._id?.toString())
-      );
-      return {
-        equipmentName: item.equipmentName,
-        required: item.quantity,
-        available: available.length,
-        itemsToAdd: available.slice(0, item.quantity)
-      };
-    });
-    setStockChecks(checks);
+    setChoices({});
   };
 
-  const allAvailable = stockChecks.every((c) => c.available >= c.required);
-  const someAvailable = stockChecks.some((c) => c.available > 0);
-  const itemsToApply = stockChecks.flatMap((c) => c.itemsToAdd);
-  const itemsToApplyPartial = stockChecks.flatMap((c) =>
-    c.available > 0 ? c.itemsToAdd : []
-  );
+  // Plan del set: unidades libres del mismo equipo (selección inteligente:
+  // primero las que no se usan ese día) y, si faltan, equivalentes de la
+  // misma categoría. La disponibilidad viene de la lista para las fechas.
+  const plans = useMemo(() => {
+    if (!selectedSet) return [];
+    const inEvent = new Set(selectedEquipmentIds.map(String));
+    const freePool = allEquipment.filter((e) => !e.outOfService?.isOut && !inEvent.has(String(e._id)));
+    const categoryIdOf = (name: string) => allEquipment.find((e) => e.name === name)?.categoryId ?? null;
+    return planSet(
+      selectedSet.items,
+      freePool,
+      (units) => rankUnitsForEvent(units, eventStartDate, eventEndDate, editingEventId),
+      categoryIdOf
+    );
+  }, [selectedSet, allEquipment, selectedEquipmentIds, eventStartDate, eventEndDate, editingEventId]);
 
-  const handleApply = (partial = false) => {
-    const items = partial ? itemsToApplyPartial : itemsToApply;
-    if (items.length > 0) onApply(items);
+  const result = useMemo(
+    () =>
+      resolveSetApplication(plans, choices, (name) => allEquipment.find((e) => e.name === name)?.categoryId ?? null),
+    [plans, choices, allEquipment]
+  );
+  const extrasCount = result.extras.reduce((s, e) => s + e.quantity, 0);
+  const missingCount = plans.reduce((s, p) => s + p.missing, 0);
+  const nothingToAdd = result.units.length === 0 && extrasCount === 0;
+
+  const handleApply = () => {
+    if (!nothingToAdd) onApply(result.units, result.extras);
     onClose();
   };
 
@@ -150,33 +166,64 @@ export default function ApplySetModal({
             ) : (
               <Stack gap='sm'>
                 <Text size='xs' c='dimmed' fw={600} tt='uppercase'>Disponibilidad</Text>
+                {!(eventStartDate && eventEndDate) && (
+                  <Text size='xs' c='yellow.5'>
+                    El evento todavía no tiene fechas: no se puede saber qué equipos están
+                    ocupados. Cargá las fechas en la pestaña Evento antes de aplicar el set.
+                  </Text>
+                )}
                 <ScrollArea h={230}>
                   <Stack gap='xs'>
-                    {stockChecks.map((check, i) => {
-                      const ok = check.available >= check.required;
-                      const partial = !ok && check.available > 0;
-                      const none = check.available === 0;
+                    {plans.map((p) => {
+                      const have = p.chosen.length;
+                      const ok = p.missing === 0;
                       return (
-                        <Group key={i} gap='xs' justify='space-between' wrap='nowrap'>
-                          <Text size='sm' style={{ flex: 1 }} truncate>{check.equipmentName}</Text>
-                          <Group gap='4px' wrap='nowrap'>
-                            {ok && (
-                              <Badge color='green' variant='light' size='sm' leftSection={<IconCheck size={10} />}>
-                                {check.required}/{check.required}
-                              </Badge>
-                            )}
-                            {partial && (
-                              <Badge color='yellow' variant='light' size='sm' leftSection={<IconAlertTriangle size={10} />}>
-                                {check.available}/{check.required}
-                              </Badge>
-                            )}
-                            {none && (
-                              <Badge color='red' variant='light' size='sm' leftSection={<IconX size={10} />}>
-                                0/{check.required}
-                              </Badge>
-                            )}
+                        <Box key={p.name}>
+                          <Group gap='xs' justify='space-between' wrap='nowrap'>
+                            <Box style={{ flex: 1, minWidth: 0 }}>
+                              <Text size='sm' truncate>{p.name}</Text>
+                              {p.chosen.some((u) => u.code) && (
+                                <Text size='10px' c='dimmed' truncate>
+                                  Usa: {p.chosen.map((u) => u.code).filter(Boolean).join(', ')}
+                                </Text>
+                              )}
+                            </Box>
+                            <Badge
+                              color={ok ? 'green' : have > 0 ? 'yellow' : 'red'}
+                              variant='light'
+                              size='sm'
+                              leftSection={ok ? <IconCheck size={10} /> : have > 0 ? <IconAlertTriangle size={10} /> : <IconX size={10} />}
+                            >
+                              {have}/{p.required}
+                            </Badge>
                           </Group>
-                        </Group>
+                          {/* Lo que falta: equivalente (misma categoría), tercerizar o no agregar */}
+                          {p.missing > 0 && (
+                            <Group gap={6} mt={4} wrap='nowrap' align='center'>
+                              <Text size='xs' c='yellow.5' style={{ whiteSpace: 'nowrap' }}>
+                                Falta{p.missing === 1 ? '' : 'n'} {p.missing} →
+                              </Text>
+                              <Select
+                                size='xs'
+                                style={{ flex: 1 }}
+                                allowDeselect={false}
+                                comboboxProps={{ withinPortal: true }}
+                                value={choiceToValue(choices[p.name])}
+                                onChange={(v) => setChoices((prev) => ({ ...prev, [p.name]: valueToChoice(v) }))}
+                                data={[
+                                  { value: 'tercerizar', label: 'Tercerizar' },
+                                  ...p.equivalents.map((e) => ({
+                                    value: `eq:${e.name}`,
+                                    label: `Equivalente: ${e.name} (${e.units.length} libre${e.units.length === 1 ? '' : 's'}${
+                                      e.units.length < p.missing ? ', el resto se terceriza' : ''
+                                    })`
+                                  })),
+                                  { value: 'omitir', label: 'No agregar' }
+                                ]}
+                              />
+                            </Group>
+                          )}
+                        </Box>
                       );
                     })}
                   </Stack>
@@ -190,34 +237,23 @@ export default function ApplySetModal({
       {selectedSet && (
         <>
           <Divider my='sm' />
-          {!allAvailable && someAvailable && (
-            <Group gap='xs' mb='xs'>
+          {missingCount > 0 && (
+            <Group gap='xs' mb='xs' wrap='nowrap'>
               <IconAlertTriangle size={14} color='#f08c00' />
               <Text size='xs' c='yellow'>
-                Algunos ítems no tienen stock suficiente. Se agregarán solo los disponibles.
-              </Text>
-            </Group>
-          )}
-          {!someAvailable && (
-            <Group gap='xs' mb='xs'>
-              <IconX size={14} color='#e03131' />
-              <Text size='xs' c='red'>
-                No hay stock disponible para ningún ítem del set.
+                Faltan {missingCount} unidad{missingCount === 1 ? '' : 'es'}. Elegí para cada ítem un
+                equivalente, tercerizar o no agregar. Lo tercerizado avisa solo cuando se libere stock.
               </Text>
             </Group>
           )}
           <Group justify='flex-end' gap='xs'>
             <Button variant='default' onClick={onClose}>Cancelar</Button>
-            <Button
-              color='green'
-              onClick={() => handleApply(false)}
-              disabled={!someAvailable}
-            >
-              {allAvailable
-                ? `Aplicar set completo (${itemsToApply.length} equipos)`
-                : someAvailable
-                  ? `Aplicar disponibles (${itemsToApply.length} equipos)`
-                  : 'Sin stock disponible'}
+            <Button color='green' onClick={handleApply} disabled={nothingToAdd}>
+              {nothingToAdd
+                ? 'Nada para agregar'
+                : `Aplicar set (${result.units.length} equipo${result.units.length === 1 ? '' : 's'}${
+                    extrasCount ? ` + ${extrasCount} a tercerizar` : ''
+                  })`}
             </Button>
           </Group>
         </>

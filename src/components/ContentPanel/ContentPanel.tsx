@@ -27,6 +27,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDragSelect } from '@/hooks/useDragSelect';
 import { summarizeSelection, SelectableEntry } from '@/utils/rowSelection';
 import { pickUnitsForSelection } from '@/utils/equipmentGroupUtils';
+import { rankUnitsForEvent } from '@/utils/equipmentSuggestions';
 import EquipmentBusyModal from '@/components/EquipmentBusyModal/EquipmentBusyModal';
 
 const equipmentFetcher = async (url: string) => {
@@ -219,8 +220,10 @@ export default function ContentPanel({
   // Evento: qué unidades se agregarían (cantidad de cada fila, con tope en lo disponible)
   const selectionToAdd = useMemo(() => {
     if (!newEvent || !onEdit || !selectionSummary) return null;
-    return pickUnitsForSelection(items, dragSelectedIds, selectedEquipmentIds, quantityMap);
-  }, [newEvent, onEdit, selectionSummary, items, dragSelectedIds, selectedEquipmentIds, quantityMap]);
+    return pickUnitsForSelection(items, dragSelectedIds, selectedEquipmentIds, quantityMap, (units) =>
+      rankUnitsForEvent(units, eventStartDate, eventEndDate, editingEventId)
+    );
+  }, [newEvent, onEdit, selectionSummary, items, dragSelectedIds, selectedEquipmentIds, quantityMap, eventStartDate, eventEndDate, editingEventId]);
 
   // Después de agregar, la cantidad de esas filas vuelve a 1 (para sumar de a uno o tercerizar)
   const resetQuantities = (names: string[]) => {
@@ -396,7 +399,13 @@ export default function ContentPanel({
                   disabled={currentQty < 1}
                   onClick={(e) => {
                     e.stopPropagation();
-                    const realToAdd = availableItems.slice(0, currentQty);
+                    // Selección inteligente: primero las que no se usan ese día
+                    const realToAdd = rankUnitsForEvent(
+                      availableItems,
+                      eventStartDate,
+                      eventEndDate,
+                      editingEventId
+                    ).slice(0, currentQty);
                     const negToAdd = Math.max(0, currentQty - availableCount);
                     if (realToAdd.length > 0) onEdit?.(realToAdd);
                     if (negToAdd > 0) {

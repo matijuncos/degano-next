@@ -160,7 +160,8 @@ function TaskCard({
       </Group>
 
       {task.description && (
-        <Text size='xs' c='dimmed' mt={4} lineClamp={3}>
+        // pre-line: respeta los saltos de línea tal como se escribieron
+        <Text size='xs' c='dimmed' mt={4} lineClamp={8} style={{ whiteSpace: 'pre-line' }}>
           {task.description}
         </Text>
       )}

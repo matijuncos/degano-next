@@ -116,6 +116,47 @@ export async function createHistoryEntry(
 }
 
 /**
+ * Igual que createHistoryEntry pero para MUCHAS entradas en UNA sola escritura.
+ * PERF: crear/editar un evento con 100+ equipos hacía una escritura por equipo
+ * y la request se cortaba por tiempo (el evento quedaba creado a medias).
+ */
+export async function createHistoryEntries(
+  db: any,
+  list: CreateHistoryEntryParams[]
+): Promise<void> {
+  if (!list.length) return;
+  const now = new Date();
+  const entries = list.map((params) => {
+    const entry: any = {
+      equipmentId: params.equipmentId?.toString(),
+      equipmentName: params.equipmentName,
+      equipmentCode: params.equipmentCode,
+      action: params.action,
+      date: now,
+      userId: params.userId,
+      changes: params.changes,
+      eventId: params.eventId,
+      eventName: params.eventName,
+      eventDate: params.eventDate,
+      eventEndDate: params.eventEndDate,
+      eventLocation: params.eventLocation,
+      eventClientName: params.eventClientName,
+      details: params.details,
+      fromValue: params.fromValue,
+      toValue: params.toValue
+    };
+    Object.keys(entry).forEach((k) => entry[k] === undefined && delete entry[k]);
+    return entry;
+  });
+  try {
+    await db.collection('equipmentHistory').insertMany(entries, { ordered: false });
+  } catch (error) {
+    console.error('Error creating history entries:', error);
+    // No lanzar error para no romper el flujo principal (igual que createHistoryEntry)
+  }
+}
+
+/**
  * Obtiene el historial de un equipamiento específico
  */
 export async function getEquipmentHistory(

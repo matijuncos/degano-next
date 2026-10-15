@@ -367,8 +367,9 @@ const EquipmentTable = () => {
 
       // Incrementar refresh trigger para forzar recarga de equipamiento
       setRefreshTrigger(prev => prev + 1);
-    } catch (error) {
-      notify({ type: 'defaultError' });
+    } catch (error: any) {
+      // Mostrar el motivo real (ej. un equipo que ya tomó otro evento)
+      notify({ type: 'defaultError', message: error?.message });
       console.log(error);
     } finally {
       setLoading(false);
@@ -448,6 +449,9 @@ const EquipmentTable = () => {
 
             <Tabs.Panel value="selected" pt="md">
               <EquipmentList
+                eventStartDate={selectedEvent?.date}
+                eventEndDate={selectedEvent?.endDate}
+                editingEventId={selectedEvent?._id}
                 equipmentList={eventEquipment.equipment}
                 setEventEquipment={setEventEquipment}
                 setTotal={setTotal}
@@ -583,6 +587,9 @@ const EquipmentTable = () => {
             }}
           >
             <EquipmentList
+                eventStartDate={selectedEvent?.date}
+                eventEndDate={selectedEvent?.endDate}
+                editingEventId={selectedEvent?._id}
               equipmentList={eventEquipment.equipment}
               setEventEquipment={setEventEquipment}
               setTotal={setTotal}
@@ -620,7 +627,10 @@ const EquipmentTable = () => {
         eventEndDate={selectedEvent?.endDate}
         editingEventId={selectedEvent?._id}
         selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
-        onApply={(items) => handleEquipmentSelection(items)}
+        onApply={(items, extras) => {
+          if (items.length) handleEquipmentSelection(items);
+          extras.forEach((e) => handleAddNegative(e.name, e.categoryId || '', e.quantity));
+        }}
       />
     </>
   );
