@@ -5,7 +5,9 @@ import Sidebar from '@/components/Sidebar/Sidebar';
 import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import EquipmentSetsPanel from '@/components/EquipmentSetsPanel/EquipmentSetsPanel';
-import { Box, Tabs, Flex, SegmentedControl } from '@mantine/core';
+import { Box, Tabs, Flex, SegmentedControl, Group, Button } from '@mantine/core';
+import { IconPrinter } from '@tabler/icons-react';
+import StockExportModal from '@/components/StockExport/StockExportModal';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -17,6 +19,7 @@ export default function EquipmentPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileView, setMobileView] = useState<'sidebar' | 'content' | 'creation'>('sidebar');
   const [section, setSection] = useState<'equipment' | 'sets'>('equipment');
+  const [stockExportOpen, setStockExportOpen] = useState(false);
 
   const { isMobile, isTablet } = useResponsive();
   const { can } = usePermissions();
@@ -40,17 +43,37 @@ export default function EquipmentPage() {
 
   const SectionToggle = () => (
     <Box p='sm' style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-      <SegmentedControl
-        value={section}
-        onChange={(val) => setSection(val as 'equipment' | 'sets')}
-        data={[
-          { label: 'Equipamiento', value: 'equipment' },
-          { label: 'Sets', value: 'sets' }
-        ]}
-        size='sm'
-        fullWidth
-      />
+      <Group gap='sm' wrap='nowrap'>
+        <SegmentedControl
+          value={section}
+          onChange={(val) => setSection(val as 'equipment' | 'sets')}
+          data={[
+            { label: 'Equipamiento', value: 'equipment' },
+            { label: 'Sets', value: 'sets' }
+          ]}
+          size='sm'
+          style={{ flex: 1 }}
+        />
+        <Button
+          variant='light'
+          size='sm'
+          leftSection={<IconPrinter size={16} />}
+          onClick={() => setStockExportOpen(true)}
+        >
+          Imprimir / exportar stock
+        </Button>
+      </Group>
     </Box>
+  );
+
+  // Fuera de SectionToggle: ese componente se re-monta en cada render y el
+  // modal perdería sus opciones
+  const stockExportModal = (
+    <StockExportModal
+      opened={stockExportOpen}
+      onClose={() => setStockExportOpen(false)}
+      selectedCategory={selectedCategory as any}
+    />
   );
 
   // Vista móvil/tablet
@@ -58,6 +81,7 @@ export default function EquipmentPage() {
     return (
       <Box>
         <SectionToggle />
+        {stockExportModal}
         {section === 'sets' ? (
           <EquipmentSetsPanel />
         ) : (
@@ -109,6 +133,7 @@ export default function EquipmentPage() {
     return (
       <Box style={{ height: '100vh', overflowY: 'auto' }}>
         <SectionToggle />
+        {stockExportModal}
         <EquipmentSetsPanel />
       </Box>
     );
@@ -117,6 +142,7 @@ export default function EquipmentPage() {
   return (
     <Box style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SectionToggle />
+        {stockExportModal}
       <PanelGroup direction='horizontal' style={{ flex: 1 }}>
         {/* Sidebar */}
         <Panel defaultSize={25} minSize={10} maxSize={50}>
