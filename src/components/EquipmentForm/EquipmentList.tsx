@@ -247,7 +247,7 @@ function CategoryContent({
                 {s.replacement ? <FaChevronDown size={9} /> : 'Reemplazar o tercerizar'}
               </Button>
             </Menu.Target>
-            <Menu.Dropdown>
+            <Menu.Dropdown style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               {s.alternatives.length > 0 && (
                 <>
                   <Menu.Label>Otra unidad igual</Menu.Label>

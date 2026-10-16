@@ -7,6 +7,7 @@ import {
 import { IconCheck, IconAlertTriangle, IconX } from '@tabler/icons-react';
 import { useState, useEffect, useMemo } from 'react';
 import { Select } from '@mantine/core';
+import { useResponsive } from '@/hooks/useResponsive';
 import { EquipmentSet } from '@/components/EquipmentSetsPanel/EquipmentSetsPanel';
 import {
   rankUnitsForEvent,
@@ -54,6 +55,8 @@ export default function ApplySetModal({
   const [selectedSet, setSelectedSet] = useState<EquipmentSet | null>(null);
   // Qué hacer con lo que falta de cada ítem (por defecto: tercerizar)
   const [choices, setChoices] = useState<Record<string, MissingChoice>>({});
+  // Celular: pantalla completa y todo en una columna (en 2 columnas no entraba)
+  const { isMobile } = useResponsive();
 
   // Cargar sets y equipamiento al abrir
   useEffect(() => {
@@ -118,19 +121,30 @@ export default function ApplySetModal({
       onClose={onClose}
       title='Aplicar Set de Equipamiento'
       size='lg'
+      fullScreen={isMobile}
       centered
     >
       {loadingSets ? (
         <Center py='xl'><Loader /></Center>
       ) : (
-        <Group align='flex-start' gap='md' style={{ minHeight: 300 }}>
+        <Group
+          align='flex-start'
+          gap='md'
+          style={{ minHeight: 300, flexDirection: isMobile ? 'column' : 'row', flexWrap: 'nowrap' }}
+        >
           {/* Lista de sets */}
-          <Box style={{ width: '45%', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: 12 }}>
+          <Box
+            style={
+              isMobile
+                ? { width: '100%' }
+                : { width: '45%', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: 12 }
+            }
+          >
             <Text size='xs' c='dimmed' mb='xs' fw={600} tt='uppercase'>Sets disponibles</Text>
             {sets.length === 0 ? (
               <Text size='sm' c='dimmed'>No hay sets creados.</Text>
             ) : (
-              <ScrollArea h={260}>
+              <ScrollArea h={isMobile ? 170 : 260}>
                 <Stack gap='xs'>
                   {sets.map((set) => (
                     <Box
@@ -160,7 +174,7 @@ export default function ApplySetModal({
           </Box>
 
           {/* Detalle de stock */}
-          <Box style={{ flex: 1 }}>
+          <Box style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
             {!selectedSet ? (
               <Text size='sm' c='dimmed' mt='md'>Seleccioná un set para ver disponibilidad.</Text>
             ) : (
@@ -172,7 +186,7 @@ export default function ApplySetModal({
                     ocupados. Cargá las fechas en la pestaña Evento antes de aplicar el set.
                   </Text>
                 )}
-                <ScrollArea h={230}>
+                <ScrollArea h={isMobile ? 'calc(100dvh - 470px)' : 230} mih={180}>
                   <Stack gap='xs'>
                     {plans.map((p) => {
                       const have = p.chosen.length;
@@ -246,7 +260,12 @@ export default function ApplySetModal({
               </Text>
             </Group>
           )}
-          <Group justify='flex-end' gap='xs'>
+          <Group
+            justify='flex-end'
+            gap='xs'
+            mb={isMobile ? 70 : 0}
+            style={isMobile ? { flexDirection: 'column-reverse', alignItems: 'stretch' } : undefined}
+          >
             <Button variant='default' onClick={onClose}>Cancelar</Button>
             <Button color='green' onClick={handleApply} disabled={nothingToAdd}>
               {nothingToAdd

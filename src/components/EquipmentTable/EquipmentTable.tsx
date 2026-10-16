@@ -377,6 +377,23 @@ const EquipmentTable = () => {
   };
 
   // Vista móvil/tablet: Tabs
+  // Se dibuja en las dos vistas (antes solo en escritorio: en celular el botón
+  // "Aplicar set" no abría nada)
+  const applySetModal = (
+  <ApplySetModal
+    opened={applySetModalOpen}
+    onClose={() => setApplySetModalOpen(false)}
+    eventStartDate={selectedEvent?.date}
+    eventEndDate={selectedEvent?.endDate}
+    editingEventId={selectedEvent?._id}
+    selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+    onApply={(items, extras) => {
+      if (items.length) handleEquipmentSelection(items);
+      extras.forEach((e) => handleAddNegative(e.name, e.categoryId || '', e.quantity));
+    }}
+  />
+  );
+
   if (isMobile || isTablet) {
     return (
       <>
@@ -480,6 +497,7 @@ const EquipmentTable = () => {
             onCancel={handleCancel}
           />
         </Modal>
+        {applySetModal}
       </>
     );
   }
@@ -620,18 +638,7 @@ const EquipmentTable = () => {
         />
       </Modal>
 
-      <ApplySetModal
-        opened={applySetModalOpen}
-        onClose={() => setApplySetModalOpen(false)}
-        eventStartDate={selectedEvent?.date}
-        eventEndDate={selectedEvent?.endDate}
-        editingEventId={selectedEvent?._id}
-        selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
-        onApply={(items, extras) => {
-          if (items.length) handleEquipmentSelection(items);
-          extras.forEach((e) => handleAddNegative(e.name, e.categoryId || '', e.quantity));
-        }}
-      />
+      {applySetModal}
     </>
   );
 };

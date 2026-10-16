@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { Modal, Stack, Text, Group, Button, SegmentedControl, Switch, Loader, Center, Divider, Alert } from '@mantine/core';
+import { Modal, Stack, Text, Group, Button, SegmentedControl, Switch, Loader, Center, Divider, Alert, SimpleGrid } from '@mantine/core';
 import { IconPrinter, IconDownload, IconFileSpreadsheet, IconFileTypeCsv } from '@tabler/icons-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { EQUIPMENT_SWR_OPTS } from '@/hooks/useEquipmentStatusMap';
@@ -215,7 +215,7 @@ export default function StockExportModal({
               { value: 'detalle', label: 'Detalle por unidad' }
             ]}
           />
-          <Group grow>
+          <SimpleGrid cols={{ base: 1, xs: 2 }} spacing='xs'>
             <Button
               leftSection={<IconPrinter size={16} />}
               onClick={viewPdf}
@@ -233,7 +233,7 @@ export default function StockExportModal({
             >
               Descargar PDF
             </Button>
-          </Group>
+          </SimpleGrid>
           {/* Aviso ANTES de generar: el detalle de muchas unidades tarda */}
           {mode === 'detalle' && rows.length > 800 && !busy && (
             <Text size='xs' c='yellow.5'>
@@ -258,7 +258,7 @@ export default function StockExportModal({
           )}
 
           <Divider label='Exportar' labelPosition='left' />
-          <Group grow>
+          <SimpleGrid cols={{ base: 1, xs: 2 }} spacing='xs'>
             <Button
               variant='light'
               color='green'
@@ -278,7 +278,7 @@ export default function StockExportModal({
             >
               CSV
             </Button>
-          </Group>
+          </SimpleGrid>
           <Text size='xs' c='dimmed'>
             El Excel trae dos hojas: Resumen (por equipo) y Detalle (por unidad).
           </Text>

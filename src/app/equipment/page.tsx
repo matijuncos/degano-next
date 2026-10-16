@@ -43,7 +43,8 @@ export default function EquipmentPage() {
 
   const SectionToggle = () => (
     <Box p='sm' style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-      <Group gap='sm' wrap='nowrap'>
+      {/* En celular el botón va abajo (al lado tapaba "Sets") */}
+      <Group gap='sm' wrap='wrap'>
         <SegmentedControl
           value={section}
           onChange={(val) => setSection(val as 'equipment' | 'sets')}
@@ -52,13 +53,14 @@ export default function EquipmentPage() {
             { label: 'Sets', value: 'sets' }
           ]}
           size='sm'
-          style={{ flex: 1 }}
+          style={{ flex: '1 1 260px' }}
         />
         <Button
           variant='light'
           size='sm'
           leftSection={<IconPrinter size={16} />}
           onClick={() => setStockExportOpen(true)}
+          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
         >
           Imprimir / exportar stock
         </Button>

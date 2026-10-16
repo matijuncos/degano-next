@@ -4,7 +4,8 @@ import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import ApplySetModal from '@/components/ApplySetModal/ApplySetModal';
 import { EVENT_TABS } from '@/context/config';
 import { EventModel } from '@/context/types';
-import { Box, Button, Modal, Group } from '@mantine/core';
+import { Box, Button, Modal, Group, Tabs } from '@mantine/core';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useEffect, useState } from 'react';
 import { NewEquipment } from '../equipmentStockTable/types';
 import EquipmentList from './EquipmentList';
@@ -35,6 +36,8 @@ const EquipmentForm = ({
   const [previousSelection, setPreviousSelection] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [applySetModalOpen, setApplySetModalOpen] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
+  const [mobileView, setMobileView] = useState<'categories' | 'equipment' | 'selected'>('categories');
 
   // Cargar categorías al montar el componente
   useEffect(() => {
@@ -180,6 +183,62 @@ const EquipmentForm = ({
     }));
   };
 
+  // Mismos componentes para escritorio (3 paneles) y celular (pestañas)
+  const sidebarEl = (
+    <Sidebar
+      onSelect={setSelectedCategory}
+      selectedCategory={selectedCategory}
+      onEdit={handleEdit}
+      onOpenModal={handleOpenModal}
+      newEvent={true}
+      eventStartDate={eventEquipment.date}
+      eventEndDate={eventEquipment.endDate}
+      disableEditOnSelect={true}
+      onApplySet={() => setApplySetModalOpen(true)}
+    />
+  );
+  const contentEl = (
+    <ContentPanel
+      selectedCategory={selectedCategory}
+      setDisableCreateEquipment={() => {}}
+      onSelect={setSelectedCategory}
+      onEdit={handleEquipmentSelection}
+      onRemove={(equipmentId: string) => {
+        setEventEquipment((prev) => ({
+          ...prev,
+          equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
+        }));
+      }}
+      onRemoveMultiple={(ids: string[]) => {
+        setEventEquipment((prev) => ({
+          ...prev,
+          equipment: prev.equipment.filter((eq) => !ids.includes(eq._id))
+        }));
+      }}
+      onCancel={handleCancel}
+      newEvent={true}
+      eventStartDate={eventEquipment.date}
+      eventEndDate={eventEquipment.endDate}
+      selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
+      refreshTrigger={refreshTrigger}
+      onAddNegative={handleAddNegative}
+      onRemoveNegative={handleRemoveNegativeByName}
+      extraEquipment={eventEquipment.extraEquipment}
+    />
+  );
+  const listEl = (
+    <EquipmentList
+      eventStartDate={eventEquipment.date}
+      eventEndDate={eventEquipment.endDate}
+      equipmentList={eventEquipment.equipment}
+      setEventEquipment={setEventEquipment}
+      setTotal={setTotal}
+      equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
+      extraEquipment={eventEquipment.extraEquipment}
+      equipmentItemOrder={eventEquipment.equipmentItemOrder}
+    />
+  );
+
   return (
     <div>
       <style jsx>{`
@@ -187,108 +246,79 @@ const EquipmentForm = ({
           display: none;
         }
       `}</style>
-      <PanelGroup direction="horizontal" style={{ height: '75vh', minHeight: '75vh' }}>
-        {/* Sidebar - Categorías - 25% inicial */}
-        <Panel defaultSize={25} minSize={10} maxSize={50}>
-          <Box
-            className='hide-scrollbar'
-            style={{
-              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-              height: '75vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflowY: 'auto',
-              ...scrollContainerStyle
-            }}
-          >
-            <Sidebar
-              onSelect={setSelectedCategory}
-              selectedCategory={selectedCategory}
-              onEdit={handleEdit}
-              onOpenModal={handleOpenModal}
-              newEvent={true}
-              eventStartDate={eventEquipment.date}
-              eventEndDate={eventEquipment.endDate}
-              disableEditOnSelect={true}
-              onApplySet={() => setApplySetModalOpen(true)}
-            />
-          </Box>
-        </Panel>
-
-        {/* Divisor arrastrable */}
-        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
-
-        {/* ContentPanel - Lista de equipos - 55% inicial */}
-        <Panel defaultSize={47} minSize={20} maxSize={80}>
-          <Box
-            className='hide-scrollbar'
-            style={{
-              borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-              height: '75vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflowY: 'auto',
-              ...scrollContainerStyle
-            }}
-          >
-            <ContentPanel
-              selectedCategory={selectedCategory}
-              setDisableCreateEquipment={() => {}}
-              onSelect={setSelectedCategory}
-              onEdit={handleEquipmentSelection}
-              onRemove={(equipmentId: string) => {
-                setEventEquipment((prev) => ({
-                  ...prev,
-                  equipment: prev.equipment.filter((eq) => eq._id !== equipmentId)
-                }));
+      {isMobile || isTablet ? (
+        // Celular/tablet: pestañas (los 3 paneles no entran en una pantalla angosta)
+        <Tabs value={mobileView} onChange={(v) => setMobileView((v as any) || 'categories')}>
+          <Tabs.List>
+            <Tabs.Tab value='categories'>Categorías</Tabs.Tab>
+            <Tabs.Tab value='equipment'>Equipos</Tabs.Tab>
+            <Tabs.Tab value='selected'>
+              Seleccionados{eventEquipment.equipment.length ? ` (${eventEquipment.equipment.length})` : ''}
+            </Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value='categories' pt='md'>{sidebarEl}</Tabs.Panel>
+          <Tabs.Panel value='equipment' pt='md'>{contentEl}</Tabs.Panel>
+          <Tabs.Panel value='selected' pt='md'>{listEl}</Tabs.Panel>
+        </Tabs>
+      ) : (
+        <PanelGroup direction="horizontal" style={{ height: '75vh', minHeight: '75vh' }}>
+          {/* Sidebar - Categorías - 25% inicial */}
+          <Panel defaultSize={25} minSize={10} maxSize={50}>
+            <Box
+              className='hide-scrollbar'
+              style={{
+                borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+                height: '75vh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'auto',
+                ...scrollContainerStyle
               }}
-              onRemoveMultiple={(ids: string[]) => {
-                setEventEquipment((prev) => ({
-                  ...prev,
-                  equipment: prev.equipment.filter((eq) => !ids.includes(eq._id))
-                }));
+            >
+              {sidebarEl}
+            </Box>
+          </Panel>
+
+          {/* Divisor arrastrable */}
+          <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+          {/* ContentPanel - Lista de equipos - 55% inicial */}
+          <Panel defaultSize={47} minSize={20} maxSize={80}>
+            <Box
+              className='hide-scrollbar'
+              style={{
+                borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+                height: '75vh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'auto',
+                ...scrollContainerStyle
               }}
-              onCancel={handleCancel}
-              newEvent={true}
-              eventStartDate={eventEquipment.date}
-              eventEndDate={eventEquipment.endDate}
-              selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
-              refreshTrigger={refreshTrigger}
-              onAddNegative={handleAddNegative}
-              onRemoveNegative={handleRemoveNegativeByName}
-              extraEquipment={eventEquipment.extraEquipment}
-            />
-          </Box>
-        </Panel>
+            >
+              {contentEl}
+            </Box>
+          </Panel>
 
-        {/* Divisor arrastrable */}
-        <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
+          {/* Divisor arrastrable */}
+          <PanelResizeHandle style={{ width: '2px', background: 'rgba(255, 255, 255, 0.15)' }} />
 
-        {/* EquipmentList - Equipos agregados al evento - 20% inicial */}
-        <Panel defaultSize={28} minSize={18} maxSize={50}>
-          <Box
-            className='hide-scrollbar'
-            style={{
-              height: '75vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflowY: 'auto',
-              ...scrollContainerStyle
-            }}
-          >
-            <EquipmentList
-              eventStartDate={eventEquipment.date}
-              eventEndDate={eventEquipment.endDate}
-              equipmentList={eventEquipment.equipment}
-              setEventEquipment={setEventEquipment}
-              setTotal={setTotal}
-              equipmentCategoryOrder={eventEquipment.equipmentCategoryOrder}
-              extraEquipment={eventEquipment.extraEquipment}
-              equipmentItemOrder={eventEquipment.equipmentItemOrder}
-            />
-          </Box>
-        </Panel>
-      </PanelGroup>
+          {/* EquipmentList - Equipos agregados al evento - 20% inicial */}
+          <Panel defaultSize={28} minSize={18} maxSize={50}>
+            <Box
+              className='hide-scrollbar'
+              style={{
+                height: '75vh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'auto',
+                ...scrollContainerStyle
+              }}
+            >
+              {listEl}
+            </Box>
+          </Panel>
+        </PanelGroup>
+      )}
 
       {/* Modal para crear/editar equipos y categorías */}
       <Modal
