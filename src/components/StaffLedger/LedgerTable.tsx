@@ -369,9 +369,12 @@ function ChargeRow({
               const raw = e.currentTarget.value.replace(/^\$\s*/, '');
               if (!onAmountSave || !amountChanged(raw, charge.amount)) return;
               setSaving(true);
-              const ok = await onAmountSave(charge, raw);
+              await onAmountSave(charge, raw);
               setSaving(false);
-              if (!ok) setRev((r) => r + 1);
+              // Siempre se re-monta con el valor del servidor: si falló, vuelve al
+              // anterior; si se borró el monto y quedó el de los roles (aunque sea
+              // el mismo número), se vuelve a ver en vez de quedar vacío
+              setRev((r) => r + 1);
             }}
           />
           <RoleAmountHint charge={charge} />
@@ -527,19 +530,26 @@ function RolInput({
 }) {
   const current = charge.roleIds ?? [];
   const [ids, setIds] = useState<string[]>(current);
+  const latest = useRef<string[]>(current);
   const [saving, setSaving] = useState(false);
   const open = useRef(false);
   const currentKey = current.join(',');
 
   // Llegó la cuenta nueva (o falló el guardado): se toma lo del servidor
-  useEffect(() => setIds(current), [currentKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    latest.current = current;
+    setIds(current);
+  }, [currentKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = async (next: string[]) => {
     if (next.join(',') === currentKey) return;
     setSaving(true);
     const ok = await onSave(charge, next);
     setSaving(false);
-    if (!ok) setIds(current);
+    if (!ok) {
+      latest.current = current;
+      setIds(current);
+    }
   };
 
   return (
@@ -554,9 +564,10 @@ function RolInput({
       onDropdownOpen={() => (open.current = true)}
       onDropdownClose={() => {
         open.current = false;
-        commit(ids);
+        commit(latest.current);
       }}
       onChange={(next) => {
+        latest.current = next;
         setIds(next);
         // Con la lista cerrada (botón limpiar, o un rol recién creado) se guarda ya
         if (!open.current) commit(next);

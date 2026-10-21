@@ -108,7 +108,9 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
         date: arDay(new Date()),
         amount: round2((charge.amount ?? 0) - charge.paidAmount),
         method,
-        chargeKey: charge.key
+        chargeKey: charge.key,
+        // Monto de los roles: queda guardado en la línea al pagarla
+        ...(charge.amountFromRoles ? { lockAmount: charge.amount, source: charge.source } : {})
       });
       return true;
     } catch (e: any) {

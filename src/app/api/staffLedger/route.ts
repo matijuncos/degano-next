@@ -15,7 +15,7 @@ import {
   LEDGER_COLLECTION
 } from '@/lib/staffLedgerServer';
 import { rolesLabel } from '@/utils/staffRoles';
-import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard, parseEventRolInput } from '@/utils/staffLedgerInput';
+import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard, parseEventRolInput, parseAmount } from '@/utils/staffLedgerInput';
 import { eventLabel, isChargeKey } from '@/utils/staffLedger';
 
 // 'YYYY-MM' → mes anterior
@@ -33,6 +33,22 @@ async function findEmployee(db: any, employeeId: string) {
     .collection('employees')
     .findOne({ _id: new ObjectId(employeeId) }, { projection: { fullName: 1, rol: 1, isStaff: 1, insurancePolicy: 1 } });
   return isLedgerEligible(emp) ? emp : null;
+}
+
+// Evento (normal o de calendario) para guardar una línea de monto: fecha,
+// nombre y staff. Uno de calendario se devuelve con la forma de uno normal.
+async function findEventForLine(db: any, eventId: string, isCalendar: boolean) {
+  if (!ObjectId.isValid(eventId)) return null;
+  const found = isCalendar
+    ? await db.collection('calendar_events').findOne(
+        { _id: new ObjectId(eventId) },
+        { projection: { start: 1, title: 1, 'staff.employeeId': 1 } }
+      )
+    : await db.collection('events').findOne(
+        { _id: new ObjectId(eventId) },
+        { projection: { date: 1, type: 1, fullName: 1, 'staff.employeeId': 1 } }
+      );
+  return found && isCalendar ? { ...found, date: found.start, type: found.title } : found;
 }
 
 async function accountResponse(db: any, employee: any) {
@@ -112,22 +128,10 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
         await coll.deleteOne(filter);
         return accountResponse(db, employee);
       }
-      const [found, existingLine] = await Promise.all([
-        !ObjectId.isValid(input.eventId!)
-          ? null
-          : isCalendar
-          ? db.collection('calendar_events').findOne(
-              { _id: new ObjectId(input.eventId) },
-              { projection: { start: 1, title: 1, 'staff.employeeId': 1 } }
-            )
-          : db.collection('events').findOne(
-              { _id: new ObjectId(input.eventId) },
-              { projection: { date: 1, type: 1, fullName: 1, 'staff.employeeId': 1 } }
-            ),
+      const [event, existingLine] = await Promise.all([
+        findEventForLine(db, input.eventId!, isCalendar),
         coll.findOne(filter, { projection: { _id: 1 } })
       ]);
-      // Un evento de calendario se guarda igual que uno normal (fecha + nombre)
-      const event: any = found && isCalendar ? { ...found, date: found.start, type: found.title } : found;
       const guardError = eventAmountGuard(event as any, input.employeeId, !!existingLine);
       if (guardError) return event ? badRequest(guardError) : notFound(guardError);
 
@@ -171,6 +175,39 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
       if (prevMonth < old.fromMonth) return badRequest('El cambio tiene que ser posterior al mes de inicio del fijo');
       if (old.toMonth && input.fromMonth! > old.toMonth) return badRequest('Ese fijo ya terminó antes de ese mes');
       await coll.updateOne({ _id: old._id }, { $set: { toMonth: prevMonth, updatedAt: now } });
+    }
+
+    // Tilde sobre una línea con el monto de los roles (no cargado a mano): ese
+    // monto queda guardado en la línea, como si se hubiera cargado a mano. Así
+    // lo pagado no cambia si después cambian los roles o sus montos, y si sacan
+    // al empleado del evento la línea queda marcada (no desaparece).
+    const lockAmount = parseAmount(body.lockAmount);
+    if (input.chargeKey?.startsWith('evento:') && typeof lockAmount === 'number') {
+      const eventId = input.chargeKey.slice('evento:'.length);
+      const isCalendar = body.source === 'calendar';
+      const event: any = await findEventForLine(db, eventId, isCalendar);
+      if (event && (event.staff ?? []).some((m: any) => m.employeeId === input.employeeId)) {
+        try {
+          await coll.updateOne(
+            { employeeId: input.employeeId, eventId, type: 'evento' },
+            {
+              // Solo si no hay línea: un monto cargado a mano nunca se pisa
+              $setOnInsert: {
+                amount: lockAmount,
+                date: new Date(event.date),
+                description: eventLabel(event),
+                ...(isCalendar ? { source: 'calendar' } : {}),
+                createdAt: now,
+                updatedAt: now,
+                createdBy: ctx.user?.email || ''
+              }
+            },
+            { upsert: true }
+          );
+        } catch (error: any) {
+          if (error?.code !== 11000) throw error; // la línea ya existía: queda la que está
+        }
+      }
     }
 
     await coll.insertOne({ ...input, createdAt: now, updatedAt: now, createdBy: ctx.user?.email || '' });

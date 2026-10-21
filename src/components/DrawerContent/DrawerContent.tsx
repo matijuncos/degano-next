@@ -119,9 +119,10 @@ const DrawerContent = () => {
   }, []);
 
   // Roles de STAFF: se piden al abrir el drawer, antes de abrir el modal de staff
+  const canEditStaff = can('canEditEvents');
   useEffect(() => {
-    if (can('canEditEvents')) preloadStaffRoles();
-  }, []);
+    if (canEditStaff) preloadStaffRoles();
+  }, [canEditStaff]);
 
   // Load staff members from selectedEvent
   useEffect(() => {

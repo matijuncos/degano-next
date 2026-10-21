@@ -176,6 +176,7 @@ Catálogo en `staff_roles` (`name`, `rates: [{amount, from: 'YYYY-MM-DD'}]`, `ar
 
 - En eventos, calendarios de cobros y perfiles cada persona lleva **`roleIds`** (uno o varios, del catálogo) + **`rol`** (texto para mostrar: nombres unidos con " / "). El monto sale de `roleIds`, nunca del texto.
 - **Monto precargado** de una línea de evento en Cobros = suma de sus roles con el monto vigente **a la fecha del evento** (`rateAt`). Cuenta como deuda directa. Un monto cargado a mano gana; borrarlo vuelve al de los roles.
+- **Al pagar con el tilde una línea con monto de los roles, ese monto se guarda en la línea** (`lockAmount`, solo si no había línea): lo pagado no cambia si después cambian los roles, y si sacan al empleado la línea queda marcada. Una línea de roles SIN pagar desaparece si sacan al empleado del evento (nadie cargó nada).
 - Cambiar el monto de un rol = agregar un `rate` con fecha "desde" (nunca pisar el historial): los eventos anteriores no cambian. Montos iniciales desde `ROLE_RATES_START` = 21/10/2026.
 - **Todo lo que es monto es solo admin**: `GET /api/staffRoles` devuelve solo nombres a manager/viewer; POST/PUT con `withAdminAuth`. `/mis-cobros` no recibe `roleAmount`.
 - **Crear un rol desde el evento: solo admin.** El manager solo elige de la lista.
