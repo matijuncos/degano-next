@@ -30,10 +30,11 @@ export const GET = withAuth(async (ctx: AuthContext) => {
     const now = new Date();
     const account = await loadAccount(db, employeeId, now);
     const window = employeeWindow(now);
-    // Las horas son solo para admin: no salen hacia el empleado
+    // Las horas y el monto de referencia de los roles son solo para admin: no
+    // salen hacia el empleado (ve solo lo que se le paga)
     const charges = account.charges
       .filter((c) => inWindow(c.date, window))
-      .map((c) => ({ ...c, hours: null }));
+      .map(({ roleAmount, roleIds, amountFromRoles, ...c }) => ({ ...c, hours: null }));
     const missing = countMissingAmount(charges, now);
 
     return NextResponse.json({

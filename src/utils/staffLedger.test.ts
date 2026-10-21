@@ -595,3 +595,70 @@ describe('unpaidTotal', () => {
     ).toBe(1500);
   });
 });
+
+describe('monto precargado por roles', () => {
+  const DJ = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+  const SON = 'bbbbbbbbbbbbbbbbbbbbbbbb';
+  const roles = new Map([
+    [DJ, { _id: DJ, name: 'DJ', rates: [{ amount: 350000, from: '2026-10-21' }, { amount: 400000, from: '2026-12-01' }] }],
+    [SON, { _id: SON, name: 'Sonidista', rates: [{ amount: 350000, from: '2026-10-21' }] }]
+  ]);
+  const NOV = '2026-11-10T23:00:00.000Z'; // 10/11 20:00 AR
+  const withRoles = (roleIds: string[], date = NOV) =>
+    ev({ date, endDate: undefined, staff: [{ employeeId: EMP, employeeName: 'Ana', rol: 'viejo', roleIds }] });
+
+  it('sin monto manual: la línea toma la suma de sus roles a la fecha del evento', () => {
+    const [c] = buildCharges(EMP, [withRoles([DJ, SON])], [], LEDGER_START_DAY, undefined, roles);
+    expect(c).toMatchObject({ amount: 700000, roleAmount: 700000, amountFromRoles: true, rol: 'DJ / Sonidista', roleIds: [DJ, SON] });
+  });
+
+  it('el monto cargado a mano gana (y se sigue viendo lo de los roles)', () => {
+    const [c] = buildCharges(EMP, [withRoles([DJ])], [entry({ eventId: 'ev1', amount: 500000, date: NOV })], LEDGER_START_DAY, undefined, roles);
+    expect(c.amount).toBe(500000);
+    expect(c.roleAmount).toBe(350000);
+    expect(c.amountFromRoles).toBeUndefined();
+  });
+
+  it('un cambio de monto impacta solo desde su fecha', () => {
+    const [c] = buildCharges(EMP, [withRoles([DJ], '2026-12-05T23:00:00.000Z')], [], LEDGER_START_DAY, undefined, roles);
+    expect(c.amount).toBe(400000);
+  });
+
+  it('eventos anteriores a los montos de los roles siguen sin monto', () => {
+    const [c] = buildCharges(EMP, [withRoles([DJ], '2026-10-15T23:00:00.000Z')], [], LEDGER_START_DAY, undefined, roles);
+    expect(c.amount).toBeNull();
+    expect(c.roleAmount).toBeNull();
+    expect(c.amountFromRoles).toBeUndefined();
+  });
+
+  it('sin roles del catálogo: como antes (rol escrito a mano, sin monto)', () => {
+    const [c] = buildCharges(EMP, [ev({ date: NOV })], [], LEDGER_START_DAY, undefined, roles);
+    expect(c).toMatchObject({ amount: null, rol: 'Técnico' });
+    expect(c.roleIds).toBeUndefined();
+  });
+
+  it('cuenta como deuda: pendiente, tilde y saldo', () => {
+    const now = new Date('2026-11-12T15:00:00.000Z');
+    const acc = buildAccount(EMP, [withRoles([DJ])], [], now, LEDGER_START_DAY, roles);
+    expect(acc.summary.pendingToDate).toBe(350000);
+    expect(acc.summary.missingAmount).toBe(0);
+    // El tilde paga el monto del rol como cualquier otro
+    const paid = buildAccount(
+      EMP,
+      [withRoles([DJ])],
+      [entry({ _id: 'p1', type: 'pago', eventId: undefined, date: '2026-11-11T15:00:00.000Z', amount: 350000, method: 'efectivo', chargeKey: 'evento:ev1' })],
+      now,
+      LEDGER_START_DAY,
+      roles
+    );
+    expect(paid.charges[0].status).toBe('pagado');
+  });
+});
+
+describe('normalizeEventStaff con roles', () => {
+  it('conserva los roleIds válidos', () => {
+    expect(
+      normalizeEventStaff([{ employeeId: 'e1', employeeName: 'Ana', rol: 'DJ', roleIds: ['aaaaaaaaaaaaaaaaaaaaaaaa', 'x'] }])
+    ).toEqual([{ employeeId: 'e1', employeeName: 'Ana', rol: 'DJ', roleIds: ['aaaaaaaaaaaaaaaaaaaaaaaa'] }]);
+  });
+});

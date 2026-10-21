@@ -1,11 +1,12 @@
 // src/components/StaffLedger/LedgerTable.tsx
 'use client';
-import { useMemo, useState } from 'react';
-import { Table, Text, Badge, NumberInput, TextInput, Group, ActionIcon, Tooltip, Stack, Loader, Checkbox, Popover, Button, Collapse, UnstyledButton, Paper } from '@mantine/core';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Table, Text, Badge, NumberInput, Group, ActionIcon, Tooltip, Stack, Loader, Checkbox, Popover, Button, Collapse, UnstyledButton, Paper } from '@mantine/core';
 import { IconPencil, IconTrash, IconAlertTriangle, IconChevronDown } from '@tabler/icons-react';
 import { formatPrice } from '@/utils/priceUtils';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
 import { amountChanged } from '@/utils/staffLedgerInput';
+import RoleMultiSelect from '@/components/StaffRoles/RoleMultiSelect';
 import {
   AllocatedCharge,
   Credit,
@@ -76,8 +77,8 @@ export default function LedgerTable({
   showHours?: boolean;
   // Devuelve si se guardó; si no, la fila vuelve a mostrar el valor del servidor
   onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
-  // Rol en el evento (se guarda en el evento). Devuelve si se guardó.
-  onRolSave?: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
+  // Roles en el evento (se guardan en el evento). Devuelve si se guardó.
+  onRolSave?: (charge: AllocatedCharge, roleIds: string[]) => Promise<boolean>;
   onEditCredit?: (credit: Credit) => void;
   onEditExtra?: (charge: AllocatedCharge) => void;
   onDeleteEntry?: (entryId: string) => void;
@@ -294,7 +295,7 @@ function ChargeRow({
   showHours: boolean;
   confirm: ConfirmFn;
   onAmountSave?: (charge: AllocatedCharge, raw: string) => Promise<boolean>;
-  onRolSave?: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
+  onRolSave?: (charge: AllocatedCharge, roleIds: string[]) => Promise<boolean>;
   onEditExtra?: (charge: AllocatedCharge) => void;
   onDeleteEntry?: (entryId: string) => void;
   onTick?: (charge: AllocatedCharge, method: PaymentMethod) => Promise<boolean>;
@@ -350,8 +351,9 @@ function ChargeRow({
       <Table.Td>
         {editable && charge.kind === 'evento' ? (
           // key con el monto: si el servidor devuelve otro valor, el input se re-monta
+          <>
           <NumberInput
-            key={`${charge.key}:${charge.amount ?? ''}:${rev}`}
+            key={`${charge.key}:${charge.amount ?? ''}:${charge.amountFromRoles ? 'rol' : ''}:${rev}`}
             defaultValue={charge.amount ?? ''}
             placeholder='Cargar monto'
             prefix='$ '
@@ -372,6 +374,8 @@ function ChargeRow({
               if (!ok) setRev((r) => r + 1);
             }}
           />
+          <RoleAmountHint charge={charge} />
+          </>
         ) : charge.amount != null ? (
           formatPrice(charge.amount)
         ) : (
@@ -495,40 +499,67 @@ function TickCell({
   );
 }
 
-// Rol del empleado en el evento, editable en la fila (admin). Guarda al salir
-// del campo o con Enter; si falla, vuelve al valor del servidor.
+// De dónde sale el monto de una línea de evento: de los roles (precargado) o
+// cargado a mano. Si es manual y los roles darían otro, se muestra cuánto y
+// cómo volver (borrar el monto).
+function RoleAmountHint({ charge }: { charge: AllocatedCharge }) {
+  if (charge.amountFromRoles) {
+    return <Text size='xs' c='dimmed'>Monto del rol</Text>;
+  }
+  if (charge.entryId && charge.roleAmount != null && charge.roleAmount !== charge.amount) {
+    return (
+      <Tooltip label='Borrá el monto para volver al de los roles'>
+        <Text size='xs' c='dimmed'>Rol: {formatPrice(charge.roleAmount)}</Text>
+      </Tooltip>
+    );
+  }
+  return null;
+}
+
+// Roles del empleado en el evento, editables en la fila (admin). Guarda al
+// cerrar la lista (o al limpiar); si falla, vuelve al valor del servidor.
 function RolInput({
   charge,
   onSave
 }: {
   charge: AllocatedCharge;
-  onSave: (charge: AllocatedCharge, rol: string) => Promise<boolean>;
+  onSave: (charge: AllocatedCharge, roleIds: string[]) => Promise<boolean>;
 }) {
-  const current = charge.rol === 'Sin rol' ? '' : charge.rol ?? '';
+  const current = charge.roleIds ?? [];
+  const [ids, setIds] = useState<string[]>(current);
   const [saving, setSaving] = useState(false);
-  const [rev, setRev] = useState(0);
+  const open = useRef(false);
+  const currentKey = current.join(',');
 
-  const commit = async (value: string) => {
-    if (value.trim() === current) return;
+  // Llegó la cuenta nueva (o falló el guardado): se toma lo del servidor
+  useEffect(() => setIds(current), [currentKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = async (next: string[]) => {
+    if (next.join(',') === currentKey) return;
     setSaving(true);
-    const ok = await onSave(charge, value);
+    const ok = await onSave(charge, next);
     setSaving(false);
-    if (!ok) setRev((r) => r + 1);
+    if (!ok) setIds(current);
   };
 
   return (
-    <TextInput
-      key={`${charge.key}:${current}:${rev}`}
-      defaultValue={current}
-      placeholder='Sin rol'
+    <RoleMultiSelect
       size='xs'
-      w={130}
+      w={180}
+      value={ids}
+      legacyText={charge.rol}
       disabled={saving}
-      rightSection={saving ? <Loader size={12} /> : null}
+      rightSection={saving ? <Loader size={12} /> : undefined}
       aria-label='Rol en el evento'
-      onBlur={(e) => commit(e.currentTarget.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
+      onDropdownOpen={() => (open.current = true)}
+      onDropdownClose={() => {
+        open.current = false;
+        commit(ids);
+      }}
+      onChange={(next) => {
+        setIds(next);
+        // Con la lista cerrada (botón limpiar, o un rol recién creado) se guarda ya
+        if (!open.current) commit(next);
       }}
     />
   );

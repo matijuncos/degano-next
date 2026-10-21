@@ -11,6 +11,7 @@
 // su fecha. Excepción: un abono hecho con el tilde de una línea (chargeKey)
 // cubre ESA línea, aunque sea futura (adelanto).
 import { addMonths } from 'date-fns';
+import { rolesAmount, rolesLabel, normalizeRoleIds, StaffRole } from './staffRoles';
 
 export type LedgerType = 'evento' | 'extra' | 'fijo' | 'pago' | 'adelanto';
 export type PaymentMethod = 'efectivo' | 'transferencia_tercero' | 'transferencia_degano';
@@ -62,7 +63,7 @@ export interface StaffEvent {
   endDate?: string | Date;
   staffArrivalDate?: string | Date;
   staffArrivalTime?: string;
-  staff?: { employeeId: string; employeeName?: string; rol?: string }[];
+  staff?: { employeeId: string; employeeName?: string; rol?: string; roleIds?: string[] }[];
   source?: 'calendar'; // viene de un calendario extra (calendar_events)
 }
 
@@ -76,6 +77,9 @@ export interface Charge {
   label: string;
   venue?: string;
   rol?: string;
+  roleIds?: string[]; // evento: roles del empleado en ese evento (catálogo)
+  roleAmount?: number | null; // evento: lo que suman sus roles ese día (null = ninguno con monto)
+  amountFromRoles?: true; // el monto es el de los roles (no se cargó a mano)
   hours: number | null;
   unassigned?: true; // tiene monto pero el empleado ya no está en el evento
   eventDeleted?: true; // tiene monto pero el evento ya no existe
@@ -193,7 +197,8 @@ export function buildCharges(
   events: StaffEvent[],
   entries: LedgerEntry[],
   startDay?: string,
-  horizonDay?: string // fijos: se generan hasta este día (sin valor, ninguno)
+  horizonDay?: string, // fijos: se generan hasta este día (sin valor, ninguno)
+  roles?: Map<string, StaffRole> // catálogo de roles: monto precargado por rol
 ): Charge[] {
   const eventLines = new Map(
     entries.filter((e) => e.type === 'evento' && e.eventId).map((e) => [String(e.eventId), e])
@@ -207,16 +212,26 @@ export function buildCharges(
     const line = eventLines.get(id);
     if (!member && !line) continue;
     if (!line && startDay && (arDay(ev.date) as string) < startDay) continue;
+    // Monto de los roles a la fecha del evento. Lo cargado a mano gana; sin
+    // línea manual, la línea toma la suma de sus roles (cuenta como deuda).
+    const roleIds = member?.roleIds?.length ? member.roleIds : undefined;
+    const roleAmount = roleIds && roles ? rolesAmount(roleIds, roles, arDay(ev.date) as string) : undefined;
+    const fromRoles = !line && roleAmount != null;
+    // El rol se muestra con los nombres actuales del catálogo (si lo renombran)
+    const rolText = (roleIds && roles && rolesLabel(roleIds, roles)) || member?.rol?.trim() || 'Sin rol';
     charges.push({
       key: `evento:${id}`,
       kind: 'evento',
       ...(line ? { entryId: String(line._id) } : {}),
       eventId: id,
       date: toISO(ev.date), // manda la fecha del evento (puede haber cambiado)
-      amount: line ? line.amount : null,
+      amount: line ? line.amount : fromRoles ? (roleAmount as number) : null,
       label: eventLabel(ev),
       ...(ev.lugar ? { venue: ev.lugar } : {}),
-      ...(member ? { rol: member.rol?.trim() || 'Sin rol' } : {}),
+      ...(member ? { rol: rolText } : {}),
+      ...(member && roleIds ? { roleIds } : {}),
+      ...(roleAmount !== undefined ? { roleAmount } : {}),
+      ...(fromRoles ? { amountFromRoles: true as const } : {}),
       hours: computeStaffHours(ev),
       ...(member ? {} : { unassigned: true as const }),
       ...(ev.source ? { source: ev.source } : {})
@@ -446,13 +461,14 @@ export function buildAccount(
   events: StaffEvent[],
   entries: LedgerEntry[],
   now: Date,
-  startDay?: string
+  startDay?: string,
+  roles?: Map<string, StaffRole>
 ): Account {
   const credits = toCredits(entries);
   // Los fijos se generan hasta 1 mes adelante (lo mismo que ve el empleado)
   const horizonDay = arDay(addMonths(now, 1)) as string;
   const { charges, unappliedCredit } = allocate(
-    buildCharges(employeeId, events, entries, startDay, horizonDay),
+    buildCharges(employeeId, events, entries, startDay, horizonDay, roles),
     credits,
     now
   );
@@ -572,7 +588,7 @@ export function calendarEventToStaffEvent(
     start: string | Date;
     end?: string | Date;
     allDay?: boolean;
-    staff?: { employeeId: string; employeeName?: string; rol?: string }[];
+    staff?: { employeeId: string; employeeName?: string; rol?: string; roleIds?: string[] }[];
   },
   calendarName: string
 ): StaffEvent {
@@ -587,12 +603,13 @@ export function calendarEventToStaffEvent(
   };
 }
 
-// Staff de un evento de calendario, como llega del cliente: sin duplicados ni
-// basura. Rol vacío o "Sin rol" → ''.
-export function normalizeEventStaff(raw: unknown): { employeeId: string; employeeName: string; rol: string }[] {
+// Staff de un evento (o de un evento de calendario), como llega del cliente:
+// sin duplicados ni basura. Rol vacío o "Sin rol" → ''. roleIds: los del catálogo.
+export type EventStaffMember = { employeeId: string; employeeName: string; rol: string; roleIds?: string[] };
+export function normalizeEventStaff(raw: unknown): EventStaffMember[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
-  const out: { employeeId: string; employeeName: string; rol: string }[] = [];
+  const out: EventStaffMember[] = [];
   for (const m of raw) {
     if (!m || typeof m !== 'object') continue;
     const employeeId = typeof (m as any).employeeId === 'string' ? (m as any).employeeId.trim() : '';
@@ -600,7 +617,8 @@ export function normalizeEventStaff(raw: unknown): { employeeId: string; employe
     seen.add(employeeId);
     const employeeName = typeof (m as any).employeeName === 'string' ? (m as any).employeeName.trim().slice(0, 120) : '';
     const rolRaw = typeof (m as any).rol === 'string' ? (m as any).rol.trim().slice(0, 100) : '';
-    out.push({ employeeId, employeeName, rol: rolRaw === 'Sin rol' ? '' : rolRaw });
+    const roleIds = normalizeRoleIds((m as any).roleIds);
+    out.push({ employeeId, employeeName, rol: rolRaw === 'Sin rol' ? '' : rolRaw, ...(roleIds.length ? { roleIds } : {}) });
   }
   return out;
 }

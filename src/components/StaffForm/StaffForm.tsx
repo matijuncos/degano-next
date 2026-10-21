@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { EventModel } from '@/context/types';
-import { Button, Select, Stack, Text, Card, Group, ActionIcon, TextInput } from '@mantine/core';
+import { Button, Select, Stack, Text, Card, Group, ActionIcon } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { EVENT_TABS } from '@/context/config';
+import RoleMultiSelect from '@/components/StaffRoles/RoleMultiSelect';
+import { useStaffRoles } from '@/hooks/useStaffRoles';
 
 interface StaffMember {
   employeeId: string;
   employeeName: string;
-  rol: string;
+  rol: string; // para mostrar ("DJ / Sonidista")
+  roleIds?: string[]; // roles del catálogo (definen el monto en Cobros)
 }
 
 const StaffForm = ({
@@ -31,6 +34,8 @@ const StaffForm = ({
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(
     event.staff || []
   );
+  // Catálogo de roles: se pide al montar la pestaña (lo usa cada selector)
+  useStaffRoles();
 
   // Fetch employees
   useEffect(() => {
@@ -75,17 +80,18 @@ const StaffForm = ({
     const newStaffMember: StaffMember = {
       employeeId: employee._id,
       employeeName: employee.fullName,
-      // Se precarga con el rol del perfil; se puede cambiar por evento
-      rol: employee.rol || ''
+      // Se precargan los roles del perfil; se pueden cambiar por evento
+      rol: employee.rol || '',
+      ...(employee.roleIds?.length ? { roleIds: employee.roleIds } : {})
     };
 
     setStaffMembers((prev) => [...prev, newStaffMember]);
     setSelectedEmployee(null);
   };
 
-  const handleRolChange = (index: number, rol: string) => {
+  const handleRolesChange = (index: number, roleIds: string[], rol: string) => {
     setStaffMembers((prev) =>
-      prev.map((member, i) => (i === index ? { ...member, rol } : member))
+      prev.map((member, i) => (i === index ? { ...member, roleIds, rol } : member))
     );
   };
 
@@ -132,11 +138,12 @@ const StaffForm = ({
                 <Group justify='space-between' wrap='nowrap'>
                   <Stack gap={4} style={{ flex: 1 }}>
                     <Text size='sm' fw={500}>{member.employeeName}</Text>
-                    <TextInput
+                    <RoleMultiSelect
                       size='xs'
-                      placeholder='Rol en este evento (ej: DJ, Sonido)'
-                      value={member.rol === 'Sin rol' ? '' : member.rol}
-                      onChange={(e) => handleRolChange(index, e.currentTarget.value)}
+                      placeholder='Rol en este evento'
+                      value={member.roleIds ?? []}
+                      legacyText={member.rol}
+                      onChange={(ids, label) => handleRolesChange(index, ids, label)}
                     />
                   </Stack>
                   <ActionIcon

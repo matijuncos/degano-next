@@ -5,6 +5,7 @@ import { Modal, Stack, NumberInput, TextInput, Button, Group } from '@mantine/co
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { ledgerRequest } from '@/hooks/useStaffLedger';
+import RoleNameSelect from '@/components/StaffRoles/RoleNameSelect';
 import { amountForRequest } from '@/utils/staffLedgerInput';
 import { AllocatedCharge, arDay, inputDay } from '@/utils/staffLedger';
 
@@ -58,11 +59,11 @@ export default function ExtraModal({
       <Stack>
         <DateInput label='Fecha' value={date} onChange={(d) => setDate(inputDay(d) ?? date)} valueFormat='DD/MM/YYYY' />
         <TextInput label='Descripción' placeholder='Ej: Depósito' value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
-        <TextInput
+        <RoleNameSelect
           label='Rol (opcional)'
           placeholder='Si lo dejás vacío figura como Extra'
           value={rol}
-          onChange={(e) => setRol(e.currentTarget.value)}
+          onChange={setRol}
         />
         <NumberInput label='Horas (opcional)' value={hours} onChange={setHours} min={0} decimalScale={1} hideControls />
         <NumberInput label='Monto' value={amount} onChange={setAmount} prefix='$ ' thousandSeparator='.' decimalSeparator=',' min={0} hideControls />

@@ -1,6 +1,7 @@
 // src/utils/staffLedgerInput.ts
 // Validación de lo que llega a /api/staffLedger. Pura para poder testearla.
 import { LedgerType, PaymentMethod, PAYMENT_METHODS, round2, isChargeKey } from './staffLedger';
+import { normalizeRoleIds } from './staffRoles';
 
 const TYPES: LedgerType[] = ['evento', 'extra', 'fijo', 'pago', 'adelanto'];
 
@@ -183,15 +184,21 @@ export function eventAmountGuard(
 }
 
 // Rol de un empleado en un evento, editado desde Cobros STAFF. Se guarda en
-// events.staff[].rol (el mismo dato que se edita en el evento y el calendario).
-// Vacío o "Sin rol" → '' (se muestra "Sin rol").
+// events.staff[] (el mismo dato que se edita en el evento y el calendario).
+// Con `roleIds` (roles del catálogo) el texto lo arma el servidor con los
+// nombres; sin roleIds, texto libre: vacío o "Sin rol" → '' (se muestra "Sin rol").
 export function parseEventRolInput(
   body: any
-): { ok: true; value: { employeeId: string; eventId: string; rol: string } } | { ok: false; error: string } {
+):
+  | { ok: true; value: { employeeId: string; eventId: string; rol?: string; roleIds?: string[] } }
+  | { ok: false; error: string } {
   const employeeId = typeof body?.employeeId === 'string' ? body.employeeId.trim() : '';
   const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
   if (!employeeId) return { ok: false, error: 'Falta el empleado' };
   if (!eventId) return { ok: false, error: 'Falta el evento' };
+  if (Array.isArray(body.roleIds)) {
+    return { ok: true, value: { employeeId, eventId, roleIds: normalizeRoleIds(body.roleIds) } };
+  }
   if (typeof body.rol !== 'string') return { ok: false, error: 'Rol inválido' };
   const trimmed = body.rol.trim();
   if (trimmed.length > 100) return { ok: false, error: 'El rol es demasiado largo' };

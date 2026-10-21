@@ -14,6 +14,7 @@ import {
   LedgerSummary,
   StaffEvent
 } from '@/utils/staffLedger';
+import { STAFF_ROLES_COLLECTION, StaffRole } from '@/utils/staffRoles';
 
 export const LEDGER_COLLECTION = 'staff_ledger';
 
@@ -32,7 +33,8 @@ const EVENT_PROJECTION = {
   staffArrivalDate: 1,
   staffArrivalTime: 1,
   'staff.employeeId': 1,
-  'staff.rol': 1
+  'staff.rol': 1,
+  'staff.roleIds': 1
 };
 
 // Eventos de calendarios extra (ej. Logística Técnica): solo los de calendarios
@@ -44,13 +46,24 @@ const CAL_EVENT_PROJECTION = {
   allDay: 1,
   calendarId: 1,
   'staff.employeeId': 1,
-  'staff.rol': 1
+  'staff.rol': 1,
+  'staff.roleIds': 1
 };
 const calSinceLedgerStart = { start: { $gte: new Date(LEDGER_START_ISO) } };
 
 // Todos los calendarios (son pocos): nombre para mostrar y si cuentan para cobros
 const loadCalendars = (db: Db) =>
   db.collection('app_calendars').find({}, { projection: { name: 1, staffPayable: 1 } }).toArray();
+
+// Catálogo de roles (son pocos) con sus montos: el monto precargado de cada
+// línea de evento sale de acá
+export async function loadRolesMap(db: Db): Promise<Map<string, StaffRole>> {
+  const roles = await db
+    .collection(STAFF_ROLES_COLLECTION)
+    .find({}, { projection: { name: 1, rates: 1, archived: 1 } })
+    .toArray();
+  return new Map(roles.map((r) => [String(r._id), { ...r, _id: String(r._id) } as StaffRole]));
+}
 
 // Eventos de calendario → forma de evento de cobros. `onlyPayable`: los que
 // vienen de la consulta general se filtran por calendario que cuenta; los
@@ -123,7 +136,7 @@ async function loadReferencedEvents(db: Db, entries: any[], loadedIds: Set<strin
 }
 
 export async function loadAccount(db: Db, employeeId: string, now: Date): Promise<Account> {
-  const [entries, assignedMain, assignedCal, calendars] = await Promise.all([
+  const [entries, assignedMain, assignedCal, calendars, roles] = await Promise.all([
     db.collection(LEDGER_COLLECTION).find({ employeeId }).toArray(),
     db
       .collection('events')
@@ -133,7 +146,8 @@ export async function loadAccount(db: Db, employeeId: string, now: Date): Promis
       .collection('calendar_events')
       .find({ 'staff.employeeId': employeeId, ...calSinceLedgerStart }, { projection: CAL_EVENT_PROJECTION })
       .toArray(),
-    loadCalendars(db)
+    loadCalendars(db),
+    loadRolesMap(db)
   ]);
   const assigned = [...assignedMain.map(toPlain), ...calendarStaffEvents(assignedCal, calendars, true)] as StaffEvent[];
   const extra = await loadReferencedEvents(db, entries, new Set(assigned.map((e) => String(e._id))), calendars);
@@ -143,7 +157,8 @@ export async function loadAccount(db: Db, employeeId: string, now: Date): Promis
     [...assigned, ...extra],
     entries.map(toPlain) as LedgerEntry[],
     now,
-    LEDGER_START_DAY
+    LEDGER_START_DAY,
+    roles
   );
 }
 
@@ -154,10 +169,10 @@ export type EmployeeLedgerRow = {
   summary: Omit<LedgerSummary, 'byMonth'>;
 };
 
-// Resumen de todos los empleados de STAFF: 5 consultas en paralelo (no N) y,
+// Resumen de todos los empleados de STAFF: 6 consultas en paralelo (no N) y,
 // solo si hace falta, más por los eventos referenciados por montos.
 export async function loadSummaries(db: Db, now: Date): Promise<EmployeeLedgerRow[]> {
-  const [employees, entries, events, calEvents, calendars] = await Promise.all([
+  const [employees, entries, events, calEvents, calendars, roles] = await Promise.all([
     db.collection('employees')
       .find({ isStaff: { $ne: false } }, { projection: { fullName: 1, rol: 1 } })
       .toArray(),
@@ -170,7 +185,8 @@ export async function loadSummaries(db: Db, now: Date): Promise<EmployeeLedgerRo
       .collection('calendar_events')
       .find({ 'staff.0': { $exists: true }, ...calSinceLedgerStart }, { projection: CAL_EVENT_PROJECTION })
       .toArray(),
-    loadCalendars(db)
+    loadCalendars(db),
+    loadRolesMap(db)
   ]);
   const allEvents = [...events.map(toPlain), ...calendarStaffEvents(calEvents, calendars, true)] as StaffEvent[];
   const extra = await loadReferencedEvents(db, entries, new Set(allEvents.map((e) => String(e._id))), calendars);
@@ -189,7 +205,8 @@ export async function loadSummaries(db: Db, now: Date): Promise<EmployeeLedgerRo
       eventsBy.get(id) ?? [],
       entriesBy.get(id) ?? [],
       now,
-      LEDGER_START_DAY
+      LEDGER_START_DAY,
+      roles
     ).summary;
     return { employeeId: id, fullName: emp.fullName || '', rol: emp.rol || '', summary };
   });

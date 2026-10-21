@@ -11,8 +11,10 @@ import {
   ensureLedgerIndexes,
   loadAccount,
   loadSummaries,
+  loadRolesMap,
   LEDGER_COLLECTION
 } from '@/lib/staffLedgerServer';
+import { rolesLabel } from '@/utils/staffRoles';
 import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard, parseEventRolInput } from '@/utils/staffLedgerInput';
 import { eventLabel, isChargeKey } from '@/utils/staffLedger';
 
@@ -72,16 +74,21 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
     if (body?.action === 'eventRol') {
       const rolInput = parseEventRolInput(body);
       if (!rolInput.ok) return badRequest(rolInput.error);
-      const { employeeId, eventId, rol } = rolInput.value;
+      const { employeeId, eventId, roleIds } = rolInput.value;
       if (!ObjectId.isValid(eventId)) return badRequest('Evento inválido');
       const db = await getDb();
-      const employee = await findEmployee(db, employeeId);
+      const [employee, roles] = await Promise.all([findEmployee(db, employeeId), roleIds ? loadRolesMap(db) : null]);
       if (!employee) return notFound('Empleado no encontrado');
+      // Roles del catálogo: solo los que existen; el texto se arma con sus nombres
+      const validIds = roleIds && roles ? roleIds.filter((id) => roles.has(id)) : undefined;
+      const set = validIds
+        ? { 'staff.$.roleIds': validIds, 'staff.$.rol': rolesLabel(validIds, roles!) }
+        : { 'staff.$.rol': rolInput.value.rol ?? '' };
       // Evento de calendario extra (Logística Técnica, etc.) → calendar_events
       const eventsColl = body.source === 'calendar' ? 'calendar_events' : 'events';
       const result = await db
         .collection(eventsColl)
-        .updateOne({ _id: new ObjectId(eventId), 'staff.employeeId': employeeId }, { $set: { 'staff.$.rol': rol } });
+        .updateOne({ _id: new ObjectId(eventId), 'staff.employeeId': employeeId }, { $set: set });
       if (result.matchedCount === 0) return notFound('El empleado ya no está asignado a ese evento');
       return accountResponse(db, employee);
     }

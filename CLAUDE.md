@@ -170,6 +170,19 @@ Cuenta corriente por empleado en `staff_ledger`. Lógica pura en `/src/utils/sta
 - Póliza: `employees.insurancePolicy` (excluida de `GET /api/employees`). Se ve por `/api/staffPolicy` (admin o el propio empleado).
 - Fechas en hora argentina (UTC-03:00 fijo): usar `arDay()`/`inputDay()`, nunca `getDate()` en el servidor.
 
+### 8. Roles de STAFF con monto (CRÍTICO)
+
+Catálogo en `staff_roles` (`name`, `rates: [{amount, from: 'YYYY-MM-DD'}]`, `archived?`). Lógica pura en `/src/utils/staffRoles.ts` (testeada).
+
+- En eventos, calendarios de cobros y perfiles cada persona lleva **`roleIds`** (uno o varios, del catálogo) + **`rol`** (texto para mostrar: nombres unidos con " / "). El monto sale de `roleIds`, nunca del texto.
+- **Monto precargado** de una línea de evento en Cobros = suma de sus roles con el monto vigente **a la fecha del evento** (`rateAt`). Cuenta como deuda directa. Un monto cargado a mano gana; borrarlo vuelve al de los roles.
+- Cambiar el monto de un rol = agregar un `rate` con fecha "desde" (nunca pisar el historial): los eventos anteriores no cambian. Montos iniciales desde `ROLE_RATES_START` = 21/10/2026.
+- **Todo lo que es monto es solo admin**: `GET /api/staffRoles` devuelve solo nombres a manager/viewer; POST/PUT con `withAdminAuth`. `/mis-cobros` no recibe `roleAmount`.
+- **Crear un rol desde el evento: solo admin.** El manager solo elige de la lista.
+- Los roles no se borran: se archivan. Renombrar actualiza el `rol` de eventos, calendarios y perfiles.
+- Fijo y Extra eligen el rol de la lista solo como nombre (su monto es el propio).
+- Datos viejos: `scripts/migrate-staff-roles.js` (simulación por defecto, `--apply` para escribir).
+
 ---
 
 ## Estructura del Proyecto
@@ -199,6 +212,7 @@ src/
 │   │   ├── tasks/          # CRUD tareas de tableros
 │   │   ├── staffLedger/    # Cobros de STAFF (admin) + /me (empleado)
 │   │   ├── staffPolicy/    # Póliza de seguro (PDF S3)
+│   │   ├── staffRoles/     # Catálogo de roles de STAFF con montos (admin) / nombres (resto)
 │   │   └── ...
 │   ├── new-event/          # Página crear evento (formulario 10 tabs)
 │   ├── event/[id]/         # Página editar evento
@@ -244,6 +258,7 @@ src/
 | `calendar_events` | Eventos de los calendarios extras (`calendarId`; `staff[]` con rol si el calendario tiene `staffPayable`) |
 | `boards` | Tableros de Comunicación Interna con `visibility`/`ownerId`/`memberIds` |
 | `tasks` | Tareas de los tableros (`boardId`, `status`, `order`, `assigneeId` = `_id` de empleado) |
+| `staff_roles` | Roles de STAFF con historial de montos por evento (ver regla 8) |
 | `staff_ledger` | Cuenta corriente de cobros de STAFF: montos por evento, extras, pagos y adelantos (ver regla 7) |
 
 ## Convenciones de Código
@@ -281,6 +296,20 @@ API Route → SWR cache → DeganoContext → Componentes → Estado local
 2. Sincronizar equipamiento (agregar/quitar `scheduledUses`)
 3. Actualizar el contexto (`updateEventInList` o `addEventToList`)
 4. Invalidar caché SWR
+
+## Integración con lo existente (OBLIGATORIO)
+
+Toda feature nueva se diseña **sobre lo que ya funciona**, no al lado. Antes de diseñar, buscar (grep) **todos** los lugares que leen, muestran o editan el dato que se toca y decidir qué pasa en cada uno. Checklist mínimo:
+- **Dónde se carga/edita:** crear evento, editar evento, drawer del calendario, modales de calendarios extras, perfiles, cobros.
+- **Borrador de Nuevo Evento** (`useEventDraft`): que el dato nuevo se guarde y se restaure.
+- **Dónde se muestra:** listas, detalle, drawer, PDFs imprimibles, mis-cobros.
+- **Permisos y ofuscación:** front + servidor (`sanitizeEventForRole`, `withAdminAuth`…), incluido lo que devuelve cada GET.
+- **Projections** de las APIs que sirven la colección.
+- **Datos viejos:** cómo quedan los registros existentes (migración con simulación primero, o compatibilidad al leer).
+- **Mobile** (390px) y tema claro de `/calendar` si aplica.
+- **Performance:** requests extra, precarga, loaders.
+
+En el diseño, listar estos puntos de integración explícitamente para que el usuario los valide.
 
 ## Verificación antes de dar algo por terminado
 

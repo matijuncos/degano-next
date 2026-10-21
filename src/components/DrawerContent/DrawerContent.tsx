@@ -15,8 +15,7 @@ import {
   Select,
   Card,
   ActionIcon,
-  Badge,
-  TextInput
+  Badge
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -40,6 +39,8 @@ import useNotification from '@/hooks/useNotification';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { groupEquipmentByName } from '@/utils/equipmentGroupUtils';
 import EquipmentNoteModal, { NoteUnit } from '@/components/EquipmentNoteModal/EquipmentNoteModal';
+import RoleMultiSelect from '@/components/StaffRoles/RoleMultiSelect';
+import { preloadStaffRoles } from '@/hooks/useStaffRoles';
 import { format24Hour } from '@/utils/dateUtils';
 import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 import { openS3File } from '@/utils/s3Utils';
@@ -56,7 +57,8 @@ interface FileItem {
 interface StaffMember {
   employeeId: string;
   employeeName: string;
-  rol: string;
+  rol: string; // para mostrar ("DJ / Sonidista")
+  roleIds?: string[]; // roles del catálogo (definen el monto en Cobros)
 }
 
 const DrawerContent = () => {
@@ -69,9 +71,11 @@ const DrawerContent = () => {
   const files: FileItem[] = selectedEvent?.files || [];
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
-  // Rol en ESTE evento (es el que muestra Cobros STAFF). Se precarga con el del
-  // perfil. editingStaffIndex != null → el modal edita el rol de alguien ya asignado
+  // Roles en ESTE evento (los que muestra y cobra Cobros STAFF). Se precargan
+  // con los del perfil. editingStaffIndex != null → el modal edita los roles de
+  // alguien ya asignado. staffRol = texto para mostrar (o el viejo escrito a mano)
   const [staffRol, setStaffRol] = useState('');
+  const [staffRoleIds, setStaffRoleIds] = useState<string[]>([]);
   const [editingStaffIndex, setEditingStaffIndex] = useState<number | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -112,6 +116,11 @@ const DrawerContent = () => {
       }
     };
     fetchEmployees();
+  }, []);
+
+  // Roles de STAFF: se piden al abrir el drawer, antes de abrir el modal de staff
+  useEffect(() => {
+    if (can('canEditEvents')) preloadStaffRoles();
   }, []);
 
   // Load staff members from selectedEvent
@@ -235,6 +244,7 @@ const DrawerContent = () => {
     setIsStaffModalOpen(false);
     setSelectedEmployee(null);
     setStaffRol('');
+    setStaffRoleIds([]);
     setEditingStaffIndex(null);
   };
 
@@ -242,6 +252,7 @@ const DrawerContent = () => {
     setEditingStaffIndex(index);
     const current = staffMembers[index]?.rol || '';
     setStaffRol(current === 'Sin rol' ? '' : current);
+    setStaffRoleIds(staffMembers[index]?.roleIds ?? []);
     setIsStaffModalOpen(true);
   };
 
@@ -274,6 +285,7 @@ const DrawerContent = () => {
     setSelectedEmployee(id);
     const employee = employees.find((emp) => emp._id === id);
     setStaffRol(employee?.rol || '');
+    setStaffRoleIds(employee?.roleIds ?? []);
   };
 
   const saveStaff = async (updatedStaff: StaffMember[], successMessage: string) => {
@@ -304,10 +316,11 @@ const DrawerContent = () => {
 
   const handleSaveStaffModal = async () => {
     const rol = staffRol.trim();
+    const roles = staffRoleIds.length ? { roleIds: staffRoleIds } : {};
 
     if (editingStaffIndex !== null) {
       const updatedStaff = staffMembers.map((member, i) =>
-        i === editingStaffIndex ? { ...member, rol } : member
+        i === editingStaffIndex ? { ...member, rol, roleIds: staffRoleIds } : member
       );
       await saveStaff(updatedStaff, 'Rol actualizado');
       return;
@@ -339,7 +352,8 @@ const DrawerContent = () => {
     const newStaffMember: StaffMember = {
       employeeId: employee._id,
       employeeName: employee.fullName,
-      rol
+      rol,
+      ...roles
     };
     await saveStaff([...staffMembers, newStaffMember], 'Staff agregado correctamente');
   };
@@ -1018,14 +1032,14 @@ const DrawerContent = () => {
               searchable
             />
           )}
-          <TextInput
+          <RoleMultiSelect
             label='Rol en este evento'
-            description='Uno o varios, ej: DJ, Sonido. Es el que se ve en Cobros STAFF.'
-            placeholder='Sin rol'
-            value={staffRol}
-            onChange={(e) => setStaffRol(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveStaffModal();
+            description='Uno o varios. Define el monto en Cobros STAFF.'
+            value={staffRoleIds}
+            legacyText={staffRol}
+            onChange={(ids, label) => {
+              setStaffRoleIds(ids);
+              setStaffRol(label);
             }}
           />
           <Group justify='flex-end'>

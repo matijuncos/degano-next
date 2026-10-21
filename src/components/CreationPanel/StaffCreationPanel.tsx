@@ -7,12 +7,14 @@ import { Button, TextInput, Select, Group, Textarea } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
+import RoleMultiSelect from '@/components/StaffRoles/RoleMultiSelect';
 
 const initialFormState = {
   fullName: '',
   cardId: '',
   email: '',
   rol: '',
+  roleIds: [] as string[],
   license: 'NO',
   licenseType: '',
   observations: '',
@@ -51,6 +53,7 @@ export default function StaffCreationPanel({
         cardId: editItem.cardId || '',
         email: editItem.email || '',
         rol: editItem.rol || '',
+        roleIds: editItem.roleIds || [],
         license: editItem.license || 'NO',
         licenseType: editItem.licenseType || '',
         observations: editItem.observations || '',
@@ -155,11 +158,12 @@ export default function StaffCreationPanel({
           locale='es'
           clearable
         />
-        <TextInput
+        <RoleMultiSelect
           label='Rol'
-          value={formData.rol || ''}
-          onChange={(e) => handleInput('rol', e.currentTarget.value)}
-          autoComplete='off'
+          description='Se precarga al sumarlo al staff de un evento'
+          value={formData.roleIds || []}
+          legacyText={formData.rol}
+          onChange={(ids, label) => setFormData((prev: any) => ({ ...prev, roleIds: ids, rol: label }))}
         />
         <Select
           label='Tiene carnet?'

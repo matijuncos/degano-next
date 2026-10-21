@@ -197,4 +197,14 @@ describe('parseEventRolInput', () => {
   it('limita el largo', () => {
     expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', rol: 'x'.repeat(101) }).ok).toBe(false);
   });
+  it('roles del catálogo: solo ids válidos (el texto lo arma el servidor)', () => {
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', roleIds: ['aaaaaaaaaaaaaaaaaaaaaaaa', 'DJ'] })).toEqual({
+      ok: true,
+      value: { employeeId: 'e1', eventId: 'ev1', roleIds: ['aaaaaaaaaaaaaaaaaaaaaaaa'] }
+    });
+    expect(parseEventRolInput({ employeeId: 'e1', eventId: 'ev1', roleIds: [] })).toEqual({
+      ok: true,
+      value: { employeeId: 'e1', eventId: 'ev1', roleIds: [] }
+    });
+  });
 });

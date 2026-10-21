@@ -18,6 +18,8 @@ import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { IconTrash } from '@tabler/icons-react';
 import { AppCalendar } from '@/types/calendars';
+import RoleMultiSelect from '@/components/StaffRoles/RoleMultiSelect';
+import { preloadStaffRoles } from '@/hooks/useStaffRoles';
 import 'dayjs/locale/es';
 
 export interface CalendarEventData {
@@ -37,7 +39,8 @@ export interface CalendarEventData {
 export interface CalendarEventStaff {
   employeeId: string;
   employeeName: string;
-  rol: string;
+  rol: string; // para mostrar ("DJ / Sonidista")
+  roleIds?: string[]; // roles del catálogo (definen el monto en Cobros)
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -177,6 +180,10 @@ export default function CalendarEventModal({
     staffPayable && !readOnly ? '/api/employees?directory=true' : null,
     fetcher
   );
+  // Roles de STAFF: junto con los empleados, antes de que se abra el selector
+  useEffect(() => {
+    if (staffPayable && !readOnly) preloadStaffRoles();
+  }, [staffPayable, readOnly]);
   const staffOptions = useMemo(
     () =>
       (Array.isArray(employeesData) ? employeesData : [])
@@ -189,10 +196,18 @@ export default function CalendarEventModal({
   const addStaff = (employeeId: string | null) => {
     const emp = (employeesData || []).find((e: any) => String(e._id) === employeeId);
     if (!emp) return;
-    setStaff((prev) => [...prev, { employeeId: String(emp._id), employeeName: emp.fullName, rol: emp.rol || '' }]);
+    setStaff((prev) => [
+      ...prev,
+      {
+        employeeId: String(emp._id),
+        employeeName: emp.fullName,
+        rol: emp.rol || '',
+        ...(emp.roleIds?.length ? { roleIds: emp.roleIds } : {})
+      }
+    ]);
   };
-  const setStaffRol = (index: number, rol: string) =>
-    setStaff((prev) => prev.map((m, i) => (i === index ? { ...m, rol } : m)));
+  const setStaffRoles = (index: number, roleIds: string[], rol: string) =>
+    setStaff((prev) => prev.map((m, i) => (i === index ? { ...m, roleIds, rol } : m)));
   const removeStaff = (index: number) => setStaff((prev) => prev.filter((_, i) => i !== index));
   const textColor = isLightTheme ? '#1a1b1e' : '#c1c2c5';
 
@@ -349,13 +364,19 @@ export default function CalendarEventModal({
                     </Text>
                   ) : (
                     <>
-                      <TextInput
-                        placeholder='Rol (ej: DJ, Sonido)'
-                        value={m.rol}
-                        onChange={(e) => setStaffRol(index, e.currentTarget.value)}
+                      <RoleMultiSelect
+                        placeholder='Rol'
+                        value={m.roleIds ?? []}
+                        legacyText={m.rol}
+                        onChange={(ids, label) => setStaffRoles(index, ids, label)}
                         size='xs'
-                        w={170}
-                        styles={inputStyles}
+                        w={200}
+                        styles={{
+                          ...inputStyles,
+                          pill: isLightTheme ? { backgroundColor: '#e9ecef', color: '#1a1b1e' } : undefined,
+                          description: { color: isLightTheme ? '#868e96' : '#909296' }
+                        }}
+                        classNames={{ dropdown: isLightTheme ? 'calendar-light-dropdown' : undefined }}
                       />
                       <ActionIcon
                         color='red'

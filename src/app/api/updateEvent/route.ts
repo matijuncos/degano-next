@@ -3,6 +3,7 @@ import type { NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
+import { sanitizeStaffRoleIds } from '@/utils/staffRoles';
 import { createHistoryEntries } from '@/utils/equipmentHistoryUtils';
 import { releaseEquipmentFromEvent } from '@/lib/equipmentRelease';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
@@ -46,6 +47,8 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       }
       updateData.venueMapsUrl = venueMapsUrl;
     }
+    // Roles del staff (catálogo): solo ids válidos
+    if ('staff' in updateData) updateData.staff = sanitizeStaffRoleIds(updateData.staff);
 
     // GUARD teléfonos: nunca persistir un teléfono ofuscado ('****'). Si un rol
     // sin permiso para ver teléfonos edita el evento, el phoneNumber llega como

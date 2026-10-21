@@ -18,6 +18,8 @@ import FixedModal, { FixedModalMode } from '@/components/StaffLedger/FixedModal'
 import FixedList from '@/components/StaffLedger/FixedList';
 import { formatPrice } from '@/utils/priceUtils';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
+import RolesModal from '@/components/StaffRoles/RolesModal';
+import { useStaffRoles } from '@/hooks/useStaffRoles';
 import { AllocatedCharge, Credit, FixedDef, PaymentMethod, tickCreditType, arDay, round2 } from '@/utils/staffLedger';
 
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
@@ -84,10 +86,11 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
     }
   };
 
-  // Rol en el evento: se guarda en el evento (lo ven la vista del evento y el calendario)
-  const saveRol = async (charge: AllocatedCharge, rol: string) => {
+  // Roles en el evento: se guardan en el evento (lo ven la vista del evento y el
+  // calendario) y definen el monto precargado de la línea
+  const saveRol = async (charge: AllocatedCharge, roleIds: string[]) => {
     try {
-      await ledgerRequest('POST', { action: 'eventRol', employeeId, eventId: charge.eventId, rol, source: charge.source });
+      await ledgerRequest('POST', { action: 'eventRol', employeeId, eventId: charge.eventId, roleIds, source: charge.source });
       return true;
     } catch (e: any) {
       notifications.show({ color: 'red', message: e.message });
@@ -205,16 +208,27 @@ export default withPageAuthRequired(function CobrosStaffPage() {
   const { isMobile, isTablet } = useResponsive();
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<string | null>('list');
+  const [rolesOpen, setRolesOpen] = useState(false);
+  // Roles: los usan la tabla (selector de rol) y la vista de Roles → al montar
+  useStaffRoles();
 
   if (isLoading) return <Center h='60vh'><Loader /></Center>;
   if (!isAdmin) return <Center h='60vh'><Text>No tenés permisos para ver esta sección.</Text></Center>;
 
   const select = (id: string) => { setSelected(id); setTab('detail'); };
 
+  const header = (
+    <Group justify='space-between' mb='md' wrap='wrap'>
+      <Text size='xl' fw={700}>Cobros STAFF</Text>
+      <Button variant='light' onClick={() => setRolesOpen(true)}>Roles y montos</Button>
+      <RolesModal opened={rolesOpen} onClose={() => setRolesOpen(false)} />
+    </Group>
+  );
+
   if (isMobile || isTablet) {
     return (
       <Box p='md'>
-        <Text size='xl' fw={700} mb='md'>Cobros STAFF</Text>
+        {header}
         <Tabs value={tab} onChange={setTab}>
           <Tabs.List>
             <Tabs.Tab value='list'>Empleados</Tabs.Tab>
@@ -229,7 +243,7 @@ export default withPageAuthRequired(function CobrosStaffPage() {
 
   return (
     <Box p='md'>
-      <Text size='xl' fw={700} mb='md'>Cobros STAFF</Text>
+      {header}
       <Group align='flex-start' wrap='nowrap' gap='lg'>
         <ScrollArea h='calc(100vh - 120px)' w={320} style={{ flexShrink: 0 }}>
           <EmployeeList selected={selected} onSelect={select} />

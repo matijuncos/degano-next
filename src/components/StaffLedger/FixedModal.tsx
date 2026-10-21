@@ -10,6 +10,7 @@ import 'dayjs/locale/es';
 import { useEffect, useState } from 'react';
 import { Modal, Stack, NumberInput, TextInput, Button, Group, Text } from '@mantine/core';
 import { MonthPickerInput } from '@mantine/dates';
+import RoleNameSelect from '@/components/StaffRoles/RoleNameSelect';
 import { notifications } from '@mantine/notifications';
 import { ledgerRequest } from '@/hooks/useStaffLedger';
 import { amountForRequest } from '@/utils/staffLedgerInput';
@@ -123,7 +124,7 @@ export default function FixedModal({
               </Text>
             )}
             <TextInput label='Descripción' placeholder='Ej: Mantenimiento depósito' value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
-            <TextInput label='Rol (opcional)' placeholder='Si lo dejás vacío figura como Fijo' value={rol} onChange={(e) => setRol(e.currentTarget.value)} />
+            <RoleNameSelect label='Rol (opcional)' placeholder='Si lo dejás vacío figura como Fijo' value={rol} onChange={setRol} />
             <NumberInput label='Monto por mes' value={amount} onChange={setAmount} prefix='$ ' thousandSeparator='.' decimalSeparator=',' min={0} hideControls />
             <NumberInput
               label='Día del mes'
