@@ -16,3 +16,22 @@ export function formatCalendarDateParam(date: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
 }
+
+/**
+ * "Ir a mes" del calendario: el selector de mes (Mantine 8) devuelve
+ * 'AAAA-MM-DD' (o un Date). Se va al día 1 de ese mes, en hora local (mismo
+ * cuidado que arriba: nunca pasar 'AAAA-MM-DD' por new Date()). Inválido → null.
+ */
+export function monthStartFromPicker(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : new Date(value.getFullYear(), value.getMonth(), 1);
+  }
+  const m = /^(\d{4})-(\d{2})/.exec(value);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, 1) : null;
+}
+
+/** Fecha que se muestra en el selector: el mes visible, como 'AAAA-MM-01'. */
+export function pickerValueFromDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+}

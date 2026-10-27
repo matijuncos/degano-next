@@ -14,7 +14,8 @@ import {
   IconUsers,
   IconVinyl,
   IconCash,
-  IconReceipt
+  IconReceipt,
+  IconMapPin
 } from '@tabler/icons-react';
 import NextEvents from '@/components/NextEvents/NextEvents';
 import styles from './HomePage.module.css';
@@ -39,12 +40,9 @@ const Home = () => {
       path: '/events',
       Icon: IconListCheck
     },
-    { label: 'Clientes', path: '/clients', Icon: IconUser },
-    {
-      label: 'Crear Evento',
-      path: '/new-event',
-      Icon: IconPlus
-    },
+    // Mismos permisos que el menú: el viewer no ve clientes ni crea eventos
+    ...(permissions?.canViewClients ? [{ label: 'Clientes', path: '/clients', Icon: IconUser }] : []),
+    ...(permissions?.canCreateEvents ? [{ label: 'Crear Evento', path: '/new-event', Icon: IconPlus }] : []),
     {
       label: 'Administrar Stock',
       path: '/equipment',
@@ -65,6 +63,8 @@ const Home = () => {
       path: '/bands',
       Icon: IconVinyl
     },
+    // Lugares: lo ven admin y manager (solo el admin modifica)
+    ...(isAdmin || isManager ? [{ label: 'Lugares', path: '/lugares', Icon: IconMapPin }] : []),
     {
       label: 'Comunicación interna',
       path: '/tableros',

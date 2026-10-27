@@ -473,3 +473,22 @@ body.calendar-light-mode [data-combobox-option]:hover:where(:not([data-combobox-
 .calendar-light-dropdown .mantine-Combobox-empty {
   color: #868e96;
 }
+
+/* Selector "Ir a mes" en tema claro (la app es dark por defecto) */
+.calendar-light-picker {
+  background-color: #ffffff;
+  border-color: #dee2e6;
+  color: #1a1b1e;
+}
+.calendar-light-picker button {
+  color: #1a1b1e;
+}
+.calendar-light-picker button:hover:not([data-selected]) {
+  background-color: #f1f3f5;
+}
+.calendar-light-picker button[data-selected] {
+  color: #ffffff;
+}
+.calendar-light-picker button[data-disabled] {
+  color: #adb5bd;
+}

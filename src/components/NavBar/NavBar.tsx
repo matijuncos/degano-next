@@ -11,7 +11,8 @@ import {
   IconMusic,
   IconLayoutKanban,
   IconCash,
-  IconReceipt
+  IconReceipt,
+  IconMapPin
 } from '@tabler/icons-react';
 import degano from '../../assets/logo.png';
 import classes from './Navbar.module.css';
@@ -52,6 +53,7 @@ const linksList = [
   { icon: IconUser, label: 'Clientes', path: '/clients' },
   { icon: IconPlus, label: 'Nuevo evento', path: '/new-event' },
   { icon: IconMusic, label: 'Géneros de música', path: '/genres' },
+  { icon: IconMapPin, label: 'Lugares', path: '/lugares' },
   { icon: IconLayoutKanban, label: 'Comunicación interna', path: '/tableros' },
   { icon: IconCash, label: 'Cobros STAFF', path: '/cobros-staff' },
   { icon: IconReceipt, label: 'Mis cobros', path: '/mis-cobros' }
@@ -60,7 +62,7 @@ const linksList = [
 function Navbar() {
   const router = useRouter();
   const { user } = useUser();
-  const { can } = usePermissions();
+  const { can, isAdmin, isManager } = usePermissions();
   const { employee } = useMyEmployee();
   const { activeNavTab } = useDeganoCtx();
   const setLoadingCursor = useLoadingCursor();
@@ -97,6 +99,10 @@ function Navbar() {
     }
     if (link.path === '/new-event') {
       return can('canCreateEvents');
+    }
+    // Lugares: lo ven admin y manager (solo el admin modifica)
+    if (link.path === '/lugares') {
+      return isAdmin || isManager;
     }
     // Plata: solo admin
     if (link.path === '/cobros-staff') {

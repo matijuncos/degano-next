@@ -8,10 +8,12 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './calendar.css';
 import 'moment/locale/es';
 import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box, LoadingOverlay } from '@mantine/core';
-import { IconSearch, IconX } from '@tabler/icons-react';
+import { IconSearch, IconX, IconCalendarSearch } from '@tabler/icons-react';
+import { MonthPickerInput } from '@mantine/dates';
+import 'dayjs/locale/es';
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useDeganoCtx, calendarDataFetcher } from '@/context/DeganoContext';
-import { parseCalendarDateParam, formatCalendarDateParam } from '@/utils/calendarDateParam';
+import { parseCalendarDateParam, formatCalendarDateParam, monthStartFromPicker, pickerValueFromDate } from '@/utils/calendarDateParam';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -552,6 +554,31 @@ export default withPageAuthRequired(function CalendarPage() {
                   {personalCalendarEvents.length} personales
                 </Badge>
               )}
+
+              {/* Ir a cualquier mes y año, para atrás o para adelante (los
+                  eventos ya están todos cargados: no hace ninguna request) */}
+              <MonthPickerInput
+                aria-label='Ir a mes'
+                value={pickerValueFromDate(date)}
+                onChange={(v) => {
+                  const target = monthStartFromPicker(v);
+                  if (target) onNavigate(target);
+                }}
+                valueFormat='MMMM YYYY'
+                locale='es'
+                leftSection={<IconCalendarSearch size={16} />}
+                size='sm'
+                w={180}
+                popoverProps={{ classNames: { dropdown: isLightTheme ? 'calendar-light-picker' : undefined } }}
+                styles={{
+                  input: {
+                    textTransform: 'capitalize',
+                    backgroundColor: isLightTheme ? '#ffffff' : '#25262b',
+                    borderColor: isLightTheme ? '#dee2e6' : '#373a40',
+                    color: isLightTheme ? '#000000' : '#ffffff'
+                  }
+                }}
+              />
 
               {/* Búsqueda de eventos Degano */}
               {!searchOpen ? (

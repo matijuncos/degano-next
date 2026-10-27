@@ -1,0 +1,63 @@
+/* Pantalla de inicio de sesión.
+   Ocupa exactamente la pantalla visible (100dvh: en el celular 100vh incluye
+   la barra del navegador y obligaba a scrollear para llegar al botón). Va fija
+   por encima del layout, así no le suman los rellenos que se reservan para la
+   barra de abajo de la app. */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 400; /* por encima de la barra de abajo (vacía sin sesión) */
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  background-color: #1a1b1e;
+  overflow-y: auto;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background-color: black;
+  border-radius: 18px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.2rem;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  font-size: 1.15rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.logo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+}
+
+/* Teléfonos bajitos (ej. iPhone SE): logo más chico para que todo entre */
+@media (max-height: 640px) {
+  .card {
+    padding: 24px 20px;
+    gap: 16px;
+  }
+  .logo {
+    width: 120px;
+    height: 120px;
+  }
+}

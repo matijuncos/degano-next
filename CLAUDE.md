@@ -184,6 +184,17 @@ Catálogo en `staff_roles` (`name`, `rates: [{amount, from: 'YYYY-MM-DD'}]`, `ar
 - Fijo y Extra eligen el rol de la lista solo como nombre (su monto es el propio).
 - Datos viejos: `scripts/migrate-staff-roles.js` (simulación por defecto, `--apply` para escribir).
 
+### 9. Lugares (salones)
+
+Panel en `/lugares`: lo **ven admin y manager**; **solo el admin modifica** (editar, crear, unir), en el front y en el servidor (`propagate` y `merge` → 403/admin). Lógica pura en `/src/utils/venues.ts` (testeada).
+
+- Los eventos guardan el lugar **por nombre** (`lugar`) y una **copia** de sus datos (`eventAddress`, `eventCity`, `eventProvince`, `venueContactName`, `venueContactPhone`, `venueMapsUrl`).
+- **Editar un lugar desde el panel actualiza los eventos de HOY EN ADELANTE** (día argentino; `PUT /api/salons` con `propagate: true`). Los pasados NO se tocan. Solo se copian los campos que cambiaron.
+- Si cambia el nombre, también se actualiza `scheduledUses[].location` de los equipos de esos eventos (y `location` si están hoy en uno), con entrada `edicion` en `equipmentHistory`. El historial viejo no se toca.
+- Unir duplicados (`POST action: 'merge'`): los eventos de hoy en adelante pasan al lugar que queda y se borra la ficha duplicada.
+- El nombre se compara sin mayúsculas ni espacios de más (`venueNameFilter`). No puede haber dos lugares con el mismo nombre (409).
+- El `PUT` sin `propagate` (lo usa el formulario de evento) sigue igual: solo actualiza la ficha.
+
 ---
 
 ## Estructura del Proyecto
@@ -202,7 +213,7 @@ src/
 │   │   ├── getClients/     # Listar clientes (con ofuscación)
 │   │   ├── categories/     # Categorías de equipamiento
 │   │   ├── employees/      # CRUD empleados
-│   │   ├── salons/         # CRUD salones
+│   │   ├── salons/         # CRUD salones (?withUsage=1 para el panel; propagate/merge, ver regla 9)
 │   │   ├── uploadToS3/     # Upload a AWS S3
 │   │   ├── uploadToGoogleDrive/  # Upload a Google Drive
 │   │   ├── me/             # Identidad del usuario logueado (vínculo con STAFF)
@@ -221,6 +232,7 @@ src/
 │   ├── equipment-stock/    # Stock de equipamiento
 │   ├── calendar/           # Calendario de eventos + calendarios extras
 │   ├── tableros/           # Comunicación interna (tableros tipo Trello)
+│   ├── lugares/            # Panel de lugares (regla 9)
 │   └── ...
 ├── components/             # Componentes React
 │   ├── EventForm/          # Formulario de evento
