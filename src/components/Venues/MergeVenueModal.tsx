@@ -25,11 +25,13 @@ export default function MergeVenueModal({
   const [saving, setSaving] = useState(false);
 
   // Si hay uno con el mismo nombre (sin tildes/mayúsculas), se propone ese
+  // Solo al abrir (cambia el lugar a unir): si la lista se recarga con el modal
+  // abierto, no se pierde lo que eligió el usuario
   useEffect(() => {
     if (!source) return setTargetId(null);
     const twin = salons.find((s) => s._id !== source._id && venueLooseKey(s.name) === venueLooseKey(source.name));
     setTargetId(twin?._id ?? null);
-  }, [source, salons]);
+  }, [source?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const options = useMemo(
     () =>

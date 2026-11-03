@@ -1,6 +1,8 @@
 import { ObjectId } from 'mongodb';
 
-export type HistoryAction = 'creacion' | 'edicion' | 'uso_evento' | 'traslado' | 'cambio_estado';
+// 'nota': escrita a mano (bitácora; no se edita ni se borra)
+// 'eliminacion': el equipo se borró (queda una foto de sus datos)
+export type HistoryAction = 'creacion' | 'edicion' | 'uso_evento' | 'traslado' | 'cambio_estado' | 'nota' | 'eliminacion';
 
 export interface EquipmentChange {
   field: string;
@@ -32,6 +34,12 @@ export interface EquipmentHistoryEntry {
   details?: string;
   fromValue?: string;
   toValue?: string;
+
+  // Nota: texto y autor (nombre al momento de escribirla)
+  note?: string;
+  authorName?: string;
+  // Lo agrega la API al leer: nombre de quien hizo el cambio
+  userName?: string;
 }
 
 export interface CreateHistoryEntryParams {

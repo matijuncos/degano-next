@@ -184,7 +184,6 @@ export default function CreationPanel({
                 isOut: formData.isOut,
                 reason: formData.reason || ''
               },
-              history: formData.history || '',
               brand: formData.brand,
               model: formData.model,
               serialNumber: formData.serialNumber,
@@ -493,14 +492,18 @@ export default function CreationPanel({
               </span>
             </div>
           )}
-          <Textarea
-            label='Historial'
-            placeholder='Escribí cambios, reparaciones, observaciones...'
-            minRows={4}
-            autosize
-            value={formData.history || ''}
-            onChange={(e) => handleInput('history', e.currentTarget.value)}
-          />
+          {/* Notas: el texto libre de antes queda de SOLO LECTURA; las notas
+              nuevas se agregan en el historial (no se editan ni se borran) */}
+          {formData.history?.trim() ? (
+            <Textarea
+              label='Notas anteriores'
+              description='Escritas antes del historial. Las notas nuevas se agregan desde "Historial y notas".'
+              value={formData.history}
+              readOnly
+              autosize
+              minRows={2}
+            />
+          ) : null}
           <div>
             <label>Imagen del equipo (máx. 10MB)</label>
             <div
@@ -693,7 +696,7 @@ export default function CreationPanel({
             mt='md'
             fullWidth
           >
-            Ver Historial
+            Historial y notas
           </Button>
 
           <EquipmentHistoryModal

@@ -6,8 +6,9 @@ import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import EquipmentSetsPanel from '@/components/EquipmentSetsPanel/EquipmentSetsPanel';
 import { Box, Tabs, Flex, SegmentedControl, Group, Button } from '@mantine/core';
-import { IconPrinter } from '@tabler/icons-react';
+import { IconPrinter, IconArchive } from '@tabler/icons-react';
 import StockExportModal from '@/components/StockExport/StockExportModal';
+import DeletedEquipmentModal from '@/components/EquipmentHistory/DeletedEquipmentModal';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -20,6 +21,7 @@ export default function EquipmentPage() {
   const [mobileView, setMobileView] = useState<'sidebar' | 'content' | 'creation'>('sidebar');
   const [section, setSection] = useState<'equipment' | 'sets'>('equipment');
   const [stockExportOpen, setStockExportOpen] = useState(false);
+  const [deletedOpen, setDeletedOpen] = useState(false);
 
   const { isMobile, isTablet } = useResponsive();
   const { can } = usePermissions();
@@ -60,9 +62,20 @@ export default function EquipmentPage() {
           size='sm'
           leftSection={<IconPrinter size={16} />}
           onClick={() => setStockExportOpen(true)}
-          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
+          style={{ flex: isMobile ? '1 1 auto' : '0 0 auto' }}
         >
           Imprimir / exportar stock
+        </Button>
+        {/* Historial de los equipos que ya no están (queda para siempre) */}
+        <Button
+          variant='subtle'
+          color='gray'
+          size='sm'
+          leftSection={<IconArchive size={16} />}
+          onClick={() => setDeletedOpen(true)}
+          style={{ flex: '0 0 auto' }}
+        >
+          Eliminados
         </Button>
       </Group>
     </Box>
@@ -71,11 +84,14 @@ export default function EquipmentPage() {
   // Fuera de SectionToggle: ese componente se re-monta en cada render y el
   // modal perdería sus opciones
   const stockExportModal = (
-    <StockExportModal
-      opened={stockExportOpen}
-      onClose={() => setStockExportOpen(false)}
-      selectedCategory={selectedCategory as any}
-    />
+    <>
+      <StockExportModal
+        opened={stockExportOpen}
+        onClose={() => setStockExportOpen(false)}
+        selectedCategory={selectedCategory as any}
+      />
+      <DeletedEquipmentModal opened={deletedOpen} onClose={() => setDeletedOpen(false)} />
+    </>
   );
 
   // Vista móvil/tablet

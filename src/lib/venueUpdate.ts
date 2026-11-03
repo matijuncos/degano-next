@@ -6,6 +6,7 @@
 import { Db, ObjectId } from 'mongodb';
 import { fromTodayFilter, venueNameFilter } from '@/utils/venues';
 import { createHistoryEntries } from '@/utils/equipmentHistoryUtils';
+import { VENUE_RENAME_FIELD } from '@/utils/equipmentLife';
 
 export async function applyVenueToUpcomingEvents(
   db: Db,
@@ -73,7 +74,7 @@ async function renameInEquipment(db: Db, events: any[], oldName: string, newName
           eventEndDate: ev.endDate,
           eventLocation: newName,
           eventClientName: ev.fullName,
-          changes: [{ field: 'lugar del evento', oldValue: oldName, newValue: newName }],
+          changes: [{ field: VENUE_RENAME_FIELD, oldValue: oldName, newValue: newName }],
           fromValue: oldName,
           toValue: newName,
           details: `Lugar del evento renombrado: "${oldName}" → "${newName}"`

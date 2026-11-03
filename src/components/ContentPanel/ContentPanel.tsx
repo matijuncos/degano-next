@@ -2,6 +2,7 @@
 'use client';
 import { equipmentAvailabilityUrl } from '@/utils/equipmentAvailability';
 import { EQUIPMENT_SWR_OPTS } from '@/hooks/useEquipmentStatusMap';
+import useNotification from '@/hooks/useNotification';
 import useSWR, { mutate } from 'swr';
 import {
   Table,
@@ -126,6 +127,7 @@ export default function ContentPanel({
   }, [selectedCategory?._id]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const notify = useNotification();
   // Equipo cuyo "En Uso" se clickeó (modal "¿Dónde está en uso?")
   const [busyItem, setBusyItem] = useState<any>(null);
 
@@ -583,15 +585,23 @@ export default function ContentPanel({
 
   const confirmDelete = async () => {
     let wasEquipmentDeleted = false;
+    // El servidor puede negarse (ej. equipo asignado a un evento): se muestra
+    // su mensaje y no se da por borrado
+    const del = async (url: string) => {
+      const res = await fetch(url, { method: 'DELETE' });
+      if (res.ok) return true;
+      const data = await res.json().catch(() => ({}));
+      notify({ type: 'defaultError', message: data?.error || 'No se pudo eliminar' });
+      return false;
+    };
     if (equipmentToDelete) {
-      await fetch(`/api/equipment?id=${equipmentToDelete._id}`, { method: 'DELETE' });
-      wasEquipmentDeleted = true;
+      wasEquipmentDeleted = await del(`/api/equipment?id=${equipmentToDelete._id}`);
       setEquipmentToDelete(null);
     } else if (selectedCategory) {
       const isCategoryToDelete = categories.some((cat: any) => cat._id === selectedCategory._id);
       const endpoint = isCategoryToDelete ? '/api/categories' : '/api/equipment';
-      await fetch(`${endpoint}?id=${selectedCategory._id}`, { method: 'DELETE' });
-      if (!isCategoryToDelete) wasEquipmentDeleted = true;
+      const ok = await del(`${endpoint}?id=${selectedCategory._id}`);
+      if (!isCategoryToDelete) wasEquipmentDeleted = ok;
     }
     setShowDeleteModal(false);
     mutate('/api/categories');

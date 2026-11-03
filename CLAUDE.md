@@ -110,8 +110,18 @@ Toda acción sobre equipamiento se registra en la colección `equipmentHistory`.
 - `uso_evento` - Asignado/programado para un evento
 - `traslado` - Cambio de ubicación
 - `cambio_estado` - Disponible ↔ Fuera de servicio ↔ En Evento
+- `nota` - Nota escrita a mano (bitácora; no se edita ni se borra)
+- `eliminacion` - Equipo eliminado (foto de sus datos)
 
 Usar utilidades de `/src/utils/equipmentHistoryUtils.ts`: `createHistoryEntry()`, `detectEquipmentChanges()`, `determineSpecialAction()`.
+
+**El historial es PERMANENTE (CRÍTICO):**
+- No se edita ni se borra, nunca. No hay endpoints de PUT/DELETE para `equipmentHistory` y no hay que crearlos.
+- `POST /api/equipmentHistory` solo agrega **notas** (`action: 'nota'`, `note`, `authorName`) a la bitácora del equipo (`canEditEquipment`).
+- El campo de texto viejo `equipment.history` quedó como "Notas anteriores" de **solo lectura**: el servidor lo ignora en POST/PUT de `/api/equipment`.
+- Borrar un equipo registra `eliminacion` con una foto de sus datos (si no se puede registrar, NO se borra) y no se permite si tiene reservas que no terminaron (409). Su historial se sigue viendo desde Equipamiento → "Eliminados".
+- Los cambios de precio del historial solo los ve el admin (`stripHistoryPrices`).
+- Lógica pura en `/src/utils/equipmentLife.ts` (testeada): tipos importantes vs automáticos, filtros, resumen de vida, agrupado por mes.
 
 ### 4. Identidad: STAFF es el directorio único (CRÍTICO)
 

@@ -230,9 +230,11 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  // Agregar timestamp de creación
+  // Agregar timestamp de creación. El texto libre "Historial" ya no se carga:
+  // las notas van a la bitácora (equipmentHistory), que no se edita ni se borra
+  const { history: _legacyNotes, ...fields } = body;
   const equipmentData = {
-    ...body,
+    ...fields,
     createdAt: new Date()
   };
 
@@ -259,7 +261,9 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   // `scheduledUses` lo manejan solo los endpoints de eventos: si viniera en el
   // body (copia vieja de la caché) pisaría reservas reales.
   // `busyWith` es calculado por el GET, tampoco se guarda.
-  const { _id, scheduledUses: _ignored, busyWith: _busy, ...rest } = body;
+  // `history` (texto libre viejo) quedó como "Notas anteriores" de SOLO LECTURA:
+  // las notas nuevas van a la bitácora del historial, que no se edita ni se borra.
+  const { _id, scheduledUses: _ignored, busyWith: _busy, history: _frozen, ...rest } = body;
   const objectId = new ObjectId(String(_id));
 
   // Precios: quien no los puede ver tampoco los puede pisar (su formulario
@@ -274,9 +278,13 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   // Detectar cambios y registrar en historial
   if (oldItem) {
     // Sin permiso de precios, los precios no cambiaron: comparar con los viejos
-    const compared = canViewPrices
-      ? rest
-      : { ...rest, rentalPrice: oldItem.rentalPrice, investmentPrice: oldItem.investmentPrice };
+    const compared = {
+      ...(canViewPrices
+        ? rest
+        : { ...rest, rentalPrice: oldItem.rentalPrice, investmentPrice: oldItem.investmentPrice }),
+      // El texto viejo no cambia (no se guarda): no es una edición
+      history: oldItem.history
+    };
     const changes = detectEquipmentChanges(oldItem, compared);
 
     if (changes.length > 0) {
@@ -333,10 +341,50 @@ export const DELETE = withAuth(async (context: AuthContext, req: Request) => {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
+  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Equipo inválido' }, { status: 400 });
+
   const client = await clientPromise;
   const db = client.db('degano-app');
 
-  await db.collection('equipment').deleteOne({ _id: new ObjectId(id) });
+  const equipment = await db.collection('equipment').findOne({ _id: new ObjectId(id) });
+  if (!equipment) return NextResponse.json({ error: 'Equipo no encontrado' }, { status: 404 });
+
+  // Reservado para un evento que todavía no terminó: borrarlo dejaría al evento
+  // con un equipo que ya no existe. Primero hay que sacarlo del evento.
+  const now = Date.now();
+  const active = (equipment.scheduledUses ?? []).filter(
+    (u: any) => u?.endDate && new Date(u.endDate).getTime() >= now
+  );
+  if (active.length) {
+    const names = [...new Set(active.map((u: any) => u.eventName || u.eventType || 'un evento'))].slice(0, 3);
+    return NextResponse.json(
+      { error: `No se puede eliminar: está asignado a ${names.join(', ')}. Sacalo del evento primero.` },
+      { status: 409 }
+    );
+  }
+
+  // El historial del equipo queda para siempre: se registra la baja con una
+  // foto de sus datos (así se puede seguir viendo su vida aunque ya no exista)
+  const snapshot = [
+    equipment.brand && `Marca: ${equipment.brand}`,
+    equipment.model && `Modelo: ${equipment.model}`,
+    equipment.serialNumber && `N° de serie: ${equipment.serialNumber}`,
+    equipment.location && `Ubicación: ${equipment.location}`,
+    equipment.outOfService?.isOut && `Estado: fuera de servicio${equipment.outOfService?.reason ? ` (${equipment.outOfService.reason})` : ''}`
+  ].filter(Boolean);
+  // Directo (sin el helper que ignora errores): si la baja no queda
+  // registrada, el equipo NO se borra
+  await db.collection('equipmentHistory').insertOne({
+    equipmentId: id,
+    equipmentName: equipment.name,
+    equipmentCode: equipment.code,
+    action: 'eliminacion',
+    date: new Date(),
+    userId: context.user?.sub,
+    details: ['Equipo eliminado', ...snapshot].join(' · ')
+  });
+
+  await db.collection('equipment').deleteOne({ _id: equipment._id });
 
   return NextResponse.json({ success: true });
 }, { requiredPermission: 'canDeleteEquipment' });
