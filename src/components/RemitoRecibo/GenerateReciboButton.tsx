@@ -7,7 +7,9 @@ import {
   Stack,
   TextInput,
   Textarea,
-  Select
+  Autocomplete,
+  ComboboxItem,
+  OptionsFilter
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { IconReceipt, IconEye, IconDownload } from '@tabler/icons-react';
@@ -15,6 +17,7 @@ import { pdf } from '@react-pdf/renderer';
 import { EventModel } from '@/context/types';
 import PrintableReciboSection from '@/components/PrintableSections/PrintableReciboSection';
 import { savePdfBlob } from '@/utils/savePdfBlob';
+import { filterNameSuggestions } from '@/utils/reciboName';
 
 // Ítems por defecto a partir del presupuesto: base + anexos (los "gastos"),
 // editables luego. NO se listan equipos ni el saldo restante.
@@ -26,6 +29,13 @@ const autoItems = (event: EventModel): string => {
     if (a?.description && a.description.trim()) lines.push(a.description.trim());
   });
   return lines.join('\n');
+};
+
+// "A nombre de": nombre libre con los clientes del evento como sugerencias
+const nameFilter: OptionsFilter = ({ options, search }) => {
+  const items = options as ComboboxItem[];
+  const keep = new Set(filterNameSuggestions(items.map((o) => o.value), search));
+  return items.filter((o) => keep.has(o.value));
 };
 
 // Formateo/parseo del monto (igual que en el presupuesto: "$ 600.000")
@@ -95,7 +105,7 @@ const GenerateReciboButton = ({
   const buildBlob = () =>
     pdf(
       <PrintableReciboSection
-        cliente={cliente || event.fullName}
+        cliente={cliente.trim() || event.fullName}
         fechaEmision={fechaEmision || new Date()}
         monto={Number(parseMonto(monto)) || 0}
         concepto={concepto}
@@ -108,9 +118,11 @@ const GenerateReciboButton = ({
     ).toBlob();
 
   const fileName = () =>
-    `RECIBO - ${cliente || event.fullName || 'Cliente'} - ${event.type || 'Evento'}`
+    `RECIBO - ${cliente.trim() || event.fullName || 'Cliente'} - ${event.type || 'Evento'}`
       .replace(/[\/\\:*?"<>|]/g, '-')
       .trim();
+
+  const missingName = !cliente.trim();
 
   const handleView = async () => {
     try {
@@ -130,7 +142,7 @@ const GenerateReciboButton = ({
 
       // Guardar el recibo como archivo del evento (S3 + budgetFiles).
       // El nombre guardado (numerado) lo arma el padre; acá solo pasamos el cliente.
-      if (onSave) await onSave(blob, cliente || event.fullName || 'Cliente');
+      if (onSave) await onSave(blob, cliente.trim() || event.fullName || 'Cliente');
       setOpened(false);
     } finally {
       setLoading(null);
@@ -157,13 +169,15 @@ const GenerateReciboButton = ({
         classNames={{ body: 'hide-scrollbar', content: 'hide-scrollbar' }}
       >
         <Stack gap='sm'>
-          <Select
+          <Autocomplete
             label='A nombre de'
+            description='Elegí un cliente del evento o escribí otro nombre'
+            placeholder='Nombre o razón social'
             data={clienteOptions}
             value={cliente}
-            onChange={(v) => setCliente(v || '')}
-            allowDeselect={false}
-            searchable
+            onChange={setCliente}
+            filter={nameFilter}
+            comboboxProps={{ withinPortal: true }}
           />
 
           <Group grow>
@@ -223,6 +237,7 @@ const GenerateReciboButton = ({
               leftSection={<IconEye size={16} />}
               onClick={handleView}
               loading={loading === 'view'}
+              disabled={missingName}
             >
               Ver
             </Button>
@@ -231,6 +246,7 @@ const GenerateReciboButton = ({
               leftSection={<IconDownload size={16} />}
               onClick={handleDownload}
               loading={loading === 'download'}
+              disabled={missingName}
             >
               Descargar
             </Button>

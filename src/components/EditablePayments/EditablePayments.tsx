@@ -11,6 +11,7 @@ import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
 import { BudgetAnnex, BudgetFile } from '@/context/types';
 import { IconPencil } from '@tabler/icons-react';
 import GenerateReciboButton from '@/components/RemitoRecibo/GenerateReciboButton';
+import { safeReciboName } from '@/utils/reciboName';
 import { openS3File } from '@/utils/s3Utils';
 
 const MAX_FILE_SIZE_MB = 10;
@@ -279,7 +280,8 @@ const EditablePayments = () => {
     // El número NO va en el nombre: se calcula dinámicamente al mostrar (por
     // orden de creación), así al borrar uno el resto se renumera solo.
     const fecha = new Date().toLocaleDateString('es-AR').replace(/\//g, '-');
-    const fileName = `Recibo - ${cliente || 'Cliente'} - ${fecha}.pdf`;
+    // El nombre se escribe libre: se limpia para el nombre del archivo en S3
+    const fileName = `Recibo - ${safeReciboName(cliente)} - ${fecha}.pdf`;
     try {
       const res = await fetch('/api/uploadToS3', {
         method: 'POST',
