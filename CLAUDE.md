@@ -207,6 +207,18 @@ Panel en `/lugares`: lo **ven admin y manager**; **solo el admin modifica** (edi
 
 ---
 
+### 10. El "evento seleccionado" es GLOBAL: nunca usarlo a ciegas (CRÍTICO)
+
+`selectedEvent` (DeganoContext) es el **último evento que se abrió** en la app (calendario, lista, drawer), no necesariamente el que está en pantalla. Usarlo a ciegas hizo que, al crear un evento nuevo, la pestaña Archivos mostrara y **borrara archivos de OTRO evento** (incidente 04/11/2026).
+
+- **Nuevo evento JAMÁS lee `selectedEvent`.** Todo componente que se use ahí recibe el evento por props (ej. `<FilesHandlerComponent event={event} onEventUpdated={setEvent} />`). Antes de crear el evento (sin `_id`) no se suben archivos: se muestra un aviso.
+- **Página de un evento:** solo se muestra/edita cuando el seleccionado es el de la URL (`eventForPage(selectedEvent, id)` en `/src/utils/eventScope.ts`). Mientras carga → spinner, nunca el evento anterior.
+- **Al guardar un evento, mandar SOLO `_id` + lo que cambia** (`filesUpdateBody`, `{ _id, staff }`, etc.). Nunca `{ ...selectedEvent, ... }`: una copia vieja en memoria pisa el resto del evento (o a otro evento). `updateEvent` acepta cuerpos parciales.
+- **Borrar un archivo:** primero sacarlo del evento y recién después de S3 (si falla lo primero, el archivo no se pierde). El bucket `degano-events-files` tiene versionado: lo borrado se puede recuperar.
+- Componente nuevo que use `useDeganoCtx().selectedEvent`: revisar en qué páginas se monta. Si puede aparecer en Nuevo evento, pasarle el evento por props.
+
+---
+
 ## Estructura del Proyecto
 
 ```

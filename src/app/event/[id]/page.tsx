@@ -31,7 +31,8 @@ import {
   Input,
   Group,
   Textarea,
-  ActionIcon
+  ActionIcon,
+  Center
 } from '@mantine/core';
 import {
   IconUserPlus,
@@ -47,6 +48,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
+import { eventForPage } from '@/utils/eventScope';
 import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 import BandList from '@/components/BandManager/BandList';
 import EditableBand from '@/components/BandManager/EditableBand';
@@ -2305,10 +2307,18 @@ const EventPage = () => {
   const [showTabsVersion, setShowTabsVersion] = useState(true);
   const [activeTab, setActiveTab] = useState<string | null>('main');
   const [isMusicFieldsModalOpen, setIsMusicFieldsModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const notify = useNotification();
 
   // Obtener la ruta de origen si existe
   const fromPath = searchParams.get('from');
+
+  // El "evento seleccionado" es global: mientras se carga ESTE evento todavía
+  // puede ser el que se abrió antes. Hasta que no coincide con el id de la
+  // página no se muestra nada editable (si no, cualquier edición — archivos,
+  // pagos, playlist… — se guardaba en el OTRO evento).
+  const eventForFiles = eventForPage(selectedEvent, id);
+  const isThisEvent = !!eventForFiles;
 
   // Fetch event directly from API instead of using cached allEvents
   useEffect(() => {
@@ -2321,7 +2331,12 @@ const EventPage = () => {
             Pragma: 'no-cache'
           }
         });
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.event) {
+          setLoadError(response.status === 404 ? 'No se encontró el evento.' : data?.error || 'No se pudo cargar el evento.');
+          return;
+        }
+        setLoadError(null);
         if (data.event) {
           setSelectedEvent(data.event);
           setFolderName(
@@ -2334,6 +2349,7 @@ const EventPage = () => {
         }
       } catch (error) {
         console.error('Error fetching event:', error);
+        setLoadError('No se pudo cargar el evento.');
       }
     };
 
@@ -2469,7 +2485,7 @@ const EventPage = () => {
         <EquipmentInformation />
       </PDFActions>
     ),
-    files: <FilesHandlerComponent />,
+    files: <FilesHandlerComponent event={eventForFiles} />,
     payments: (
       <PDFActions
         sectionKey='payments'
@@ -2670,7 +2686,7 @@ const EventPage = () => {
           <EquipmentTable />
         </AccordionSet> */}
         <AccordionSet value='Archivos'>
-          <FilesHandlerComponent />
+          <FilesHandlerComponent event={eventForFiles} />
         </AccordionSet>
         {isAdmin && (
           <AccordionSet value='Historial de pagos'>
@@ -2682,7 +2698,7 @@ const EventPage = () => {
   );
 
 
-  return selectedEvent ? (
+  return selectedEvent && isThisEvent ? (
     <Container size='xl'>
       {loading ? (
         <Loader />
@@ -2778,7 +2794,9 @@ const EventPage = () => {
         />
       )}
     </Container>
-  ) : null;
+  ) : (
+    <Center h='60vh'>{loadError ? <Text>{loadError}</Text> : <Loader />}</Center>
+  );
 };
 
 export default withPageAuthRequired(EventPage);

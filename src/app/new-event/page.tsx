@@ -415,7 +415,15 @@ const NewEventPage = () => {
         return (
           <div>
             <h3>Archivos del evento</h3>
-            <FilesHandlerComponent />
+            {/* Los archivos van SIEMPRE al evento recién creado (nunca al
+                "seleccionado" de la app, que puede ser otro evento) */}
+            {event._id ? (
+              <FilesHandlerComponent event={event} onEventUpdated={setEvent} />
+            ) : (
+              <Alert color='blue' variant='light'>
+                Primero finalizá la creación del evento. Después vas a poder subir los archivos acá.
+              </Alert>
+            )}
             <div
               style={{
                 display: 'flex',

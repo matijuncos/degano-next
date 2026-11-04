@@ -18,6 +18,7 @@ import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { useDeganoCtx } from '@/context/DeganoContext';
+import { filesUpdateBody } from '@/utils/eventScope';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -34,11 +35,23 @@ interface LoadingState {
   deletingFile: string | null;
 }
 
-export default function FilesHandlerComponent() {
+// `event`: el evento al que pertenecen los archivos. En Nuevo evento SIEMPRE se
+// pasa el evento recién creado: el "evento seleccionado" global es el último que
+// se abrió en la app y subir/borrar terminaba actuando sobre OTRO evento.
+// Sin `event` (página del evento) se usa el seleccionado, que es ese mismo.
+export default function FilesHandlerComponent({
+  event,
+  onEventUpdated
+}: {
+  event?: any;
+  onEventUpdated?: (event: any) => void;
+} = {}) {
   const { can } = usePermissions();
   const canUploadFiles = can('canUploadFiles');
   const canDeleteFiles = can('canDeleteFiles');
-  const { selectedEvent, setSelectedEvent } = useDeganoCtx();
+  const ctx = useDeganoCtx();
+  const selectedEvent = event !== undefined ? event : ctx.selectedEvent;
+  const setSelectedEvent = onEventUpdated ?? ctx.setSelectedEvent;
   const notify = useNotification();
   const [allFiles, setAllfiles] = useState<File[]>([]);
   const [showUploadSection, setShowUploadSection] = useState(false);
@@ -123,11 +136,9 @@ export default function FilesHandlerComponent() {
       const saveRes = await fetch('/api/updateEvent', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...selectedEvent,
-          files: updatedFiles,
-          folderId
-        })
+        // Solo lo que cambia (updateEvent acepta cuerpos parciales): mandar el
+        // evento entero pisaba el resto con una copia vieja de memoria
+        body: JSON.stringify(filesUpdateBody(selectedEvent._id, updatedFiles, folderId))
       });
 
       if (!saveRes.ok) throw new Error('Error guardando archivos en el evento');
@@ -151,28 +162,24 @@ export default function FilesHandlerComponent() {
 
     setLoading((prev) => ({ ...prev, deletingFile: fileUrl }));
     try {
-      // 1. Eliminar de S3
+      // 1. Sacarlo del evento (solo `files`). Si esto falla, el archivo NO se
+      // borra de S3 (antes se borraba primero y podía perderse)
+      const updatedFiles = files.filter((f) => f.url !== fileUrl);
+      const saveRes = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(filesUpdateBody(selectedEvent._id, updatedFiles))
+      });
+      const data = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok) throw new Error(data?.error || 'No se pudo quitar el archivo del evento');
+      setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles });
+
+      // 2. Recién ahora, borrarlo de S3
       await fetch('/api/deleteFromS3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: fileUrl, bucket: 'events' })
       });
-
-      // 2. Actualizar evento en MongoDB
-      const updatedFiles = files.filter((f) => f.url !== fileUrl);
-      const saveRes = await fetch('/api/updateEvent', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...selectedEvent,
-          files: updatedFiles
-        })
-      });
-
-      if (saveRes.ok) {
-        const data = await saveRes.json();
-        setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles });
-      }
 
       notify({ message: 'Archivo eliminado' });
     } catch (error) {
