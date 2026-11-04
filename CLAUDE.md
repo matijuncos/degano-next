@@ -211,7 +211,7 @@ Panel en `/lugares`: lo **ven admin y manager**; **solo el admin modifica** (edi
 
 `selectedEvent` (DeganoContext) es el **último evento que se abrió** en la app (calendario, lista, drawer), no necesariamente el que está en pantalla. Usarlo a ciegas hizo que, al crear un evento nuevo, la pestaña Archivos mostrara y **borrara archivos de OTRO evento** (incidente 04/11/2026).
 
-- **Nuevo evento JAMÁS lee `selectedEvent`.** Todo componente que se use ahí recibe el evento por props (ej. `<FilesHandlerComponent event={event} onEventUpdated={setEvent} />`). Antes de crear el evento (sin `_id`) no se suben archivos: se muestra un aviso.
+- **Nuevo evento JAMÁS lee `selectedEvent`.** Todo componente que se use ahí recibe el evento del formulario por props (ej. `<FilesHandlerComponent event={event} onEventUpdated={...} />`). Los archivos se pueden subir ANTES de finalizar: van a la carpeta propia del formulario (`folderId` único) y quedan en el formulario/borrador; `postEvent` solo adjunta los de esa carpeta (`ownFiles`). Antes de crear, solo se puede borrar un archivo de esa carpeta (`fileInFolder`).
 - **Página de un evento:** solo se muestra/edita cuando el seleccionado es el de la URL (`eventForPage(selectedEvent, id)` en `/src/utils/eventScope.ts`). Mientras carga → spinner, nunca el evento anterior.
 - **Al guardar un evento, mandar SOLO `_id` + lo que cambia** (`filesUpdateBody`, `{ _id, staff }`, etc.). Nunca `{ ...selectedEvent, ... }`: una copia vieja en memoria pisa el resto del evento (o a otro evento). `updateEvent` acepta cuerpos parciales.
 - **Borrar un archivo:** primero sacarlo del evento y recién después de S3 (si falla lo primero, el archivo no se pierde). El bucket `degano-events-files` tiene versionado: lo borrado se puede recuperar.

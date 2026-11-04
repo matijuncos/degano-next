@@ -18,7 +18,7 @@ import { Dropzone } from '@mantine/dropzone';
 import { useEffect, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { filesUpdateBody } from '@/utils/eventScope';
+import { filesUpdateBody, fileInFolder } from '@/utils/eventScope';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -36,9 +36,12 @@ interface LoadingState {
 }
 
 // `event`: el evento al que pertenecen los archivos. En Nuevo evento SIEMPRE se
-// pasa el evento recién creado: el "evento seleccionado" global es el último que
-// se abrió en la app y subir/borrar terminaba actuando sobre OTRO evento.
+// pasa el evento del formulario: el "evento seleccionado" global es el último
+// que se abrió en la app y subir/borrar terminaba actuando sobre OTRO evento.
 // Sin `event` (página del evento) se usa el seleccionado, que es ese mismo.
+// Evento todavía NO creado (sin _id, Nuevo evento): los archivos se suben a SU
+// carpeta (folderId único del formulario) y quedan en el formulario; se
+// guardan junto con el evento al finalizar.
 export default function FilesHandlerComponent({
   event,
   onEventUpdated
@@ -84,7 +87,10 @@ export default function FilesHandlerComponent({
   };
 
   const handleUploadClick = async () => {
-    if (allFiles.length === 0 || !selectedEvent?._id) return;
+    if (allFiles.length === 0 || !selectedEvent) return;
+    const persisted = !!selectedEvent._id;
+    // Sin crear todavía: solo a la carpeta propia del formulario (nunca otra)
+    if (!persisted && !selectedEvent.folderId) return;
 
     setLoading((prev) => ({ ...prev, uploading: true }));
     notify({ loading: true });
@@ -130,9 +136,18 @@ export default function FilesHandlerComponent({
         });
       }
 
+      const updatedFiles = [...files, ...uploadedFiles];
+
+      // Evento sin crear: quedan en el formulario (se guardan al finalizar)
+      if (!persisted) {
+        setSelectedEvent({ ...selectedEvent, files: updatedFiles, folderId });
+        setAllfiles([]);
+        notify({ message: 'Archivos subidos. Se guardan con el evento al finalizar.' });
+        return;
+      }
+
       // 3. Guardar referencias en el evento (MongoDB).
       // Se persiste también el folderId para que quede estable entre subidas.
-      const updatedFiles = [...files, ...uploadedFiles];
       const saveRes = await fetch('/api/updateEvent', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -158,10 +173,25 @@ export default function FilesHandlerComponent({
 
   const handleDeleteFile = async (fileUrl: string, fileName: string) => {
     if (!confirm(`¿Eliminar "${fileName}"?`)) return;
-    if (!selectedEvent?._id) return;
+    if (!selectedEvent) return;
+    const persisted = !!selectedEvent._id;
+    // Sin crear todavía: solo se puede borrar un archivo de SU carpeta
+    if (!persisted && !fileInFolder(fileUrl, selectedEvent.folderId)) return;
 
     setLoading((prev) => ({ ...prev, deletingFile: fileUrl }));
     try {
+      if (!persisted) {
+        const updatedFiles = files.filter((f) => f.url !== fileUrl);
+        setSelectedEvent({ ...selectedEvent, files: updatedFiles });
+        await fetch('/api/deleteFromS3', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: fileUrl, bucket: 'events' })
+        });
+        notify({ message: 'Archivo eliminado' });
+        return;
+      }
+
       // 1. Sacarlo del evento (solo `files`). Si esto falla, el archivo NO se
       // borra de S3 (antes se borraba primero y podía perderse)
       const updatedFiles = files.filter((f) => f.url !== fileUrl);

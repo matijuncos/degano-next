@@ -4,6 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { sanitizeStaffRoleIds } from '@/utils/staffRoles';
+import { ownFiles } from '@/utils/eventScope';
 import { createHistoryEntries } from '@/utils/equipmentHistoryUtils';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
@@ -31,6 +32,8 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     }
     // Roles del staff (catálogo): solo ids válidos
     if ('staff' in restBody) restBody.staff = sanitizeStaffRoleIds(restBody.staff);
+    // Archivos subidos antes de finalizar: solo los de la carpeta de ESTE evento
+    if ('files' in restBody) restBody.files = ownFiles(restBody.files, restBody.folderId);
     const db = client.db('degano-app');
     // Precios: quien no los ve arma el evento con equipos sin precio → se
     // completan con los reales de la base (y el total de alquiler).
