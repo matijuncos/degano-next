@@ -304,3 +304,9 @@ tr[data-selected] > td {
 tr[data-selected] > td:first-child {
   box-shadow: inset 3px 0 0 #228be6;
 }
+
+/* Montos alineados en las tablas de Cobros STAFF */
+.ledger-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

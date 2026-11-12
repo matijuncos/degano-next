@@ -11,7 +11,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useLedgerSummaries, useEmployeeAccount, ledgerRequest, accountKey, AdminAccountResponse } from '@/hooks/useStaffLedger';
 import LedgerSummaryCards from '@/components/StaffLedger/LedgerSummaryCards';
-import LedgerTable from '@/components/StaffLedger/LedgerTable';
+import LedgerViews from '@/components/StaffLedger/LedgerViews';
 import PaymentModal from '@/components/StaffLedger/PaymentModal';
 import ExtraModal from '@/components/StaffLedger/ExtraModal';
 import FixedModal, { FixedModalMode } from '@/components/StaffLedger/FixedModal';
@@ -20,7 +20,7 @@ import { formatPrice } from '@/utils/priceUtils';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
 import RolesModal from '@/components/StaffRoles/RolesModal';
 import { useStaffRoles } from '@/hooks/useStaffRoles';
-import { AllocatedCharge, Credit, FixedDef, PaymentMethod, tickCreditType, arDay, round2 } from '@/utils/staffLedger';
+import { AllocatedCharge, Credit, FixedDef } from '@/utils/staffLedger';
 
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
 
@@ -98,34 +98,13 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
     }
   };
 
-  // Tilde: paga lo que falta de esa línea, con fecha de hoy. Evento futuro → adelanto.
-  const tick = async (charge: AllocatedCharge, method: PaymentMethod) => {
+  // Deshacer un pago de varios renglones (se borran todos sus abonos)
+  const undoBatch = async (batchId: string) => {
     try {
-      await ledgerRequest('POST', {
-        type: tickCreditType(charge, new Date()),
-        employeeId,
-        // Día argentino: un ISO en UTC a la noche ya es el día siguiente
-        date: arDay(new Date()),
-        amount: round2((charge.amount ?? 0) - charge.paidAmount),
-        method,
-        chargeKey: charge.key,
-        // Monto de los roles: queda guardado en la línea al pagarla
-        ...(charge.amountFromRoles ? { lockAmount: charge.amount, source: charge.source } : {})
-      });
-      return true;
+      await ledgerRequest('DELETE', undefined, `?employeeId=${employeeId}&batchId=${batchId}`);
+      notifications.show({ color: 'teal', message: 'Pago deshecho' });
     } catch (e: any) {
       notifications.show({ color: 'red', message: e.message });
-      return false;
-    }
-  };
-
-  const untick = async (charge: AllocatedCharge) => {
-    try {
-      await ledgerRequest('DELETE', undefined, `?employeeId=${employeeId}&chargeKey=${encodeURIComponent(charge.key)}`);
-      return true;
-    } catch (e: any) {
-      notifications.show({ color: 'red', message: e.message });
-      return false;
     }
   };
 
@@ -157,7 +136,7 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
         </Group>
       </Group>
 
-      <LedgerSummaryCards mode='admin' summary={data.summary} />
+      <LedgerSummaryCards mode='admin' summary={data.summary} charges={data.charges} />
 
       <FixedList
         fixed={data.fixed ?? []}
@@ -177,18 +156,21 @@ function AccountDetail({ employeeId }: { employeeId: string }) {
         }}
       />
 
-      <LedgerTable
+      <LedgerViews
+        mode='admin'
+        employeeId={employeeId}
         charges={data.charges}
         credits={data.credits}
+        summary={data.summary}
         now={now}
-        editable
-        onAmountSave={saveAmount}
-        onRolSave={saveRol}
-        onEditCredit={(c) => { setEditingCredit(c); setPaymentOpen(true); }}
-        onEditExtra={(c) => { setEditingExtra(c); setExtraOpen(true); }}
-        onDeleteEntry={deleteEntry}
-        onTick={tick}
-        onUntick={untick}
+        admin={{
+          onAmountSave: saveAmount,
+          onRolSave: saveRol,
+          onEditCredit: (c) => { setEditingCredit(c); setPaymentOpen(true); },
+          onEditExtra: (c) => { setEditingExtra(c); setExtraOpen(true); },
+          onDeleteEntry: deleteEntry,
+          onUndoBatch: undoBatch
+        }}
       />
 
       <PaymentModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} employeeId={employeeId} summary={data.summary} credit={editingCredit} />

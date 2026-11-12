@@ -16,7 +16,8 @@ import {
 } from '@/lib/staffLedgerServer';
 import { rolesLabel } from '@/utils/staffRoles';
 import { parseLedgerInput, isLedgerEligible, mergeLedgerUpdate, eventAmountGuard, parseEventRolInput, parseAmount } from '@/utils/staffLedgerInput';
-import { eventLabel, isChargeKey } from '@/utils/staffLedger';
+import { eventLabel, isChargeKey, tickCreditType } from '@/utils/staffLedger';
+import { planBatchPayment, previewBatchPayment } from '@/utils/staffLedgerViews';
 
 // 'YYYY-MM' → mes anterior
 function previousMonth(ym: string) {
@@ -49,6 +50,82 @@ async function findEventForLine(db: any, eventId: string, isCalendar: boolean) {
         { projection: { date: 1, type: 1, fullName: 1, 'staff.employeeId': 1 } }
       );
   return found && isCalendar ? { ...found, date: found.start, type: found.title } : found;
+}
+
+// Tilde/pago sobre una línea con el monto de los roles (no cargado a mano): ese
+// monto queda guardado en la línea, como si se hubiera cargado a mano. Así lo
+// pagado no cambia si después cambian los roles o sus montos, y si sacan al
+// empleado del evento la línea queda marcada (no desaparece).
+async function lockRoleAmount(db: any, employeeId: string, eventId: string, isCalendar: boolean, amount: number, ctx: AuthContext, now: Date) {
+  const event: any = await findEventForLine(db, eventId, isCalendar);
+  if (!event || !(event.staff ?? []).some((m: any) => m.employeeId === employeeId)) return;
+  try {
+    await db.collection(LEDGER_COLLECTION).updateOne(
+      { employeeId, eventId, type: 'evento' },
+      {
+        // Solo si no hay línea: un monto cargado a mano nunca se pisa
+        $setOnInsert: {
+          amount,
+          date: new Date(event.date),
+          description: eventLabel(event),
+          ...(isCalendar ? { source: 'calendar' } : {}),
+          createdAt: now,
+          updatedAt: now,
+          createdBy: ctx.user?.email || ''
+        }
+      },
+      { upsert: true }
+    );
+  } catch (error: any) {
+    if (error?.code !== 11000) throw error; // la línea ya existía: queda la que está
+  }
+}
+
+// Pagar VARIAS líneas de una vez (vistas nuevas): un abono por línea (con su
+// chargeKey, igual que el tilde) + lo que sobre como pago a cuenta. Todos con el
+// mismo batchId: se ven como un pago y se deshacen juntos. La cuenta no cambia
+// su forma de calcularse.
+async function payLines(ctx: AuthContext, body: any) {
+  const keys: string[] = Array.isArray(body?.chargeKeys) ? body.chargeKeys.filter(isChargeKey).slice(0, 200) : [];
+  if (!keys.length) return badRequest('Tildá lo que vas a pagar');
+  // Mismas validaciones que cualquier abono (monto > 0, fecha, forma de pago)
+  const parsed = parseLedgerInput({ type: 'pago', employeeId: body.employeeId, amount: body.amount, date: body.date, method: body.method });
+  if (!parsed.ok) return badRequest(parsed.error);
+  const { employeeId, amount, date, method } = parsed.value;
+
+  const db = await getDb();
+  await ensureLedgerIndexes(db);
+  const employee = await findEmployee(db, employeeId);
+  if (!employee) return notFound('Empleado no encontrado');
+
+  const now = new Date();
+  const account = await loadAccount(db, employeeId, now);
+  const plan = planBatchPayment(account.charges, keys, amount as number);
+  if (!plan.selectedCount) return badRequest('Lo que tildaste ya está pagado. Actualizá la página.');
+  const preview = previewBatchPayment(account.charges, keys, amount as number, account.summary, now);
+
+  const byKey = new Map(account.charges.map((c) => [c.key, c]));
+  const batchId = new ObjectId().toHexString();
+  const base = { employeeId, date, method, batchId, createdAt: now, updatedAt: now, createdBy: ctx.user?.email || '' };
+  const docs: any[] = plan.lines.map((l) => ({
+    ...base,
+    type: tickCreditType(byKey.get(l.chargeKey)!, now), // evento futuro → adelanto
+    amount: l.amount,
+    chargeKey: l.chargeKey
+  }));
+  // Lo que sobra: pago a cuenta (cubre lo más viejo impago o queda a favor)
+  if (plan.leftover > 0) docs.push({ ...base, type: preview.toOldest > 0 ? 'pago' : 'adelanto', amount: plan.leftover });
+
+  // Líneas con el monto de los roles: se fija en la línea antes de pagarla
+  // (en paralelo: son independientes)
+  await Promise.all(
+    plan.lines
+      .map((l) => byKey.get(l.chargeKey)!)
+      .filter((c) => c.amountFromRoles && c.eventId && c.amount != null)
+      .map((c) => lockRoleAmount(db, employeeId, c.eventId!, c.source === 'calendar', c.amount as number, ctx, now))
+  );
+  await db.collection(LEDGER_COLLECTION).insertMany(docs);
+  return accountResponse(db, employee);
 }
 
 async function accountResponse(db: any, employee: any) {
@@ -84,6 +161,8 @@ export const GET = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
 export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
   try {
     const body = await req.json();
+
+    if (body?.action === 'payLines') return payLines(ctx, body);
 
     // Rol del empleado en un evento: se guarda en el EVENTO (events.staff[].rol),
     // el mismo dato que se edita en la vista del evento y en el calendario
@@ -183,31 +262,7 @@ export const POST = withAdminAuth(async (ctx: AuthContext, req: Request) => {
     // al empleado del evento la línea queda marcada (no desaparece).
     const lockAmount = parseAmount(body.lockAmount);
     if (input.chargeKey?.startsWith('evento:') && typeof lockAmount === 'number') {
-      const eventId = input.chargeKey.slice('evento:'.length);
-      const isCalendar = body.source === 'calendar';
-      const event: any = await findEventForLine(db, eventId, isCalendar);
-      if (event && (event.staff ?? []).some((m: any) => m.employeeId === input.employeeId)) {
-        try {
-          await coll.updateOne(
-            { employeeId: input.employeeId, eventId, type: 'evento' },
-            {
-              // Solo si no hay línea: un monto cargado a mano nunca se pisa
-              $setOnInsert: {
-                amount: lockAmount,
-                date: new Date(event.date),
-                description: eventLabel(event),
-                ...(isCalendar ? { source: 'calendar' } : {}),
-                createdAt: now,
-                updatedAt: now,
-                createdBy: ctx.user?.email || ''
-              }
-            },
-            { upsert: true }
-          );
-        } catch (error: any) {
-          if (error?.code !== 11000) throw error; // la línea ya existía: queda la que está
-        }
-      }
+      await lockRoleAmount(db, input.employeeId, input.chargeKey.slice('evento:'.length), body.source === 'calendar', lockAmount, ctx, now);
     }
 
     await coll.insertOne({ ...input, createdAt: now, updatedAt: now, createdBy: ctx.user?.email || '' });
@@ -260,6 +315,17 @@ export const DELETE = withAdminAuth(async (_ctx: AuthContext, req: Request) => {
     const params = new URL(req.url).searchParams;
     const db = await getDb();
     const coll = db.collection(LEDGER_COLLECTION);
+
+    // Deshacer un pago de varias líneas: se borran todos sus abonos
+    const batchId = params.get('batchId');
+    if (batchId !== null) {
+      const employeeId = params.get('employeeId') || '';
+      if (!/^[a-f0-9]{24}$/.test(batchId) || !employeeId) return badRequest('Falta el pago a deshacer');
+      const employee = await findEmployee(db, employeeId);
+      if (!employee) return notFound('Empleado no encontrado');
+      await coll.deleteMany({ employeeId, batchId, type: { $in: ['pago', 'adelanto'] } });
+      return accountResponse(db, employee);
+    }
 
     // Destildar una línea: se borran los abonos hechos con su tilde
     const chargeKey = params.get('chargeKey');

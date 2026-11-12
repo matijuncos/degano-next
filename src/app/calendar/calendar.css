@@ -74,21 +74,29 @@
 
 /* Números de día */
 .rbc-date-cell {
-  padding: 3px 5px;
+  padding: 2px 5px 0;
   text-align: right;
+  line-height: 1.2;
 }
 
-.rbc-date-cell > a {
+/* Número del día: 15px en escritorio, 12px en celular (más abajo). La
+   librería lo dibuja como botón (.rbc-button-link); antes la regla apuntaba a
+   <a> y no se aplicaba */
+.rbc-date-cell > a,
+.rbc-date-cell > .rbc-button-link {
   color: #c1c2c5;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
+  line-height: 1.2;
 }
 
-.rbc-off-range .rbc-date-cell > a {
+.rbc-off-range .rbc-date-cell > a,
+.rbc-off-range .rbc-date-cell > .rbc-button-link {
   color: #5c5f66;
 }
 
-.rbc-now .rbc-date-cell > a {
+.rbc-now .rbc-date-cell > a,
+.rbc-now .rbc-date-cell > .rbc-button-link {
   color: #37b24d;
   font-weight: 700;
 }
@@ -268,6 +276,15 @@
     font-size: 10px;
     padding: 1px 3px;
   }
+
+  .rbc-date-cell {
+    padding: 1px 3px 0;
+  }
+
+  .rbc-date-cell > a,
+  .rbc-date-cell > .rbc-button-link {
+    font-size: 12px;
+  }
 }
 
 /* Scrollbar personalizada para mantener la estética */
@@ -350,15 +367,18 @@
   border: 2px solid #37b24d !important;
 }
 
-.calendar-light-theme .rbc-date-cell > a {
+.calendar-light-theme .rbc-date-cell > a,
+.calendar-light-theme .rbc-date-cell > .rbc-button-link {
   color: #495057;
 }
 
-.calendar-light-theme .rbc-off-range .rbc-date-cell > a {
+.calendar-light-theme .rbc-off-range .rbc-date-cell > a,
+.calendar-light-theme .rbc-off-range .rbc-date-cell > .rbc-button-link {
   color: #adb5bd;
 }
 
-.calendar-light-theme .rbc-now .rbc-date-cell > a {
+.calendar-light-theme .rbc-now .rbc-date-cell > a,
+.calendar-light-theme .rbc-now .rbc-date-cell > .rbc-button-link {
   color: #37b24d;
   font-weight: 700;
 }
@@ -491,4 +511,19 @@ body.calendar-light-mode [data-combobox-option]:hover:where(:not([data-combobox-
 }
 .calendar-light-picker button[data-disabled] {
   color: #adb5bd;
+}
+
+/* Mes con todos los eventos (showAllEvents): la fila de la semana se scrollea.
+   La librería oculta la barra; se deja una finita para que se note el scroll. */
+.rbc-row-content-scrollable .rbc-row-content-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(134, 142, 150, 0.6) transparent;
+}
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(134, 142, 150, 0.6);
+  border-radius: 3px;
 }

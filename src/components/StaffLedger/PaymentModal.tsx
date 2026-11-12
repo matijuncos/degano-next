@@ -1,7 +1,7 @@
 // src/components/StaffLedger/PaymentModal.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { Modal, Stack, SegmentedControl, NumberInput, Select, TextInput, Button, Group, Text, Anchor } from '@mantine/core';
+import { Modal, Stack, NumberInput, Select, TextInput, Button, Group, Text, Anchor } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { ledgerRequest } from '@/hooks/useStaffLedger';
@@ -62,7 +62,7 @@ export default function PaymentModal({
       const body = { type: kind, employeeId, date, amount: amountForRequest(amount), method, description };
       if (credit) await ledgerRequest('PUT', { _id: credit.entryId, ...body });
       else await ledgerRequest('POST', body);
-      notifications.show({ color: 'teal', message: credit ? 'Movimiento actualizado' : `${kind === 'pago' ? 'Pago' : 'Adelanto'} registrado` });
+      notifications.show({ color: 'teal', message: credit ? 'Pago actualizado' : 'Pago a cuenta registrado' });
       onClose();
     } catch (e: any) {
       notifications.show({ color: 'red', message: e.message });
@@ -72,20 +72,15 @@ export default function PaymentModal({
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={credit ? 'Editar pago' : 'Pago a cuenta'} centered>
+    <Modal opened={opened} onClose={onClose} title={credit ? 'Editar pago a cuenta' : 'Pago a cuenta'} centered>
       <Stack>
         {credit ? (
           <>
-            <SegmentedControl
-              value={type}
-              onChange={(v) => setType(v as 'pago' | 'adelanto')}
-              data={[{ value: 'pago', label: 'Pago' }, { value: 'adelanto', label: 'Adelanto' }]}
-            />
             <DateInput label='Fecha del pago' value={date} onChange={(d) => setDate(inputDay(d) ?? date)} valueFormat='DD/MM/YYYY' />
           </>
         ) : (
           <Text size='sm' c='dimmed'>
-            Para pagar un evento puntual usá la casilla &ldquo;Pagado&rdquo; de la tabla. Esto es para plata a cuenta:
+            Para pagar renglones puntuales, tildalos y usá &ldquo;Pagar&rdquo;. Esto es para plata a cuenta:
             cubre lo más viejo que esté impago{summary.pendingToDate > 0 ? ` (pendiente a hoy: ${formatPrice(summary.pendingToDate)})` : ' y, si no se debe nada, queda como adelanto'}.
           </Text>
         )}

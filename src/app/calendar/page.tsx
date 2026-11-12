@@ -34,6 +34,9 @@ import useSWR, { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
 import CalendarSidebar, { AppCalendar, CalendarFormValues } from '@/components/CalendarSidebar/CalendarSidebar';
 import CalendarEventModal, { CalendarEventData } from '@/components/CalendarEventModal/CalendarEventModal';
+import DayEventsSheet from '@/components/DayEventsSheet/DayEventsSheet';
+import { useResponsive } from '@/hooks/useResponsive';
+import { dayBounds } from '@/utils/calendarDayEvents';
 import useNotification from '@/hooks/useNotification';
 
 
@@ -354,13 +357,23 @@ export default withPageAuthRequired(function CalendarPage() {
     handleDeganoEventClick(value);
   };
 
-  // onSelectSlot — solo admin abre modal de creación
+  // Lista de eventos de un día (reemplaza la vista "Día", que era incómoda)
+  const { isMobile } = useResponsive();
+  const [dayListDate, setDayListDate] = useState<Date | null>(null);
+
+  // onSelectSlot — solo admin abre modal de creación. En celular, tocar un día
+  // en la vista de mes abre la lista de ese día (ahí está "Nuevo evento").
   const handleSelectSlot = useCallback(
     ({ start, end }: { start: Date; end: Date }) => {
+      if (isMobile && view === Views.MONTH) {
+        setDayListDate(start);
+        return;
+      }
       if (!isAdmin) return;
       openCreateModal(start, end);
     },
-    [isAdmin]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isAdmin, isMobile, view]
   );
 
   const { defaultDate } = useMemo(() => ({ defaultDate: new Date() }), []);
@@ -656,6 +669,11 @@ export default withPageAuthRequired(function CalendarPage() {
             startAccessor='start'
             endAccessor='end'
             views={['month', 'week', 'day']}
+            // Todos los eventos del día en la celda, con scroll (en vez de
+            // "+N más", que llevaba a la vista del día)
+            showAllEvents
+            // Tocar el número del día: lista de sus eventos (en vez de ir a la vista Día)
+            onDrillDown={(d: Date) => setDayListDate(d)}
             selectable={true}
             eventPropGetter={eventStyleGetter}
             messages={{
@@ -685,6 +703,25 @@ export default withPageAuthRequired(function CalendarPage() {
       >
         <DrawerContent />
       </Drawer>
+
+      <DayEventsSheet
+        day={dayListDate}
+        events={allCalendarEvents}
+        colorOf={(e) => eventStyleGetter(e).style?.backgroundColor || '#4a9eed'}
+        isMobile={!!isMobile}
+        isLightTheme={isLightTheme}
+        canCreate={isAdmin}
+        onClose={() => setDayListDate(null)}
+        onSelect={(e) => {
+          setDayListDate(null);
+          handleSelectEvent(e);
+        }}
+        onCreate={(d) => {
+          setDayListDate(null);
+          const { from, to } = dayBounds(d);
+          openCreateModal(from, to);
+        }}
+      />
 
       {/* Modal para eventos personales (admin edita; el resto solo ve) */}
       <CalendarEventModal

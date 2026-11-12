@@ -36,3 +36,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .npmrc
+# Capturas y logs de las pruebas con Playwright (tienen datos reales: nunca al repo)
+.playwright-mcp/

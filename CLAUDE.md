@@ -177,6 +177,9 @@ Cuenta corriente por empleado en `staff_ledger`. Lógica pura en `/src/utils/sta
 - **Fecha de inicio de cobros: `LEDGER_START_DAY` = 1/10/2026.** Los eventos anteriores no entran (se pagaron por fuera); una línea con monto se muestra siempre. Filtrar `date` en Mongo por string ISO **y** por `Date` (hay eventos viejos con los dos tipos).
 - Si sacan al empleado de un evento con monto, o se borra el evento, la línea queda marcada; nunca se borra sola.
 - Todo es **solo admin**. El empleado ve `/mis-cobros` solo si `isStaff !== false`, con ventana **3 meses atrás / 1 adelante recortada en el servidor**; nunca recibe el total futuro.
+- **Vistas (`LedgerViews`):** Resumen de cuenta (por MES), Por quincena (1-15 / 16-fin) y Armar el pago (solo admin). Resumen de cuenta por defecto. Los pagos y pagos a cuenta van en su fecha en todas las vistas. El empleado ve solo Resumen y Quincena, en solo lectura. Encabezado: una cifra (saldo a pagar hoy / a favor) + total generado por mes.
+- **Pagar varios renglones:** `POST { action: 'payLines', chargeKeys, amount, method, date }` → un abono por renglón (con su `chargeKey`, del más viejo al más nuevo) + lo que sobra como pago a cuenta, todos con el mismo `batchId` (se muestran como UN pago; `DELETE ?batchId=` lo deshace entero). La forma de calcular la cuenta NO cambió. Lógica pura en `/src/utils/staffLedgerViews.ts`.
+- "Adelanto" no se muestra como tal: un abono sin `chargeKey` es **"Pago a cuenta"**; uno atado a renglones es **"Pago"**. El tipo pago/adelanto queda interno.
 - Póliza: `employees.insurancePolicy` (excluida de `GET /api/employees`). Se ve por `/api/staffPolicy` (admin o el propio empleado).
 - Fechas en hora argentina (UTC-03:00 fijo): usar `arDay()`/`inputDay()`, nunca `getDate()` en el servidor.
 

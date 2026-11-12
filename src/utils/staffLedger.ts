@@ -49,6 +49,7 @@ export interface LedgerEntry {
   toMonth?: string; // fijo: 'YYYY-MM' hasta (inclusive); sin valor = sigue
   method?: PaymentMethod;
   chargeKey?: string; // abono hecho con el tilde: la línea que paga
+  batchId?: string; // pago de varias líneas a la vez: todos sus abonos llevan el mismo
   source?: 'calendar'; // línea 'evento' de un evento de calendario extra
   createdAt?: string | Date;
 }
@@ -103,6 +104,7 @@ export interface Credit {
   method?: PaymentMethod;
   description?: string;
   chargeKey?: string;
+  batchId?: string; // pago de varias líneas a la vez (se muestra como UN pago)
 }
 
 export interface LedgerSummary {
@@ -336,7 +338,8 @@ export function toCredits(entries: LedgerEntry[]): Credit[] {
       amount: e.amount,
       ...(e.method ? { method: e.method } : {}),
       ...(e.description ? { description: e.description } : {}),
-      ...(e.chargeKey ? { chargeKey: e.chargeKey } : {})
+      ...(e.chargeKey ? { chargeKey: e.chargeKey } : {}),
+      ...(e.batchId ? { batchId: e.batchId } : {})
     }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.entryId.localeCompare(b.entryId));
 }
