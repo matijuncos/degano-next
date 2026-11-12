@@ -11,7 +11,7 @@ import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box, LoadingOv
 import { IconSearch, IconX, IconCalendarSearch } from '@tabler/icons-react';
 import { MonthPickerInput } from '@mantine/dates';
 import 'dayjs/locale/es';
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useState, useEffect, useLayoutEffect, useRef, cloneElement } from 'react';
 import { useDeganoCtx, calendarDataFetcher } from '@/context/DeganoContext';
 import { parseCalendarDateParam, formatCalendarDateParam, monthStartFromPicker, pickerValueFromDate } from '@/utils/calendarDateParam';
 import DrawerContent from '@/components/DrawerContent/DrawerContent';
@@ -36,7 +36,8 @@ import CalendarSidebar, { AppCalendar, CalendarFormValues } from '@/components/C
 import CalendarEventModal, { CalendarEventData } from '@/components/CalendarEventModal/CalendarEventModal';
 import DayEventsSheet from '@/components/DayEventsSheet/DayEventsSheet';
 import { useResponsive } from '@/hooks/useResponsive';
-import { dayBounds } from '@/utils/calendarDayEvents';
+import { dayBounds, dayKey, isMultiDayEvent, singleDayEventsByDay } from '@/utils/calendarDayEvents';
+import MonthCellEvents from '@/components/DayEventsSheet/MonthCellEvents';
 import useNotification from '@/hooks/useNotification';
 
 
@@ -428,6 +429,55 @@ export default withPageAuthRequired(function CalendarPage() {
     [internalEvents, personalCalendarEvents, nativeEventsVisible]
   );
 
+  // ──── Vista de mes: barras largas + lista con scroll por día ────
+  // Los eventos de varios días los dibuja el calendario (barra larga). Los de un
+  // día van en una lista propia de cada celda que scrollea SOLO ese día.
+  const isMonthView = view === Views.MONTH;
+  const multiDayEvents = useMemo(() => allCalendarEvents.filter(isMultiDayEvent), [allCalendarEvents]);
+  const singleByDay = useMemo(() => singleDayEventsByDay(allCalendarEvents), [allCalendarEvents]);
+  // Refs: el wrapper de celda tiene que ser estable (si cambia, el calendario
+  // remonta todas las celdas y se pierde el scroll)
+  const selectRef = useRef<(e: any) => void>(() => {});
+  const styleRef = useRef<(e: any) => React.CSSProperties>(() => ({}));
+  const MonthCellWrapper = useMemo(
+    () =>
+      function MonthCellWrapper({ value, children }: { value: Date; children: React.ReactElement }) {
+        if (!isMonthView) return children;
+        const list = singleByDay.get(dayKey(value)) ?? [];
+        return cloneElement(
+          children,
+          { style: { ...children.props.style, position: 'relative' } },
+          <MonthCellEvents events={list} styleOf={(e) => styleRef.current(e)} onSelect={(e) => selectRef.current(e)} />
+        );
+      },
+    [isMonthView, singleByDay]
+  );
+  const calendarComponents = useMemo(() => ({ dateCellWrapper: MonthCellWrapper as any }), [MonthCellWrapper]);
+
+  // La lista de cada día empieza debajo de las barras de su semana: se mide la
+  // altura del contenido de cada fila (número + barras) y se pasa como variable CSS
+  useLayoutEffect(() => {
+    if (!isMonthView) return;
+    const rows = () => Array.from(document.querySelectorAll<HTMLElement>('.rbc-month-view .rbc-month-row'));
+    // Se suma lo que ocupan el número y las barras (el contenedor tiene alto
+    // mínimo y dejaría un hueco en las semanas sin barras)
+    const apply = () =>
+      rows().forEach((row) => {
+        const content = row.querySelector<HTMLElement>('.rbc-row-content');
+        if (!content) return;
+        const used = Array.from(content.children).reduce((h, ch) => h + (ch as HTMLElement).offsetHeight, 0);
+        row.style.setProperty('--dg-bars-h', `${used + 2}px`);
+      });
+    apply();
+    const ro = new ResizeObserver(apply);
+    rows().forEach((row) => {
+      ro.observe(row);
+      const content = row.querySelector('.rbc-row-content');
+      if (content) ro.observe(content);
+    });
+    return () => ro.disconnect();
+  }, [isMonthView, multiDayEvents, date, isMobile]);
+
   // ──── Estilos por evento ────
   const getEventStatus = (event: any) => {
     const now = new Date(); now.setHours(0, 0, 0, 0);
@@ -466,6 +516,10 @@ export default withPageAuthRequired(function CalendarPage() {
     }
     return { style: { backgroundColor, borderColor, color: '#ffffff' } };
   };
+
+  // Lo que usan las listas de cada día (por ref: el wrapper de celda es estable)
+  selectRef.current = handleSelectEvent;
+  styleRef.current = (e: any) => eventStyleGetter(e).style as React.CSSProperties;
 
   const onNavigate = useCallback((newDate: any) => {
     setDate(newDate);
@@ -664,14 +718,12 @@ export default withPageAuthRequired(function CalendarPage() {
             onNavigate={onNavigate}
             onView={onView}
             view={view}
-            events={allCalendarEvents}
+            events={isMonthView ? multiDayEvents : allCalendarEvents}
+            components={calendarComponents}
             defaultDate={defaultDate}
             startAccessor='start'
             endAccessor='end'
             views={['month', 'week', 'day']}
-            // Todos los eventos del día en la celda, con scroll (en vez de
-            // "+N más", que llevaba a la vista del día)
-            showAllEvents
             // Tocar el número del día: lista de sus eventos (en vez de ir a la vista Día)
             onDrillDown={(d: Date) => setDayListDate(d)}
             selectable={true}

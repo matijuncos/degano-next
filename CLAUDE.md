@@ -351,6 +351,11 @@ En el diseño, listar estos puntos de integración explícitamente para que el u
 
 ## Verificación antes de dar algo por terminado
 
+**JAMÁS dejar un archivo con errores (CRÍTICO).** Ningún archivo tocado puede quedar con errores, ni en `tsc` ni en el editor (VSCode). Un cambio no está terminado mientras haya un error en rojo:
+- Después de editar, revisar los diagnósticos de cada archivo tocado (`getDiagnostics` del editor) además de `npx tsc --noEmit`. El editor usa un TypeScript más nuevo y marca cosas que `tsc` no (ej. imports de `.css` → declarados en `src/types/side-effect-imports.d.ts`).
+- Si aparece un error (aunque sea de antes, en un archivo que toqué), se arregla antes de entregar. Nunca `@ts-ignore`/`any` para taparlo sin explicar por qué.
+- Los avisos (warnings/hints) que ya estaban no bloquean, pero no se agregan nuevos.
+
 - **Typecheck:** `npx tsc --noEmit` (sin pedir permiso).
 - **Tests:** `npm test` (Vitest). Se testea **lógica de negocio pura** (`src/**/*.test.ts`, al lado del código). Para testear algo de un componente o endpoint, primero extraerlo a una función pura y que producción use esa misma función.
 - Cambios grandes o antes de un deploy: `next build`.

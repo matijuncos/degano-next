@@ -513,17 +513,49 @@ body.calendar-light-mode [data-combobox-option]:hover:where(:not([data-combobox-
   color: #adb5bd;
 }
 
-/* Mes con todos los eventos (showAllEvents): la fila de la semana se scrollea.
-   La librería oculta la barra; se deja una finita para que se note el scroll. */
-.rbc-row-content-scrollable .rbc-row-content-scroll-container {
+/* Vista de mes: los eventos de UN día van en una lista propia de cada celda
+   (debajo de las barras de los eventos de varios días) que scrollea solo ese día.
+   --dg-bars-h = alto del número + barras de esa semana (lo mide la página). */
+.dg-day-list {
+  position: absolute;
+  top: var(--dg-bars-h, 22px);
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 5;
   scrollbar-width: thin;
   scrollbar-color: rgba(134, 142, 150, 0.6) transparent;
 }
-.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar {
-  display: block;
-  width: 6px;
+.dg-day-list::-webkit-scrollbar {
+  width: 5px;
 }
-.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
+.dg-day-list::-webkit-scrollbar-thumb {
   background: rgba(134, 142, 150, 0.6);
   border-radius: 3px;
+}
+.dg-day-event {
+  flex-shrink: 0;
+  padding: 1px 4px;
+  font-size: 11px;
+  line-height: 16px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.dg-day-event:focus-visible {
+  outline: 2px solid #228be6;
+  outline-offset: 1px;
+}
+@media (max-width: 768px) {
+  .dg-day-event {
+    font-size: 10px;
+    line-height: 14px;
+    padding: 0 3px;
+  }
 }
