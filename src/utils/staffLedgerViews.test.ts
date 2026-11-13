@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  isFutureDay,
+  splitGroup,
   quincenaKey,
   quincenaLabel,
   monthLabel,
@@ -54,6 +56,39 @@ describe('totales', () => {
   });
   it('qué se puede tildar', () => {
     expect(charges.map(isPayable)).toEqual([false, true, true, false]);
+  });
+});
+
+describe('Por venir (lo que todavía no pasó)', () => {
+  const NOW = new Date('2026-11-13T15:00:00.000Z'); // 13/11 12:00 AR
+  const charges = [
+    ch('ayer', '2026-11-12T23:00:00Z', 200000), // 12/11 AR
+    ch('hoy-noche', '2026-11-14T01:00:00Z', 150000), // 13/11 22:00 AR → es HOY
+    ch('pagado', '2026-11-05T23:00:00Z', 100000, 100000),
+    ch('futuro', '2026-11-14T15:00:00Z', 200000), // 14/11 AR
+    ch('futuro-sin-monto', '2026-11-20T15:00:00Z', null)
+  ];
+  it('futuro = día argentino posterior a hoy', () => {
+    expect(charges.map((c) => isFutureDay(c.date, NOW))).toEqual([false, false, false, true, true]);
+  });
+  it('generado por mes sin lo futuro', () => {
+    expect(generatedByMonth(charges, NOW)).toEqual([['2026-11', 450000]]);
+    expect(generatedByMonth(charges)).toEqual([['2026-11', 650000]]); // sin now: todo (igual que antes)
+  });
+  it('separa lo que se debe hoy de lo por venir', () => {
+    const g = splitGroup(charges, NOW);
+    expect(g.due).toEqual({ total: 450000, paid: 100000, left: 350000, missing: 0 });
+    expect(g.future).toEqual({ total: 200000, paid: 0, left: 200000, missing: 1 });
+    expect(g.futureCount).toBe(2);
+    expect(g.allFuture).toBe(false);
+  });
+  it('"Tildar todo" no tilda lo plegado por venir', () => {
+    expect(splitGroup(charges, NOW).payableKeys).toEqual(['ayer', 'hoy-noche']);
+  });
+  it('grupo todo futuro: se puede tildar todo (para adelantar)', () => {
+    const g = splitGroup(charges.slice(3), NOW);
+    expect(g.allFuture).toBe(true);
+    expect(g.payableKeys).toEqual(['futuro']);
   });
 });
 

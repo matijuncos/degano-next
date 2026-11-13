@@ -2,14 +2,15 @@
 // "Mis cobros": la cuenta del empleado logueado, resuelto por email.
 // Nunca acepta un employeeId del cliente. La imputación se calcula sobre toda
 // la historia (si no, el estado de cada línea sería incorrecto) y DESPUÉS se
-// recorta a la ventana: 3 meses atrás, 1 mes adelante. El total futuro y el
-// histórico completo son solo para admin.
+// recorta: 3 meses atrás y hasta HOY. Lo futuro (eventos que todavía no
+// pasaron) no se le muestra al empleado (decisión de Juan, 13/11/2026): no sale
+// del servidor. El total futuro y el histórico completo son solo para admin.
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { resolveEmployee, RESOLVE_MESSAGES } from '@/lib/resolveEmployee';
 import { getDb, ensureLedgerIndexes, loadAccount } from '@/lib/staffLedgerServer';
-import { employeeWindow, inWindow, countMissingAmount } from '@/utils/staffLedger';
+import { employeeWindow, inWindow, countMissingAmount, splitByToday } from '@/utils/staffLedger';
 import { isLedgerEligible } from '@/utils/staffLedgerInput';
 
 export const GET = withAuth(async (ctx: AuthContext) => {
@@ -32,9 +33,8 @@ export const GET = withAuth(async (ctx: AuthContext) => {
     const window = employeeWindow(now);
     // Las horas y el monto de referencia de los roles son solo para admin: no
     // salen hacia el empleado (ve solo lo que se le paga)
-    const charges = account.charges
-      .filter((c) => inWindow(c.date, window))
-      .map(({ roleAmount, roleIds, amountFromRoles, ...c }) => ({ ...c, hours: null }));
+    const charges = splitByToday(account.charges.filter((c) => inWindow(c.date, window)), now)
+      .current.map(({ roleAmount, roleIds, amountFromRoles, ...c }) => ({ ...c, hours: null }));
     const missing = countMissingAmount(charges, now);
 
     return NextResponse.json({
@@ -42,15 +42,14 @@ export const GET = withAuth(async (ctx: AuthContext) => {
       employeeId,
       fullName: employee.fullName || '',
       charges,
-      credits: account.credits.filter((c) => inWindow(c.date, window)),
+      credits: splitByToday(account.credits.filter((c) => inWindow(c.date, window)), now).current,
       summary: {
         // Lo pendiente es SU plata: incluye deudas viejas fuera de la ventana
         pendingToDate: account.summary.pendingToDate,
         favor: account.summary.favor,
-        nextMonthTotal: account.summary.nextMonthTotal,
-        missingAmount: missing.toDate + missing.future,
+        missingAmount: missing.toDate,
         missingAmountToDate: missing.toDate,
-        missingAmountFuture: missing.future
+        missingAmountFuture: 0
       },
       window: { from: window.from.toISOString(), to: window.to.toISOString() },
       policy: employee.insurancePolicy ? { fileName: employee.insurancePolicy.fileName } : null

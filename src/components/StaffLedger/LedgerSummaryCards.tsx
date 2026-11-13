@@ -26,7 +26,8 @@ export default function LedgerSummaryCards({
   summary: Summary;
   charges: AllocatedCharge[];
 }) {
-  const months = generatedByMonth(charges);
+  // Solo hasta hoy: lo que todavía no pasó no está generado (va como "Por venir")
+  const months = generatedByMonth(charges, new Date());
   const shown = months.slice(0, MAX_MONTHS);
   const { missingAmountToDate: toDate, missingAmountFuture: future } = summary;
 

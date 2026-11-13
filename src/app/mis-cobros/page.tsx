@@ -8,8 +8,8 @@ import LedgerSummaryCards from '@/components/StaffLedger/LedgerSummaryCards';
 import LedgerViews from '@/components/StaffLedger/LedgerViews';
 import PolicySection from '@/components/StaffLedger/PolicySection';
 
-// Lo que el empleado ve de su cuenta: 3 meses atrás y 1 adelante (lo recorta el
-// servidor). Solo lectura.
+// Lo que el empleado ve de su cuenta: 3 meses atrás y hasta hoy, sin lo futuro
+// (lo recorta el servidor). Solo lectura.
 export default withPageAuthRequired(function MisCobrosPage() {
   const { data, error } = useMyLedger();
   const now = useMemo(() => new Date(), [data]);
@@ -23,7 +23,7 @@ export default withPageAuthRequired(function MisCobrosPage() {
       <Stack>
         <div>
           <Text size='xl' fw={700}>Mis cobros</Text>
-          <Text size='sm' c='dimmed'>Últimos 3 meses y próximo mes</Text>
+          <Text size='sm' c='dimmed'>Últimos 3 meses</Text>
         </div>
         <LedgerSummaryCards mode='employee' summary={data.summary} charges={data.charges} />
         <PolicySection employeeId={data.employeeId} policy={data.policy} canManage={false} />

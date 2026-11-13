@@ -36,11 +36,16 @@ export const remainingOf = (c: Pick<AllocatedCharge, 'amount' | 'paidAmount'>) =
 // ¿Se puede tildar para pagar? Con monto cargado y algo por pagar
 export const isPayable = (c: AllocatedCharge) => c.amount != null && c.amount > 0 && remainingOf(c) > 0;
 
-// Total generado por mes (lo que se le cargó: eventos, extras y fijos con monto)
-export function generatedByMonth(charges: Pick<AllocatedCharge, 'date' | 'amount'>[]): [string, number][] {
+// ¿La fecha es posterior a hoy (día argentino)? = "Por venir"
+export const isFutureDay = (iso: string, now: Date) => (arDay(iso) as string) > (arDay(now) as string);
+
+// Total generado por mes (lo que se le cargó: eventos, extras y fijos con monto).
+// Con `now`, solo hasta hoy: lo que todavía no pasó no está generado.
+export function generatedByMonth(charges: Pick<AllocatedCharge, 'date' | 'amount'>[], now?: Date): [string, number][] {
   const map = new Map<string, number>();
   for (const c of charges) {
     if (c.amount == null) continue;
+    if (now && isFutureDay(c.date, now)) continue;
     const k = monthKey(c.date);
     map.set(k, round2((map.get(k) ?? 0) + c.amount));
   }
@@ -56,6 +61,25 @@ export function groupTotals(charges: AllocatedCharge[]) {
     paid += Math.min(c.paidAmount, c.amount);
   }
   return { total: round2(total), paid: round2(paid), left: round2(total - paid), missing };
+}
+
+/**
+ * Un grupo (mes / quincena) separado en lo de hoy y antes y lo "Por venir".
+ * `due` y `future` son los totales de cada parte; `payableKeys` es lo que tilda
+ * "Tildar todo": lo que ya se debe; si en el grupo TODO es futuro, todo (para
+ * adelantar). Así nunca se tilda algo que está plegado sin verlo.
+ */
+export function splitGroup(charges: AllocatedCharge[], now: Date) {
+  const past = charges.filter((c) => !isFutureDay(c.date, now));
+  const future = charges.filter((c) => isFutureDay(c.date, now));
+  const pastPayable = past.filter(isPayable).map((c) => c.key);
+  return {
+    due: groupTotals(past),
+    future: groupTotals(future),
+    futureCount: future.length,
+    allFuture: charges.length > 0 && past.length === 0,
+    payableKeys: past.length ? pastPayable : future.filter(isPayable).map((c) => c.key)
+  };
 }
 
 /**

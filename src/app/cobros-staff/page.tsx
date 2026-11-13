@@ -4,8 +4,9 @@ import { useMemo, useState } from 'react';
 import { mutate } from 'swr';
 import { withPageAuthRequired } from '@auth0/nextjs-auth0/client';
 import {
-  Box, Text, Group, Stack, Button, Loader, Center, NavLink, Badge, ScrollArea, Tabs, Skeleton, Alert
+  Box, Text, Group, Stack, Button, Loader, Center, NavLink, Badge, ScrollArea, Tabs, Skeleton, Alert, ActionIcon, Tooltip
 } from '@mantine/core';
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -193,13 +194,16 @@ export default withPageAuthRequired(function CobrosStaffPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<string | null>('list');
   const [rolesOpen, setRolesOpen] = useState(false);
+  // Escritorio: la lista de empleados arranca abierta y se pliega a la izquierda
+  // al elegir uno (más lugar para la cuenta); la flechita la abre/cierra
+  const [listOpen, setListOpen] = useState(true);
   // Roles: los usan la tabla (selector de rol) y la vista de Roles → al montar
   useStaffRoles();
 
   if (isLoading) return <Center h='60vh'><Loader /></Center>;
   if (!isAdmin) return <Center h='60vh'><Text>No tenés permisos para ver esta sección.</Text></Center>;
 
-  const select = (id: string) => { setSelected(id); setTab('detail'); };
+  const select = (id: string) => { setSelected(id); setTab('detail'); setListOpen(false); };
 
   const header = (
     <Group justify='space-between' mb='md' wrap='wrap'>
@@ -229,9 +233,33 @@ export default withPageAuthRequired(function CobrosStaffPage() {
     <Box p='md'>
       {header}
       <Group align='flex-start' wrap='nowrap' gap='lg'>
-        <ScrollArea h='calc(100vh - 120px)' w={320} style={{ flexShrink: 0 }}>
-          <EmployeeList selected={selected} onSelect={select} />
-        </ScrollArea>
+        {/* La lista queda montada aunque esté plegada: al reabrirla mantiene su scroll */}
+        <Box
+          style={{
+            width: listOpen ? 320 : 0,
+            flexShrink: 0,
+            overflow: 'hidden',
+            transition: 'width 200ms ease'
+          }}
+        >
+          <ScrollArea h='calc(100vh - 120px)' w={320}>
+            <EmployeeList selected={selected} onSelect={select} />
+          </ScrollArea>
+        </Box>
+        {/* Sin empleado elegido no se puede plegar (no habría nada que mostrar) */}
+        {selected && (
+          <Tooltip label={listOpen ? 'Ocultar empleados' : 'Mostrar empleados'} position='right' withArrow>
+            <ActionIcon
+              variant='default'
+              size='lg'
+              onClick={() => setListOpen((o) => !o)}
+              aria-label={listOpen ? 'Ocultar empleados' : 'Mostrar empleados'}
+              style={{ flexShrink: 0, position: 'sticky', top: 16 }}
+            >
+              {listOpen ? <IconChevronLeft size={18} /> : <IconChevronRight size={18} />}
+            </ActionIcon>
+          </Tooltip>
+        )}
         <Box style={{ flex: 1, minWidth: 0 }}>
           {selected ? (
             <AccountDetail key={selected} employeeId={selected} />

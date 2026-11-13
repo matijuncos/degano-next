@@ -26,7 +26,6 @@ export type MyLedgerResponse =
       summary: {
         pendingToDate: number;
         favor: number;
-        nextMonthTotal: number;
         missingAmount: number;
         missingAmountToDate: number;
         missingAmountFuture: number;

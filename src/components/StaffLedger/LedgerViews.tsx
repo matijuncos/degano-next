@@ -5,6 +5,8 @@
 //  - Armar el pago                 → solo admin
 // Admin: tilda renglones (o un mes / una quincena) y los paga juntos. Empleado:
 // solo lectura. Los pagos y pagos a cuenta aparecen en la fecha en que se hicieron.
+// Lo "Por venir" (fecha > hoy) va plegado en una fila arriba de cada grupo y no
+// suma en Generado / Falta (se muestra aparte). Al empleado no le llega (servidor).
 // No hace requests propias: usa la cuenta que ya está cargada (pagar = 1 request).
 'use client';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,7 +20,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
 import { AllocatedCharge, Credit, LedgerSummary, PAYMENT_METHOD_LABELS, arDay } from '@/utils/staffLedger';
 import {
-  PaymentGroup, groupPayments, groupTotals, isPayable, monthKey, monthLabel, quincenaKey, quincenaLabel, remainingOf
+  PaymentGroup, groupPayments, isFutureDay, isPayable, monthKey, monthLabel, quincenaKey, quincenaLabel, remainingOf, splitGroup
 } from '@/utils/staffLedgerViews';
 import { AmountCell, ConceptCell, RolCell, StatusBadge, dayLabel, isFutureCharge, paymentTitle, chargeWarning } from './ledgerParts';
 import PayPanel from './PayPanel';
@@ -209,12 +211,13 @@ export default function LedgerViews({
       ) : null
     ) : undefined;
 
-  // Renglones de un grupo (mes o quincena) en orden de fecha, con los pagos en su fecha
+  // Renglones de un grupo (mes o quincena), con los pagos en su fecha. Lo más
+  // nuevo arriba (ej. 15/11 → 03/11); el mismo día, el pago va arriba del cargo.
   const itemsFor = (cs: AllocatedCharge[], ps: PaymentGroup[]): Item[] =>
     [
       ...cs.map((c) => ({ kind: 'charge' as const, date: c.date, charge: c })),
       ...ps.map((p) => ({ kind: 'pay' as const, date: p.date, pay: p }))
-    ].sort((a, b) => (arDay(a.date) as string).localeCompare(arDay(b.date) as string) || (a.kind === 'charge' ? -1 : 1));
+    ].sort((a, b) => (arDay(b.date) as string).localeCompare(arDay(a.date) as string) || (a.kind === b.kind ? 0 : a.kind === 'pay' ? -1 : 1));
 
   const groupBy = (keyOf: (iso: string) => string) => {
     const map = new Map<string, { charges: AllocatedCharge[]; pays: PaymentGroup[] }>();
@@ -227,9 +230,47 @@ export default function LedgerViews({
   const currentMonth = (arDay(now) as string).slice(0, 7);
   const currentQuincena = quincenaKey(now.toISOString());
 
+  // Plegado de grupos y del bloque "Por venir" (clave → invertido respecto del default)
+  const [toggled, setToggled] = useState<Set<string>>(() => new Set());
+  const isOpen = (key: string, byDefault: boolean) => byDefault !== toggled.has(key);
+  const flip = (key: string) =>
+    setToggled((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // Renglones "Por venir" de un grupo: plegados por defecto (los de hoy y antes, a la vista)
+  const splitItems = (items: Item[]) => ({
+    future: items.filter((it) => isFutureDay(it.date, now)),
+    rest: items.filter((it) => !isFutureDay(it.date, now))
+  });
+  const futureSummary = (items: Item[]) => {
+    const cs = items.filter((it) => it.kind === 'charge').map((it) => (it as { charge: AllocatedCharge }).charge);
+    const left = cs.reduce((t, c) => t + remainingOf(c), 0);
+    const n = cs.length;
+    return `${n} ${n === 1 ? 'renglón' : 'renglones'}${left > 0 ? ` · ${formatPrice(left)}` : ''}`;
+  };
+  const futureToggle = (key: string, open: boolean, items: Item[]) => (
+    <UnstyledButton onClick={() => flip(key)} aria-expanded={open} style={{ width: '100%' }}>
+      <Group gap={6} wrap='nowrap'>
+        <IconChevronDown size={16} style={{ transform: open ? undefined : 'rotate(-90deg)', transition: 'transform 150ms' }} />
+        <Badge color='gray' variant='light' tt='none'>Por venir</Badge>
+        <Text size='sm' c='dimmed' className='ledger-num'>{futureSummary(items)}</Text>
+        <Text size='xs' c='dimmed'>{open ? 'Ocultar' : 'Ver'}</Text>
+      </Group>
+    </UnstyledButton>
+  );
+
   // ── Tabla de renglones (Resumen y Quincena usan la misma) ──
   const showHours = isAdmin;
-  const table = (items: Item[], footer: React.ReactNode, editable: boolean) => (
+  const colCount = (isAdmin ? 1 : 0) + (showHours ? 1 : 0) + 6 + (isAdmin ? 1 : 0);
+  // collapseKey: si viene, lo "Por venir" va plegado en una fila arriba
+  const table = (items: Item[], footer: React.ReactNode, editable: boolean, collapseKey?: string) => {
+    const { future, rest } = collapseKey ? splitItems(items) : { future: [] as Item[], rest: items };
+    const futureOpen = !!collapseKey && isOpen(collapseKey, false);
+    return (
     <Table.ScrollContainer minWidth={isAdmin ? 760 : 560}>
       <Table striped withTableBorder verticalSpacing={6}>
         <Table.Thead>
@@ -246,7 +287,12 @@ export default function LedgerViews({
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {items.map((it) =>
+          {future.length > 0 && (
+            <Table.Tr>
+              <Table.Td colSpan={colCount} py={8}>{futureToggle(collapseKey!, futureOpen, future)}</Table.Td>
+            </Table.Tr>
+          )}
+          {[...(futureOpen ? future : []), ...rest].map((it) =>
             it.kind === 'charge' ? (
               <Table.Tr key={it.charge.key} style={isFutureCharge(it.charge, now) ? { opacity: 0.7 } : undefined}>
                 {isAdmin && <Table.Td>{box(it.charge)}</Table.Td>}
@@ -283,24 +329,21 @@ export default function LedgerViews({
             )
           )}
           <Table.Tr>
-            <Table.Td colSpan={(isAdmin ? 1 : 0) + (showHours ? 1 : 0) + 6 + (isAdmin ? 1 : 0)} style={{ background: 'var(--mantine-color-dark-6)' }}>
+            <Table.Td colSpan={colCount} style={{ background: 'var(--mantine-color-dark-6)' }}>
               {footer}
             </Table.Td>
           </Table.Tr>
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>
-  );
+    );
+  };
 
-  const [toggled, setToggled] = useState<Set<string>>(() => new Set());
-  const isOpen = (key: string, byDefault: boolean) => byDefault !== toggled.has(key);
-  const flip = (key: string) =>
-    setToggled((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  // "Por venir $X" (aparte de lo que se debe hoy)
+  const futureNote = (sg: ReturnType<typeof splitGroup>) =>
+    sg.futureCount > 0 ? (
+      <Text size='sm' c='dimmed'>Por venir <b className='ledger-num'>{formatPrice(sg.future.left)}</b></Text>
+    ) : null;
 
   const groupHeader = (key: string, open: boolean, title: string, subtitle: string | null, right: React.ReactNode, payableKeys: string[]) => (
     <Group justify='space-between' wrap='wrap' gap='xs' mb={4}>
@@ -329,8 +372,9 @@ export default function LedgerViews({
     return (
       <Stack gap='lg'>
         {months.map(([ym, g]) => {
-          const t = groupTotals(g.charges);
-          const payable = g.charges.filter(isPayable).map((c) => c.key);
+          const sg = splitGroup(g.charges, now);
+          const t = sg.due;
+          const payable = sg.payableKeys;
           const dueNow = g.charges.some((c) => isPayable(c) && !isFutureCharge(c, now));
           const open = isOpen('m:' + ym, ym === currentMonth || dueNow);
           return (
@@ -340,10 +384,15 @@ export default function LedgerViews({
                 open,
                 monthLabel(ym).replace(/^./, (ch) => ch.toUpperCase()),
                 open ? null : `(${g.charges.length + g.pays.length} movimientos)`,
-                <Text size='sm' c='dimmed'>
-                  Generado <b>{formatPrice(t.total)}</b>
-                  {t.left > 0 ? <> · Falta <b>{formatPrice(t.left)}</b></> : ' · al día'}
-                </Text>,
+                sg.allFuture ? (
+                  <Text size='sm' c='dimmed'>Por venir <b>{formatPrice(sg.future.left)}</b></Text>
+                ) : (
+                  <Text size='sm' c='dimmed'>
+                    Generado <b>{formatPrice(t.total)}</b>
+                    {t.left > 0 ? <> · Falta <b>{formatPrice(t.left)}</b></> : ' · al día'}
+                    {sg.futureCount > 0 && <> · Por venir <b>{formatPrice(sg.future.left)}</b></>}
+                  </Text>
+                ),
                 payable
               )}
               {/* PERF: lo plegado no se dibuja (ni sus selectores de rol) */}
@@ -351,11 +400,18 @@ export default function LedgerViews({
                 {open && table(
                   itemsFor(g.charges, g.pays),
                   <Group gap='lg' wrap='wrap'>
-                    <Text size='sm'>Generado en el mes <b className='ledger-num'>{formatPrice(t.total)}</b></Text>
-                    <Text size='sm' c={t.left > 0 ? 'orange' : 'dimmed'}>Falta pagar <b className='ledger-num'>{formatPrice(t.left)}</b></Text>
+                    {!sg.allFuture && (
+                      <>
+                        <Text size='sm'>Generado en el mes <b className='ledger-num'>{formatPrice(t.total)}</b></Text>
+                        <Text size='sm' c={t.left > 0 ? 'orange' : 'dimmed'}>Falta pagar <b className='ledger-num'>{formatPrice(t.left)}</b></Text>
+                      </>
+                    )}
+                    {futureNote(sg)}
                     {t.missing > 0 && <Badge color='yellow' variant='light'>{t.missing} sin monto</Badge>}
                   </Group>,
-                  true
+                  true,
+                  // Mes todo futuro: ya está plegado el mes entero, no hace falta otro pliegue
+                  sg.allFuture ? undefined : 'mf:' + ym
                 )}
               </Collapse>
             </div>
@@ -372,13 +428,15 @@ export default function LedgerViews({
     return (
       <Stack gap='md'>
         {qs.map(([qk, g]) => {
-          const t = groupTotals(g.charges);
+          const sg = splitGroup(g.charges, now);
+          const t = sg.due;
           const { title, range } = quincenaLabel(qk);
-          const payable = g.charges.filter(isPayable).map((c) => c.key);
-          const future = g.charges.length > 0 && g.charges.every((c) => isFutureCharge(c, now));
+          const payable = sg.payableKeys;
+          const future = sg.allFuture;
           const [st, color] =
-            !g.charges.length ? ['Sin cargos', 'gray'] : t.left === 0 && !t.missing ? ['Saldada', 'teal'] : t.paid > 0 ? ['Parte paga', 'yellow'] : future ? ['Por venir', 'gray'] : ['Falta pagar', 'orange'];
-          const open = isOpen('q:' + qk, qk >= currentQuincena || payable.length > 0);
+            !g.charges.length ? ['Sin cargos', 'gray'] : future ? ['Por venir', 'gray'] : t.left === 0 && !t.missing ? ['Saldada', 'teal'] : t.paid > 0 ? ['Parte paga', 'yellow'] : ['Falta pagar', 'orange'];
+          // Quincena toda futura: plegada (es "Por venir")
+          const open = isOpen('q:' + qk, !future && (qk >= currentQuincena || payable.length > 0));
           return (
             <Paper key={qk} withBorder radius='md' p='sm'>
               {groupHeader('q:' + qk, open, title, range, <Badge color={color} variant='light'>{st}</Badge>, payable)}
@@ -387,9 +445,14 @@ export default function LedgerViews({
                   itemsFor(g.charges, g.pays),
                   <Group justify='space-between' wrap='wrap' gap='sm'>
                     <Group gap='lg' wrap='wrap'>
-                      <Text size='sm'>Total <b className='ledger-num'>{formatPrice(t.total)}</b></Text>
-                      <Text size='sm' c='teal'>Pagado <b className='ledger-num'>{formatPrice(t.paid)}</b></Text>
-                      <Text size='sm' c={t.left > 0 ? 'orange' : 'dimmed'}>Falta <b className='ledger-num'>{formatPrice(t.left)}</b></Text>
+                      {!future && (
+                        <>
+                          <Text size='sm'>Total <b className='ledger-num'>{formatPrice(t.total)}</b></Text>
+                          <Text size='sm' c='teal'>Pagado <b className='ledger-num'>{formatPrice(t.paid)}</b></Text>
+                          <Text size='sm' c={t.left > 0 ? 'orange' : 'dimmed'}>Falta <b className='ledger-num'>{formatPrice(t.left)}</b></Text>
+                        </>
+                      )}
+                      {futureNote(sg)}
                       {t.missing > 0 && <Badge color='yellow' variant='light'>{t.missing} sin monto</Badge>}
                     </Group>
                     {isAdmin && payable.length > 0 && (
@@ -404,7 +467,8 @@ export default function LedgerViews({
                       </Button>
                     )}
                   </Group>,
-                  true
+                  true,
+                  future ? undefined : 'qf:' + qk
                 )}
               </Collapse>
             </Paper>
@@ -427,7 +491,7 @@ export default function LedgerViews({
       const k = quincenaKey(p.date);
       if (byQ.has(k)) byQ.get(k)!.pays.push(p);
     });
-    const qs = [...byQ.entries()].sort((a, b) => a[0].localeCompare(b[0])); // lo más viejo primero
+    const qs = [...byQ.entries()].sort((a, b) => b[0].localeCompare(a[0])); // más nuevo arriba (igual que las otras vistas)
     const rowStyle = { borderTop: '1px solid var(--mantine-color-dark-4)' };
     return (
       // Lista ancha + panel de pago angosto (en celular, uno debajo del otro)
@@ -435,21 +499,34 @@ export default function LedgerViews({
         <Stack gap='md'>
           {!qs.length && <Text c='dimmed'>No hay nada por pagar: la cuenta está al día.</Text>}
           {qs.map(([qk, g]) => {
-            const keys = g.charges.map((c) => c.key);
-            const all = keys.every((k) => selected.has(k));
-            const left = g.charges.reduce((s, c) => s + remainingOf(c), 0);
+            const sg = splitGroup(g.charges, now);
+            // "Tildar toda la quincena" = lo que ya se debe (lo por venir está plegado);
+            // si toda la quincena es futura, todo (para adelantar)
+            const keys = sg.payableKeys;
+            const all = keys.length > 0 && keys.every((k) => selected.has(k));
+            const left = sg.due.left;
+            const { future: futureItems, rest } = splitItems(itemsFor(g.charges, g.pays));
+            const fKey = 'pf:' + qk;
+            const futureOpen = isOpen(fKey, false);
             return (
               <Paper key={qk} withBorder radius='md' style={{ overflow: 'hidden' }}>
                 <Group justify='space-between' wrap='wrap' gap='xs' px='md' py='sm'>
                   <div>
                     <Text fw={700} size='lg'>{quincenaLabel(qk).title.replace(/ \d{4}$/, '')}</Text>
-                    <Text size='sm' c='dimmed'>Falta <span className='ledger-num'>{formatPrice(left)}</span></Text>
+                    <Text size='sm' c='dimmed'>
+                      {!sg.allFuture && <>Falta <span className='ledger-num'>{formatPrice(left)}</span></>}
+                      {!sg.allFuture && sg.futureCount > 0 && ' · '}
+                      {sg.futureCount > 0 && <>Por venir <span className='ledger-num'>{formatPrice(sg.future.left)}</span></>}
+                    </Text>
                   </div>
                   <Anchor component='button' type='button' onClick={() => toggleMany(keys)}>
                     {all ? 'Destildar' : 'Tildar toda la quincena'}
                   </Anchor>
                 </Group>
-                {itemsFor(g.charges, g.pays).map((it) =>
+                {futureItems.length > 0 && (
+                  <Box px='md' py='xs' style={rowStyle}>{futureToggle(fKey, futureOpen, futureItems)}</Box>
+                )}
+                {[...(futureOpen ? futureItems : []), ...rest].map((it) =>
                   it.kind === 'charge' ? (
                     <Group
                       key={it.charge.key}
