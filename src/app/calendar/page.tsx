@@ -8,7 +8,9 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './calendar.css';
 import 'moment/locale/es';
 import { Drawer, Button, Flex, Badge, Switch, Select, ActionIcon, Box, LoadingOverlay } from '@mantine/core';
-import { IconSearch, IconX, IconCalendarSearch } from '@tabler/icons-react';
+import { IconSearch, IconX, IconCalendarSearch, IconArrowBackUp } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { UNDO_SECONDS } from '@/utils/calendarTrash';
 import { MonthPickerInput } from '@mantine/dates';
 import 'dayjs/locale/es';
 import { useCallback, useMemo, useState, useEffect, useLayoutEffect, useRef, cloneElement } from 'react';
@@ -178,12 +180,60 @@ export default withPageAuthRequired(function CalendarPage() {
     }
   };
 
+  // Deshacer un borrado (el servidor lo guardó en la papelera): vuelve igual
+  const undoDeletePersonalEvent = async (id: string) => {
+    notify({ loading: true });
+    try {
+      await ensureOk(
+        await fetch('/api/calendarEvents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'restore', id })
+        })
+      );
+      mutatePersonalEvents();
+      notify({ title: 'Evento restaurado', message: 'Volvió a quedar como estaba' });
+    } catch (error) {
+      notifyError(error);
+    }
+  };
+
   const handleDeletePersonalEvent = async (id: string) => {
     notify({ loading: true });
     try {
       await ensureOk(await fetch(`/api/calendarEvents?id=${id}`, { method: 'DELETE' }));
       mutatePersonalEvents();
-      notify();
+      // Aviso con "Deshacer" durante UNDO_SECONDS (borrar no pide confirmación).
+      // Id propio: otra acción en esos segundos no lo pisa.
+      const undoId = `undo-delete-${id}`;
+      notifications.hide('notify-notification');
+      notifications.show({
+        id: undoId,
+        color: 'teal',
+        title: 'Evento eliminado',
+        message: (
+          <>
+          <Flex align='center' justify='space-between' gap='sm'>
+            <span>Tenés {UNDO_SECONDS} segundos para deshacerlo.</span>
+            <Button
+              size='compact-sm'
+              variant='light'
+              leftSection={<IconArrowBackUp size={14} />}
+              onClick={() => {
+                notifications.hide(undoId);
+                undoDeletePersonalEvent(id);
+              }}
+            >
+              Deshacer
+            </Button>
+          </Flex>
+          {/* Barra que se vacía en los segundos que quedan (CSS, ver globals.css) */}
+          <div className='undo-countdown' style={{ '--undo-duration': `${UNDO_SECONDS}s` } as React.CSSProperties} />
+          </>
+        ),
+        autoClose: UNDO_SECONDS * 1000,
+        withCloseButton: true
+      });
     } catch (error) {
       notifyError(error);
     }

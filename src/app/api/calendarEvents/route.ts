@@ -5,6 +5,34 @@ import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { visibleCalendarsFilter } from '@/utils/calendarVisibility';
 import { normalizeEventStaff } from '@/utils/staffLedger';
+import { toTrash, fromTrash } from '@/utils/calendarTrash';
+
+// Papelera: copia de cada evento borrado (para "Deshacer" y recuperarlo después)
+const TRASH = 'calendar_events_deleted';
+
+// Deshacer un borrado: vuelve el evento con el MISMO _id desde la papelera
+async function restoreFromTrash(db: any, context: AuthContext, id: unknown) {
+  if (typeof id !== 'string' || !ObjectId.isValid(id)) {
+    return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+  }
+  const oid = new ObjectId(id);
+  const [entry] = await db
+    .collection(TRASH)
+    .find({ originalId: oid, restoredAt: { $exists: false } })
+    .sort({ deletedAt: -1 })
+    .limit(1)
+    .toArray();
+  if (!entry || !(await canAccessCalendar(db, context, String(entry.calendarId)))) {
+    return NextResponse.json({ error: 'No se encontró el evento borrado (o su calendario ya no existe)' }, { status: 404 });
+  }
+  if (await db.collection('calendar_events').findOne({ _id: oid }, { projection: { _id: 1 } })) {
+    return NextResponse.json({ error: 'El evento ya está restaurado' }, { status: 409 });
+  }
+  const event = fromTrash(entry);
+  await db.collection('calendar_events').insertOne(event);
+  await db.collection(TRASH).updateOne({ _id: entry._id }, { $set: { restoredAt: new Date() } });
+  return NextResponse.json(event);
+}
 
 // ¿El usuario tiene acceso al calendario? (visibilidad por calendario)
 async function canAccessCalendar(db: any, context: AuthContext, calendarId: string) {
@@ -54,6 +82,10 @@ export const GET = withAuth(async (context: AuthContext, _req: Request) => {
 // POST — solo admin puede crear eventos
 export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
+  if (body?.action === 'restore') {
+    const client = await clientPromise;
+    return restoreFromTrash(client.db(DB_NAME), context, body.id);
+  }
   const { title, start, end, allDay, calendarId, description } = body;
 
   if (!title || !start || !calendarId) {
@@ -154,6 +186,10 @@ export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) =
   if (!current || !(await canAccessCalendar(db, context, String(current.calendarId)))) {
     return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
   }
+  // Primero la copia en la papelera: si eso falla, no se borra (no se pierde nada)
+  await db
+    .collection(TRASH)
+    .insertOne(toTrash(current, { deletedBy: context.user?.email || context.user?.name || 'admin', now: new Date() }));
   await db.collection('calendar_events').deleteOne({ _id: new ObjectId(id) });
 
   return NextResponse.json({ success: true });

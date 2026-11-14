@@ -310,3 +310,23 @@ tr[data-selected] > td:first-child {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Barra de "Deshacer" (aviso de evento eliminado): se vacía en el tiempo que
+   queda para deshacer. Con transform (sin re-renders ni reflow). Mantine corta
+   el cierre al pasar el mouse y lo REINICIA completo al salir: la barra hace lo
+   mismo (quieta y llena encima; arranca de nuevo al salir). */
+@keyframes undo-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.undo-countdown {
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--mantine-color-teal-6);
+  transform-origin: left;
+  animation: undo-countdown var(--undo-duration, 30s) linear forwards;
+}
+.mantine-Notification-root:hover .undo-countdown {
+  animation: none;
+}

@@ -150,6 +150,7 @@ La colección `employees` (STAFF) es el directorio de personas de la app. **No h
 - **El control de acceso va en TODOS los métodos** (GET, POST, PUT, DELETE), no solo en el GET. Si el usuario no tiene acceso → 404.
 - **Nunca dejar un recurso restringido sin dueño ni miembros:** nadie lo vería y no se podría editar ni borrar. Si no hay dueño resoluble → 400 con mensaje claro. Un recurso legacy sin dueño toma como dueño al admin que lo restringe.
 - Al calcular el preset de visibilidad en la UI, el dueño **no cuenta** como "otro miembro".
+- **Borrar un evento de calendario extra no pide confirmación, pero se puede deshacer:** el `DELETE` primero guarda una copia completa en la papelera `calendar_events_deleted` (si falla, no borra) y la UI muestra "Deshacer" durante 30 s (`UNDO_SECONDS`). `POST { action: 'restore', id }` lo vuelve a insertar con el **mismo `_id`** (se relinkean sus cobros). Lógica en `/src/utils/calendarTrash.ts`. Recuperar algo borrado hace más tiempo: buscarlo en la papelera por `originalId`. Los eventos de Degano NO tienen deshacer (tienen confirmación).
 
 ### 6. Performance OBLIGATORIA (CRÍTICO)
 
