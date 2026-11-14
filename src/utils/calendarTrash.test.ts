@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { UNDO_SECONDS, toTrash, fromTrash } from './calendarTrash';
+import { UNDO_SECONDS, TRASH_RETENTION_DAYS, TRASH_TTL_SECONDS, toTrash, fromTrash } from './calendarTrash';
 
 describe('calendarTrash: papelera de eventos de calendarios extras', () => {
   const now = new Date('2026-11-14T15:00:00.000Z');
@@ -16,6 +16,10 @@ describe('calendarTrash: papelera de eventos de calendarios extras', () => {
 
   it('el deshacer dura 30 segundos', () => {
     expect(UNDO_SECONDS).toBe(30);
+  });
+  it('la papelera se limpia sola a los 15 días (índice TTL de MongoDB)', () => {
+    expect(TRASH_RETENTION_DAYS).toBe(15);
+    expect(TRASH_TTL_SECONDS).toBe(15 * 24 * 60 * 60);
   });
   it('a la papelera va una copia completa, con quién y cuándo', () => {
     expect(toTrash(ev, { deletedBy: 'juan@degano.com', now })).toEqual({

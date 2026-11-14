@@ -5,10 +5,35 @@ import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { visibleCalendarsFilter } from '@/utils/calendarVisibility';
 import { normalizeEventStaff } from '@/utils/staffLedger';
-import { toTrash, fromTrash } from '@/utils/calendarTrash';
+import { toTrash, fromTrash, TRASH_TTL_SECONDS } from '@/utils/calendarTrash';
 
 // Papelera: copia de cada evento borrado (para "Deshacer" y recuperarlo después)
 const TRASH = 'calendar_events_deleted';
+
+// Índice TTL: MongoDB borra solo cada copia a los TRASH_RETENTION_DAYS. Se
+// asegura una vez por instancia (idempotente); si existía con otro plazo, se
+// actualiza. Si falla, no frena el borrado (se reintenta en el próximo).
+let trashIndexReady: Promise<void> | null = null;
+function ensureTrashIndex(db: any): Promise<void> {
+  if (!trashIndexReady) {
+    trashIndexReady = db
+      .collection(TRASH)
+      .createIndex({ deletedAt: 1 }, { name: 'trash_ttl', expireAfterSeconds: TRASH_TTL_SECONDS })
+      .then(() => undefined)
+      .catch(async (e: any) => {
+        if (e?.code === 85 || e?.codeName === 'IndexOptionsConflict') {
+          await db.command({ collMod: TRASH, index: { name: 'trash_ttl', expireAfterSeconds: TRASH_TTL_SECONDS } });
+          return;
+        }
+        throw e;
+      })
+      .catch((e: any) => {
+        console.error('[calendarEvents] índice TTL de la papelera:', e);
+        trashIndexReady = null;
+      });
+  }
+  return trashIndexReady as Promise<void>;
+}
 
 // Deshacer un borrado: vuelve el evento con el MISMO _id desde la papelera
 async function restoreFromTrash(db: any, context: AuthContext, id: unknown) {
@@ -187,6 +212,7 @@ export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) =
     return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
   }
   // Primero la copia en la papelera: si eso falla, no se borra (no se pierde nada)
+  await ensureTrashIndex(db);
   await db
     .collection(TRASH)
     .insertOne(toTrash(current, { deletedBy: context.user?.email || context.user?.name || 'admin', now: new Date() }));
