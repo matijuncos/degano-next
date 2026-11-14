@@ -1,6 +1,6 @@
 // src/app/api/bands/route.ts
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuth(async (context: AuthContext) => {
   try {
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const bands = await db.collection('bands').find().toArray();
     return NextResponse.json(bands);
   } catch (error) {
@@ -29,7 +29,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     const { _id, showTime, testTime, ...rest } = body;
     const cleanBody = { ...rest };
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const result = await db.collection('bands').insertOne(cleanBody);
     return NextResponse.json({ ...cleanBody, _id: result.insertedId });
   } catch (error) {
@@ -47,7 +47,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     const { _id, ...rest } = body;
 
@@ -72,7 +72,7 @@ export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     if (removeContactId) {
       // eliminar un contacto
@@ -120,7 +120,7 @@ export const DELETE = withAuth(async (context: AuthContext, req: Request) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     await db.collection('bands').deleteOne({ _id: new ObjectId(_id) });
 
     return NextResponse.json({ success: true });

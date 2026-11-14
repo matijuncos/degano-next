@@ -1,6 +1,6 @@
 // src/app/api/equipmentLocation/route.ts
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuth(async (context: AuthContext) => {
   try {
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const equipmentLocation = await db.collection('equipmentLocation').find().toArray();
 
     const names = equipmentLocation.map(loc => loc.name);
@@ -28,7 +28,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const existing = await db.collection('equipmentLocation').findOne({ name });
 
     if (existing) {
@@ -52,7 +52,7 @@ export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) =
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     // Verificar si hay equipos usando esta localización
     const equipmentCount = await db.collection('equipment').countDocuments({ location: name });

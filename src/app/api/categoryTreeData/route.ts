@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'; // ⬅️ esto fuerza el comportamiento dinámico
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { sortByName } from '@/utils/sortByName';
 import { requireAuth } from '@/lib/requireAuth';
 
@@ -8,7 +8,7 @@ export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   const [categories, equipment] = await Promise.all([
     db.collection('categories').find().toArray().then(sortByName),

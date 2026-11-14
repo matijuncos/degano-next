@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'; // ⬅️ esto fuerza el comportamiento dinámico
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/requireAuth';
 
@@ -8,7 +8,7 @@ export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const categories = await db.collection('categories').find().sort({name: 1}).toArray();
   return NextResponse.json(categories);
 }
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (unauth) return unauth;
   const body = await req.json();
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const newCat = await db.collection('categories').insertOne(body);
   return NextResponse.json({ ...body, _id: newCat.insertedId });
 }
@@ -28,7 +28,7 @@ export async function PUT(req: Request) {
   if (unauth) return unauth;
   const body = await req.json();
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   const { _id, ...rest } = body;
   await db.collection('categories').updateOne(
@@ -47,7 +47,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   await db.collection('categories').deleteOne({ _id: new ObjectId(id) });
 
   return NextResponse.json({ success: true });

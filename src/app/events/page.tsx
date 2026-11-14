@@ -23,6 +23,8 @@ import useNotification from '@/hooks/useNotification';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import { useResponsive } from '@/hooks/useResponsive';
 import ProtectedAction from '@/components/ProtectedAction/ProtectedAction';
+import { isRental } from '@/utils/eventKind';
+import RentalBadge from '@/components/EventKindChooser/RentalBadge';
 
 export default withPageAuthRequired(function EventPage() {
   const { allEvents, fetchEvents, loading, setLoading } = useDeganoCtx();
@@ -270,7 +272,20 @@ export default withPageAuthRequired(function EventPage() {
                   render: ({ date }) => new Date(date).toLocaleDateString('es-AR'),
                   sortable: true
                 },
-                { accessor: 'type', title: 'Tipo de evento' },
+                {
+                  accessor: 'type',
+                  title: 'Tipo de evento',
+                  // Alquiler: cartel además del texto
+                  render: (ev) =>
+                    isRental(ev) ? (
+                      <Group gap={6} wrap='nowrap'>
+                        <RentalBadge size='sm' />
+                        {ev.type !== 'Alquiler' && <span>{ev.type}</span>}
+                      </Group>
+                    ) : (
+                      ev.type
+                    )
+                },
                 { accessor: 'lugar', title: 'Lugar' },
                 {
                   accessor: 'date',

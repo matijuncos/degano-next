@@ -5,7 +5,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/requireAuth';
 import { resolveEmployee } from '@/lib/resolveEmployee';
@@ -13,7 +13,7 @@ import { TASK_STATUSES, TaskStatus } from '@/types/boards';
 
 async function getDb() {
   const client = await clientPromise;
-  return client.db('degano-app');
+  return client.db(DB_NAME);
 }
 
 // El acceso al tablero se resuelve con el id del registro de STAFF (directorio

@@ -1,6 +1,6 @@
 // src/app/api/employees/route.ts
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 
@@ -63,7 +63,7 @@ const ADMIN_PROJECTION = { authSub: 0, lastLoginAt: 0, 'insurancePolicy.key': 0 
 
 async function listAllEmployees(directory = false, isAdmin = false) {
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   // Por defecto solo el personal de eventos. Las entradas de directorio que se
   // auto-crean en el login (isStaff:false) quedan fuera de la lista de STAFF y
   // de todos los selectores. Con ?directory=true se piden también esas, para los
@@ -92,7 +92,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
 export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const body = normalizeEmail(await req.json());
     // La póliza se gestiona solo por /api/staffPolicy
     delete body.insurancePolicy;
@@ -127,7 +127,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
 export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
   try {
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const raw = await req.json();
     // Solo se toca el email si el body lo trae. Un body parcial (sin la clave)
     // no debe borrar el vínculo con la cuenta de login.
@@ -191,7 +191,7 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
 
 export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) => {
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 

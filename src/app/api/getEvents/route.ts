@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb';
 import type { NextApiResponse } from 'next';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { getPermissions, obfuscatePhone } from '@/utils/roleUtils';
@@ -11,7 +11,7 @@ export const GET = withAuth(
       const typedClientPromise: Promise<MongoClient> =
         clientPromise as Promise<MongoClient>;
       const client = await typedClientPromise;
-      const db = client.db('degano-app');
+      const db = client.db(DB_NAME);
 
       // Projection liviana: solo campos usados por calendario, lista de eventos y próximos eventos
       // Los campos pesados (equipment, bands, payment, music, timing, staff, playlist, etc.)
@@ -22,6 +22,7 @@ export const GET = withAuth(
           date: 1,
           endDate: 1,
           type: 1,
+          eventKind: 1, // evento / alquiler (color y cartel en calendario y listas)
           lugar: 1,
           fullName: 1,
           phoneNumber: 1,

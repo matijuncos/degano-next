@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { MongoClient } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
@@ -18,7 +18,7 @@ export const DELETE = withAuth(
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const ObjectId = require('mongodb').ObjectId;
     const events = await db
       .collection('clients')

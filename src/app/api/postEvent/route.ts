@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { sanitizeStaffRoleIds } from '@/utils/staffRoles';
@@ -12,6 +12,9 @@ import { getPermissions } from '@/utils/roleUtils';
 import { withRealEquipmentPrices } from '@/lib/equipmentPriceGuard';
 import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
 import { checkBookingConflicts } from '@/lib/bookingGuard';
+import { eventKindOf, stripRentalFields } from '@/utils/eventKind';
+import { withoutCategoryItems } from '@/utils/categoryItemGuard';
+import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
 
 // Todos pueden crear eventos según especificación
 export const POST = withAuth(async (context: AuthContext, req: Request) => {
@@ -20,7 +23,12 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const { _id, bands, createdAt, updatedAt, ...restBody } = body;
+    const { _id, createdAt, updatedAt, ...body0 } = body;
+    // Tipo de evento: solo 'alquiler' o 'evento'. Un alquiler no guarda Show,
+    // Música, Timing ni Archivos aunque vengan en el cuerpo.
+    const eventKind = eventKindOf(body0);
+    const { bands, ...restBody } = eventKind === 'alquiler' ? stripRentalFields(body0) : body0;
+    restBody.eventKind = eventKind;
     let equipment = body.equipment;
     // Link de Google Maps del lugar: normalizar si viene, rechazar si no es de Maps
     if ('venueMapsUrl' in restBody) {
@@ -34,7 +42,12 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     if ('staff' in restBody) restBody.staff = sanitizeStaffRoleIds(restBody.staff);
     // Archivos subidos antes de finalizar: solo los de la carpeta de ESTE evento
     if ('files' in restBody) restBody.files = ownFiles(restBody.files, restBody.folderId);
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
+    // Una categoría nunca se guarda como equipo (pasaba al tocar una subcategoría
+    // en la tabla de Equipamiento)
+    if (Array.isArray(equipment)) {
+      equipment = withoutCategoryItems(equipment, await categoryIdsAmong(db, equipment)).equipment;
+    }
     // Precios: quien no los ve arma el evento con equipos sin precio → se
     // completan con los reales de la base (y el total de alquiler).
     if (!getPermissions(context.role).canViewEquipmentPrices && Array.isArray(equipment)) {
@@ -74,7 +87,7 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     }));
     const document = {
       ...restBody,
-      bands: bandsWithIds,
+      ...(eventKind !== 'alquiler' && { bands: bandsWithIds }),
       equipment,
       ...(!_id && { createdAt: timestamp }),
       updatedAt: timestamp

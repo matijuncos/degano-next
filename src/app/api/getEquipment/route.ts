@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb'; // Import ObjectId
 import type { NextApiResponse } from 'next';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/requireAuth';
@@ -12,7 +12,7 @@ export const GET = async function handler(req: NextRequest) {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const equipment = await db.collection('equipmentList').find().toArray();
     
     // Invalidate cache for the specific path after fetching new data

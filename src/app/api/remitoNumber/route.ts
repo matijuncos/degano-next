@@ -1,5 +1,5 @@
 import { MongoClient, ObjectId } from 'mongodb';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/withAuth';
 
@@ -24,7 +24,7 @@ export const POST = withAuth(async (_context, req: NextRequest) => {
     }
 
     const client = (await clientPromise) as MongoClient;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const events = db.collection('events');
 
     const event = await events.findOne(

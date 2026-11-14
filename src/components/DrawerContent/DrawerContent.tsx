@@ -46,6 +46,7 @@ import { getCleanFileName, getFileViewerUrl } from '@/utils/fileUtils';
 import { openS3File } from '@/utils/s3Utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { obfuscatePhone } from '@/utils/roleUtils';
+import { isRental } from '@/utils/eventKind';
 
 interface FileItem {
   url: string;
@@ -69,6 +70,8 @@ const DrawerContent = () => {
   const { can, role } = usePermissions();
   const canViewPayments = can('canViewPayments');
   const files: FileItem[] = selectedEvent?.files || [];
+  // Alquiler: sin Show ni Archivos (ver utils/eventKind)
+  const rental = isRental(selectedEvent);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   // Roles en ESTE evento (los que muestra y cobra Cobros STAFF). Se precargan
@@ -860,6 +863,8 @@ const DrawerContent = () => {
 
         <Divider />
 
+        {/* Alquiler: sin Show */}
+        {!rental && (<>
         {/* SECCIÓN: SHOW EN VIVO */}
         <Box>
           <Text fw={700} size='md' mb='sm'>
@@ -932,7 +937,10 @@ const DrawerContent = () => {
         </Box>
 
         <Divider />
+        </>)}
 
+        {/* Alquiler: sin Archivos */}
+        {!rental && (<>
         {/* SECCIÓN: ARCHIVOS */}
         <Box>
           <Text fw={700} size='md' mb='sm'>
@@ -987,6 +995,7 @@ const DrawerContent = () => {
         </Box>
 
         <Divider />
+        </>)}
 
         {/* BOTÓN VER EVENTO */}
         <Button

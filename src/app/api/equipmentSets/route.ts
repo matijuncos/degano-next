@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { withAuth, withManagerAuth, AuthContext } from '@/lib/withAuth';
 
 // GET — cualquier usuario autenticado puede leer los sets
 export const GET = withAuth(async (_context: AuthContext, _req: Request) => {
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const sets = await db.collection('equipment_sets').find({}).toArray();
   return NextResponse.json(sets);
 });
@@ -22,7 +22,7 @@ export const POST = withManagerAuth(async (_context: AuthContext, req: Request) 
   }
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const result = await db.collection('equipment_sets').insertOne({ name, items });
   const created = await db.collection('equipment_sets').findOne({ _id: result.insertedId });
   return NextResponse.json(created, { status: 201 });
@@ -41,7 +41,7 @@ export const PUT = withManagerAuth(async (_context: AuthContext, req: Request) =
   const { name, items } = body;
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   await db.collection('equipment_sets').updateOne(
     { _id: new ObjectId(id) },
     { $set: { name, items } }
@@ -60,7 +60,7 @@ export const DELETE = withManagerAuth(async (_context: AuthContext, req: Request
   }
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   await db.collection('equipment_sets').deleteOne({ _id: new ObjectId(id) });
   return NextResponse.json({ success: true });
 });

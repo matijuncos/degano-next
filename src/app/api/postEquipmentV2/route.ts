@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { MongoClient } from 'mongodb';
 import { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
@@ -10,7 +10,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: any) => {
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;
   const client = await typedClientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const postEqList = await db
     .collection('equipmentListV2')
     .insertOne({ equipment: body });

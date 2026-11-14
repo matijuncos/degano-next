@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/requireAuth';
 
@@ -8,7 +8,7 @@ export async function GET() {
   if (unauth) return unauth;
   try {
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const contacts = await db.collection('contacts').find().toArray();
     return NextResponse.json(contacts);
   } catch (error) {
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const res = await db.collection('contacts').insertOne(body);
     return NextResponse.json({ ...body, _id: res.insertedId });
   } catch (error) {
@@ -51,7 +51,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Missing _id' }, { status: 400 });
     }
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const { _id, ...rest } = body;
     await db
       .collection('contacts')
@@ -76,7 +76,7 @@ export async function DELETE(req: Request) {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     await db
       .collection('contacts')

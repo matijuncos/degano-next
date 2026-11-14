@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { getSession } from '@auth0/nextjs-auth0';
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextApiResponse } from 'next';
@@ -16,7 +16,7 @@ export const DELETE = async function handler(
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;
   const client = await typedClientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const { equipment } = body;
   const newEquipmentCollection = await db
     .collection('equipmentListV2')

@@ -20,7 +20,7 @@ import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { INITIAL_EVENT_STATE } from './config';
 import { isValidMapsUrl } from '@/utils/mapsUtils';
-import { Tabs, Button, Text, Center, Alert, Group, CloseButton } from '@mantine/core';
+import { Tabs, Button, Text, Center, Alert, Group, CloseButton, Badge } from '@mantine/core';
 import { IconDeviceFloppy } from '@tabler/icons-react';
 import { nanoid } from 'nanoid';
 import { mutate } from 'swr';
@@ -28,6 +28,21 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useEventDraft } from '@/hooks/useEventDraft';
 import { draftAgeLabel, hasDraftContent } from '@/utils/eventDraft';
 import { useConfirm } from '@/components/ConfirmModal/useConfirm';
+import EventKindChooser from '@/components/EventKindChooser/EventKindChooser';
+import RentalBadge from '@/components/EventKindChooser/RentalBadge';
+import { fileInFolder } from '@/utils/eventScope';
+import {
+  EventKind,
+  canChangeKind,
+  deleteOwnFiles,
+  eventKindOf,
+  hasRentalHiddenData,
+  needsKindChoice,
+  resolveTab,
+  restoreTab,
+  stripRentalFields,
+  withKind
+} from '@/utils/eventKind';
 
 // El servidor no duplica eventos (reconoce el reintento), así que se puede
 // volver a apretar Finalizar con seguridad.
@@ -66,6 +81,10 @@ const NewEventPage = () => {
   const [draftReady, setDraftReady] = useState(false); // ya se intentó recuperar
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   const [formKey, setFormKey] = useState(0); // remonta los formularios al empezar de cero
+  // Tipo: Evento o Alquiler. Se elige primero (pantalla de elección) y se puede
+  // cambiar mientras se crea; una vez creado queda fijo. Ver utils/eventKind.
+  const [kind, setKind] = useState<EventKind>('evento');
+  const [kindPicker, setKindPicker] = useState<'first' | 'change' | null>(null);
   const formStateRef = useRef(formState);
   formStateRef.current = formState;
   // Solo se guarda cuando hay algo cargado: un formulario recién abierto (igual
@@ -104,13 +123,17 @@ const NewEventPage = () => {
     if (saved) {
       setEvent(saved.event);
       currentFormDataRef.current = saved.event;
+      // Borrador viejo sin tipo = evento
+      const savedKind = eventKindOf(saved.event);
+      setKind(savedKind);
       const restorable = saved.tab >= EVENT_TABS.CLIENT && saved.tab <= EVENT_TABS.PAYMENT;
-      setFormState(restorable ? saved.tab : EVENT_TABS.CLIENT);
+      setFormState(restoreTab(restorable ? saved.tab : EVENT_TABS.CLIENT, savedKind));
       setRestoredAt(saved.savedAt);
       dirtyRef.current = true;
     } else {
       setFormState(EVENT_TABS.CLIENT);
     }
+    if (needsKindChoice(saved)) setKindPicker('first');
     setDraftReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.sub]);
@@ -137,6 +160,8 @@ const NewEventPage = () => {
     setFormState(EVENT_TABS.CLIENT);
     setValidate(false);
     setRestoredAt(null);
+    setKind('evento');
+    setKindPicker('first');
     setFormKey((k) => k + 1);
   };
 
@@ -202,13 +227,15 @@ const NewEventPage = () => {
     };
   };
 
+  // Los formularios piden una pestaña fija (ej. Evento → Show): en un alquiler se
+  // salta a la siguiente que exista
   const onNextTab = (tab: number, data: EventModel) => {
-    setFormState(tab);
+    setFormState(resolveTab(tab, formStateRef.current, kind));
     setEvent(data);
     setValidate(false); // Resetear validación al cambiar de pestaña
   };
   const onBackTab = (tab: number, data: EventModel) => {
-    setFormState(tab);
+    setFormState(resolveTab(tab, formStateRef.current, kind));
     setEvent(data);
     setValidate(false); // Resetear validación al cambiar de pestaña
   };
@@ -230,7 +257,67 @@ const NewEventPage = () => {
     return !!(event.date && event.type && event.lugar);
   };
 
-  const saveEvent = async (newEvent: EventModel) => {
+  // Elegir / cambiar el tipo. Pasar a Alquiler con algo cargado en Show, Música,
+  // Timing o Archivos: se avisa (no se va a guardar) y los archivos ya subidos
+  // (carpeta propia del formulario) se borran para no dejarlos huérfanos.
+  const chooseKind = async (next: EventKind) => {
+    const data = currentFormDataRef.current;
+    // Una vez creado, el tipo queda fijo (y sus archivos ya son del evento)
+    if (!canChangeKind(event) || !canChangeKind(data)) return;
+    let base: EventModel = data;
+    if (next === 'alquiler' && kind !== 'alquiler') {
+      const hidden = hasRentalHiddenData(data as any);
+      if (hidden.any) {
+        const ownCount = hidden.files.filter((f) => fileInFolder(f.url, data.folderId)).length;
+        const ok = await confirm({
+          title: '¿Pasar a alquiler?',
+          message:
+            'Lo cargado en Show, Música, Timing, Archivos y los horarios de iglesia / civil no se va a guardar en un alquiler.' +
+            (ownCount ? ` Los ${ownCount} archivos subidos se borran.` : ''),
+          confirmLabel: 'Pasar a alquiler'
+        });
+        if (!ok) return;
+        const { deleted, failed } = await deleteOwnFiles(hidden.files, data.folderId, (url) =>
+          fetch('/api/deleteFromS3', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, bucket: 'events' })
+          })
+        );
+        const remaining = (data.files || []).filter((f: any) => !deleted.includes(f.url));
+        if (failed.length) {
+          // No se cambia el tipo: quedan los archivos que no se pudieron borrar
+          const kept: EventModel = { ...data, files: remaining };
+          currentFormDataRef.current = kept;
+          setEvent(kept);
+          onFormDataChange(kept);
+          notify({
+            type: 'defaultError',
+            message: `No se pudieron borrar ${failed.length} archivos. Probá de nuevo o borralos desde Archivos.`
+          });
+          return;
+        }
+        base = { ...data, files: remaining };
+      }
+    }
+    const updated: EventModel = withKind(base, next);
+    // Elegir el tipo solo no es "algo cargado": no genera borrador
+    if (kindPicker === 'first' && !dirtyRef.current) pristineRef.current = updated;
+    currentFormDataRef.current = updated;
+    setEvent(updated);
+    setKind(next);
+    setFormState(restoreTab(kindPicker === 'first' ? EVENT_TABS.CLIENT : formStateRef.current, next));
+    setKindPicker(null);
+    setFormKey((k) => k + 1); // los formularios arrancan con el tipo nuevo
+    onFormDataChange(updated);
+  };
+
+  const saveEvent = async (formEvent: EventModel) => {
+    // El tipo lo fija esta página; un alquiler no manda Show/Música/Timing/Archivos
+    const newEvent: EventModel =
+      kind === 'alquiler'
+        ? { ...stripRentalFields(formEvent), eventKind: 'alquiler' }
+        : { ...formEvent, eventKind: 'evento' };
     setLoadingCursor(true);
     notify({ loading: true });
     try {
@@ -289,8 +376,12 @@ const NewEventPage = () => {
       addEventToList(data.event);
       setEvent(data.event);
 
-      // Si la tab de archivos está disponible, ir a ella; si no, redirigir a upload-file
-      if (canShowFilesTab()) {
+      // Alquiler: no tiene Archivos → a la página del alquiler.
+      // Evento: si la tab de archivos está disponible, ir a ella; si no, a upload-file
+      if (kind === 'alquiler') {
+        notify({ message: 'Alquiler guardado correctamente.' });
+        router.push(`/event/${data.event._id}`);
+      } else if (canShowFilesTab()) {
         notify({
           message:
           'Evento guardado correctamente. Ahora puedes subir archivos.'
@@ -341,6 +432,7 @@ const NewEventPage = () => {
       case EVENT_TABS.EVENT:
         return (
           <EventForm
+            isRental={kind === 'alquiler'}
             onNextTab={onNextTab}
             onBackTab={onBackTab}
             event={event}
@@ -408,7 +500,7 @@ const NewEventPage = () => {
             event={event}
             updateEvent={updateEvent}
             onFormDataChange={onFormDataChange}
-            goToFiles={canShowFilesTab()}
+            goToFiles={kind === 'evento' && canShowFilesTab()}
           />
         );
       case EVENT_TABS.FILES:
@@ -479,8 +571,41 @@ const NewEventPage = () => {
     );
   }
 
+  // Primer paso (o "Cambiar" mientras se crea): Evento o Alquiler
+  if (kindPicker) {
+    return (
+      <div>
+        {confirmModal}
+        <EventKindChooser onChoose={chooseKind} current={kindPicker === 'change' ? kind : undefined} />
+        {kindPicker === 'change' && (
+          <Center>
+            <Button variant='default' onClick={() => setKindPicker(null)}>Volver sin cambiar</Button>
+          </Center>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
+      {/* Tipo elegido (se puede cambiar hasta crearlo) */}
+      <Group gap='xs' mb='sm'>
+        {kind === 'alquiler' ? <RentalBadge size='lg' /> : <Badge size='lg' variant='light' color='green' tt='none'>Evento</Badge>}
+        {/* Una vez creado, el tipo queda fijo */}
+        {canChangeKind(event) && (
+        <Button
+          size='compact-sm'
+          variant='subtle'
+          onClick={() => {
+            // Lo que el formulario actual tiene sin pasar al estado
+            setEvent(currentFormDataRef.current);
+            setKindPicker('change');
+          }}
+        >
+          Cambiar
+        </Button>
+        )}
+      </Group>
       {/*  TABS TO NAVIGATE BETWEEN SECTIONS */}
       <div style={{ display: 'flex', gap: '10px' }}>
         <Tabs
@@ -491,9 +616,14 @@ const NewEventPage = () => {
           <Tabs.List>
             <Tabs.Tab value={EVENT_TABS.CLIENT.toString()}>Cliente</Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.EVENT.toString()}>Evento</Tabs.Tab>
-            <Tabs.Tab value={EVENT_TABS.SHOW.toString()}>Show</Tabs.Tab>
-            <Tabs.Tab value={EVENT_TABS.MUSIC.toString()}>Musica</Tabs.Tab>
-            <Tabs.Tab value={EVENT_TABS.TIMING.toString()}>Timing</Tabs.Tab>
+            {/* Un alquiler no tiene Show, Música, Timing ni Archivos */}
+            {kind === 'evento' && (
+              <>
+                <Tabs.Tab value={EVENT_TABS.SHOW.toString()}>Show</Tabs.Tab>
+                <Tabs.Tab value={EVENT_TABS.MUSIC.toString()}>Musica</Tabs.Tab>
+                <Tabs.Tab value={EVENT_TABS.TIMING.toString()}>Timing</Tabs.Tab>
+              </>
+            )}
             <Tabs.Tab value={EVENT_TABS.MORE_INFO.toString()}>
               Más Información
             </Tabs.Tab>
@@ -501,7 +631,7 @@ const NewEventPage = () => {
               Equipamiento
             </Tabs.Tab>
             <Tabs.Tab value={EVENT_TABS.STAFF.toString()}>Staff</Tabs.Tab>
-            {canShowFilesTab() && (
+            {kind === 'evento' && canShowFilesTab() && (
               <Tabs.Tab value={EVENT_TABS.FILES.toString()}>Archivos</Tabs.Tab>
             )}
             <Tabs.Tab value={EVENT_TABS.PAYMENT.toString()}>

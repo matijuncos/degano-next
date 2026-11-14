@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-import clientPromise from './mongodb';
+import clientPromise, { DB_NAME } from './mongodb';
 import { Session } from '@auth0/nextjs-auth0';
 
 export async function getEquipmentAction(session: Session) {
@@ -10,7 +10,7 @@ export async function getEquipmentAction(session: Session) {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const equipmentList = await db.collection('equipmentListV2').find().toArray();
 
     const response = {

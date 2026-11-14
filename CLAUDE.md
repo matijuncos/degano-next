@@ -38,6 +38,7 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 - Determinar disponibilidad por `location` o por el estado `outOfService` de la DB cuando hay fechas de evento en la query
 - Permitir que un equipo se asigne a dos eventos con fechas solapadas
 - Modificar `scheduledUses` sin actualizar el historial
+- Guardar una **categoría** como equipo de un evento: la UI entra en la subcategoría al tocarla y `postEvent`/`updateEvent` descartan esos renglones (`withoutCategoryItems`, `/src/utils/categoryItemGuard.ts`)
 
 **Limpieza automática (GET /api/equipment sin fechas):**
 - Se limpian `scheduledUses` expirados (endDate < now)
@@ -221,6 +222,17 @@ Panel en `/lugares`: lo **ven admin y manager**; **solo el admin modifica** (edi
 - **Borrar un archivo:** primero sacarlo del evento y recién después de S3 (si falla lo primero, el archivo no se pierde). El bucket `degano-events-files` tiene versionado: lo borrado se puede recuperar.
 - Componente nuevo que use `useDeganoCtx().selectedEvent`: revisar en qué páginas se monta. Si puede aparecer en Nuevo evento, pasarle el evento por props.
 
+### 11. Tipo de evento: Evento / Alquiler (CRÍTICO)
+
+Degano alquila equipos a terceros. Campo `events.eventKind: 'evento' | 'alquiler'`; **sin campo = evento** (todos los viejos, sin migración). El tipo lo define SOLO `eventKind`, nunca el texto de "Tipo de evento" (`type`). Lógica pura en `/src/utils/eventKind.ts` (testeada).
+
+- **Alquiler = evento completo** (stock con `scheduledUses`/solapamiento/historial, staff → Cobros, presupuesto) **sin Show, Música, Timing ni Archivos**: ni en Nuevo evento, ni en la página, ni en el drawer, ni en el PDF. Tampoco horarios de ceremonia (`churchDate`/`civil`): no se cargan, no se guardan (`stripRentalFields`) y "Agregar campos" no los sugiere.
+- **Crear:** `/new-event` muestra primero la elección (`EventKindChooser`) si no hay borrador. En alquiler `type` se precarga con "Alquiler" (editable). Lugar/Localidad siguen obligatorios (crean ficha en `/lugares`). Mientras se crea se puede "Cambiar" (avisa y borra archivos ya subidos); **una vez creado queda fijo**.
+- **Navegación de pestañas:** los formularios piden pestañas fijas; la página las traduce con `resolveTab()` (no tocar cada formulario). Borrador: `restoreTab()`.
+- **Servidor:** `postEvent` normaliza `eventKind` y descarta los campos de alquiler (`stripRentalFields`, nunca `folderId`); `updateEvent` **nunca cambia `eventKind`** y en un alquiler descarta esos campos (`sanitizeKindUpdate`). `getEvents` proyecta `eventKind`.
+- **Un alquiler no tiene `music`:** todo código nuevo que lea `event.music.x` va con `?.` o detrás de `!isRental(...)`.
+- **Calendario:** cobre por estado (`rentalEventColors`; elegido para no parecerse a ningún calendario en uso, ej. el gris de Reuniones) + 🚚 en el título; leyenda "Alquileres" en el sidebar. Cartel `RentalBadge` en página, Nuevo evento, Próximos eventos y `/events`.
+
 ---
 
 ## Estructura del Proyecto
@@ -310,7 +322,7 @@ src/
 - **MongoDB:** no usar `$set` y `$unset` sobre el mismo campo en un update (conflicto → error). Lo mismo con `$addToSet` + `$pull` sobre el mismo array: hacerlo en dos pasos.
 - **Vercel Hobby:** body máximo 4.5MB, timeout 10s. Los archivos se suben directo del browser a S3 con presigned URLs, nunca por body a una API route.
 - **Data fetching:** Usar SWR con `fetcher`. Invalidar caché con `mutate()` después de cambios
-- **Formulario de eventos:** 10 tabs en orden: CLIENT → EVENT → SHOW → MUSIC → TIMING → MORE_INFO → EQUIPMENT → STAFF → PAYMENT → FILES
+- **Formulario de eventos:** 10 tabs en orden: CLIENT → EVENT → SHOW → MUSIC → TIMING → MORE_INFO → EQUIPMENT → STAFF → FILES → PAYMENT. Alquiler: CLIENT → EVENT → MORE_INFO → EQUIPMENT → STAFF → PAYMENT (regla 11)
 - **Componentes:** Funcionales con hooks. Mantine para toda la UI
 - **Tema claro del calendario:** la app fuerza `forceColorScheme='dark'`, pero `/calendar` tiene su propio tema claro. Todo componente nuevo ahí (dropdowns, pills, botones deshabilitados, botones `subtle`) necesita estilos explícitos para el tema claro; si no, sale oscuro o apagado.
 - **Equipamiento en eventos:** Siempre actualizar `scheduledUses` + historial al agregar/quitar/modificar
@@ -350,6 +362,15 @@ Toda feature nueva se diseña **sobre lo que ya funciona**, no al lado. Antes de
 
 En el diseño, listar estos puntos de integración explícitamente para que el usuario los valide.
 
+## Base de QA (pruebas en local)
+
+- En el **mismo cluster** de Atlas que prod hay una base **`degano-app-qa`**: copia de `degano-app` que el usuario hace **a mano** (`mongodump --db=degano-app` → `mongorestore --db=degano-app-qa`). No usar `--nsFrom/--nsTo` ni scripts que copien entre bases: los nombres se parecen y un error pisa prod.
+- La app elige la base con `MONGODB_DB` (`DB_NAME` en `@/lib/mongodb`, por defecto `degano-app`). En el `.env.local` del usuario: `MONGODB_DB=degano-app-qa` → **en local se puede escribir para probar** (crear eventos, pagos, etc.). En Vercel Production: `degano-app`.
+- **Antes de escribir:** confirmar `MONGODB_DB` en `.env.local` y que el server que se usa la tomó (reiniciado después del cambio). Después, confirmar en la base que el cambio quedó en QA y NO en prod.
+- **S3 es el mismo que prod:** en QA no borrar archivos de eventos (se borran de verdad).
+- Los scripts de `scripts/` apuntan a `degano-app` (prod) a propósito.
+- Pruebas en navegador (Playwright): si el usuario ya tiene un server en :3000, usar ESE (nunca levantar otro); si no hay, levantar uno y apagarlo al terminar.
+
 ## Verificación antes de dar algo por terminado
 
 **JAMÁS dejar un archivo con errores (CRÍTICO).** Ningún archivo tocado puede quedar con errores, ni en `tsc` ni en el editor (VSCode). Un cambio no está terminado mientras haya un error en rojo:
@@ -366,5 +387,6 @@ En el diseño, listar estos puntos de integración explícitamente para que el u
 
 - `AUTH0_SECRET`, `AUTH0_BASE_URL`, `AUTH0_ISSUER_BASE_URL`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`
 - `MONGODB_URI`
+- `MONGODB_DB` (opcional): nombre de la base. Sin definir = `degano-app` (prod). En local, apuntar a la copia de QA (ej. `degano-app-qa`). **En el código nunca escribir `'degano-app'`: usar `DB_NAME` de `@/lib/mongodb`.** Ojo: QA comparte los buckets de S3 con prod (borrar un archivo en QA lo borra de verdad).
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 - `GOOGLE_DRIVE_FOLDER_ID`, `GOOGLE_REFRESH_TOKEN`, `NEXT_PUBLIC_GAPICONFIG_APIKEY`, `NEXT_PUBLIC_GAPICONFIG_CLIENTID`

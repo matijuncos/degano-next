@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import { revalidatePath } from 'next/cache';
@@ -14,7 +14,7 @@ export const GET = async function handler(
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const genres = await db
       .collection('genres')
       .find()
@@ -44,7 +44,7 @@ export const POST = async function handler(
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     // Transform array of strings to array of objects
     const genreDocuments = body.genres.map((genre: string) => ({
@@ -83,7 +83,7 @@ export const DELETE = async function handler(
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const result = await db.collection('genres').deleteOne({
       _id: new ObjectId(id)
     });
@@ -110,7 +110,7 @@ export const PUT = async function handler(
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const result = await db
       .collection('genres')
       .updateOne({ _id: new ObjectId(body.id) }, { $set: body });

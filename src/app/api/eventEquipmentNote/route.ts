@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { withManagerAuth, AuthContext } from '@/lib/withAuth';
 import { normalizeEquipmentNote } from '@/utils/equipmentNotes';
 import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
@@ -20,7 +20,7 @@ export const PUT = withManagerAuth(async (context: AuthContext, req: Request) =>
 
     const text = normalizeEquipmentNote(note);
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     const event = await db.collection('events').findOneAndUpdate(
       { _id: new ObjectId(String(eventId)), 'equipment._id': String(equipmentId) },

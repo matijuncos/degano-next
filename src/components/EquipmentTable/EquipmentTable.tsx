@@ -438,6 +438,7 @@ const EquipmentTable = () => {
               <ContentPanel
                 selectedCategory={selectedCategory}
                 setDisableCreateEquipment={() => {}}
+                onSelect={setSelectedCategory}
                 onEdit={handleEquipmentSelection}
                 onRemove={(equipmentId: string) => {
                   setEventEquipment((prev) => ({
@@ -565,6 +566,7 @@ const EquipmentTable = () => {
             <ContentPanel
               selectedCategory={selectedCategory}
               setDisableCreateEquipment={() => {}}
+              onSelect={setSelectedCategory}
               onEdit={handleEquipmentSelection}
               onRemove={(equipmentId: string) => {
                 setEventEquipment((prev) => ({

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { Db, ObjectId } from 'mongodb';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { getPermissions } from '@/utils/roleUtils';
 import { stripHistoryPrices, summarizeLife, parseHistoryNote } from '@/utils/equipmentLife';
@@ -34,7 +34,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     if (searchParams.get('deleted') === '1') return listDeleted(db);
 
@@ -134,7 +134,7 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     if (!ObjectId.isValid(equipmentId)) return NextResponse.json({ error: 'Equipo inválido' }, { status: 400 });
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const equipment = await db
       .collection('equipment')
       .findOne({ _id: new ObjectId(equipmentId) }, { projection: { name: 1, code: 1 } });

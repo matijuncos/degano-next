@@ -9,7 +9,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { requireAuth } from '@/lib/requireAuth';
 import { getUserRole } from '@/utils/roleUtils';
 import {
@@ -20,7 +20,7 @@ import {
 
 async function getDb() {
   const client = await clientPromise;
-  return client.db('degano-app');
+  return client.db(DB_NAME);
 }
 
 export async function POST() {

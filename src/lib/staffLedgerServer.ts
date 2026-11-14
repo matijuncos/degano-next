@@ -2,7 +2,7 @@
 // Acceso a Mongo para los cobros de STAFF. La cuenta en sí se calcula con la
 // lógica pura de utils/staffLedger: acá solo se traen los datos.
 import { Db, ObjectId } from 'mongodb';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import {
   buildAccount,
   calendarEventToStaffEvent,
@@ -20,7 +20,7 @@ export const LEDGER_COLLECTION = 'staff_ledger';
 
 export async function getDb(): Promise<Db> {
   const client = await clientPromise;
-  return client.db('degano-app');
+  return client.db(DB_NAME);
 }
 
 // Proyección mínima de un evento para la cuenta

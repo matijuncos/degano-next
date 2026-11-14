@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 
@@ -10,7 +10,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const eventId = body._id;
     const bandsWithIds = (body.bands || []).map((b: any) => ({
       ...b,

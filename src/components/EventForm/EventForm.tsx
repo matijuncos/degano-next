@@ -16,7 +16,8 @@ const EventForm = ({
   validate,
   setValidate,
   updateEvent,
-  onFormDataChange
+  onFormDataChange,
+  isRental = false
 }: {
   event: EventModel;
   onNextTab: Function;
@@ -25,6 +26,7 @@ const EventForm = ({
   setValidate: Function;
   updateEvent?: Function;
   onFormDataChange?: (data: EventModel) => void;
+  isRental?: boolean; // alquiler: sin horarios de ceremonia (iglesia / civil)
 }) => {
   // Función para parsear fechas ISO sin conversión de zona horaria
   const parseISODate = (dateString: string | Date | null | undefined): Date | null => {
@@ -661,6 +663,8 @@ const EventForm = ({
           />
         </Grid.Col>
 
+        {!isRental && (
+        <>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <TimePicker
             label='Hora de iglesia'
@@ -682,6 +686,8 @@ const EventForm = ({
             }
           />
         </Grid.Col>
+        </>
+        )}
 
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <DatePickerInput

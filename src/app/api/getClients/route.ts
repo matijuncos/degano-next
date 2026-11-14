@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { MongoClient } from 'mongodb';
 import type { NextApiResponse } from 'next';
 import { revalidatePath } from 'next/cache';
@@ -11,7 +11,7 @@ export const GET = withAuth(async (context: AuthContext, req: NextRequest) => {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const clients = await db
       .collection('clients')
       .find()

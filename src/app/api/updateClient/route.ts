@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
@@ -26,7 +26,7 @@ export const PUT = withAuth(
       }
 
       const client = (await clientPromise) as MongoClient;
-      const db = client.db('degano-app');
+      const db = client.db(DB_NAME);
       await db
         .collection('clients')
         .updateOne({ _id: new ObjectId(String(_id)) }, { $set: update });

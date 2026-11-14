@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb'; // Import ObjectId
 import type { NextApiResponse } from 'next';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { sanitizeStaffRoleIds } from '@/utils/staffRoles';
@@ -12,6 +12,9 @@ import { getPermissions } from '@/utils/roleUtils';
 import { withRealEquipmentPrices } from '@/lib/equipmentPriceGuard';
 import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
 import { checkBookingConflicts } from '@/lib/bookingGuard';
+import { eventKindOf, sanitizeKindUpdate } from '@/utils/eventKind';
+import { withoutCategoryItems } from '@/utils/categoryItemGuard';
+import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -20,8 +23,13 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
     const eventId = body._id;
+    // Una categoría nunca se guarda como equipo (pasaba al tocar una subcategoría
+    // en la tabla de Equipamiento). Antes de todo: el diff de equipos usa esto.
+    if (Array.isArray(body.equipment)) {
+      body.equipment = withoutCategoryItems(body.equipment, await categoryIdsAmong(db, body.equipment)).equipment;
+    }
     const eventEquipment = body.equipment;
     delete body._id;
 
@@ -36,8 +44,10 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       .collection('events')
       .findOne({ _id: new ObjectId(eventId) });
 
-    // Preparar datos para actualizar
-    const { createdAt, updatedAt, ...updateData } = body;
+    // Preparar datos para actualizar. El tipo (evento / alquiler) queda fijo una
+    // vez creado, y un alquiler no guarda Show, Música, Timing ni Archivos.
+    const { createdAt, updatedAt, ...rawUpdateData } = body;
+    const updateData: any = sanitizeKindUpdate(rawUpdateData, eventKindOf(oldEvent));
 
     // Link de Google Maps del lugar: normalizar si viene, rechazar si no es de Maps
     if ('venueMapsUrl' in updateData) {
@@ -364,7 +374,7 @@ export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
     const body = await req.json();
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     const { eventId, equipmentCategoryOrder, equipmentItemOrder } = body;
 

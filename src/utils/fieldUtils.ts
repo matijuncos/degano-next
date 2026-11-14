@@ -1,4 +1,5 @@
 import { EventModel } from '@/context/types';
+import { isRental, RENTAL_CEREMONY_FIELDS } from '@/utils/eventKind';
 
 export interface FieldConfig {
   key: keyof EventModel;
@@ -146,8 +147,11 @@ export const detectMissingFields = (
   event: EventModel | null
 ): FieldConfig[] => {
   if (!event) return [];
+  // Un alquiler no tiene ceremonia: no se sugieren iglesia / civil
+  const skip: readonly string[] = isRental(event) ? RENTAL_CEREMONY_FIELDS : [];
 
   return OPTIONAL_FIELDS.filter((field) => {
+    if (skip.includes(field.key)) return false;
     const value = event[field.key];
     // Considera como faltante si es undefined, null, o string vacío
     return !value || (typeof value === 'string' && value.trim() === '');

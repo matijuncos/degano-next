@@ -49,6 +49,11 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 import { eventForPage } from '@/utils/eventScope';
+import { isRental } from '@/utils/eventKind';
+import RentalBadge from '@/components/EventKindChooser/RentalBadge';
+
+// Pestañas que un alquiler no tiene
+const RENTAL_HIDDEN_PAGE_TABS = ['bands', 'music', 'timing', 'files'];
 import SpotifyTable from '@/components/SpotifyTable/SpotifyTable';
 import BandList from '@/components/BandManager/BandList';
 import EditableBand from '@/components/BandManager/EditableBand';
@@ -2318,6 +2323,8 @@ const EventPage = () => {
   // página no se muestra nada editable (si no, cualquier edición — archivos,
   // pagos, playlist… — se guardaba en el OTRO evento).
   const eventForFiles = eventForPage(selectedEvent, id);
+  // Alquiler: sin Show, Música, Timing ni Archivos (ver utils/eventKind)
+  const rental = isRental(selectedEvent);
   const isThisEvent = !!eventForFiles;
 
   // Fetch event directly from API instead of using cached allEvents
@@ -2508,12 +2515,12 @@ const EventPage = () => {
     >
       <Tabs.List>
         <Tabs.Tab value='main'>Información Principal</Tabs.Tab>
-        <Tabs.Tab value='bands'>Show</Tabs.Tab>
-        <Tabs.Tab value='music'>Música</Tabs.Tab>
-        <Tabs.Tab value='timing'>Timing</Tabs.Tab>
+        {!rental && <Tabs.Tab value='bands'>Show</Tabs.Tab>}
+        {!rental && <Tabs.Tab value='music'>Música</Tabs.Tab>}
+        {!rental && <Tabs.Tab value='timing'>Timing</Tabs.Tab>}
         <Tabs.Tab value='moreInfo'>Más Información</Tabs.Tab>
         <Tabs.Tab value='equipment'>Equipos</Tabs.Tab>
-        <Tabs.Tab value='files'>Archivos</Tabs.Tab>
+        {!rental && <Tabs.Tab value='files'>Archivos</Tabs.Tab>}
         {isAdmin && <Tabs.Tab value='payments'>Presupuesto</Tabs.Tab>}
       </Tabs.List>
     </Tabs>
@@ -2522,7 +2529,7 @@ const EventPage = () => {
   const tabsVersionContent = (
     <>
       {eventTabsContent}
-      <div>{tabContent[activeTab as keyof typeof tabContent]}</div>
+      <div>{tabContent[(rental && RENTAL_HIDDEN_PAGE_TABS.includes(activeTab ?? '') ? 'main' : activeTab) as keyof typeof tabContent]}</div>
     </>
   );
 
@@ -2632,6 +2639,9 @@ const EventPage = () => {
             </Grid.Col>
           </Grid>
         </AccordionSet>
+        {/* Alquiler: sin Show, Música ni Archivos (y Música lee selectedEvent.music, que un alquiler no tiene) */}
+        {!rental && (
+        <>
         <AccordionSet value='Show'>
           <BandList
             bands={selectedEvent?.bands || []}
@@ -2675,6 +2685,8 @@ const EventPage = () => {
             <SpotifyTable />
           </AccordionSet>
         </AccordionSet>
+        </>
+        )}
         <AccordionSet value='Más Información'>
           <EditableData disabled={!canEditEvents}
             type='textarea'
@@ -2685,9 +2697,11 @@ const EventPage = () => {
         {/* <AccordionSet value='Equipos'>
           <EquipmentTable />
         </AccordionSet> */}
-        <AccordionSet value='Archivos'>
-          <FilesHandlerComponent event={eventForFiles} />
-        </AccordionSet>
+        {!rental && (
+          <AccordionSet value='Archivos'>
+            <FilesHandlerComponent event={eventForFiles} />
+          </AccordionSet>
+        )}
         {isAdmin && (
           <AccordionSet value='Historial de pagos'>
             <EditablePayments />
@@ -2716,9 +2730,12 @@ const EventPage = () => {
               Volver al calendario
             </Button>
           )}
-          <Title mb='16px'>
-            {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
-          </Title>
+          <Group gap='sm' mb='16px' align='center'>
+            {rental && <RentalBadge size='lg' />}
+            <Title>
+              {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
+            </Title>
+          </Group>
           {showTabsVersion ? tabsVersionContent : allAccordionsContent}
         </Box>
       )}

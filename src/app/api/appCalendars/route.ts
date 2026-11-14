@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import {
@@ -17,7 +17,7 @@ const CALENDAR_PROJECTION = { _id: 1, name: 1, color: 1, ownerId: 1, visibility:
 // GET — cada usuario ve solo los calendarios a los que tiene acceso
 export const GET = withAuth(async (context: AuthContext, _req: Request) => {
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const calendars = await db
     .collection('app_calendars')
     .find(await visibleCalendarsFilter(db, context.user, context.role), {
@@ -43,7 +43,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
   };
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   // El dueño se guarda con el id de su registro de STAFF, igual que los miembros
   const ownerId = await currentEmployeeId(db, context.user);
   // Restringido sin dueño = nadie lo ve y no se puede ni editar ni borrar
@@ -71,7 +71,7 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const _id = new ObjectId(id);
 
   const existing = await db
@@ -113,7 +113,7 @@ export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) =
   }
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const _id = new ObjectId(id);
 
   const existing = await db

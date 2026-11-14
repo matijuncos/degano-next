@@ -8,7 +8,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { Db, ObjectId } from 'mongodb';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { arDay } from '@/utils/staffLedger';
 import {
@@ -24,7 +24,7 @@ const badRequest = (error: string) => NextResponse.json({ error }, { status: 400
 
 async function getDb(): Promise<Db> {
   const client = await clientPromise;
-  return client.db('degano-app');
+  return client.db(DB_NAME);
 }
 
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });

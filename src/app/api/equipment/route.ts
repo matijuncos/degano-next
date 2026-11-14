@@ -1,7 +1,7 @@
 // equipment/route.ts
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { sortByName } from '@/utils/sortByName';
 import { ObjectId } from 'mongodb';
 import { isDateBetweenInclusive } from '@/utils/dateUtils';
@@ -97,7 +97,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
       : null;
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   // Cleanup en background (no bloquea la respuesta) - solo cuando NO estamos en modo evento
   if (!eventStartDate && !eventEndDate) {
@@ -228,7 +228,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
 export const POST = withAdminAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   // Agregar timestamp de creación. El texto libre "Historial" ya no se carga:
   // las notas van a la bitácora (equipmentHistory), que no se edita ni se borra
@@ -256,7 +256,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
   const body = await req.json();
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   // `scheduledUses` lo manejan solo los endpoints de eventos: si viniera en el
   // body (copia vieja de la caché) pisaría reservas reales.
@@ -344,7 +344,7 @@ export const DELETE = withAuth(async (context: AuthContext, req: Request) => {
   if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Equipo inválido' }, { status: 400 });
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   const equipment = await db.collection('equipment').findOne({ _id: new ObjectId(id) });
   if (!equipment) return NextResponse.json({ error: 'Equipo no encontrado' }, { status: 404 });

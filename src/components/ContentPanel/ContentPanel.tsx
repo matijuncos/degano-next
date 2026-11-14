@@ -500,7 +500,10 @@ export default function ContentPanel({
               fontWeight: 500,
               textAlign: 'center'
             }}
-            onClick={() => onEdit?.(child)}
+            // En un evento, tocar una subcategoría ENTRA en ella (como el árbol).
+            // onEdit ahí es "agregar al evento": agregaba la categoría como equipo.
+            // En /equipment, onEdit abre la edición de la categoría (igual que antes).
+            onClick={() => (newEvent ? onSelect?.(child) : onEdit?.(child))}
           >
             <td>{child.name}</td>
             <td>{childTotalStock}</td>

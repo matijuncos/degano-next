@@ -39,6 +39,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { dayBounds, dayKey, isMultiDayEvent, singleDayEventsByDay } from '@/utils/calendarDayEvents';
 import MonthCellEvents from '@/components/DayEventsSheet/MonthCellEvents';
 import useNotification from '@/hooks/useNotification';
+import { isRental, rentalEventColors } from '@/utils/eventKind';
 
 
 export default withPageAuthRequired(function CalendarPage() {
@@ -394,7 +395,8 @@ export default withPageAuthRequired(function CalendarPage() {
     }
     return {
       ...evnt,
-      title: evnt?.type && evnt?.lugar ? `${evnt.type} - ${evnt.lugar}` : evnt.fullName,
+      // Alquiler: camioncito adelante (se distingue aunque el color no se note)
+      title: `${isRental(evnt) ? '🚚 ' : ''}${evnt?.type && evnt?.lugar ? `${evnt.type} - ${evnt.lugar}` : evnt.fullName}`,
       start: startDate,
       end: adjustedEnd,
       allDay: false,
@@ -501,8 +503,13 @@ export default withPageAuthRequired(function CalendarPage() {
       };
     }
 
-    // Eventos Degano: lógica original
+    // Alquileres: cobre, con la misma lógica de estado que los eventos
     const status = getEventStatus(event);
+    if (isRental(event)) {
+      return { style: { ...rentalEventColors(status), color: '#ffffff' } };
+    }
+
+    // Eventos Degano: lógica original
     let backgroundColor, borderColor;
     switch (status) {
       case 'past':

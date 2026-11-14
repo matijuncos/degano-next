@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { visibleCalendarsFilter } from '@/utils/calendarVisibility';
 
@@ -8,7 +8,7 @@ import { visibleCalendarsFilter } from '@/utils/calendarVisibility';
 // la visibilidad de cada calendario para el usuario logueado
 export const GET = withAuth(async (context: AuthContext, _req: Request) => {
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   // Calendarios visibles y eventos en paralelo (antes: uno después del otro).
   // Los eventos se filtran ACÁ por los calendarios visibles: nadie recibe

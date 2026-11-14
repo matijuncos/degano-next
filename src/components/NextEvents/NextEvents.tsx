@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import styles from './NextEvents.module.css';
+import { isRental } from '@/utils/eventKind';
+import RentalBadge from '@/components/EventKindChooser/RentalBadge';
 
 const NextEvents = () => {
   const setLoadingCursor = useLoadingCursor();
@@ -67,9 +69,11 @@ const NextEvents = () => {
             <div
               style={{
                 display: 'flex',
-                gap: '4px'
+                gap: '4px',
+                alignItems: 'center'
               }}
             >
+              {isRental(event) && <RentalBadge size='sm' />}
               <p>{event?.type} - {event?.lugar} - </p>
               <p>{new Date(event.date).toLocaleDateString('es-AR')}</p>
             </div>

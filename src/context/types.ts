@@ -154,6 +154,8 @@ export interface EventModel {
   // Número de remito asignado (formato "0001 - 00000097"). Se genera una vez
   // por evento vía /api/remitoNumber y se reutiliza en cada impresión.
   remitoNumber?: string;
+  // Tipo: evento (sin campo = evento) o alquiler. Ver utils/eventKind.ts
+  eventKind?: 'evento' | 'alquiler';
 }
 export interface SelectedEventType extends EventModel {
   title?: string;

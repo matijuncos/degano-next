@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { visibleCalendarsFilter } from '@/utils/calendarVisibility';
@@ -37,7 +37,7 @@ async function staffForCalendar(db: any, calendarId: string, raw: unknown) {
 // GET — cada usuario ve solo los eventos de los calendarios a los que tiene acceso
 export const GET = withAuth(async (context: AuthContext, _req: Request) => {
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const calendars = await db
     .collection('app_calendars')
     .find(await visibleCalendarsFilter(db, context.user, context.role), { projection: { _id: 1 } })
@@ -61,7 +61,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
   }
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   if (!(await canAccessCalendar(db, context, calendarId))) {
     return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
@@ -97,7 +97,7 @@ export const PUT = withAdminAuth(async (context: AuthContext, req: Request) => {
   const { title, start, end, allDay, calendarId, description } = body;
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
 
   // Tiene que tener acceso al calendario actual del evento y al de destino
   const current = await db.collection('calendar_events').findOne({ _id: new ObjectId(id) });
@@ -149,7 +149,7 @@ export const DELETE = withAdminAuth(async (context: AuthContext, req: Request) =
   }
 
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const current = await db.collection('calendar_events').findOne({ _id: new ObjectId(id) });
   if (!current || !(await canAccessCalendar(db, context, String(current.calendarId)))) {
     return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });

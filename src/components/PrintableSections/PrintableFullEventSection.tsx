@@ -7,6 +7,7 @@ import { PrintableMusicContent } from './PrintableMusicSection';
 import { PrintableTimingContent } from './PrintableTimingSection';
 import { PrintableMoreInfoContent } from './PrintableMoreInfoSection';
 import { PrintableEquipmentContent } from './PrintableEquipmentSection';
+import { isRental } from '@/utils/eventKind';
 
 const styles = StyleSheet.create({
   page: {
@@ -66,8 +67,10 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
   );
 
   // Funciones para verificar si existen datos en cada sección
-  const hasBands = event.bands && event.bands.length > 0;
-  const hasMusic = !!(
+  // Alquiler: sin páginas de Show, Música ni Timing (ver utils/eventKind)
+  const rental = isRental(event);
+  const hasBands = !rental && event.bands && event.bands.length > 0;
+  const hasMusic = !rental && !!(
     event.welcomeSongs?.length ||
     event.ceremoniaCivil ||
     event.ceremoniaExtra ||
@@ -78,7 +81,7 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
     (event.music?.genres && event.music.genres.length > 0) ||
     event.playlist?.length
   );
-  const hasTiming = event.timing && event.timing.length > 0;
+  const hasTiming = !rental && event.timing && event.timing.length > 0;
   const hasMoreData = event.moreData && Object.keys(event.moreData).length > 0;
   const hasEquipment =
     (event.equipment && event.equipment.length > 0) ||

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
 import { ObjectId } from 'mongodb';
 import { normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
@@ -53,7 +53,7 @@ const findByName = (db: any, name: string, exceptId?: string) =>
 export const GET = withAuth(async (context: AuthContext, req: Request) => {
   try {
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     const salons = await db
       .collection('salons')
@@ -102,7 +102,7 @@ export const POST = withAdminAuth(async (context: AuthContext, req: Request) => 
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     // Verificar si el salón ya existe
     const existingSalon = await db
@@ -178,7 +178,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     // Desde el panel de Lugares: datos normalizados, nombre único y el cambio
     // se aplica a los eventos de HOY EN ADELANTE
@@ -252,7 +252,7 @@ export const PATCH = withAuth(async (context: AuthContext, req: Request) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     const result = await db.collection('salons').updateOne(
       { _id: new ObjectId(_id) },
@@ -318,7 +318,7 @@ async function mergeSalons(context: AuthContext, body: any) {
     return NextResponse.json({ error: 'Elegí dos lugares distintos' }, { status: 400 });
   }
   const client = await clientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   const [source, target] = await Promise.all([
     db.collection('salons').findOne({ _id: new ObjectId(String(sourceId)) }),
     db.collection('salons').findOne({ _id: new ObjectId(String(targetId)) })

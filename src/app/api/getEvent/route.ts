@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import type { NextApiResponse } from 'next';
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/withAuth';
 import { sanitizeEventForRole } from '@/lib/sanitizeEvent';
@@ -19,7 +19,7 @@ export const GET = withAuth(async (context: AuthContext, req: NextRequest) => {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const db = client.db('degano-app');
+    const db = client.db(DB_NAME);
 
     const event = await db
       .collection('events')

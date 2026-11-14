@@ -29,6 +29,7 @@ import useSWR from 'swr';
 import { useResponsive } from '@/hooks/useResponsive';
 import { AppCalendar, CalendarFormValues } from '@/types/calendars';
 import { EmployeeModel } from '@/context/types';
+import { rentalEventColors } from '@/utils/eventKind';
 
 export type { AppCalendar, CalendarFormValues } from '@/types/calendars';
 
@@ -75,6 +76,8 @@ const PRESET_COLORS = [
 ];
 
 const NATIVE_EVENTS_COLOR = '#37b24d';
+// Color de los alquileres (cobre, ver utils/eventKind)
+const RENTAL_COLOR = rentalEventColors('future').backgroundColor;
 
 interface CalendarSidebarProps {
   calendars: AppCalendar[];
@@ -313,6 +316,17 @@ export default function CalendarSidebar({
               truncate
             >
               Eventos
+            </Text>
+          </Group>
+          {/* Referencia: los alquileres van dentro de "Eventos", con su propio color */}
+          <Group gap={6} pl={26} pb={2} wrap='nowrap'>
+            <Box
+              w={10}
+              h={10}
+              style={{ borderRadius: 3, flexShrink: 0, backgroundColor: RENTAL_COLOR, opacity: nativeEventsVisible ? 1 : 0.3 }}
+            />
+            <Text size='xs' style={{ color: mutedColor }} truncate>
+              🚚 Alquileres
             </Text>
           </Group>
 

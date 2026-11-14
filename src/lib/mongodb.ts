@@ -6,6 +6,10 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI;
 
+// Base de datos. Por defecto la de producción ('degano-app'); en local se puede
+// apuntar a una copia de QA con MONGODB_DB (ej. MONGODB_DB=degano-app-qa en .env.local)
+export const DB_NAME = process.env.MONGODB_DB || 'degano-app';
+
 let client;
 let clientPromise;
 

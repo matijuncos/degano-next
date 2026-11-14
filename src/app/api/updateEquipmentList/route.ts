@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextApiResponse } from 'next';
 import { NextResponse } from 'next/server';
@@ -11,7 +11,7 @@ export const PUT = async function handler(req: Request) {
   const typedClientPromise: Promise<MongoClient> =
     clientPromise as Promise<MongoClient>;
   const client = await typedClientPromise;
-  const db = client.db('degano-app');
+  const db = client.db(DB_NAME);
   if (!body.equipment.length) {
     return NextResponse.json(
       { message: 'Equipment Array is empty and it will remove everything.' },
