@@ -9,6 +9,17 @@ import { isValidMapsUrl, normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUt
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import { combineDateAndTime, toTimeString } from '@/utils/dateUtils';
 import ArrivalLeadWarning from '@/components/ArrivalLeadWarning/ArrivalLeadWarning';
+import { nextArrival } from '@/utils/arrivalSuggestion';
+
+// Fecha del selector (medianoche local) ↔ 'YYYY-MM-DD'
+const localDay = (d: unknown): string | null => {
+  if (!(d instanceof Date) || isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const dayToLocalDate = (day: string): Date => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 const EventForm = ({
   event,
@@ -140,12 +151,45 @@ const EventForm = ({
     }
   }, [event]);
 
+  // Inicio anterior (para saber si la llegada sigue con el valor sugerido)
+  const prevStartRef = useRef<Date | null>(null);
+
   useEffect(() => {
     // Guardar fecha aunque no haya hora (usar 00:00 como default)
     const time = timeOnly || '00:00';
     const combined = combineDateAndTime(dateOnly, time);
     if (combined) {
-      const updatedData = { ...eventData, date: combined };
+      const updatedData: EventModel = { ...eventData, date: combined };
+
+      // Sugerencia de llegada (staff y equipamiento): el día del evento, 2 h antes
+      // del inicio. Solo con hora de inicio cargada. Se completa si está vacía y se
+      // actualiza si sigue con el valor sugerido; si la cambiaron a mano, no se toca.
+      if (timeOnly) {
+        const prevStart = prevStartRef.current;
+        const staffNext = nextArrival(
+          { day: localDay(staffArrivalDateOnly), time: eventData.staffArrivalTime },
+          prevStart,
+          combined
+        );
+        if (staffNext) {
+          const d = dayToLocalDate(staffNext.day);
+          updatedData.staffArrivalDate = d;
+          updatedData.staffArrivalTime = staffNext.time;
+          setStaffArrivalDateOnly(d);
+        }
+        const equipmentNext = nextArrival(
+          { day: localDay(equipmentArrivalDateOnly), time: eventData.equipmentArrivalTime },
+          prevStart,
+          combined
+        );
+        if (equipmentNext) {
+          const d = dayToLocalDate(equipmentNext.day);
+          updatedData.equipmentArrivalDate = d;
+          updatedData.equipmentArrivalTime = equipmentNext.time;
+          setEquipmentArrivalDateOnly(d);
+        }
+        prevStartRef.current = combined;
+      }
       setEventData(updatedData);
 
       // Guardar para que persista al cambiar de tab
@@ -717,6 +761,7 @@ const EventForm = ({
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <TimePicker
             label='Horario llegada staff'
+            description='Sugerido: el día del evento, 2 h antes del inicio (podés cambiarlo)'
             name='staffArrivalTime'
             value={eventData.staffArrivalTime || ''}
             onChange={(value: string) =>
@@ -728,6 +773,7 @@ const EventForm = ({
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <TimePicker
             label='Horario llegada equipamiento'
+            description='Sugerido: el día del evento, 2 h antes del inicio (podés cambiarlo)'
             name='equipmentArrivalTime'
             value={eventData.equipmentArrivalTime || ''}
             onChange={(value: string) =>

@@ -38,7 +38,8 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 - **Llegada > 3 días antes (`MAX_ARRIVAL_LEAD_DAYS`):** aviso + confirmación (`ArrivalLeadWarning`, en Nuevo evento y en la página del evento). Se guarda `equipmentArrivalConfirmedFor` = `arrivalConfirmKey` (llegada|inicio): si cambia alguna de las dos fechas, deja de valer sola. Sin confirmar, la reserva arranca con el evento (protege de errores de tipeo).
 - `updateEvent` recalcula el rango aunque el cuerpo sea parcial (ej. solo la llegada o la confirmación): valida choques con los equipos guardados (409) y actualiza las reservas de ese evento.
 - **Aviso de eventos pegados (`NEAR_EVENT_HOURS` = 6):** al elegir equipos, si otro evento termina/empieza a menos de 6 h de la reserva (sin superponerse), aviso amarillo por equipo + resumen. **No bloquea.** Viene en la misma disponibilidad (`nearWith`, no se guarda en el evento).
-- Datos viejos: `scripts/migrate-arrival-reservations.ts --db=<base>` (simulación; `--apply`), no toca eventos con choques ni sin confirmar.
+- Datos viejos: `scripts/migrate-arrival-reservations.ts --db=<base>` (simulación; `--apply`), no toca eventos con choques ni sin confirmar. Aplicado en prod el 15/11/2026 (26 eventos, 1679 reservas, sin borrar nada).
+- **Sugerencia de llegada (Nuevo evento):** staff y equipamiento se completan con el día del evento, 2 h antes del inicio (`/src/utils/arrivalSuggestion.ts`, testeada). Se actualiza sola si cambia el horario del evento mientras siga con el valor sugerido; si la cambian a mano no se toca; si no la tocan, queda ese valor.
 
 **NUNCA:**
 - Determinar disponibilidad por `location` o por el estado `outOfService` de la DB cuando hay fechas de evento en la query
