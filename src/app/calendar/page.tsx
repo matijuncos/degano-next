@@ -30,7 +30,8 @@ import {
   loadViewPrefs,
   pruneHiddenIds,
   saveViewPrefs,
-  viewPrefsKey
+  viewPrefsKey,
+  showInternalEvent
 } from '@/utils/calendarViewPrefs';
 import useSWR, { mutate } from 'swr';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -101,6 +102,7 @@ export default withPageAuthRequired(function CalendarPage() {
     return new Set(calendars.map((c) => c._id).filter((id) => !hidden.has(id)));
   }, [calendars, viewPrefs.hiddenCalendarIds]);
   const nativeEventsVisible = !viewPrefs.nativeEventsHidden;
+  const rentalsVisible = !viewPrefs.rentalsHidden;
 
   const toggleVisibility = (id: string) => {
     updateViewPrefs((prev) => ({
@@ -109,6 +111,10 @@ export default withPageAuthRequired(function CalendarPage() {
         ? prev.hiddenCalendarIds.filter((x) => x !== id)
         : [...prev.hiddenCalendarIds, id]
     }));
+  };
+
+  const toggleRentals = () => {
+    updateViewPrefs((prev) => ({ ...prev, rentalsHidden: !prev.rentalsHidden }));
   };
 
   const toggleNativeEvents = () => {
@@ -477,8 +483,9 @@ export default withPageAuthRequired(function CalendarPage() {
 
   // Merge de todos los eventos
   const allCalendarEvents = useMemo(
-    () => [...(nativeEventsVisible ? internalEvents : []), ...personalCalendarEvents],
-    [internalEvents, personalCalendarEvents, nativeEventsVisible]
+    // "Eventos" y "Alquileres" se tildan por separado (ver showInternalEvent)
+    () => [...internalEvents.filter((ev) => showInternalEvent(ev, viewPrefs)), ...personalCalendarEvents],
+    [internalEvents, personalCalendarEvents, viewPrefs]
   );
 
   // ──── Vista de mes: barras largas + lista con scroll por día ────
@@ -646,6 +653,8 @@ export default withPageAuthRequired(function CalendarPage() {
           isLightTheme={isLightTheme}
           nativeEventsVisible={nativeEventsVisible}
           onToggleNativeEvents={toggleNativeEvents}
+          rentalsVisible={rentalsVisible}
+          onToggleRentals={toggleRentals}
           isAdmin={isAdmin}
           onCollapsedChange={setSidebarCollapsed}
           loading={!calendarData}

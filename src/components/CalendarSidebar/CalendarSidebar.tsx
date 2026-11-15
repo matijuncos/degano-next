@@ -89,6 +89,8 @@ interface CalendarSidebarProps {
   isLightTheme: boolean;
   nativeEventsVisible: boolean;
   onToggleNativeEvents: () => void;
+  rentalsVisible: boolean; // tilde "Alquileres" (independiente de "Eventos")
+  onToggleRentals: () => void;
   isAdmin: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   loading?: boolean; // calendarios todavía sin llegar: loader en vez de "vacío"
@@ -104,6 +106,8 @@ export default function CalendarSidebar({
   isLightTheme,
   nativeEventsVisible,
   onToggleNativeEvents,
+  rentalsVisible,
+  onToggleRentals,
   isAdmin,
   onCollapsedChange,
   loading = false
@@ -318,14 +322,32 @@ export default function CalendarSidebar({
               Eventos
             </Text>
           </Group>
-          {/* Referencia: los alquileres van dentro de "Eventos", con su propio color */}
-          <Group gap={6} pl={26} pb={2} wrap='nowrap'>
-            <Box
-              w={10}
-              h={10}
-              style={{ borderRadius: 3, flexShrink: 0, backgroundColor: RENTAL_COLOR, opacity: nativeEventsVisible ? 1 : 0.3 }}
+          {/* Alquileres: tilde propio (cada uno los oculta en su pantalla, igual que "Eventos") */}
+          <Group
+            gap='xs'
+            py='4px'
+            style={{ borderRadius: 6, cursor: 'pointer', userSelect: 'none' }}
+            className='calendar-sidebar-item'
+            onClick={onToggleRentals}
+          >
+            <Checkbox
+              checked={rentalsVisible}
+              onChange={onToggleRentals}
+              size='xs'
+              color={RENTAL_COLOR}
+              styles={{
+                input: {
+                  cursor: 'pointer',
+                  ...(!rentalsVisible && { backgroundColor: RENTAL_COLOR, opacity: 0.3, borderColor: RENTAL_COLOR })
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
             />
-            <Text size='xs' style={{ color: mutedColor }} truncate>
+            <Text
+              size='xs'
+              style={{ flex: 1, color: rentalsVisible ? textColor : mutedColor, transition: 'color 0.15s' }}
+              truncate
+            >
               🚚 Alquileres
             </Text>
           </Group>

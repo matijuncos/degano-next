@@ -40,15 +40,18 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 - Modificar `scheduledUses` sin actualizar el historial
 - Guardar una **categoría** como equipo de un evento: la UI entra en la subcategoría al tocarla y `postEvent`/`updateEvent` descartan esos renglones (`withoutCategoryItems`, `/src/utils/categoryItemGuard.ts`)
 
-**Limpieza automática (GET /api/equipment sin fechas):**
+**Limpieza automática (GET /api/equipment sin fechas, `/src/lib/equipmentCleanup.ts`):**
 - Se limpian `scheduledUses` expirados (endDate < now)
-- Si no quedan usos activos y `reason === 'En Evento'`: location vuelve a "Deposito", outOfService se limpia
+- **Reserva que EMPEZÓ → el equipo pasa a "En Evento"** con la ubicación, `lastUsed*` y detalle de ese evento (`pickActivations`), igual que `postEvent` con un evento de hoy. Así un evento cargado con anticipación muestra sus equipos "En Uso" mientras ocurre. Nunca pisa una baja manual (reparación, etc.); si ya figura con ese evento no se toca; si figura "En Evento" de otro evento viejo, se actualiza. Historial `cambio_estado`.
+- Se liberan (location "Deposito", outOfService limpio, historial `cambio_estado`) los "En Evento" que `pickReleasable` (`/src/utils/equipmentRelease.ts`, testeada) da por seguros: sin uso en curso, sin uso de hoy pendiente, último uso con fecha y ya terminado, y que no figuren en ningún evento real en curso o de las próximas 24 h (`liveEventEquipmentIds`).
+- **JAMÁS mostrar disponible algo que está en uso. Ante la duda, NO se libera** (pedido explícito del usuario, nov 2026).
+- Se **espera** (`await`) y va en lote (un `updateMany` + historial con `createHistoryEntries`). Mira TODOS los "En Evento", no solo los de esa pasada: si algo se corta, la próxima lo completa. (Antes corría en segundo plano, se cortaba en eventos grandes y dejó 298 equipos trabados "En Evento".)
 - Esta limpieza NO se ejecuta en modo evento (cuando hay fechas en la query)
 
 **Al crear evento (`postEvent`):**
 1. Se agrega `scheduledUse` a todos los equipos asignados
 2. Si el evento es HOY o pasado → se actualiza `outOfService`, `location`, `lastUsedStartDate/EndDate`
-3. Si es futuro → solo se agrega el `scheduledUse` (el equipo sigue disponible hasta la fecha)
+3. Si es futuro → solo se agrega el `scheduledUse` (el equipo sigue disponible hasta la fecha; cuando la reserva empieza, la limpieza automática lo marca "En Evento")
 
 **Al editar evento (`updateEvent`):**
 1. Detectar equipos agregados/removidos comparando arrays
@@ -232,7 +235,7 @@ Degano alquila equipos a terceros. Campo `events.eventKind: 'evento' | 'alquiler
 - **Navegación de pestañas:** los formularios piden pestañas fijas; la página las traduce con `resolveTab()` (no tocar cada formulario). Borrador: `restoreTab()`.
 - **Servidor:** `postEvent` normaliza `eventKind` y descarta los campos de alquiler (`stripRentalFields`, nunca `folderId`); `updateEvent` **nunca cambia `eventKind`** y en un alquiler descarta esos campos (`sanitizeKindUpdate`). `getEvents` proyecta `eventKind`.
 - **Un alquiler no tiene `music`:** todo código nuevo que lea `event.music.x` va con `?.` o detrás de `!isRental(...)`.
-- **Calendario:** cobre por estado (`rentalEventColors`; elegido para no parecerse a ningún calendario en uso, ej. el gris de Reuniones) + 🚚 en el título; leyenda "Alquileres" en el sidebar. Cartel `RentalBadge` en página, Nuevo evento, Próximos eventos y `/events`.
+- **Calendario:** cobre por estado (`rentalEventColors`; elegido para no parecerse a ningún calendario en uso, ej. el gris de Reuniones) + 🚚 en el título; tilde propio **"Alquileres"** en el sidebar, independiente de "Eventos" (cada uno los oculta en su pantalla; `rentalsHidden` en `calendarViewPrefs`, `showInternalEvent`). Los ven todos los roles con el mismo detalle por rol que un evento (teléfonos/precios/pagos según rol). Cartel `RentalBadge` en página, Nuevo evento, Próximos eventos y `/events`.
 
 ---
 

@@ -7,6 +7,7 @@ import { ObjectId } from 'mongodb';
 import { isDateBetweenInclusive } from '@/utils/dateUtils';
 import { createHistoryEntry, detectEquipmentChanges, determineSpecialAction } from '@/utils/equipmentHistoryUtils';
 import { withAuth, withAdminAuth, AuthContext } from '@/lib/withAuth';
+import { cleanupExpiredScheduledUses } from '@/lib/equipmentCleanup';
 import { getPermissions } from '@/utils/roleUtils';
 import {
   conflictingUses,
@@ -16,74 +17,6 @@ import {
   BusyUse
 } from '@/utils/equipmentAvailability';
 import { stripPriceFields, PRICE_FIELDS } from '@/utils/equipmentPrices';
-
-// Función de cleanup en background (no bloquea la respuesta).
-// IMPORTANTE: todas las escrituras son atómicas en Mongo ($pull / update
-// condicional). NUNCA reescribir `scheduledUses` con una copia leída antes:
-// si en el medio se crea/edita un evento, esa copia vieja pisa sus reservas
-// (así aparecieron reservas fantasma y reservas faltantes).
-async function cleanupExpiredScheduledUses(db: any, userId: string) {
-  try {
-    const now = new Date();
-    const equipmentCol = db.collection('equipment');
-
-    // Equipos con al menos una reserva vencida
-    const expired = await equipmentCol
-      .find({ 'scheduledUses.endDate': { $lt: now } })
-      .project({ _id: 1 })
-      .toArray();
-    if (expired.length === 0) return;
-    const expiredIds = expired.map((eq: any) => eq._id);
-
-    // Quitar solo las reservas vencidas; las demás no se tocan
-    await equipmentCol.updateMany(
-      { _id: { $in: expiredIds } },
-      { $pull: { scheduledUses: { endDate: { $lt: now } } } }
-    );
-
-    // Liberar los que figuran "En Evento" y no tienen un uso en curso ahora.
-    // La condición va en el mismo update: si justo se les asignó un evento
-    // en curso, no se liberan.
-    const notInUseNow = {
-      'outOfService.reason': 'En Evento',
-      scheduledUses: {
-        $not: { $elemMatch: { startDate: { $lte: now }, endDate: { $gte: now } } }
-      }
-    };
-    const toRelease = await equipmentCol
-      .find({ _id: { $in: expiredIds }, ...notInUseNow })
-      .project({ _id: 1, name: 1, code: 1 })
-      .toArray();
-
-    for (const eq of toRelease) {
-      const res = await equipmentCol.updateOne(
-        { _id: eq._id, ...notInUseNow },
-        {
-          $set: {
-            location: 'Deposito',
-            lastUsedStartDate: null,
-            lastUsedEndDate: null,
-            outOfService: { isOut: false, reason: null, details: null }
-          }
-        }
-      );
-      if (res.modifiedCount > 0) {
-        await createHistoryEntry(db, {
-          equipmentId: eq._id.toString(),
-          equipmentName: eq.name,
-          equipmentCode: eq.code,
-          action: 'cambio_estado',
-          userId: userId || 'SYSTEM',
-          fromValue: 'En Evento',
-          toValue: 'Disponible',
-          details: `Liberado automáticamente - evento finalizado`
-        });
-      }
-    }
-  } catch (error) {
-    console.error('[cleanupExpiredScheduledUses] Error:', error);
-  }
-}
 
 export const GET = withAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
@@ -99,9 +32,15 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   const client = await clientPromise;
   const db = client.db(DB_NAME);
 
-  // Cleanup en background (no bloquea la respuesta) - solo cuando NO estamos en modo evento
+  // Limpieza de reservas vencidas (ver lib/equipmentCleanup) - solo cuando NO estamos en modo evento
   if (!eventStartDate && !eventEndDate) {
-    cleanupExpiredScheduledUses(db, context.user?.sub || 'SYSTEM');
+    // Se ESPERA: en segundo plano Vercel la cortaba a la mitad y quedaban
+    // equipos "En Evento" para siempre. Si falla, no frena la respuesta.
+    try {
+      await cleanupExpiredScheduledUses(db, context.user?.sub || 'SYSTEM');
+    } catch (error) {
+      console.error('[cleanupExpiredScheduledUses] Error:', error);
+    }
   }
 
   // Obtener equipos (y, si hay evento a excluir, sus equipos guardados) en paralelo

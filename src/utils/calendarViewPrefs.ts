@@ -3,14 +3,18 @@
 // no hace falta un viaje al servidor por cada click.
 // Se guardan los OCULTOS para que un calendario nuevo aparezca tildado.
 
+import { isRental } from '@/utils/eventKind';
+
 export interface CalendarViewPrefs {
   hiddenCalendarIds: string[];
-  nativeEventsHidden: boolean;
+  nativeEventsHidden: boolean; // tilde "Eventos" (eventos comunes de Degano)
+  rentalsHidden: boolean; // tilde "Alquileres"
 }
 
 export const DEFAULT_VIEW_PREFS: CalendarViewPrefs = {
   hiddenCalendarIds: [],
-  nativeEventsHidden: false
+  nativeEventsHidden: false,
+  rentalsHidden: false
 };
 
 export function viewPrefsKey(userId?: string | null): string {
@@ -27,7 +31,8 @@ export function parseViewPrefs(raw: string | null): CalendarViewPrefs {
       : [];
     return {
       hiddenCalendarIds: Array.from(new Set<string>(ids)),
-      nativeEventsHidden: parsed?.nativeEventsHidden === true
+      nativeEventsHidden: parsed?.nativeEventsHidden === true,
+      rentalsHidden: parsed?.rentalsHidden === true
     };
   } catch {
     return DEFAULT_VIEW_PREFS;
@@ -54,4 +59,9 @@ export function saveViewPrefs(key: string, prefs: CalendarViewPrefs): void {
   } catch {
     // Modo privado / storage bloqueado: la preferencia vale solo para esta visita
   }
+}
+
+// Evento de Degano: los alquileres tienen su propio tilde (independiente de "Eventos")
+export function showInternalEvent(ev: { eventKind?: unknown }, prefs: CalendarViewPrefs): boolean {
+  return isRental(ev) ? !prefs.rentalsHidden : !prefs.nativeEventsHidden;
 }
