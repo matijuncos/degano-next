@@ -385,7 +385,7 @@ En el diseño, listar estos puntos de integración explícitamente para que el u
 ## Verificación antes de dar algo por terminado
 
 **JAMÁS dejar un archivo con errores (CRÍTICO).** Ningún archivo tocado puede quedar con errores, ni en `tsc` ni en el editor (VSCode). Un cambio no está terminado mientras haya un error en rojo:
-- Después de editar, revisar los diagnósticos de cada archivo tocado (`getDiagnostics` del editor) además de `npx tsc --noEmit`. El editor usa un TypeScript más nuevo y marca cosas que `tsc` no (ej. imports de `.css` → declarados en `src/types/side-effect-imports.d.ts`).
+- Después de editar, revisar los diagnósticos de cada archivo tocado (`getDiagnostics` del editor) además de `npx tsc --noEmit`. **Y correr `npx next lint --quiet`**: los errores de ESLint (reglas de hooks, comillas sin escapar en JSX…) NO los muestran ni `tsc` ni el editor, pero hacen fallar el build de Vercel (pasó el 15/11/2026). El editor usa un TypeScript más nuevo y marca cosas que `tsc` no (ej. imports de `.css` → declarados en `src/types/side-effect-imports.d.ts`).
 - Si aparece un error (aunque sea de antes, en un archivo que toqué), se arregla antes de entregar. Nunca `@ts-ignore`/`any` para taparlo sin explicar por qué.
 - Los avisos (warnings/hints) que ya estaban no bloquean, pero no se agregan nuevos.
 

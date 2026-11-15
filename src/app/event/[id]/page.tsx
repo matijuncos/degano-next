@@ -152,6 +152,8 @@ const MainInformation = ({
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
 
+  const [confirmingArrival, setConfirmingArrival] = useState(false);
+
   // Estados para manejar fecha y hora por separado
   const [dateOnly, setDateOnly] = useState<DateValue>(
     selectedEvent?.date ? new Date(selectedEvent.date) : null
@@ -410,7 +412,7 @@ const MainInformation = ({
   if (!selectedEvent) return null;
   // Confirmar una llegada del equipamiento de más de 3 días antes: se guarda SOLO
   // ese dato (cuerpo parcial). El servidor extiende la reserva y valida choques.
-  const [confirmingArrival, setConfirmingArrival] = useState(false);
+  // (El useState va arriba, antes de cualquier return: regla de hooks)
   const confirmArrival = async (key: string) => {
     if (!selectedEvent?._id) return;
     setConfirmingArrival(true);

@@ -47,7 +47,7 @@ export default function EquipmentBusyModal({
           {/* Sin nada en curso ni hoy: se aclara por qué igual figura "En Uso" */}
           {uses.every((u) => u.status === 'proxima') && (
             <Text size='sm' c='dimmed'>
-              Hoy no tiene uso. Figura "En Uso" por un registro anterior; se corrige solo. Su próxima reserva:
+              Hoy no tiene uso. Figura “En Uso” por un registro anterior; se corrige solo. Su próxima reserva:
             </Text>
           )}
           {uses.map((u) => (
