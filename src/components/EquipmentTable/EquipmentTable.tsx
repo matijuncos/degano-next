@@ -24,6 +24,7 @@ import {
   removeConvertedExtras
 } from '@/utils/extraEquipmentUtils';
 import useSWR from 'swr';
+import { reservationStartIso } from '@/utils/reservationRange';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -78,13 +79,11 @@ const EquipmentTable = () => {
   // Inventario disponible para LAS FECHAS de este evento. Sirve para detectar si
   // lo que está cargado como "a tercerizar" ya tiene stock real disponible
   // (porque otro evento liberó equipos, se compró más, cambió de fecha, etc.).
+  // La reserva arranca con la llegada del equipamiento (utils/reservationRange)
+  const resStart = reservationStartIso(selectedEvent);
   const availabilityUrl =
-    selectedEvent?.date && selectedEvent?.endDate
-      ? equipmentAvailabilityUrl(
-          selectedEvent.date,
-          selectedEvent.endDate,
-          selectedEvent._id
-        )
+    resStart && selectedEvent?.endDate
+      ? equipmentAvailabilityUrl(resStart, selectedEvent.endDate, selectedEvent._id)
       : null;
   const { data: availableEquipment = [] } = useSWR<any[]>(
     availabilityUrl,
@@ -358,7 +357,7 @@ const EquipmentTable = () => {
           body: JSON.stringify({ paths: ['/equipment', '/api/equipment'] })
         }),
         mutate('/api/equipment'),
-        mutate(equipmentAvailabilityUrl(selectedEvent?.date, selectedEvent?.endDate, selectedEvent?._id)),
+        mutate(equipmentAvailabilityUrl(resStart, selectedEvent?.endDate, selectedEvent?._id)),
         mutate('/api/categories'),
         mutate('/api/categoryTreeData'),
         mutate('/api/treeData'),
@@ -383,7 +382,7 @@ const EquipmentTable = () => {
   <ApplySetModal
     opened={applySetModalOpen}
     onClose={() => setApplySetModalOpen(false)}
-    eventStartDate={selectedEvent?.date}
+    eventStartDate={resStart}
     eventEndDate={selectedEvent?.endDate}
     editingEventId={selectedEvent?._id}
     selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
@@ -426,7 +425,7 @@ const EquipmentTable = () => {
                 onEdit={handleEdit}
                 onOpenModal={handleOpenModal}
                 newEvent={true}
-                eventStartDate={selectedEvent?.date}
+                eventStartDate={resStart}
                 eventEndDate={selectedEvent?.endDate}
                 editingEventId={selectedEvent?._id}
                 disableEditOnSelect={true}
@@ -454,7 +453,7 @@ const EquipmentTable = () => {
                 }}
                 onCancel={handleCancel}
                 newEvent={true}
-                eventStartDate={selectedEvent?.date}
+                eventStartDate={resStart}
                 eventEndDate={selectedEvent?.endDate}
                 editingEventId={selectedEvent?._id}
                 selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
@@ -467,7 +466,7 @@ const EquipmentTable = () => {
 
             <Tabs.Panel value="selected" pt="md">
               <EquipmentList
-                eventStartDate={selectedEvent?.date}
+                eventStartDate={resStart}
                 eventEndDate={selectedEvent?.endDate}
                 editingEventId={selectedEvent?._id}
                 equipmentList={eventEquipment.equipment}
@@ -536,7 +535,7 @@ const EquipmentTable = () => {
               onEdit={handleEdit}
               onOpenModal={handleOpenModal}
               newEvent={true}
-              eventStartDate={selectedEvent?.date}
+              eventStartDate={resStart}
               eventEndDate={selectedEvent?.endDate}
               editingEventId={selectedEvent?._id}
               disableEditOnSelect={true}
@@ -582,7 +581,7 @@ const EquipmentTable = () => {
               }}
               onCancel={handleCancel}
               newEvent={true}
-              eventStartDate={selectedEvent?.date}
+              eventStartDate={resStart}
               eventEndDate={selectedEvent?.endDate}
               editingEventId={selectedEvent?._id}
               selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
@@ -607,7 +606,7 @@ const EquipmentTable = () => {
             }}
           >
             <EquipmentList
-                eventStartDate={selectedEvent?.date}
+                eventStartDate={resStart}
                 eventEndDate={selectedEvent?.endDate}
                 editingEventId={selectedEvent?._id}
               equipmentList={eventEquipment.equipment}

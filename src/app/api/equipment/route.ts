@@ -11,12 +11,14 @@ import { cleanupExpiredScheduledUses } from '@/lib/equipmentCleanup';
 import { getPermissions } from '@/utils/roleUtils';
 import {
   conflictingUses,
-  usesInProgress,
+  busyUsesForDisplay,
+  BusyStatus,
   ghostEventIdToIgnore,
   ScheduledUse,
   BusyUse
 } from '@/utils/equipmentAvailability';
 import { stripPriceFields, PRICE_FIELDS } from '@/utils/equipmentPrices';
+import { nearUses, NearSide } from '@/utils/reservationRange';
 
 export const GET = withAuth(async (context: AuthContext, req: Request) => {
   const { searchParams } = new URL(req.url);
@@ -64,6 +66,10 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
 
   // Reservas que ocupan cada equipo "En Uso" (para el modal "¿Dónde está en uso?")
   const busyByEq = new Map<string, ScheduledUse[]>();
+  // Vista general: si cada reserva mostrada está en curso, es de hoy o es la próxima
+  const statusByUse = new Map<ScheduledUse, BusyStatus>();
+  // Modo evento: reservas de otros eventos a menos de 6 h (aviso)
+  const nearByEq = new Map<string, { use: ScheduledUse; side: NearSide; gapHours: number }[]>();
   const now = new Date();
 
   // PASO 3: Si estamos en modo evento (crear/editar), aplicar máscara basada en scheduledUses
@@ -93,6 +99,11 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
         };
       }
 
+      // Sin choque, pero con otro evento a menos de NEAR_EVENT_HOURS (antes o
+      // después): AVISO, no bloqueo (utils/reservationRange)
+      const near = nearUses(eq.scheduledUses as ScheduledUse[], eStart, eEnd, excludeEventId);
+      if (near.length) nearByEq.set(String(eq._id), near);
+
       // Si NO hay conflicto pero el equipo está marcado como "En Evento" en la DB,
       // mostrarlo como disponible para esta fecha (su uso actual no afecta la fecha solicitada)
       if (eq.outOfService?.isOut && eq.outOfService?.reason === 'En Evento') {
@@ -103,13 +114,16 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
       }
     }
 
-    // Vista general: "En Uso" = estado de la DB; se muestran las reservas en curso
+    // Vista general: "En Uso" = estado de la DB. Se muestra la reserva en curso;
+    // si no hay, la de hoy que no empezó; si tampoco, la próxima (nunca vacío)
     if (
       !(eventStartDate && eventEndDate) &&
       eq.outOfService?.isOut &&
       eq.outOfService?.reason === 'En Evento'
     ) {
-      busyByEq.set(String(eq._id), usesInProgress(eq.scheduledUses, now));
+      const shown = busyUsesForDisplay(eq.scheduledUses, now);
+      busyByEq.set(String(eq._id), shown.map((x) => x.use));
+      shown.forEach((x) => statusByUse.set(x.use, x.status));
     }
 
     // Devolver el equipamiento tal cual está en la DB
@@ -119,8 +133,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   // Nombre del cliente de cada evento involucrado: UNA consulta para todos
   const busyEventIds = Array.from(
     new Set(
-      Array.from(busyByEq.values())
-        .flat()
+      [...Array.from(busyByEq.values()).flat(), ...Array.from(nearByEq.values()).flat().map((n) => n.use)]
         .map((u) => String(u.eventId))
         .filter((id) => ObjectId.isValid(id))
     )
@@ -138,9 +151,21 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
   }
 
   const withBusy = enriched.map((eq: any) => {
+    const near = nearByEq.get(String(eq._id));
+    const nearWith = near?.map((n) => ({
+      eventId: String(n.use.eventId),
+      eventType: n.use.eventType || n.use.eventName,
+      clientName: clientByEvent.get(String(n.use.eventId)) || undefined,
+      location: n.use.location,
+      startDate: new Date(n.use.startDate).toISOString(),
+      endDate: new Date(n.use.endDate).toISOString(),
+      side: n.side,
+      gapHours: n.gapHours
+    }));
     const uses = busyByEq.get(String(eq._id));
-    if (!uses) return eq;
+    if (!uses) return nearWith ? { ...eq, nearWith } : eq;
     const busyWith: BusyUse[] = uses.map((u) => ({
+      status: statusByUse.get(u),
       eventId: String(u.eventId),
       eventType: u.eventType || u.eventName,
       clientName: clientByEvent.get(String(u.eventId)) || undefined,
@@ -148,7 +173,7 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
       startDate: new Date(u.startDate).toISOString(),
       endDate: new Date(u.endDate).toISOString()
     }));
-    return { ...eq, busyWith };
+    return { ...eq, busyWith, ...(nearWith ? { nearWith } : {}) };
   });
 
   // Precios: solo admin. A los demás no les llegan (regla de ofuscación).
@@ -199,10 +224,10 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
 
   // `scheduledUses` lo manejan solo los endpoints de eventos: si viniera en el
   // body (copia vieja de la caché) pisaría reservas reales.
-  // `busyWith` es calculado por el GET, tampoco se guarda.
+  // `busyWith` y `nearWith` los calcula el GET, tampoco se guardan.
   // `history` (texto libre viejo) quedó como "Notas anteriores" de SOLO LECTURA:
   // las notas nuevas van a la bitácora del historial, que no se edita ni se borra.
-  const { _id, scheduledUses: _ignored, busyWith: _busy, history: _frozen, ...rest } = body;
+  const { _id, scheduledUses: _ignored, busyWith: _busy, nearWith: _near, history: _frozen, ...rest } = body;
   const objectId = new ObjectId(String(_id));
 
   // Precios: quien no los puede ver tampoco los puede pisar (su formulario

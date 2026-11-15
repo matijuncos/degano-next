@@ -8,6 +8,7 @@ import useNotification from '@/hooks/useNotification';
 import { isValidMapsUrl, normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUtils';
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import { combineDateAndTime, toTimeString } from '@/utils/dateUtils';
+import ArrivalLeadWarning from '@/components/ArrivalLeadWarning/ArrivalLeadWarning';
 
 const EventForm = ({
   event,
@@ -735,6 +736,13 @@ const EventForm = ({
           />
         </Grid.Col>
       </Grid>
+
+      {/* Llegada del equipamiento más de 3 días antes: confirmar (si no, la
+          reserva arranca con el evento). Ver utils/reservationRange */}
+      <ArrivalLeadWarning
+        event={eventData}
+        onConfirm={(key) => setEventData((prev) => ({ ...prev, equipmentArrivalConfirmedFor: key }))}
+      />
 
       <div
         style={{

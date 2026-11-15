@@ -1,11 +1,17 @@
 'use client';
 import { Modal, Stack, Paper, Text, Group, Button, Badge } from '@mantine/core';
 import { IconExternalLink, IconCalendarEvent, IconMapPin } from '@tabler/icons-react';
-import { BusyUse, formatUseRange } from '@/utils/equipmentAvailability';
+import { BusyUse, BusyStatus, formatUseRange } from '@/utils/equipmentAvailability';
 
 // Modal de un equipo "En Uso": lista las reservas que ocupan un equipo.
 // Los datos vienen ya en el equipo (`busyWith`, del GET /api/equipment), así
-// que abre al instante sin hacer requests.
+// que abre al instante sin hacer requests. En la vista general cada reserva
+// trae `status`: en curso / de hoy (todavía no empezó) / la próxima.
+const STATUS_LABEL: Record<BusyStatus, { label: string; color: string }> = {
+  en_curso: { label: 'En curso', color: 'yellow' },
+  hoy: { label: 'Empieza hoy', color: 'orange' },
+  proxima: { label: 'Próxima reserva', color: 'gray' }
+};
 export default function EquipmentBusyModal({
   item,
   onClose
@@ -29,7 +35,7 @@ export default function EquipmentBusyModal({
     >
       {uses.length === 0 ? (
         <Stack gap='xs'>
-          <Text size='sm'>No se encontró una reserva en curso para este equipo.</Text>
+          <Text size='sm'>No tiene reservas en curso ni próximas.</Text>
           {item?.outOfService?.details && (
             <Text size='sm' c='dimmed'>
               Último registro: {item.outOfService.details}
@@ -38,11 +44,22 @@ export default function EquipmentBusyModal({
         </Stack>
       ) : (
         <Stack gap='sm'>
+          {/* Sin nada en curso ni hoy: se aclara por qué igual figura "En Uso" */}
+          {uses.every((u) => u.status === 'proxima') && (
+            <Text size='sm' c='dimmed'>
+              Hoy no tiene uso. Figura "En Uso" por un registro anterior; se corrige solo. Su próxima reserva:
+            </Text>
+          )}
           {uses.map((u) => (
             <Paper key={`${u.eventId}-${u.startDate}`} withBorder p='sm' radius='md'>
               <Group justify='space-between' align='flex-start' wrap='nowrap'>
                 <Stack gap={4}>
                   <Group gap={6}>
+                    {u.status && (
+                      <Badge color={STATUS_LABEL[u.status].color} variant='filled' tt='none'>
+                        {STATUS_LABEL[u.status].label}
+                      </Badge>
+                    )}
                     <Badge color='yellow' variant='light'>
                       {u.eventType || 'Evento'}
                     </Badge>

@@ -9,7 +9,8 @@ import {
   conflictingUses,
   usesInProgress,
   formatUseRange,
-  releaseDecision
+  releaseDecision,
+  busyUsesForDisplay
 } from './equipmentAvailability';
 
 // Helper: fechas legibles
@@ -207,5 +208,31 @@ describe('releaseDecision', () => {
   });
   it('ya disponible → keep (no se toca ubicación)', () => {
     expect(releaseDecision({ scheduledUses: [], outOfService: { isOut: false, reason: null } }, now)).toBe('keep');
+  });
+});
+
+describe('busyUsesForDisplay: qué muestra "¿Dónde está en uso?"', () => {
+  // Domingo 15/11/2026 15:00 hora argentina
+  const NOW = new Date('2026-11-15T18:00:00.000Z');
+  const u = (id: string, start: string, end: string) => ({ eventId: id, eventName: id, location: 'L', startDate: start, endDate: end });
+  const enCurso = u('enCurso', '2026-11-15T12:00:00.000Z', '2026-11-16T06:00:00.000Z');
+  const estaNoche = u('estaNoche', '2026-11-15T23:00:00.000Z', '2026-11-16T05:00:00.000Z');
+  const manana = u('mañana', '2026-11-16T11:30:00.000Z', '2026-11-23T11:30:00.000Z');
+  const despues = u('después', '2026-12-01T11:30:00.000Z', '2026-12-02T11:30:00.000Z');
+  const pasada = u('pasada', '2026-10-23T12:00:00.000Z', '2026-10-25T06:00:00.000Z');
+  const show = (list: any[]) => busyUsesForDisplay(list, NOW).map((x) => `${x.use.eventId}:${x.status}`);
+
+  it('si hay una en curso, muestra solo esa', () => {
+    expect(show([manana, enCurso, estaNoche])).toEqual(['enCurso:en_curso']);
+  });
+  it('si no hay en curso, la de HOY que todavía no empezó', () => {
+    expect(show([manana, estaNoche, pasada])).toEqual(['estaNoche:hoy']);
+  });
+  it('si no hay ni en curso ni de hoy, la PRÓXIMA (nunca queda vacío si hay reservas)', () => {
+    expect(show([despues, manana, pasada])).toEqual(['mañana:proxima']);
+  });
+  it('sin reservas futuras, vacío', () => {
+    expect(show([pasada])).toEqual([]);
+    expect(show([])).toEqual([]);
   });
 });

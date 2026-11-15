@@ -15,6 +15,7 @@ import { checkBookingConflicts } from '@/lib/bookingGuard';
 import { eventKindOf, sanitizeKindUpdate } from '@/utils/eventKind';
 import { withoutCategoryItems } from '@/utils/categoryItemGuard';
 import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
+import { reservationStart } from '@/utils/reservationRange';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -29,6 +30,8 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
     // en la tabla de Equipamiento). Antes de todo: el diff de equipos usa esto.
     if (Array.isArray(body.equipment)) {
       body.equipment = withoutCategoryItems(body.equipment, await categoryIdsAmong(db, body.equipment)).equipment;
+      // `nearWith` (aviso de eventos a menos de 6 h) es solo para mostrar: no se guarda
+      body.equipment = body.equipment.map(({ nearWith: _near, ...e }: any) => e);
     }
     const eventEquipment = body.equipment;
     delete body._id;
@@ -101,18 +104,42 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       );
     }
 
+    // Rango de la RESERVA de equipos (arranca con la llegada del equipamiento si
+    // corresponde, ver utils/reservationRange). Con cuerpos parciales se completa
+    // con lo guardado.
+    const mergedForRange: any = { ...(oldEvent || {}), ...body };
+    const newResStart = reservationStart(mergedForRange);
+    const newResEnd = new Date(mergedForRange.endDate);
+    const rangeChanged =
+      !!oldEvent &&
+      Number.isFinite(newResStart.getTime()) &&
+      Number.isFinite(newResEnd.getTime()) &&
+      (reservationStart(oldEvent as any).getTime() !== newResStart.getTime() ||
+        +new Date(oldEvent.endDate as any) !== newResEnd.getTime());
+    const fullEquipmentBody = Array.isArray(eventEquipment) && !!body.date && !!body.endDate;
+
     // GUARD doble asignación: los equipos NUEVOS del evento (o todos, si
-    // cambiaron las fechas) no pueden estar reservados por otro evento en
-    // esas fechas. Se valida ANTES de escribir nada.
-    if (Array.isArray(eventEquipment) && body.date && body.endDate) {
+    // cambió el rango de la reserva) no pueden estar reservados por otro evento
+    // en esas fechas. Se valida ANTES de escribir nada.
+    if (fullEquipmentBody) {
       const prevIds = new Set((oldEvent?.equipment || []).map((e: any) => String(e._id)));
-      const datesChanged =
-        +new Date(oldEvent?.date as any) !== +new Date(body.date) ||
-        +new Date(oldEvent?.endDate as any) !== +new Date(body.endDate);
       const toCheck = eventEquipment
         .map((e: any) => String(e._id))
-        .filter((id: string) => datesChanged || !prevIds.has(id));
-      const conflictMsg = await checkBookingConflicts(db, toCheck, body.date, body.endDate, eventId);
+        .filter((id: string) => rangeChanged || !prevIds.has(id));
+      const conflictMsg = await checkBookingConflicts(db, toCheck, newResStart, newResEnd, eventId);
+      if (conflictMsg) {
+        return NextResponse.json({ error: conflictMsg }, { status: 409 });
+      }
+    } else if (rangeChanged && (oldEvent?.equipment || []).length) {
+      // Cuerpo parcial que cambia el rango (ej. solo la llegada del equipamiento
+      // desde la página del evento): se chequean los equipos ya guardados
+      const conflictMsg = await checkBookingConflicts(
+        db,
+        (oldEvent?.equipment || []).map((e: any) => String(e._id)),
+        newResStart,
+        newResEnd,
+        eventId
+      );
       if (conflictMsg) {
         return NextResponse.json({ error: conflictMsg }, { status: 409 });
       }
@@ -165,16 +192,13 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       +new Date(oldEvent?.endDate as any) !== +new Date(body.endDate) ||
       (oldEvent?.lugar || '') !== (body.lugar || '') ||
       (oldEvent?.type || '') !== (body.type || '') ||
-      (oldEvent?.name || '') !== (body.name || '');
+      (oldEvent?.name || '') !== (body.name || '') ||
+      rangeChanged;
 
     // Solo procesar diff de equipamiento si el body incluye equipment (evita
     // corrupción en ediciones parciales) Y realmente cambió algo relevante.
-    if (
-      eventEquipment !== undefined &&
-      body.date &&
-      body.endDate &&
-      equipmentRelatedChanged
-    ) {
+    const diffRuns = eventEquipment !== undefined && !!body.date && !!body.endDate && equipmentRelatedChanged;
+    if (diffRuns) {
       const oldEquipmentIds = (oldEvent?.equipment || []).map(
         (eq: any) => eq._id.toString()
       );
@@ -191,7 +215,8 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         (id: string) => newEquipmentIds.includes(id)
       );
 
-      const eventStart = new Date(body.date);
+      // La reserva arranca con la llegada del equipamiento (si corresponde)
+      const eventStart = newResStart;
       const eventEnd = new Date(body.endDate);
       const now = new Date();
 
@@ -356,6 +381,21 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         );
       }
     }
+    // Cuerpo parcial que cambió el rango de la reserva (ej. solo la llegada del
+    // equipamiento o su confirmación): se actualizan las fechas de las reservas
+    // de ESTE evento en sus equipos (ya validado arriba que no chocan)
+    if (!diffRuns && rangeChanged && (oldEvent?.equipment || []).length) {
+      const ids = (oldEvent?.equipment || [])
+        .map((e: any) => String(e._id))
+        .filter((id: string) => ObjectId.isValid(id))
+        .map((id: string) => new ObjectId(id));
+      await db.collection('equipment').updateMany(
+        { _id: { $in: ids } },
+        { $set: { 'scheduledUses.$[u].startDate': newResStart, 'scheduledUses.$[u].endDate': newResEnd } },
+        { arrayFilters: [{ 'u.eventId': { $in: [eventId, String(eventId)] } }] }
+      );
+    }
+
     return NextResponse.json({ event: sanitizeEventForRole(event, context.role) }, { status: 201 });
   } catch (error) {
     console.error(error);

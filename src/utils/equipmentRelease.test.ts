@@ -70,19 +70,20 @@ describe('pickReleasable: ANTE LA DUDA, sigue "En uso"', () => {
   });
 });
 
-describe('liveEventEquipmentIds: equipos de eventos en curso o de las próximas 24 h', () => {
+describe('liveEventEquipmentIds: equipos de eventos en curso o de HOY (día argentino)', () => {
   const ev = (date: any, endDate: any, ids: any[]) => ({ date, endDate, equipment: ids.map((_id) => ({ _id })) });
-  it('en curso y los que empiezan en las próximas 24 h cuentan como ocupados', () => {
+  it('en curso y los de HOY que todavía no terminaron cuentan como ocupados; mañana NO', () => {
     const r = liveEventEquipmentIds(
       [
         ev('2026-11-15T12:00:00.000Z', '2026-11-16T06:00:00.000Z', ['enCurso']),
-        ev('2026-11-16T11:30:00.000Z', '2026-11-23T11:30:00.000Z', ['mañana']), // caso Alquiler UF PRO
+        ev('2026-11-15T23:00:00.000Z', '2026-11-16T05:00:00.000Z', ['estaNoche']), // hoy 20:00 AR
+        ev('2026-11-16T11:30:00.000Z', '2026-11-23T11:30:00.000Z', ['mañana']), // caso Alquiler UF PRO: hoy están disponibles
         ev('2026-11-20T12:00:00.000Z', '2026-11-21T06:00:00.000Z', ['laSemanaQueViene']),
         ev('2026-10-23T12:00:00.000Z', '2026-10-25T06:00:00.000Z', ['terminado'])
       ],
       NOW
     );
-    expect([...r].sort()).toEqual(['enCurso', 'mañana']);
+    expect([...r].sort()).toEqual(['enCurso', 'estaNoche']);
   });
   it('fechas como texto o Date; ids como texto u ObjectId', () => {
     const oid = { toString: () => 'oid1' };

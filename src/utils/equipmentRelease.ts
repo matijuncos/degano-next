@@ -6,7 +6,7 @@
 //  - no tiene una reserva en curso,
 //  - no tiene una reserva de HOY (día argentino) que todavía no terminó,
 //  - su último uso tiene fecha válida y ya terminó,
-//  - no figura en ningún evento real en curso o de las próximas 24 h (`busyIds`,
+//  - no figura en ningún evento real en curso o de hoy (`busyIds`,
 //    `liveEventEquipmentIds` sobre la colección events: red de seguridad por si
 //    scheduledUses quedara mal).
 // Lógica pura y testeada. La usa la limpieza de /api/equipment.
@@ -51,17 +51,18 @@ export function pickReleasable<T extends ReleaseCandidate>(candidates: T[], busy
   });
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Equipos de eventos reales en curso o que empiezan en las próximas 24 h (red de
-// seguridad contra scheduledUses mal cargados). Fechas Date o texto; un evento
-// con fechas rotas cuenta como ocupado, por las dudas.
+// Equipos de eventos reales en curso o de HOY (día argentino) que todavía no
+// terminaron (red de seguridad contra scheduledUses mal cargados). Un evento de
+// mañana NO cuenta: hoy el equipo está disponible, y cuando su reserva empiece
+// la limpieza lo marca "En uso" (pickActivations). Fechas Date o texto; un
+// evento con fechas rotas cuenta como ocupado, por las dudas.
 export function liveEventEquipmentIds(
   events: { date?: unknown; endDate?: unknown; equipment?: { _id?: unknown }[] | null }[],
   now: Date
 ): Set<string> {
   const t = now.getTime();
-  const horizon = t + DAY_MS;
+  const horizon = endOfArgentineDay(now).getTime();
   const busy = new Set<string>();
   for (const ev of events) {
     const start = toTime(ev.date);

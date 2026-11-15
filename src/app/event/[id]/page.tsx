@@ -51,6 +51,7 @@ import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandl
 import { eventForPage } from '@/utils/eventScope';
 import { isRental } from '@/utils/eventKind';
 import RentalBadge from '@/components/EventKindChooser/RentalBadge';
+import ArrivalLeadWarning from '@/components/ArrivalLeadWarning/ArrivalLeadWarning';
 
 // Pestañas que un alquiler no tiene
 const RENTAL_HIDDEN_PAGE_TABS = ['bands', 'music', 'timing', 'files'];
@@ -407,8 +408,38 @@ const MainInformation = ({
     }));
 
   if (!selectedEvent) return null;
+  // Confirmar una llegada del equipamiento de más de 3 días antes: se guarda SOLO
+  // ese dato (cuerpo parcial). El servidor extiende la reserva y valida choques.
+  const [confirmingArrival, setConfirmingArrival] = useState(false);
+  const confirmArrival = async (key: string) => {
+    if (!selectedEvent?._id) return;
+    setConfirmingArrival(true);
+    try {
+      const response = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _id: selectedEvent._id, equipmentArrivalConfirmedFor: key })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'No se pudo confirmar');
+      const eventToUse = data.event || { ...selectedEvent, equipmentArrivalConfirmedFor: key };
+      setSelectedEvent(eventToUse);
+      updateEventInList(eventToUse);
+      notify({ message: 'Llegada confirmada: los equipos quedan reservados desde esa fecha' });
+    } catch (error: any) {
+      // Ej. 409: algún equipo ya está reservado en esos días
+      notify({ type: 'defaultError', message: error?.message });
+    } finally {
+      setConfirmingArrival(false);
+    }
+  };
+
   return (
     <Flex direction='column' gap='8px' mt='8px'>
+      {selectedEvent && canEditEvents && (
+        <ArrivalLeadWarning event={selectedEvent} onConfirm={confirmArrival} loading={confirmingArrival} />
+      )}
       {/* Botón para agregar campos faltantes */}
       {missingFieldsCount > 0 && canEditEvents && (
         <Button

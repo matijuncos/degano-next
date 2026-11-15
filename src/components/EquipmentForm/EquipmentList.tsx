@@ -41,6 +41,7 @@ import { equipmentAvailabilityUrl, getUnavailabilityReason } from '@/utils/equip
 import { suggestReplacements, ReplacementSuggestion } from '@/utils/equipmentSuggestions';
 import { EQUIPMENT_SWR_OPTS } from '@/hooks/useEquipmentStatusMap';
 import EquipmentNoteModal, { NoteUnit } from '@/components/EquipmentNoteModal/EquipmentNoteModal';
+import { NEAR_EVENT_HOURS } from '@/utils/reservationRange';
 
 type CategoryItemProps = {
   categoryName: string;
@@ -61,6 +62,8 @@ type CategoryItemProps = {
   onEditNote?: (eq: any) => void;
   // Unidades con problema (baja u ocupada en otro evento) y su reemplazo sugerido
   suggestions?: Map<string, ReplacementSuggestion>;
+  // Otro evento a menos de 6 h de esta reserva, por unidad (aviso)
+  nearById?: Map<string, any[]>;
   onReplace?: (oldId: string, unit?: any) => void;
   // Quitar la unidad del evento y cargarla como "a tercerizar"
   onTercerizar?: (oldId: string) => void;
@@ -134,6 +137,7 @@ function CategoryContent({
   onReorderItems,
   onEditNote,
   suggestions,
+  nearById,
   onReplace,
   onTercerizar
 }: CategoryItemProps & { dragHandleProps?: Record<string, any> }) {
@@ -200,9 +204,22 @@ function CategoryContent({
   const problemOf = (eq: any) => suggestions?.get(String(eq._id));
   const isProblem = (eq: any) =>
     isEquipmentUnavailable(statusMap.get(String(eq._id))) || !!problemOf(eq);
+  const nearLine = (eq: any) => {
+    const near = nearById?.get(String(eq._id));
+    if (!near?.length || problemOf(eq)) return null;
+    const n = near[0];
+    const what = [n.eventType, n.location].filter(Boolean).join(' - ');
+    const gap = `${String(n.gapHours).replace('.', ',')} h`;
+    return (
+      <Text size='11px' c='yellow.5'>
+        ⚠ {n.side === 'antes' ? `${what} termina ${gap} antes` : `${what} empieza ${gap} después`}
+      </Text>
+    );
+  };
   const problemLine = (eq: any) => {
+    const near = nearLine(eq);
     const s = problemOf(eq);
-    if (!s) return null;
+    if (!s) return near;
     const p = s.problem;
     const text =
       p.kind === 'baja'
@@ -751,6 +768,15 @@ export default function EquipmentList({
   );
   const replaceable = Array.from(suggestions.entries()).filter(([, s]) => s.replacement);
 
+  // Aviso (no bloquea): otro evento que termina / empieza a menos de 6 h de
+  // esta reserva. Viene en la misma disponibilidad (`nearWith`): sin requests.
+  const nearById = React.useMemo(() => {
+    const m = new Map<string, any[]>();
+    if (Array.isArray(pool)) for (const p of pool) if (p?.nearWith?.length) m.set(String(p._id), p.nearWith);
+    return m;
+  }, [pool]);
+  const nearCount = (equipmentList as any[]).filter((eq) => nearById.has(String(eq._id))).length;
+
   // Reemplaza unidades en el evento (en memoria; se guarda con "Guardar
   // Cambios" → updateEvent quita la reserva vieja y agrega la nueva, con
   // historial). La nueva hereda categoría y nota de la anterior.
@@ -961,6 +987,14 @@ export default function EquipmentList({
       <Stack gap={0} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Box style={{ flex: 1, overflowY: 'auto', padding: '0 4px' }}>
           <Stack gap='md'>
+            {nearCount > 0 && (
+              <Alert color='yellow' variant='light' p='xs'>
+                <Text size='xs'>
+                  ⚠ {nearCount === 1 ? '1 equipo tiene' : `${nearCount} equipos tienen`} otro evento a menos de {NEAR_EVENT_HOURS} h
+                  (antes o después). No bloquea: revisá si llegan a tiempo.
+                </Text>
+              </Alert>
+            )}
             {replaceable.length > 0 && (
               <Alert color='yellow' variant='light' p='xs'>
                 <Stack gap={6}>
@@ -1000,6 +1034,7 @@ export default function EquipmentList({
                   onReorderItems={handleReorderItems}
                   onEditNote={openNoteEditor}
                   suggestions={suggestions}
+                  nearById={nearById}
                   onReplace={handleReplace}
                   onTercerizar={handleTercerizar}
                 />

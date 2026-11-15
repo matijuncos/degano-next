@@ -12,6 +12,7 @@ import EquipmentList from './EquipmentList';
 import { findMainCategorySync } from '@/utils/categoryUtils';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { IconLayersLinked } from '@tabler/icons-react';
+import { reservationStartIso } from '@/utils/reservationRange';
 
 const EquipmentForm = ({
   event,
@@ -183,6 +184,9 @@ const EquipmentForm = ({
     }));
   };
 
+  // La reserva arranca con la llegada del equipamiento (utils/reservationRange)
+  const resStart = reservationStartIso(eventEquipment);
+
   // Mismos componentes para escritorio (3 paneles) y celular (pestañas)
   const sidebarEl = (
     <Sidebar
@@ -191,7 +195,7 @@ const EquipmentForm = ({
       onEdit={handleEdit}
       onOpenModal={handleOpenModal}
       newEvent={true}
-      eventStartDate={eventEquipment.date}
+      eventStartDate={resStart}
       eventEndDate={eventEquipment.endDate}
       disableEditOnSelect={true}
       onApplySet={() => setApplySetModalOpen(true)}
@@ -217,7 +221,7 @@ const EquipmentForm = ({
       }}
       onCancel={handleCancel}
       newEvent={true}
-      eventStartDate={eventEquipment.date}
+      eventStartDate={resStart}
       eventEndDate={eventEquipment.endDate}
       selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
       refreshTrigger={refreshTrigger}
@@ -228,7 +232,7 @@ const EquipmentForm = ({
   );
   const listEl = (
     <EquipmentList
-      eventStartDate={eventEquipment.date}
+      eventStartDate={resStart}
       eventEndDate={eventEquipment.endDate}
       equipmentList={eventEquipment.equipment}
       setEventEquipment={setEventEquipment}
@@ -354,7 +358,7 @@ const EquipmentForm = ({
       <ApplySetModal
         opened={applySetModalOpen}
         onClose={() => setApplySetModalOpen(false)}
-        eventStartDate={eventEquipment.date}
+        eventStartDate={resStart}
         eventEndDate={eventEquipment.endDate}
         selectedEquipmentIds={eventEquipment.equipment.map((eq) => eq._id)}
         onApply={(items, extras) => {

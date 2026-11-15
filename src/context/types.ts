@@ -138,6 +138,8 @@ export interface EventModel {
   staffArrivalTime?: string;
   equipmentArrivalDate?: string | Date;
   equipmentArrivalTime?: string;
+  // Llegada del equipamiento > 3 días antes confirmada para estas fechas (utils/reservationRange)
+  equipmentArrivalConfirmedFor?: string;
   equipmentCategoryOrder?: string[];
   // Orden de los equipos (por nombre) DENTRO de cada categoría.
   // Mapa: nombre de categoría → lista ordenada de nombres de equipo.

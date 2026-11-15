@@ -34,6 +34,12 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 - Si NO hay solapamiento → equipo disponible, **sin importar su estado actual en la DB**
 - El campo `outOfService.reason === 'En Evento'` en la DB refleja el estado ACTUAL, no el futuro
 
+**Rango de la reserva = desde la LLEGADA DEL EQUIPAMIENTO hasta el fin del evento** (`/src/utils/reservationRange.ts`, testeada): `reservationStart(ev)` usa `equipmentArrivalDate` + `equipmentArrivalTime` (hora AR; sin hora = 00:00) si es antes del inicio; si no, el inicio del evento. Lo usan `postEvent`/`updateEvent` (reservas y choques), la disponibilidad al elegir equipos (`reservationStartIso`) y la marca automática "En Evento".
+- **Llegada > 3 días antes (`MAX_ARRIVAL_LEAD_DAYS`):** aviso + confirmación (`ArrivalLeadWarning`, en Nuevo evento y en la página del evento). Se guarda `equipmentArrivalConfirmedFor` = `arrivalConfirmKey` (llegada|inicio): si cambia alguna de las dos fechas, deja de valer sola. Sin confirmar, la reserva arranca con el evento (protege de errores de tipeo).
+- `updateEvent` recalcula el rango aunque el cuerpo sea parcial (ej. solo la llegada o la confirmación): valida choques con los equipos guardados (409) y actualiza las reservas de ese evento.
+- **Aviso de eventos pegados (`NEAR_EVENT_HOURS` = 6):** al elegir equipos, si otro evento termina/empieza a menos de 6 h de la reserva (sin superponerse), aviso amarillo por equipo + resumen. **No bloquea.** Viene en la misma disponibilidad (`nearWith`, no se guarda en el evento).
+- Datos viejos: `scripts/migrate-arrival-reservations.ts --db=<base>` (simulación; `--apply`), no toca eventos con choques ni sin confirmar.
+
 **NUNCA:**
 - Determinar disponibilidad por `location` o por el estado `outOfService` de la DB cuando hay fechas de evento en la query
 - Permitir que un equipo se asigne a dos eventos con fechas solapadas
@@ -43,7 +49,8 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 **Limpieza automática (GET /api/equipment sin fechas, `/src/lib/equipmentCleanup.ts`):**
 - Se limpian `scheduledUses` expirados (endDate < now)
 - **Reserva que EMPEZÓ → el equipo pasa a "En Evento"** con la ubicación, `lastUsed*` y detalle de ese evento (`pickActivations`), igual que `postEvent` con un evento de hoy. Así un evento cargado con anticipación muestra sus equipos "En Uso" mientras ocurre. Nunca pisa una baja manual (reparación, etc.); si ya figura con ese evento no se toca; si figura "En Evento" de otro evento viejo, se actualiza. Historial `cambio_estado`.
-- Se liberan (location "Deposito", outOfService limpio, historial `cambio_estado`) los "En Evento" que `pickReleasable` (`/src/utils/equipmentRelease.ts`, testeada) da por seguros: sin uso en curso, sin uso de hoy pendiente, último uso con fecha y ya terminado, y que no figuren en ningún evento real en curso o de las próximas 24 h (`liveEventEquipmentIds`).
+- Se liberan (location "Deposito", outOfService limpio, historial `cambio_estado`) los "En Evento" que `pickReleasable` (`/src/utils/equipmentRelease.ts`, testeada) da por seguros: sin uso en curso, sin uso de hoy pendiente, último uso con fecha y ya terminado, y que no figuren en ningún evento real en curso o de hoy (`liveEventEquipmentIds`). Un evento de MAÑANA no lo deja "En Uso" hoy: hoy está disponible y la limpieza lo marca cuando su reserva empieza.
+- "¿Dónde está en uso?" (vista general) muestra la reserva en curso; si no hay, la de hoy que no empezó; si no, la próxima (`busyUsesForDisplay`, con cartel En curso / Empieza hoy / Próxima reserva). Un "En Uso" nunca queda sin explicar.
 - **JAMÁS mostrar disponible algo que está en uso. Ante la duda, NO se libera** (pedido explícito del usuario, nov 2026).
 - Se **espera** (`await`) y va en lote (un `updateMany` + historial con `createHistoryEntries`). Mira TODOS los "En Evento", no solo los de esa pasada: si algo se corta, la próxima lo completa. (Antes corría en segundo plano, se cortaba en eventos grandes y dejó 298 equipos trabados "En Evento".)
 - Esta limpieza NO se ejecuta en modo evento (cuando hay fechas en la query)

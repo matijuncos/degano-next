@@ -5,6 +5,8 @@
  * que cruzar contra el estado actual del equipo en la colección `equipment`.
  */
 
+import { endOfArgentineDay } from './equipmentRelease';
+
 export interface LiveEquipmentStatus {
   isOut?: boolean;
   reason?: string | null;
@@ -116,8 +118,34 @@ export function usesInProgress(
   );
 }
 
+/**
+ * Qué reserva muestra "¿Dónde está en uso?" en la vista general, en orden:
+ * la EN CURSO; si no hay, la de HOY (día argentino) que todavía no empezó; si
+ * tampoco, la PRÓXIMA. Así un "En Uso" nunca queda sin explicar.
+ */
+export type BusyStatus = 'en_curso' | 'hoy' | 'proxima';
+export function busyUsesForDisplay<T extends Pick<ScheduledUse, 'startDate' | 'endDate'>>(
+  scheduledUses: T[] | null | undefined,
+  now: Date = new Date()
+): { use: T; status: BusyStatus }[] {
+  const t = now.getTime();
+  const endOfToday = endOfArgentineDay(now).getTime();
+  const valid = (scheduledUses || []).filter(
+    (u) => !!u && Number.isFinite(new Date(u.startDate).getTime()) && Number.isFinite(new Date(u.endDate).getTime())
+  );
+  const startOf = (u: T) => new Date(u.startDate).getTime();
+  const endOf = (u: T) => new Date(u.endDate).getTime();
+  const current = valid.filter((u) => startOf(u) <= t && endOf(u) >= t);
+  if (current.length) return current.map((use) => ({ use, status: 'en_curso' as const }));
+  const upcoming = valid.filter((u) => startOf(u) > t).sort((a, b) => startOf(a) - startOf(b));
+  const today = upcoming.filter((u) => startOf(u) <= endOfToday);
+  if (today.length) return today.map((use) => ({ use, status: 'hoy' as const }));
+  return upcoming.length ? [{ use: upcoming[0], status: 'proxima' }] : [];
+}
+
 /** Reserva que ocupa un equipo, tal como la ve el modal "¿Dónde está en uso?" */
 export interface BusyUse {
+  status?: BusyStatus; // solo en la vista general (sin fechas de evento)
   eventId: string;
   eventType?: string;
   clientName?: string;

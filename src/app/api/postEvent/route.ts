@@ -15,6 +15,7 @@ import { checkBookingConflicts } from '@/lib/bookingGuard';
 import { eventKindOf, stripRentalFields } from '@/utils/eventKind';
 import { withoutCategoryItems } from '@/utils/categoryItemGuard';
 import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
+import { reservationStart } from '@/utils/reservationRange';
 
 // Todos pueden crear eventos según especificación
 export const POST = withAuth(async (context: AuthContext, req: Request) => {
@@ -47,6 +48,8 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     // en la tabla de Equipamiento)
     if (Array.isArray(equipment)) {
       equipment = withoutCategoryItems(equipment, await categoryIdsAmong(db, equipment)).equipment;
+      // `nearWith` (aviso de eventos a menos de 6 h) es solo para mostrar: no se guarda
+      equipment = equipment.map(({ nearWith: _near, ...e }: any) => e);
     }
     // Precios: quien no los ve arma el evento con equipos sin precio → se
     // completan con los reales de la base (y el total de alquiler).
@@ -69,10 +72,11 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     // evento en esas fechas. Se valida ANTES de crear nada. (En un reintento,
     // las reservas del propio evento no cuentan.)
     if (Array.isArray(equipment) && equipment.length && restBody.date && restBody.endDate) {
+      // Rango de la RESERVA: desde la llegada del equipamiento (si corresponde)
       const conflictMsg = await checkBookingConflicts(
         db,
         equipment.map((e: any) => String(e._id)),
-        restBody.date,
+        reservationStart(restBody),
         restBody.endDate,
         existing ? String(existing._id) : null
       );
@@ -99,7 +103,8 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     }
 
     if (equipment?.length && newEvent) {
-      const eventStart = new Date(document.date);
+      // La reserva arranca con la llegada del equipamiento (utils/reservationRange)
+      const eventStart = reservationStart(document);
       const eventEnd = new Date(document.endDate);
       const now = new Date();
 
