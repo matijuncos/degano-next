@@ -29,7 +29,12 @@ async function equipmentInLiveEvents(db: any, now: Date): Promise<Set<string>> {
   const events = await db
     .collection('events')
     .find(
-      { $or: [{ endDate: { $gte: dayAgo } }, { endDate: { $type: 'string' } }] },
+      {
+        // Solo eventos con equipos que terminan desde ayer. Las fechas pueden ser
+        // Date o texto ISO (se comparan como texto: el ISO ordena bien)
+        'equipment.0': { $exists: true },
+        $or: [{ endDate: { $gte: dayAgo } }, { endDate: { $type: 'string', $gte: dayAgo.toISOString() } }]
+      },
       { projection: { date: 1, endDate: 1, 'equipment._id': 1 } }
     )
     .toArray();
@@ -45,7 +50,7 @@ export interface CleanupResult {
 // marcan (como postEvent con un evento de hoy). Sin esto, un evento cargado con
 // anticipación mostraba sus equipos "Disponible" mientras ocurría. Nunca pisa
 // una baja manual (reparación, etc.): eso lo decide pickActivations (testeada).
-async function activateStartedUses(db: any, userId: string, now: Date, dryRun: boolean) {
+async function activateStartedUses(db: any, userId: string, now: Date, dryRun: boolean, runId: string) {
   const equipmentCol = db.collection('equipment');
   const inUseNow = { scheduledUses: { $elemMatch: { startDate: { $lte: now }, endDate: { $gte: now } } } };
   const notManualOut = { $or: [{ 'outOfService.isOut': { $ne: true } }, { 'outOfService.reason': 'En Evento' }] };
@@ -63,26 +68,36 @@ async function activateStartedUses(db: any, userId: string, now: Date, dryRun: b
 
   // Una sola ida a la base; cada update vuelve a exigir uso en curso y que no
   // sea una baja manual (por si cambió en el medio)
+  // El filtro excluye a los que YA figuran con este mismo uso: si otra pasada
+  // (otra persona abriendo Equipamiento a la vez) los marcó, no se repite nada.
+  // Se marca con `cleanupRunId` para saber qué cambió ESTA pasada.
   await equipmentCol.bulkWrite(
     toActivate.map((a: any) => ({
-      updateOne: { filter: { _id: a._id, ...inUseNow, ...notManualOut }, update: { $set: a.set } }
+      updateOne: {
+        filter: {
+          _id: a._id,
+          ...inUseNow,
+          ...notManualOut,
+          $nor: [
+            {
+              'outOfService.reason': 'En Evento',
+              lastUsedStartDate: a.set.lastUsedStartDate,
+              lastUsedEndDate: a.set.lastUsedEndDate
+            }
+          ]
+        },
+        update: { $set: { ...a.set, cleanupRunId: runId } }
+      }
     })),
     { ordered: false }
   );
 
-  // Historial solo de los que efectivamente quedaron con ese evento (en lote)
+  // Historial solo de lo que cambió ESTA pasada (en lote; el historial es permanente)
   const after = await equipmentCol
-    .find({ _id: { $in: toActivate.map((a: any) => a._id) }, 'outOfService.reason': 'En Evento' })
-    .project({ _id: 1, lastUsedStartDate: 1 })
+    .find({ _id: { $in: toActivate.map((a: any) => a._id) }, cleanupRunId: runId })
+    .project({ _id: 1 })
     .toArray();
-  const okIds = new Set(
-    after
-      .filter((e: any) => {
-        const a: any = toActivate.find((x: any) => String(x._id) === String(e._id));
-        return a && new Date(e.lastUsedStartDate).getTime() === a.set.lastUsedStartDate.getTime();
-      })
-      .map((e: any) => String(e._id))
-  );
+  const okIds = new Set(after.map((e: any) => String(e._id)));
   await createHistoryEntries(
     db,
     toActivate
@@ -125,19 +140,24 @@ export async function cleanupExpiredScheduledUses(
     );
   }
 
-  // 2. Reservas que ya empezaron → "En uso" (antes de liberar: así un equipo
-  // con un evento en curso nunca cae en la liberación)
-  const activated = await activateStartedUses(db, userId, now, dryRun);
+  // Id de esta pasada: el historial se escribe solo para lo que cambió ella
+  const runId = `${now.getTime()}-${Math.random().toString(36).slice(2, 10)}`;
 
-  // 3. Candidatos a liberar: "En Evento" sin un uso en curso ahora (lo fino lo decide pickReleasable)
+  // 2 y 3 en paralelo (no se pisan: activar es para equipos CON uso en curso;
+  // liberar, para los que NO tienen uso en curso):
+  //  2. Reservas que ya empezaron → "En uso"
+  //  3. Candidatos a liberar: "En Evento" sin uso en curso (lo fino lo decide pickReleasable)
   const notInUseNow = {
     'outOfService.reason': 'En Evento',
     scheduledUses: { $not: { $elemMatch: { startDate: { $lte: now }, endDate: { $gte: now } } } }
   };
-  const candidates = await equipmentCol
-    .find(notInUseNow)
-    .project({ _id: 1, name: 1, code: 1, lastUsedEndDate: 1, scheduledUses: 1 })
-    .toArray();
+  const [activated, candidates] = await Promise.all([
+    activateStartedUses(db, userId, now, dryRun, runId),
+    equipmentCol
+      .find(notInUseNow)
+      .project({ _id: 1, name: 1, code: 1, lastUsedEndDate: 1, scheduledUses: 1 })
+      .toArray()
+  ]);
   if (!candidates.length) return { activated, released: [] };
 
   // Si esto falla, se corta acá (no se libera nada)
@@ -149,21 +169,29 @@ export async function cleanupExpiredScheduledUses(
   // 4. Liberar en una sola operación. El filtro vuelve a exigir "sin uso en
   // curso": si justo se le asignó un evento en curso, no se toca.
   const ids = toRelease.map((e: any) => e._id);
+  // También exige que el último uso ya haya terminado (si en el medio se lo marcó
+  // para un evento de hoy, no se libera). Se marca con `cleanupRunId`.
   await equipmentCol.updateMany(
-    { _id: { $in: ids }, ...notInUseNow },
+    {
+      _id: { $in: ids },
+      ...notInUseNow,
+      // Fecha guardada como Date o como texto ISO (registros viejos)
+      $or: [{ lastUsedEndDate: { $lt: now } }, { lastUsedEndDate: { $type: 'string', $lt: now.toISOString() } }]
+    },
     {
       $set: {
         location: 'Deposito',
         lastUsedStartDate: null,
         lastUsedEndDate: null,
-        outOfService: { isOut: false, reason: null, details: null }
+        outOfService: { isOut: false, reason: null, details: null },
+        cleanupRunId: runId
       }
     }
   );
 
-  // Historial solo de los que efectivamente quedaron liberados (en lote)
+  // Historial solo de lo que liberó ESTA pasada (en lote; el historial es permanente)
   const done = await equipmentCol
-    .find({ _id: { $in: ids }, 'outOfService.isOut': false, location: 'Deposito' })
+    .find({ _id: { $in: ids }, cleanupRunId: runId })
     .project({ _id: 1, name: 1, code: 1 })
     .toArray();
   await createHistoryEntries(

@@ -15,7 +15,7 @@ import { checkBookingConflicts } from '@/lib/bookingGuard';
 import { eventKindOf, sanitizeKindUpdate } from '@/utils/eventKind';
 import { withoutCategoryItems } from '@/utils/categoryItemGuard';
 import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
-import { reservationStart } from '@/utils/reservationRange';
+import { reservationStart, arDateTimeLabel } from '@/utils/reservationRange';
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -389,10 +389,37 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         .map((e: any) => String(e._id))
         .filter((id: string) => ObjectId.isValid(id))
         .map((id: string) => new ObjectId(id));
+      // Solo los equipos que de verdad tienen la reserva de este evento
+      const withUse = new Set(
+        (
+          await db
+            .collection('equipment')
+            .find({ _id: { $in: ids }, 'scheduledUses.eventId': { $in: [eventId, String(eventId)] } }, { projection: { _id: 1 } })
+            .toArray()
+        ).map((e: any) => String(e._id))
+      );
       await db.collection('equipment').updateMany(
         { _id: { $in: ids } },
         { $set: { 'scheduledUses.$[u].startDate': newResStart, 'scheduledUses.$[u].endDate': newResEnd } },
         { arrayFilters: [{ 'u.eventId': { $in: [eventId, String(eventId)] } }] }
+      );
+      // Regla 1: nunca cambiar scheduledUses sin historial (en lote)
+      await createHistoryEntries(
+        db,
+        (oldEvent?.equipment || []).filter((eq: any) => withUse.has(String(eq._id))).map((eq: any) => ({
+          equipmentId: eq._id,
+          equipmentName: eq.name,
+          equipmentCode: eq.code,
+          action: 'uso_evento' as const,
+          userId: context.user?.sub,
+          eventId,
+          eventName: mergedForRange.type,
+          eventDate: newResStart,
+          eventEndDate: newResEnd,
+          eventLocation: mergedForRange.lugar,
+          eventClientName: mergedForRange.fullName,
+          details: `Reserva actualizada (llegada del equipamiento): ${arDateTimeLabel(newResStart)} a ${arDateTimeLabel(newResEnd)} - ${mergedForRange.type} - ${mergedForRange.lugar}`
+        }))
       );
     }
 

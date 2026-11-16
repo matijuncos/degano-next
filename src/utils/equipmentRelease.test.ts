@@ -144,6 +144,12 @@ describe('pickActivations: cuando una reserva EMPIEZA, el equipo pasa a "En uso"
     const otra = { ...alquiler, eventId: 'ev2', eventName: 'Boda', location: 'Casas Viejas', startDate: '2026-11-15T09:00:00.000Z' };
     expect(act([item({ scheduledUses: [alquiler, otra] })])[0].set.location).toBe('Casas Viejas');
   });
+  it('revisión #7: una reserva sin lugar NO deja la ubicación vacía (no se toca location)', () => {
+    const r = act([item({ location: 'Deposito', scheduledUses: [{ ...alquiler, location: undefined }] })]);
+    expect(r).toHaveLength(1);
+    expect('location' in r[0].set).toBe(false);
+    expect((r[0].set.outOfService as any).details).toBe('Alquiler');
+  });
   it('reserva con fechas rotas se ignora (no activa nada por error)', () => {
     expect(act([item({ scheduledUses: [{ ...alquiler, startDate: 'nada' }] })])).toEqual([]);
   });

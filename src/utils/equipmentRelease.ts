@@ -112,7 +112,8 @@ export function pickActivations<T extends ActivationCandidate>(candidates: T[], 
     out.push({
       _id: eq._id,
       set: {
-        location: current.location,
+        // Sin lugar en la reserva, la ubicación no se toca (no queda vacía)
+        ...(current.location ? { location: current.location } : {}),
         lastUsedStartDate: new Date(start),
         lastUsedEndDate: new Date(end),
         outOfService: {

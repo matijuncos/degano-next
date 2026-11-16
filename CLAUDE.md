@@ -41,6 +41,8 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 - Datos viejos: `scripts/migrate-arrival-reservations.ts --db=<base>` (simulación; `--apply`), no toca eventos con choques ni sin confirmar. Aplicado en prod el 15/11/2026 (26 eventos, 1679 reservas, sin borrar nada).
 - **Sugerencia de llegada (Nuevo evento):** staff y equipamiento se completan con el día del evento, 2 h antes del inicio (`/src/utils/arrivalSuggestion.ts`, testeada). Se actualiza sola si cambia el horario del evento mientras siga con el valor sugerido; si la cambian a mano no se toca; si no la tocan, queda ese valor.
 
+**Visualizador de disponibilidad** (Equipamiento → botón "Disponibilidad", `AvailabilityModal`): rango de días completos (00:00 → 23:59 AR, `rangeFromDays`) + categoría + buscador; usa la MISMA disponibilidad por fechas que al cargar un evento (`GET /api/equipment?eventStartDate&eventEndDate`) y la resume por equipo (`summarizeAvailability` en `/src/utils/availabilityView.ts`, testeada): total / disponibles / ocupados (con en qué eventos) / fuera de servicio. 1 request por rango; cambiar categoría o buscar = 0 requests. En celular, columnas compactas.
+
 **NUNCA:**
 - Determinar disponibilidad por `location` o por el estado `outOfService` de la DB cuando hay fechas de evento en la query
 - Permitir que un equipo se asigne a dos eventos con fechas solapadas
@@ -52,7 +54,7 @@ La disponibilidad de equipamiento se determina **exclusivamente por fechas**. El
 - **Reserva que EMPEZÓ → el equipo pasa a "En Evento"** con la ubicación, `lastUsed*` y detalle de ese evento (`pickActivations`), igual que `postEvent` con un evento de hoy. Así un evento cargado con anticipación muestra sus equipos "En Uso" mientras ocurre. Nunca pisa una baja manual (reparación, etc.); si ya figura con ese evento no se toca; si figura "En Evento" de otro evento viejo, se actualiza. Historial `cambio_estado`.
 - Se liberan (location "Deposito", outOfService limpio, historial `cambio_estado`) los "En Evento" que `pickReleasable` (`/src/utils/equipmentRelease.ts`, testeada) da por seguros: sin uso en curso, sin uso de hoy pendiente, último uso con fecha y ya terminado, y que no figuren en ningún evento real en curso o de hoy (`liveEventEquipmentIds`). Un evento de MAÑANA no lo deja "En Uso" hoy: hoy está disponible y la limpieza lo marca cuando su reserva empieza.
 - "¿Dónde está en uso?" (vista general) muestra la reserva en curso; si no hay, la de hoy que no empezó; si no, la próxima (`busyUsesForDisplay`, con cartel En curso / Empieza hoy / Próxima reserva). Un "En Uso" nunca queda sin explicar.
-- **JAMÁS mostrar disponible algo que está en uso. Ante la duda, NO se libera** (pedido explícito del usuario, nov 2026).
+- **Se muestra el DATO REAL: las reservas por fechas** (pedido del usuario, 16/11/2026: nada de "ante la duda, ocupado"). Solo si el dato no alcanza para decidir (equipo marcado "En uso" a mano sin evento, o fechas rotas) se respeta lo que está cargado en la base, que también es dato real. El visualizador de disponibilidad usa solo las reservas.
 - Se **espera** (`await`) y va en lote (un `updateMany` + historial con `createHistoryEntries`). Mira TODOS los "En Evento", no solo los de esa pasada: si algo se corta, la próxima lo completa. (Antes corría en segundo plano, se cortaba en eventos grandes y dejó 298 equipos trabados "En Evento".)
 - Esta limpieza NO se ejecuta en modo evento (cuando hay fechas en la query)
 
@@ -384,6 +386,14 @@ En el diseño, listar estos puntos de integración explícitamente para que el u
 - Pruebas en navegador (Playwright): si el usuario ya tiene un server en :3000, usar ESE (nunca levantar otro); si no hay, levantar uno y apagarlo al terminar.
 
 ## Verificación antes de dar algo por terminado
+
+**LEY: nada va a prod sin revisión (pedido del usuario, 16/11/2026).** Después de escribir código nuevo, ANTES de darlo por terminado o de decir que está listo para deploy:
+1. `npx tsc --noEmit`, `npx next lint --quiet`, `npm test` y diagnósticos del editor sin errores.
+2. **Revisión independiente** (subagente revisor, modelo más capaz) de TODO lo nuevo desde la última revisión: bugs con escenario concreto, reglas de este archivo (sobre todo equipos/disponibilidad, permisos, cuerpos parciales, performance).
+3. Arreglar lo Crítico/Importante con test que falle primero; lo menor se informa al usuario.
+4. `next build` si :3000 está libre (si no, pedirle al usuario que lo corra con su server apagado).
+5. Decir explícitamente qué se revisó, qué se arregló y qué quedó pendiente. Sin esto, NO se dice "listo para prod".
+
 
 **JAMÁS dejar un archivo con errores (CRÍTICO).** Ningún archivo tocado puede quedar con errores, ni en `tsc` ni en el editor (VSCode). Un cambio no está terminado mientras haya un error en rojo:
 - Después de editar, revisar los diagnósticos de cada archivo tocado (`getDiagnostics` del editor) además de `npx tsc --noEmit`. **Y correr `npx next lint --quiet`**: los errores de ESLint (reglas de hooks, comillas sin escapar en JSX…) NO los muestran ni `tsc` ni el editor, pero hacen fallar el build de Vercel (pasó el 15/11/2026). El editor usa un TypeScript más nuevo y marca cosas que `tsc` no (ej. imports de `.css` → declarados en `src/types/side-effect-imports.d.ts`).

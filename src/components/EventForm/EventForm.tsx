@@ -9,13 +9,9 @@ import { isValidMapsUrl, normalizeMapsUrl, MAPS_URL_ERROR } from '@/utils/mapsUt
 import { DatePickerInput, DateValue, TimePicker } from '@mantine/dates';
 import { combineDateAndTime, toTimeString } from '@/utils/dateUtils';
 import ArrivalLeadWarning from '@/components/ArrivalLeadWarning/ArrivalLeadWarning';
-import { nextArrival } from '@/utils/arrivalSuggestion';
+import { nextArrival, pickerDay } from '@/utils/arrivalSuggestion';
 
-// Fecha del selector (medianoche local) ↔ 'YYYY-MM-DD'
-const localDay = (d: unknown): string | null => {
-  if (!(d instanceof Date) || isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// 'YYYY-MM-DD' → Date (medianoche local) para los estados del formulario
 const dayToLocalDate = (day: string): Date => {
   const [y, m, d] = day.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -167,7 +163,7 @@ const EventForm = ({
       if (timeOnly) {
         const prevStart = prevStartRef.current;
         const staffNext = nextArrival(
-          { day: localDay(staffArrivalDateOnly), time: eventData.staffArrivalTime },
+          { day: pickerDay(staffArrivalDateOnly), time: eventData.staffArrivalTime },
           prevStart,
           combined
         );
@@ -178,7 +174,7 @@ const EventForm = ({
           setStaffArrivalDateOnly(d);
         }
         const equipmentNext = nextArrival(
-          { day: localDay(equipmentArrivalDateOnly), time: eventData.equipmentArrivalTime },
+          { day: pickerDay(equipmentArrivalDateOnly), time: eventData.equipmentArrivalTime },
           prevStart,
           combined
         );

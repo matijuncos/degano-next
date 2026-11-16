@@ -178,7 +178,9 @@ export const GET = withAuth(async (context: AuthContext, req: Request) => {
 
   // Precios: solo admin. A los demás no les llegan (regla de ofuscación).
   const canViewPrices = getPermissions(context.role).canViewEquipmentPrices;
-  const response = canViewPrices ? withBusy : withBusy.map(stripPriceFields);
+  // `cleanupRunId` es interno de la limpieza: no sale de la API
+  const clean = withBusy.map(({ cleanupRunId: _run, ...e }: any) => e);
+  const response = canViewPrices ? clean : clean.map(stripPriceFields);
 
   return NextResponse.json(response, {
     headers: {
@@ -224,10 +226,10 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
 
   // `scheduledUses` lo manejan solo los endpoints de eventos: si viniera en el
   // body (copia vieja de la caché) pisaría reservas reales.
-  // `busyWith` y `nearWith` los calcula el GET, tampoco se guardan.
+  // `busyWith` y `nearWith` los calcula el GET, tampoco se guardan; `cleanupRunId` es interno de la limpieza.
   // `history` (texto libre viejo) quedó como "Notas anteriores" de SOLO LECTURA:
   // las notas nuevas van a la bitácora del historial, que no se edita ni se borra.
-  const { _id, scheduledUses: _ignored, busyWith: _busy, nearWith: _near, history: _frozen, ...rest } = body;
+  const { _id, scheduledUses: _ignored, busyWith: _busy, nearWith: _near, cleanupRunId: _run, history: _frozen, ...rest } = body;
   const objectId = new ObjectId(String(_id));
 
   // Precios: quien no los puede ver tampoco los puede pisar (su formulario

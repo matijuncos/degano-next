@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SUGGESTED_ARRIVAL_HOURS_BEFORE, suggestedArrival, nextArrival } from './arrivalSuggestion';
+import { SUGGESTED_ARRIVAL_HOURS_BEFORE, suggestedArrival, nextArrival, pickerDay } from './arrivalSuggestion';
 
 describe('suggestedArrival: llegada sugerida = 2 h antes del inicio (hora argentina)', () => {
   it('evento 19:00 → mismo día 17:00', () => {
@@ -36,5 +36,18 @@ describe('nextArrival: cuándo completar / actualizar la sugerencia', () => {
   });
   it('solo día cargado (sin hora): se considera a mano, no se toca', () => {
     expect(nextArrival({ day: '2026-12-07', time: '' }, S1, S2)).toBeNull();
+  });
+});
+
+describe('pickerDay: fecha del selector (Date o texto de Mantine 8) → YYYY-MM-DD', () => {
+  it('acepta Date (medianoche local) y texto "YYYY-MM-DD"', () => {
+    expect(pickerDay(new Date(2026, 11, 5))).toBe('2026-12-05');
+    expect(pickerDay('2026-12-05')).toBe('2026-12-05');
+    expect(pickerDay(null)).toBeNull();
+    expect(pickerDay('basura')).toBeNull();
+  });
+  it('bug revisión: una fecha elegida a mano (texto) NO cuenta como vacía y no se pisa', () => {
+    const S = '2026-12-07T22:00:00.000Z';
+    expect(nextArrival({ day: pickerDay('2026-12-05'), time: '' }, null, S)).toBeNull();
   });
 });
