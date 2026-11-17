@@ -87,6 +87,7 @@ Tres roles: `admin`, `manager`, `viewer`. Definidos en `/src/types/auth.ts`.
 | Ver teléfonos shows | ✅ | ✅ | ❌ |
 | Ver precios/pagos | ✅ | ❌ | ❌ |
 | Crear equipamiento | ✅ | ✅ | ❌ |
+| Ver Disponibilidad de equipos por fechas (`canViewAvailability`) | ✅ | ✅ | ❌ |
 | Crear bandas/shows | ✅ | ❌ | ❌ |
 | Crear empleados/salones | ✅ | ❌ | ❌ |
 | Crear/editar/borrar pagos, adelantos, presupuestos | ✅ | ❌ | ❌ |

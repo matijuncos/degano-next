@@ -30,6 +30,7 @@ export interface Permission {
   canEditEquipment: boolean;
   canDeleteEquipment: boolean;
   canViewEquipmentHistory: boolean;
+  canViewAvailability: boolean; // Equipamiento → "Disponibilidad" por fechas
 
   // Información financiera (presupuestos, pagos, precios)
   canViewPayments: boolean;
@@ -99,6 +100,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
     canEditEquipment: true,
     canDeleteEquipment: true,
     canViewEquipmentHistory: true,
+    canViewAvailability: true,
 
     // Información financiera
     canViewPayments: true,
@@ -155,6 +157,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
     canEditEquipment: true,
     canDeleteEquipment: true,
     canViewEquipmentHistory: true,
+    canViewAvailability: true,
 
     // Información financiera - NO acceso a nada de dinero
     canViewPayments: false,      // ❌ NO ve presupuestos/pagos
@@ -211,6 +214,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
     canEditEquipment: false,        // ❌ NO edita
     canDeleteEquipment: false,      // ❌ NO elimina
     canViewEquipmentHistory: false, // ❌ NO ve historial
+    canViewAvailability: false, // ❌ NO ve Disponibilidad (pedido de Juan, 16/11/2026)
 
     // Información financiera
     canViewPayments: false,

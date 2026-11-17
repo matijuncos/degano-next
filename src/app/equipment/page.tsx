@@ -28,6 +28,8 @@ export default function EquipmentPage() {
   const { isMobile, isTablet } = useResponsive();
   const { can } = usePermissions();
   const canViewEquipment = can('canViewEquipment');
+  // Disponibilidad por fechas: solo admin y manager
+  const canViewAvailability = can('canViewAvailability');
 
   const handleEdit = (item: any) => { setEditItem(item); };
 
@@ -59,7 +61,8 @@ export default function EquipmentPage() {
           size='sm'
           style={{ flex: '1 1 260px' }}
         />
-        {/* Disponibilidad por fechas: qué hay libre en un rango, por categoría */}
+        {/* Disponibilidad por fechas: qué hay libre en un rango, por categoría (admin y manager) */}
+        {canViewAvailability && (
         <Button
           variant='light'
           color='teal'
@@ -70,6 +73,7 @@ export default function EquipmentPage() {
         >
           Disponibilidad
         </Button>
+        )}
         <Button
           variant='light'
           size='sm'
@@ -104,7 +108,7 @@ export default function EquipmentPage() {
         selectedCategory={selectedCategory as any}
       />
       <DeletedEquipmentModal opened={deletedOpen} onClose={() => setDeletedOpen(false)} />
-      <AvailabilityModal opened={availabilityOpen} onClose={() => setAvailabilityOpen(false)} />
+      {canViewAvailability && <AvailabilityModal opened={availabilityOpen} onClose={() => setAvailabilityOpen(false)} />}
     </>
   );
 
