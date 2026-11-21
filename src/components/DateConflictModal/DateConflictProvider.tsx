@@ -66,8 +66,12 @@ export function DateConflictProvider({ children }: { children: React.ReactNode }
     const r = await putEventUpdate(body);
     if (r.ok) return { ok: true, event: r.data.event, applied: r.data.applied };
     if (r.status === 409 && hasConflicts(r.data)) {
-      // El "Cargando..." del que guardó queda tapado por la ventana
+      // El "Cargando..." del que guardó queda tapado por la ventana. Y el cursor
+      // de carga (body.loading → pointer-events: none en TODO, globals.css) se
+      // saca: si no, la ventana no recibe clics mientras espera la elección.
+      // Mientras se aplica, el botón "Guardar cambios" muestra su propio loader.
       notifications.hide('notify-notification');
+      document.body.classList.remove('loading');
       setError(null);
       return new Promise<EventSaveResult>((resolve) =>
         setPending({ conflicts: r.data.conflicts, body, applied: r.data.applied || [], resolve })
