@@ -115,17 +115,22 @@ export async function loadConflictReport(
  * quita; recalcula equipmentPrice, mueve/saca la reserva, historial y deja UN
  * aviso en ese evento. Revalida contra la base antes de escribir.
  */
-export async function changeUnitsInOtherEvent(
-  db: Db,
-  args: {
-    otherEventId: string;
-    ops: OtherEventOp[];
-    fromEventId: string;
-    fromEventName: string;
-    userSub?: string;
-    byName: string;
-  }
-): Promise<(NoticeChange & { kind: OtherEventOp['kind'] })[]> {
+type OtherEventChangeArgs = {
+  otherEventId: string;
+  ops: OtherEventOp[];
+  fromEventId: string;
+  fromEventName: string;
+  userSub?: string;
+  byName: string;
+};
+export type OtherEventChangePlan = Awaited<ReturnType<typeof prepareOtherEventChange>>;
+
+/**
+ * Paso 1 (sin escribir): lee y valida el cambio en el otro evento. Se hace
+ * para TODOS los eventos antes de escribir en ninguno: si uno ya no cierra
+ * (ConflictChangedError), no se toca nada.
+ */
+export async function prepareOtherEventChange(db: Db, args: OtherEventChangeArgs) {
   const { otherEventId, ops } = args;
   if (!ops.length || !ObjectId.isValid(otherEventId)) throw new ConflictChangedError();
   const replaces = ops.filter((o) => o.kind === 'replace' && o.toId);
@@ -157,6 +162,16 @@ export async function changeUnitsInOtherEvent(
       throw new ConflictChangedError();
     }
   }
+  return { args, other, unitById, info, replaces };
+}
+
+/** Paso 2: escribe el cambio ya validado (ver prepareOtherEventChange). */
+export async function applyOtherEventChange(
+  db: Db,
+  plan: OtherEventChangePlan
+): Promise<(NoticeChange & { kind: OtherEventOp['kind'] })[]> {
+  const { args, other, unitById, info, replaces } = plan;
+  const { otherEventId, ops } = args;
 
   // Misma transformación que en el evento actual (lógica pura testeada)
   const asLocal: ConflictResolution[] = ops.map((o) =>

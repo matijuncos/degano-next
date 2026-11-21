@@ -157,12 +157,13 @@ export default function BulkPriceModal({ opened, onClose }: { opened: boolean; o
   };
 
   return (
-    <Modal opened={opened} onClose={close} title={<Text fw={700}>Aumentar precios</Text>} size='90%' fullScreen={isMobile}>
+    // Paso 1 es un formulario corto: modal angosto. Paso 2 (tabla): más ancho.
+    <Modal opened={opened} onClose={close} title={<Text fw={700}>Aumentar precios</Text>} size={step === 2 ? 'xl' : 'lg'} fullScreen={isMobile}>
       {confirmModal}
       {!equipment || !categories ? (
         <Center h={200}><Loader /></Center>
       ) : step === 1 ? (
-        <Stack gap='md' maw={640}>
+        <Stack gap='md'>
           {last && !last.undoneAt && (
             <Alert color='gray' variant='light'>
               <Group justify='space-between' wrap='wrap' gap='xs'>
@@ -178,7 +179,8 @@ export default function BulkPriceModal({ opened, onClose }: { opened: boolean; o
           <MultiSelect
             label='Equipos'
             description='Elegí categorías enteras (incluye sus subcategorías). Vacío = todo el stock.'
-            placeholder='Todo el stock'
+            // Mantine deja el placeholder al lado de lo elegido: solo con el campo vacío
+            placeholder={categoryIds.length ? undefined : 'Todo el stock'}
             data={categoryOptions}
             value={categoryIds}
             onChange={setCategoryIds}

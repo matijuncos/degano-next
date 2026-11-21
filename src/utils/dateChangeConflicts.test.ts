@@ -10,6 +10,8 @@ import {
   otherEventOps,
   changeText,
   appliedSummary,
+  isChoiceValid,
+  unresolvedAfter,
   validateResolutions,
   applyLocalResolutions,
   buildChangeNotice,
@@ -351,5 +353,40 @@ describe('appliedSummary', () => {
       { otherEventId: 'cumple', otherEventName: 'Cumpleaños de 50', fromName: 'Tripode', fromCode: 'TP-01', toName: '', toCode: '', kind: 'outsource' },
       { otherEventId: 'boda', otherEventName: '', fromName: 'PA', fromCode: 'PA-01', toName: '', toCode: '', kind: 'remove' }
     ])).toBe('En Cumpleaños de 50: CNSL-03 → CNSL-07, TP-01 pasa a tercerizado. En el otro evento: PA-01 se quitó del evento');
+  });
+});
+
+describe('revisión 2', () => {
+  it('validateResolutions rechaza dos resoluciones para el mismo equipo', () => {
+    const errs = validateResolutions([conflict()], [
+      { equipmentId: 'c03', action: 'replaceInOther', otherEventId: 'cumple', toId: 'q16' },
+      { equipmentId: 'c03', action: 'removeInOther', otherEventId: 'cumple' }
+    ]);
+    expect(errs).toContainEqual({ equipmentId: 'c03', code: 'duplicate_resolution' });
+  });
+
+  it('isChoiceValid invalida una opción del otro evento si ahora choca con OTRO evento', () => {
+    const c = conflict();
+    expect(isChoiceValid(c, { action: 'removeInOther', otherEventId: 'cumple' })).toBe(true);
+    expect(isChoiceValid(c, { action: 'removeInOther', otherEventId: 'boda' })).toBe(false);
+    expect(isChoiceValid(c, { action: 'replaceInOther', otherEventId: 'boda', toId: 'q16' })).toBe(false);
+    expect(isChoiceValid(c, { action: 'replaceInOther', otherEventId: 'cumple', toId: 'q16' })).toBe(true);
+    expect(isChoiceValid(c, { action: 'replaceHere', toId: 'c07' })).toBe(true);
+    expect(isChoiceValid(c, { action: 'replaceHere', toId: 'zz' })).toBe(false);
+    expect(isChoiceValid(c, { action: 'remove' })).toBe(true);
+  });
+
+  it('unresolvedAfter: lo que choca con el evento que se resuelve no cuenta; otro choque nuevo sí', () => {
+    const b = conflict().busyWith[0];
+    const resolved = conflict();
+    const nuevo = conflict({ equipmentId: 'tp01', code: 'TP-01', busyWith: [{ ...b, eventId: 'boda' }] });
+    const res = [{ equipmentId: 'c03', action: 'removeInOther' as const, otherEventId: 'cumple' }];
+    expect(unresolvedAfter([resolved], res)).toEqual([]);
+    expect(unresolvedAfter([resolved, nuevo], res).map((c) => c.equipmentId)).toEqual(['tp01']);
+    // la resolución apunta a otro evento distinto del que choca → sigue sin resolver
+    expect(unresolvedAfter([resolved], [{ equipmentId: 'c03', action: 'removeInOther', otherEventId: 'boda' }])).toHaveLength(1);
+    // reserva sobrante liberada → resuelto
+    const stale = conflict({ busyWith: [{ ...b, stale: true }] });
+    expect(unresolvedAfter([stale], [{ equipmentId: 'c03', action: 'releaseOrphan', orphanEventId: 'cumple' }])).toEqual([]);
   });
 });

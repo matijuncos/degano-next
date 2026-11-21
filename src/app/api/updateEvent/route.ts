@@ -26,13 +26,16 @@ import {
   resolutionErrorMessage,
   reservationUpdateHistory,
   otherEventOps,
+  unresolvedAfter,
   NoticeChange,
   ConflictResolution,
   DateConflict
 } from '@/utils/dateChangeConflicts';
 import {
   loadConflictReport,
-  changeUnitsInOtherEvent,
+  prepareOtherEventChange,
+  applyOtherEventChange,
+  type OtherEventChangePlan,
   releaseStaleUse,
   ConflictChangedError
 } from '@/lib/dateConflictsServer';
@@ -189,32 +192,11 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       if (resolutions.length) {
         const fromEventName = mergedForRange.type || mergedForRange.name || 'otro evento';
         const byName = context.user?.name || context.user?.email || '';
-        try {
-          // Cambios en OTROS eventos (reemplazar / tercerizar / quitar), UN aviso por evento
-          for (const [otherEventId, ops] of Array.from(otherEventOps(resolutions).entries())) {
-            const changes = await changeUnitsInOtherEvent(db, {
-              otherEventId,
-              ops,
-              fromEventId: String(eventId),
-              fromEventName,
-              userSub: context.user?.sub,
-              byName
-            });
-            const otherEventName =
-              report.find((c) => c.busyWith[0]?.eventId === otherEventId)?.busyWith[0]?.eventName || '';
-            applied.push(...changes.map((c) => ({ otherEventId, otherEventName, ...c })));
-          }
-          for (const r of resolutions) {
-            if (r.action === 'releaseOrphan') {
-              await releaseStaleUse(db, { equipmentId: r.equipmentId, orphanEventId: r.orphanEventId, userSub: context.user?.sub });
-            }
-          }
-        } catch (err) {
-          if (!(err instanceof ConflictChangedError)) throw err;
-          const res = await rangeConflictResponse(baseIds, 'Los equipos cambiaron mientras elegías. Revisá de nuevo.');
-          if (res) return res;
-        }
+        const changedResponse = async () =>
+          (await rangeConflictResponse(baseIds, 'Los equipos cambiaron mientras elegías. Revisá de nuevo.')) ||
+          NextResponse.json({ error: 'Los equipos cambiaron mientras elegías. Revisá de nuevo.', conflicts: [] }, { status: 409 });
 
+        // Cómo queda ESTE evento (unidades nuevas leídas de la base, con precio)
         const toIds = resolutions.flatMap((r) => (r.action === 'replaceHere' ? [String(r.toId)] : []));
         const units = toIds.length
           ? await db
@@ -231,6 +213,56 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
           resolutions,
           new Map(units.map((u: any) => [String(u._id), u]))
         );
+
+        // Todo se verifica ANTES de escribir en otro evento: (1) que con lo elegido
+        // este evento ya no choque con nada más, (2) que cada cambio en otro evento
+        // siga valiendo. Si algo no cierra → 409 y no se toca ningún evento.
+        const pre = await loadConflictReport(db, {
+          eventId: String(eventId),
+          start: newResStart,
+          end: newResEnd,
+          eventEquipmentIds: local.equipment.map((e: any) => String(e._id))
+        });
+        if (unresolvedAfter(pre, resolutions).length) return changedResponse();
+        let plans: OtherEventChangePlan[];
+        try {
+          plans = await Promise.all(
+            Array.from(otherEventOps(resolutions).entries()).map(([otherEventId, ops]) =>
+              prepareOtherEventChange(db, {
+                otherEventId,
+                ops,
+                fromEventId: String(eventId),
+                fromEventName,
+                userSub: context.user?.sub,
+                byName
+              })
+            )
+          );
+        } catch (err) {
+          if (!(err instanceof ConflictChangedError)) throw err;
+          return changedResponse();
+        }
+
+        // Recién ahora se escribe: otros eventos (UN aviso por evento) y reservas sobrantes
+        try {
+          for (const plan of plans) {
+            const otherEventId = plan.args.otherEventId;
+            const changes = await applyOtherEventChange(db, plan);
+            const otherEventName =
+              report.find((c) => c.busyWith[0]?.eventId === otherEventId)?.busyWith[0]?.eventName || '';
+            applied.push(...changes.map((c) => ({ otherEventId, otherEventName, ...c })));
+          }
+          for (const r of resolutions) {
+            if (r.action === 'releaseOrphan') {
+              await releaseStaleUse(db, { equipmentId: r.equipmentId, orphanEventId: r.orphanEventId, userSub: context.user?.sub });
+            }
+          }
+        } catch (err) {
+          if (!(err instanceof ConflictChangedError)) throw err;
+          const res = await rangeConflictResponse(baseIds, 'Los equipos cambiaron mientras elegías. Revisá de nuevo.');
+          if (res) return res;
+        }
+
         // El cuerpo queda completo para que corra el diff normal de equipos
         // (reservas + historial de agregados/quitados), aunque haya llegado parcial
         for (const k of ['date', 'endDate', 'type', 'name', 'lugar', 'fullName']) {

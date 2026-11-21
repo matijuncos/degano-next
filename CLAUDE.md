@@ -9,7 +9,7 @@ App de gestión de eventos (catering, shows, bodas, fiestas) para la empresa Deg
 - **Base de datos:** MongoDB (colección principal: `degano-app`)
 - **Auth:** Auth0 (`@auth0/nextjs-auth0`)
 - **State:** SWR para data fetching, React Context (`DeganoContext`) para estado global
-- **Storage:** AWS S3 (equipamiento, bandas, presupuestos), Google Drive (archivos de eventos)
+- **Storage:** AWS S3 (equipamiento, bandas, presupuestos y archivos de eventos, incluidos los de Música). Google Drive quedó solo como legado
 - **PDF:** html2canvas + jsPDF, @react-pdf/renderer
 - **Path alias:** `@/*` → `/src/*`
 
@@ -276,7 +276,7 @@ src/
 │   │   ├── employees/      # CRUD empleados
 │   │   ├── salons/         # CRUD salones (?withUsage=1 para el panel; propagate/merge, ver regla 9)
 │   │   ├── uploadToS3/     # Upload a AWS S3
-│   │   ├── uploadToGoogleDrive/  # Upload a Google Drive
+│   │   ├── uploadToGoogleDrive/  # Legado (los archivos de eventos ahora van a S3)
 │   │   ├── me/             # Identidad del usuario logueado (vínculo con STAFF)
 │   │   ├── appCalendars/   # CRUD calendarios extras (con visibilidad)
 │   │   ├── calendarData/   # Calendarios + eventos visibles en una request
@@ -350,8 +350,8 @@ src/
 - **Componentes:** Funcionales con hooks. Mantine para toda la UI
 - **Tema claro del calendario:** la app fuerza `forceColorScheme='dark'`, pero `/calendar` tiene su propio tema claro. Todo componente nuevo ahí (dropdowns, pills, botones deshabilitados, botones `subtle`) necesita estilos explícitos para el tema claro; si no, sale oscuro o apagado.
 - **Equipamiento en eventos:** Siempre actualizar `scheduledUses` + historial al agregar/quitar/modificar
-- **Archivos:** Equipamiento y bandas → S3. Archivos de eventos → Google Drive
-- **S3 Buckets:** `degano-equipment-uploads`, `degano-bands`, `degano-budgets`
+- **Archivos:** todo a S3. Archivos de eventos y de Música → `degano-events-files` (carpeta `<folderId>`, Música en `<folderId>/musica`), subidos directo del navegador con URL firmada (`/api/uploadToS3`, `bucket: 'events'`)
+- **S3 Buckets:** `degano-equipment-uploads`, `degano-bands`, `degano-budgets`, `degano-events-files`
 
 ## Patrones Importantes
 

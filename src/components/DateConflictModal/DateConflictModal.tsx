@@ -7,6 +7,8 @@ import { arDateTimeLabel } from '@/utils/reservationRange';
 import {
   defaultResolutions,
   hasDuplicateTargets,
+  isChoiceValid,
+  ConflictChoice,
   CandidateUnit,
   ConflictResolution,
   DateConflict
@@ -16,26 +18,26 @@ import {
 const ACTUAL = <strong>evento actual</strong>;
 
 type Action = ConflictResolution['action'];
-type Choice = { action: Action; toId?: string };
+type Choice = ConflictChoice;
+
+// Las opciones sobre el OTRO evento recuerdan CUÁL evento se eligió
+const otherEventIdOf = (c: DateConflict, action: Action) =>
+  action.endsWith('InOther') && c.busyWith.length === 1 ? c.busyWith[0].eventId : undefined;
 
 const candidateLabel = (u: CandidateUnit) =>
   `${u.code || u.name}${u.isEquivalent ? ` · ${u.name} (equivalente)` : ''}${u.sameDay ? ' · se usa ese día' : ''}`;
 
 const choiceOf = (r: ConflictResolution | null): Choice | null =>
-  r ? { action: r.action, toId: 'toId' in r ? r.toId : undefined } : null;
+  r
+    ? {
+        action: r.action,
+        toId: 'toId' in r ? r.toId : undefined,
+        otherEventId: 'otherEventId' in r ? r.otherEventId : undefined
+      }
+    : null;
 
-/** ¿Lo elegido sigue valiendo con los choques (re)calculados? */
-function stillValid(c: DateConflict, ch: Choice | undefined): boolean {
-  if (!ch) return false;
-  const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
-  if (ch.action === 'replaceHere') return c.hereCandidates.some((u) => u._id === ch.toId);
-  if (ch.action === 'replaceInOther') return c.otherCandidates.some((u) => u._id === ch.toId);
-  if (ch.action === 'releaseOrphan') return !!only?.stale;
-  if (ch.action === 'outsourceInOther' || ch.action === 'removeInOther') {
-    return !!only && !only.stale && !only.otherEventEnded;
-  }
-  return true;
-}
+// Lo elegido vale solo para el evento con el que se eligió (ver isChoiceValid)
+const stillValid = isChoiceValid;
 
 function toResolution(c: DateConflict, ch: Choice): ConflictResolution | null {
   const only = c.busyWith[0];
@@ -43,12 +45,14 @@ function toResolution(c: DateConflict, ch: Choice): ConflictResolution | null {
     case 'replaceHere':
       return ch.toId ? { equipmentId: c.equipmentId, action: 'replaceHere', toId: ch.toId } : null;
     case 'replaceInOther':
-      return ch.toId ? { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: only.eventId, toId: ch.toId } : null;
+      return ch.toId && ch.otherEventId
+        ? { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: ch.otherEventId, toId: ch.toId }
+        : null;
     case 'releaseOrphan':
       return { equipmentId: c.equipmentId, action: 'releaseOrphan', orphanEventId: only.eventId };
     case 'outsourceInOther':
     case 'removeInOther':
-      return { equipmentId: c.equipmentId, action: ch.action, otherEventId: only.eventId };
+      return ch.otherEventId ? { equipmentId: c.equipmentId, action: ch.action, otherEventId: ch.otherEventId } : null;
     default:
       return { equipmentId: c.equipmentId, action: ch.action };
   }
@@ -126,7 +130,7 @@ export default function DateConflictModal({
           label: candidateLabel(u),
           disabled: takenBy.has(u._id) && takenBy.get(u._id) !== c.equipmentId
         }))}
-        onChange={(v) => v && setChoice(c.equipmentId, { action, toId: v })}
+        onChange={(v) => v && setChoice(c.equipmentId, { action, toId: v, otherEventId: otherEventIdOf(c, action) })}
         comboboxProps={{ withinPortal: true }}
         allowDeselect={false}
       />
@@ -232,7 +236,11 @@ export default function DateConflictModal({
                   const action = v as Action;
                   const list = action === 'replaceHere' ? c.hereCandidates : action === 'replaceInOther' ? c.otherCandidates : [];
                   const first = list.find((u) => !takenBy.has(u._id) || takenBy.get(u._id) === c.equipmentId);
-                  setChoice(c.equipmentId, { action, toId: list.length ? first?._id : undefined });
+                  setChoice(c.equipmentId, {
+                    action,
+                    toId: list.length ? first?._id : undefined,
+                    otherEventId: otherEventIdOf(c, action)
+                  });
                 }}
               >
                 <Stack gap={6}>

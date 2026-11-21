@@ -100,7 +100,7 @@ export interface EquipmentChangeNotice {
 
 export type ResolutionError = {
   equipmentId: string;
-  code: 'not_conflicting' | 'duplicate_to' | 'toId_busy' | 'other_not_allowed' | 'not_stale' | 'missing';
+  code: 'not_conflicting' | 'duplicate_to' | 'duplicate_resolution' | 'toId_busy' | 'other_not_allowed' | 'not_stale' | 'missing';
 };
 
 const MAX_CANDIDATES = 8;
@@ -256,6 +256,42 @@ export function reservationUpdateHistory(
   }));
 }
 
+/** Lo elegido en la ventana para un equipo (antes de armar la resolución). */
+export type ConflictChoice = { action: ConflictResolution['action']; toId?: string; otherEventId?: string };
+
+/**
+ * ¿Lo elegido sigue valiendo con los choques (re)calculados? Una opción sobre el
+ * OTRO evento vale solo para ESE evento: si ahora choca con otro, se descarta
+ * (nunca se aplica en silencio a un evento que el usuario no eligió).
+ */
+export function isChoiceValid(c: DateConflict, ch: ConflictChoice | undefined): boolean {
+  if (!ch) return false;
+  const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
+  if (isOtherAction(ch.action)) {
+    if (!only || only.stale || only.otherEventEnded || only.eventId !== ch.otherEventId) return false;
+    return ch.action !== 'replaceInOther' || c.otherCandidates.some((u) => u._id === ch.toId);
+  }
+  if (ch.action === 'replaceHere') return c.hereCandidates.some((u) => u._id === ch.toId);
+  if (ch.action === 'releaseOrphan') return !!only?.stale;
+  return true;
+}
+
+/**
+ * Choques que SIGUEN después de aplicar lo elegido: no cuenta una reserva del
+ * evento al que se le cambia/terceriza/quita la unidad, ni una sobrante que se
+ * libera. Se chequea ANTES de tocar otros eventos (si algo sigue chocando, no
+ * se escribe nada).
+ */
+export function unresolvedAfter(conflicts: DateConflict[], resolutions: ConflictResolution[]): DateConflict[] {
+  const byId = new Map(resolutions.map((r) => [String(r.equipmentId), r]));
+  return conflicts.filter((c) => {
+    const r = byId.get(c.equipmentId);
+    const releasedEvent =
+      r && isOtherAction(r.action) ? String((r as any).otherEventId) : r?.action === 'releaseOrphan' ? String(r.orphanEventId) : null;
+    return c.busyWith.some((b) => b.eventId !== releasedEvent);
+  });
+}
+
 /** Valida lo elegido contra los choques recalculados en el servidor. [] = todo bien. */
 export function validateResolutions(report: DateConflict[], resolutions: ConflictResolution[]): ResolutionError[] {
   const byId = new Map(report.map((c) => [c.equipmentId, c]));
@@ -267,6 +303,11 @@ export function validateResolutions(report: DateConflict[], resolutions: Conflic
     const c = byId.get(String(r.equipmentId));
     if (!c) {
       errors.push({ equipmentId: r.equipmentId, code: 'not_conflicting' });
+      continue;
+    }
+    if (resolved.has(c.equipmentId)) {
+      // Dos resoluciones para el mismo equipo: se aplicarían las dos (ej. reserva fantasma)
+      errors.push({ equipmentId: c.equipmentId, code: 'duplicate_resolution' });
       continue;
     }
     resolved.add(c.equipmentId);
