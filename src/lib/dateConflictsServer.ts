@@ -7,9 +7,12 @@ import { releaseEquipmentFromEvent } from '@/lib/equipmentRelease';
 import {
   buildConflictReport,
   buildChangeNotice,
-  replacementRow,
+  applyLocalResolutions,
+  ConflictResolution,
   DateConflict,
-  OtherEventInfo
+  NoticeChange,
+  OtherEventInfo,
+  OtherEventOp
 } from '@/utils/dateChangeConflicts';
 
 /**
@@ -107,40 +110,46 @@ export async function loadConflictReport(
 }
 
 /**
- * Cambia unidades en OTRO evento (para que este conserve las suyas): renglón
- * con el precio real de la unidad nueva + equipmentPrice recalculado, la
- * reserva pasa de la vieja a la nueva, historial y UN aviso en ese evento.
- * Revalida contra la base antes de escribir.
+ * Cambia el OTRO evento para que el actual conserve sus unidades: reemplaza la
+ * unidad (precio real de la nueva), la terceriza (+1 en extraEquipment) o la
+ * quita; recalcula equipmentPrice, mueve/saca la reserva, historial y deja UN
+ * aviso en ese evento. Revalida contra la base antes de escribir.
  */
-export async function swapUnitsInOtherEvent(
+export async function changeUnitsInOtherEvent(
   db: Db,
   args: {
     otherEventId: string;
-    swaps: { fromId: string; toId: string }[];
+    ops: OtherEventOp[];
     fromEventId: string;
     fromEventName: string;
     userSub?: string;
     byName: string;
   }
-): Promise<{ fromCode: string; toCode: string }[]> {
-  const { otherEventId, swaps } = args;
-  if (!swaps.length || !ObjectId.isValid(otherEventId)) throw new ConflictChangedError();
+): Promise<(NoticeChange & { kind: OtherEventOp['kind'] })[]> {
+  const { otherEventId, ops } = args;
+  if (!ops.length || !ObjectId.isValid(otherEventId)) throw new ConflictChangedError();
+  const replaces = ops.filter((o) => o.kind === 'replace' && o.toId);
   const [other, units] = await Promise.all([
     db.collection('events').findOne({ _id: new ObjectId(otherEventId) }),
     db
       .collection('equipment')
-      .find({ _id: { $in: toObjectIds(swaps.flatMap((s) => [s.fromId, s.toId])) } }, { projection: { history: 0 } })
+      .find(
+        { _id: { $in: toObjectIds(ops.flatMap((o) => [o.fromId, ...(o.toId ? [o.toId] : [])])) } },
+        { projection: { history: 0 } }
+      )
       .toArray()
   ]);
   if (!other) throw new ConflictChangedError();
   const unitById = new Map(units.map((u: any) => [String(u._id), u]));
   const info = otherEventInfo(other);
   const inOther = new Set(info.equipmentIds);
-  for (const s of swaps) {
-    const to = unitById.get(String(s.toId));
+  for (const o of ops) {
+    if (!inOther.has(String(o.fromId))) throw new ConflictChangedError();
+    if (o.kind !== 'replace') continue;
+    const to = unitById.get(String(o.toId));
     if (
-      !inOther.has(String(s.fromId)) ||
-      inOther.has(String(s.toId)) ||
+      !o.toId ||
+      inOther.has(String(o.toId)) ||
       !to ||
       isEquipmentUnavailable(to.outOfService) ||
       conflictingUses(info.start, info.end, to.scheduledUses, { ignoreEventId: otherEventId }).length > 0
@@ -149,52 +158,61 @@ export async function swapUnitsInOtherEvent(
     }
   }
 
-  const toByFrom = new Map(swaps.map((s) => [String(s.fromId), String(s.toId)]));
-  const equipment = (other.equipment || []).map((row: any) => {
-    const toId = toByFrom.get(String(row._id));
-    return toId ? replacementRow(row, unitById.get(toId)) : row;
-  });
-  const changes = swaps.map((s) => {
-    const from: any = unitById.get(String(s.fromId)) || {};
-    const to: any = unitById.get(String(s.toId)) || {};
-    return { fromName: from.name || '', fromCode: from.code || '', toName: to.name || '', toCode: to.code || '' };
+  // Misma transformación que en el evento actual (lógica pura testeada)
+  const asLocal: ConflictResolution[] = ops.map((o) =>
+    o.kind === 'replace'
+      ? { equipmentId: o.fromId, action: 'replaceHere', toId: String(o.toId) }
+      : { equipmentId: o.fromId, action: o.kind }
+  );
+  const { equipment, extraEquipment } = applyLocalResolutions(
+    other.equipment || [],
+    other.extraEquipment || [],
+    asLocal,
+    unitById
+  );
+  const changes = ops.map((o) => {
+    const from: any = unitById.get(String(o.fromId)) || {};
+    const to: any = o.toId ? unitById.get(String(o.toId)) || {} : {};
+    return { fromName: from.name || '', fromCode: from.code || '', toName: to.name || '', toCode: to.code || '', kind: o.kind };
   });
   const now = new Date();
   // ORDEN (si la request se corta a la mitad): 1) reserva en la unidad nueva,
   // 2) el evento, 3) se libera la vieja. Una reserva de más se ve y se limpia
   // ("reserva sobrante"); una que FALTA dejaría la unidad libre para otro evento.
-  const sample: any = swaps
-    .map((s) => unitById.get(String(s.fromId)))
-    .flatMap((u: any) => u?.scheduledUses || [])
-    .find((u: any) => String(u?.eventId) === String(otherEventId));
-  const scheduledUse = {
-    eventId: String(otherEventId),
-    eventName: sample?.eventName ?? (other.name || other.type),
-    eventType: sample?.eventType ?? other.type,
-    startDate: info.start,
-    endDate: info.end,
-    location: sample?.location ?? other.lugar
-  };
-  const toIds = toObjectIds(swaps.map((s) => s.toId));
-  await db.collection('equipment').updateMany({ _id: { $in: toIds } }, { $push: { scheduledUses: scheduledUse } as any });
-  // Si ese evento está en curso, la unidad nueva figura "En Evento" (igual que updateEvent)
-  if (info.start.getTime() <= now.getTime() && now.getTime() <= info.end.getTime()) {
-    await db.collection('equipment').updateMany(
-      { _id: { $in: toIds } },
-      {
-        $set: {
-          lastUsedStartDate: info.start,
-          lastUsedEndDate: info.end,
-          location: other.lugar,
-          outOfService: { isOut: true, reason: 'En Evento', details: `${other.type} - ${other.lugar}` }
+  if (replaces.length) {
+    const sample: any = ops
+      .map((o) => unitById.get(String(o.fromId)))
+      .flatMap((u: any) => u?.scheduledUses || [])
+      .find((u: any) => String(u?.eventId) === String(otherEventId));
+    const scheduledUse = {
+      eventId: String(otherEventId),
+      eventName: sample?.eventName ?? (other.name || other.type),
+      eventType: sample?.eventType ?? other.type,
+      startDate: info.start,
+      endDate: info.end,
+      location: sample?.location ?? other.lugar
+    };
+    const toIds = toObjectIds(replaces.map((o) => String(o.toId)));
+    await db.collection('equipment').updateMany({ _id: { $in: toIds } }, { $push: { scheduledUses: scheduledUse } as any });
+    // Si ese evento está en curso, la unidad nueva figura "En Evento" (igual que updateEvent)
+    if (info.start.getTime() <= now.getTime() && now.getTime() <= info.end.getTime()) {
+      await db.collection('equipment').updateMany(
+        { _id: { $in: toIds } },
+        {
+          $set: {
+            lastUsedStartDate: info.start,
+            lastUsedEndDate: info.end,
+            location: other.lugar,
+            outOfService: { isOut: true, reason: 'En Evento', details: `${other.type} - ${other.lugar}` }
+          }
         }
-      }
-    );
+      );
+    }
   }
   await db.collection('events').updateOne(
     { _id: other._id },
     {
-      $set: { equipment, equipmentPrice: sumRentalPrice(equipment), updatedAt: now },
+      $set: { equipment, extraEquipment, equipmentPrice: sumRentalPrice(equipment), updatedAt: now },
       $push: {
         equipmentChangeNotices: buildChangeNotice({
           byName: args.byName,
@@ -207,37 +225,46 @@ export async function swapUnitsInOtherEvent(
     }
   );
 
-  const released = await releaseEquipmentFromEvent(db, swaps.map((s) => s.fromId), String(otherEventId));
+  const released = await releaseEquipmentFromEvent(db, ops.map((o) => o.fromId), String(otherEventId));
   const decisionById = new Map(released.map((r) => [String(r._id), r.decision]));
 
   const label = `${other.type || ''} - ${other.lugar || ''}`;
+  const why = `al cambiar las fechas de ${args.fromEventName}`;
   await createHistoryEntries(db, [
-    ...swaps.map((s, i) => ({
-      equipmentId: String(s.toId),
-      equipmentName: changes[i].toName,
-      equipmentCode: changes[i].toCode,
-      action: 'uso_evento' as const,
-      userId: args.userSub,
-      eventId: String(otherEventId),
-      eventName: other.type,
-      eventDate: info.start,
-      eventEndDate: info.end,
-      eventLocation: other.lugar,
-      eventClientName: other.fullName,
-      details: `Reemplaza a ${changes[i].fromCode} en ${label} (al cambiar las fechas de ${args.fromEventName})`
-    })),
-    ...swaps.map((s, i) => ({
-      equipmentId: String(s.fromId),
-      equipmentName: changes[i].fromName,
-      equipmentCode: changes[i].fromCode,
+    ...changes
+      .map((c, i) => ({ c, o: ops[i] }))
+      .filter(({ o }) => o.kind === 'replace')
+      .map(({ c, o }) => ({
+        equipmentId: String(o.toId),
+        equipmentName: c.toName,
+        equipmentCode: c.toCode,
+        action: 'uso_evento' as const,
+        userId: args.userSub,
+        eventId: String(otherEventId),
+        eventName: other.type,
+        eventDate: info.start,
+        eventEndDate: info.end,
+        eventLocation: other.lugar,
+        eventClientName: other.fullName,
+        details: `Reemplaza a ${c.fromCode} en ${label} (${why})`
+      })),
+    ...changes.map((c, i) => ({
+      equipmentId: String(ops[i].fromId),
+      equipmentName: c.fromName,
+      equipmentCode: c.fromCode,
       action: 'cambio_estado' as const,
       userId: args.userSub,
       fromValue: 'En Evento',
-      toValue: decisionById.get(String(s.fromId)) === 'free' ? 'Disponible' : 'Sin cambios',
-      details: `Reemplazado por ${changes[i].toCode} en ${label} (al cambiar las fechas de ${args.fromEventName})`
+      toValue: decisionById.get(String(ops[i].fromId)) === 'free' ? 'Disponible' : 'Sin cambios',
+      details:
+        c.kind === 'replace'
+          ? `Reemplazado por ${c.toCode} en ${label} (${why})`
+          : c.kind === 'outsource'
+          ? `Quitado de ${label}: se terceriza (${why})`
+          : `Quitado de ${label} (${why})`
     }))
   ]);
-  return changes.map((c) => ({ fromCode: c.fromCode, toCode: c.toCode }));
+  return changes;
 }
 
 /**

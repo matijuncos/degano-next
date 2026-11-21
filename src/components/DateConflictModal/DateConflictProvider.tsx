@@ -2,7 +2,9 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { IconCheck } from '@tabler/icons-react';
-import type { ConflictResolution, DateConflict } from '@/utils/dateChangeConflicts';
+import { appliedSummary, type AppliedChange, type ConflictResolution, type DateConflict } from '@/utils/dateChangeConflicts';
+
+export type { AppliedChange };
 import DateConflictModal from './DateConflictModal';
 
 /**
@@ -12,7 +14,6 @@ import DateConflictModal from './DateConflictModal';
  * Fuera del proveedor, `useEventSave` hace el PUT simple.
  */
 
-export type AppliedChange = { otherEventId: string; otherEventName: string; fromCode: string; toCode: string };
 export type EventSaveResult =
   | { ok: true; event: any; applied?: AppliedChange[] }
   | { ok: false; error: string; cancelled?: boolean };
@@ -38,15 +39,6 @@ const plainSave: EventSave = async (body) => {
 
 const hasConflicts = (data: any): boolean =>
   Array.isArray(data?.conflicts) && data.conflicts.length > 0;
-
-/** "Se cambió CNSL-03 → CNSL-07 en Cumpleaños de 50" (un renglón por evento). */
-export function appliedSummary(applied: AppliedChange[]): string {
-  const byEvent = new Map<string, AppliedChange[]>();
-  for (const a of applied) byEvent.set(a.otherEventName, [...(byEvent.get(a.otherEventName) || []), a]);
-  return Array.from(byEvent.entries())
-    .map(([name, list]) => `Se cambió ${list.map((a) => `${a.fromCode} → ${a.toCode}`).join(', ')} en ${name || 'el otro evento'}`)
-    .join('. ');
-}
 
 const SaveCtx = createContext<EventSave | null>(null);
 

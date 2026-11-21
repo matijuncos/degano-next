@@ -31,6 +31,9 @@ function stillValid(c: DateConflict, ch: Choice | undefined): boolean {
   if (ch.action === 'replaceHere') return c.hereCandidates.some((u) => u._id === ch.toId);
   if (ch.action === 'replaceInOther') return c.otherCandidates.some((u) => u._id === ch.toId);
   if (ch.action === 'releaseOrphan') return !!only?.stale;
+  if (ch.action === 'outsourceInOther' || ch.action === 'removeInOther') {
+    return !!only && !only.stale && !only.otherEventEnded;
+  }
   return true;
 }
 
@@ -43,6 +46,9 @@ function toResolution(c: DateConflict, ch: Choice): ConflictResolution | null {
       return ch.toId ? { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: only.eventId, toId: ch.toId } : null;
     case 'releaseOrphan':
       return { equipmentId: c.equipmentId, action: 'releaseOrphan', orphanEventId: only.eventId };
+    case 'outsourceInOther':
+    case 'removeInOther':
+      return { equipmentId: c.equipmentId, action: ch.action, otherEventId: only.eventId };
     default:
       return { equipmentId: c.equipmentId, action: ch.action };
   }
@@ -152,37 +158,58 @@ export default function DateConflictModal({
         {conflicts.map((c) => {
           const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
           const current = choices[c.equipmentId];
-          const hereOption = c.hereCandidates.length > 0 && (
-            <div key='here'>
-              <Radio value='replaceHere' label={<>Usar otra unidad en el {ACTUAL}</>} />
-              {current?.action === 'replaceHere' && unitSelect(c, c.hereCandidates, 'replaceHere')}
-            </div>
-          );
-          const otherOption = only && !only.stale && c.otherCandidates.length > 0 && (
-            <div key='other'>
-              <Radio
-                value='replaceInOther'
-                label={
-                  <>
-                    Cambiar la unidad en &quot;{only.eventName || only.eventType}&quot; (el {ACTUAL} se queda con la suya)
-                  </>
-                }
-              />
-              {current?.action === 'replaceInOther' && (
-                <>
-                  {unitSelect(c, c.otherCandidates, 'replaceInOther')}
-                  {only.otherEventInProgress && (
-                    <Alert mt={6} ml={28} color='yellow' p='xs'>
-                      <Text size='xs'>Ese evento está en curso: la unidad probablemente ya está allá; hay que cambiarla físicamente.</Text>
-                    </Alert>
-                  )}
-                  <Text size='xs' c='dimmed' ml={28} mt={4}>
-                    Queda un aviso en ese evento para que vuelvan a imprimir la lista.
-                  </Text>
-                </>
+          const otherAllowed = !!only && !only.stale && !only.otherEventEnded;
+          const otherName = only ? only.eventName || only.eventType : '';
+          const keepsOwn = <>(el {ACTUAL} se queda con la suya)</>;
+          const hereOptions = [
+            c.hereCandidates.length > 0 && (
+              <div key='replaceHere'>
+                <Radio value='replaceHere' label={<>Usar otra unidad en el {ACTUAL}</>} />
+                {current?.action === 'replaceHere' && unitSelect(c, c.hereCandidates, 'replaceHere')}
+              </div>
+            ),
+            <Radio key='outsource' value='outsource' label={<>Tercerizar en el {ACTUAL}</>} />,
+            <Radio key='remove' value='remove' label={<>Quitar del {ACTUAL}</>} />
+          ];
+          // Notas bajo la opción elegida que cambia el OTRO evento
+          const otherNotes = (
+            <>
+              {only?.otherEventInProgress && (
+                <Alert mt={6} ml={28} color='yellow' p='xs'>
+                  <Text size='xs'>Ese evento está en curso: la unidad probablemente ya está allá; hay que cambiarla físicamente.</Text>
+                </Alert>
               )}
-            </div>
+              <Text size='xs' c='dimmed' ml={28} mt={4}>
+                Queda un aviso en ese evento para que vuelvan a imprimir la lista.
+              </Text>
+            </>
           );
+          const otherOptions = otherAllowed
+            ? [
+                c.otherCandidates.length > 0 && (
+                  <div key='replaceInOther'>
+                    <Radio
+                      value='replaceInOther'
+                      label={<>Cambiar la unidad en &quot;{otherName}&quot; {keepsOwn}</>}
+                    />
+                    {current?.action === 'replaceInOther' && (
+                      <>
+                        {unitSelect(c, c.otherCandidates, 'replaceInOther')}
+                        {otherNotes}
+                      </>
+                    )}
+                  </div>
+                ),
+                <div key='outsourceInOther'>
+                  <Radio value='outsourceInOther' label={<>Tercerizar en &quot;{otherName}&quot; {keepsOwn}</>} />
+                  {current?.action === 'outsourceInOther' && otherNotes}
+                </div>,
+                <div key='removeInOther'>
+                  <Radio value='removeInOther' label={<>Quitar de &quot;{otherName}&quot; {keepsOwn}</>} />
+                  {current?.action === 'removeInOther' && otherNotes}
+                </div>
+              ]
+            : [];
           return (
             <Card key={c.equipmentId} withBorder padding='sm' radius='md'>
               <Group gap={6} mb={4} wrap='wrap'>
@@ -215,10 +242,8 @@ export default function DateConflictModal({
                       label={<>Liberar la reserva sobrante (el {ACTUAL} se queda con la unidad)</>}
                     />
                   )}
-                  {/* Si el otro evento empieza después, cambiar allá va primero (logística) */}
-                  {only?.otherStartsLater ? [otherOption, hereOption] : [hereOption, otherOption]}
-                  <Radio value='outsource' label={<>Tercerizar en el {ACTUAL}</>} />
-                  <Radio value='remove' label={<>Quitar del {ACTUAL}</>} />
+                  {/* Si el otro evento empieza después, sus opciones van primero (logística) */}
+                  {only?.otherStartsLater ? [...otherOptions, ...hereOptions] : [...hereOptions, ...otherOptions]}
                 </Stack>
               </Radio.Group>
             </Card>

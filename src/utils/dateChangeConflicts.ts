@@ -54,7 +54,14 @@ export type ConflictResolution =
   | { equipmentId: string; action: 'replaceInOther'; otherEventId: string; toId: string }
   | { equipmentId: string; action: 'outsource' }
   | { equipmentId: string; action: 'remove' }
-  | { equipmentId: string; action: 'releaseOrphan'; orphanEventId: string };
+  | { equipmentId: string; action: 'releaseOrphan'; orphanEventId: string }
+  // el OTRO evento se queda sin la unidad (la terceriza o la quita); el actual la conserva
+  | { equipmentId: string; action: 'outsourceInOther'; otherEventId: string }
+  | { equipmentId: string; action: 'removeInOther'; otherEventId: string };
+
+/** Acciones que cambian el OTRO evento (el actual conserva su unidad). */
+export const OTHER_EVENT_ACTIONS = ['replaceInOther', 'outsourceInOther', 'removeInOther'] as const;
+const isOtherAction = (a: string) => (OTHER_EVENT_ACTIONS as readonly string[]).includes(a);
 
 /** Otro evento referenciado por una reserva que choca. Rango = reservationStart → endDate. */
 export interface OtherEventInfo {
@@ -64,13 +71,29 @@ export interface OtherEventInfo {
   end: Date;
 }
 
+export interface NoticeChange {
+  fromName: string;
+  fromCode: string;
+  toName: string;
+  toCode: string;
+  kind?: 'replace' | 'outsource' | 'remove'; // sin kind = reemplazo (avisos viejos)
+}
+
+/** Texto de un cambio del aviso: "CNSL-03 → CNSL-07" / "TP-01 pasa a tercerizado". */
+export function changeText(c: NoticeChange): string {
+  const from = c.fromCode || c.fromName;
+  if (c.kind === 'outsource') return `${from} pasa a tercerizado`;
+  if (c.kind === 'remove') return `${from} se quitó del evento`;
+  return `${from} → ${c.toCode || c.toName}`;
+}
+
 export interface EquipmentChangeNotice {
   id: string;
   at: string;
   byName: string;
   fromEventId: string;
   fromEventName: string;
-  changes: { fromName: string; fromCode: string; toName: string; toCode: string }[];
+  changes: NoticeChange[];
   seenAt?: string;
   seenByName?: string;
 }
@@ -248,11 +271,14 @@ export function validateResolutions(report: DateConflict[], resolutions: Conflic
     }
     resolved.add(c.equipmentId);
     const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
-    if (r.action === 'replaceHere' || r.action === 'replaceInOther') {
-      if (r.action === 'replaceInOther' && (!only || only.stale || only.otherEventEnded || only.eventId !== String(r.otherEventId))) {
+    if (isOtherAction(r.action)) {
+      const otherId = 'otherEventId' in r ? String(r.otherEventId) : '';
+      if (!only || only.stale || only.otherEventEnded || only.eventId !== otherId) {
         errors.push({ equipmentId: c.equipmentId, code: 'other_not_allowed' });
         continue;
       }
+    }
+    if (r.action === 'replaceHere' || r.action === 'replaceInOther') {
       const list = r.action === 'replaceHere' ? c.hereCandidates : c.otherCandidates;
       if (!list.some((u) => u._id === String(r.toId))) {
         errors.push({ equipmentId: c.equipmentId, code: 'toId_busy' });
@@ -306,7 +332,7 @@ export function applyLocalResolutions(
   const out: any[] = [];
   for (const row of equipment || []) {
     const r = byId.get(String(row._id));
-    if (!r || r.action === 'replaceInOther' || r.action === 'releaseOrphan') {
+    if (!r || isOtherAction(r.action) || r.action === 'releaseOrphan') {
       out.push(row);
     } else if (r.action === 'replaceHere') {
       const unit = unitsById.get(String(r.toId));
@@ -341,8 +367,43 @@ export function buildChangeNotice(args: {
     byName: args.byName,
     fromEventId: String(args.fromEventId),
     fromEventName: args.fromEventName,
-    changes: args.changes.map(({ fromName, fromCode, toName, toCode }) => ({ fromName, fromCode, toName, toCode }))
+    changes: args.changes.map(({ fromName, fromCode, toName, toCode, kind }) => ({
+      fromName,
+      fromCode,
+      toName,
+      toCode,
+      ...(kind ? { kind } : {})
+    }))
   };
+}
+
+/** Lo que se cambió en otros eventos (viene en la respuesta como `applied`). */
+export type AppliedChange = NoticeChange & { otherEventId: string; otherEventName: string };
+
+/** "En Cumpleaños de 50: CNSL-03 → CNSL-07, TP-01 pasa a tercerizado" (un tramo por evento). */
+export function appliedSummary(applied: AppliedChange[]): string {
+  const byEvent = new Map<string, AppliedChange[]>();
+  for (const a of applied) byEvent.set(a.otherEventName, [...(byEvent.get(a.otherEventName) || []), a]);
+  return Array.from(byEvent.entries())
+    .map(([name, list]) => `En ${name || 'el otro evento'}: ${list.map(changeText).join(', ')}`)
+    .join('. ');
+}
+
+export type OtherEventOp = { fromId: string; kind: 'replace' | 'outsource' | 'remove'; toId?: string };
+
+/** Cambios en OTROS eventos, agrupados por evento (UN aviso por evento). */
+export function otherEventOps(resolutions: ConflictResolution[]): Map<string, OtherEventOp[]> {
+  const out = new Map<string, OtherEventOp[]>();
+  for (const r of resolutions) {
+    let op: OtherEventOp | null = null;
+    if (r.action === 'replaceInOther') op = { fromId: String(r.equipmentId), kind: 'replace', toId: String(r.toId) };
+    else if (r.action === 'outsourceInOther') op = { fromId: String(r.equipmentId), kind: 'outsource' };
+    else if (r.action === 'removeInOther') op = { fromId: String(r.equipmentId), kind: 'remove' };
+    if (!op) continue;
+    const id = String((r as any).otherEventId);
+    out.set(id, [...(out.get(id) || []), op]);
+  }
+  return out;
 }
 
 /** Campos que solo escribe el servidor: nunca se toman del cuerpo del cliente. */

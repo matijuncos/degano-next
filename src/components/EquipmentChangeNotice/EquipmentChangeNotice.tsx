@@ -5,7 +5,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import useNotification from '@/hooks/useNotification';
 import { arDateTimeLabel } from '@/utils/reservationRange';
-import type { EquipmentChangeNotice as Notice } from '@/utils/dateChangeConflicts';
+import { changeText, type EquipmentChangeNotice as Notice } from '@/utils/dateChangeConflicts';
 import { useEventSave } from '@/components/DateConflictModal/DateConflictProvider';
 
 // Colores fijos: se ve igual en el tema oscuro de la app y en el claro de /calendar
@@ -64,7 +64,7 @@ export default function EquipmentChangeNotice({
               <Text size='sm' c='inherit'>
                 El {arDateTimeLabel(n.at)}
                 {n.byName ? ` (${n.byName})` : ''}, al cambiar las fechas de <strong>{n.fromEventName}</strong>:{' '}
-                {n.changes.map((c) => `${c.fromCode || c.fromName} → ${c.toCode || c.toName}`).join(', ')}.
+                {n.changes.map(changeText).join(', ')}.
               </Text>
               <Text size='sm' c='inherit'>
                 Si imprimiste la lista de equipos, volvé a imprimirla.

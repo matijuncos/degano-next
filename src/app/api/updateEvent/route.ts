@@ -25,12 +25,14 @@ import {
   pruneResolutions,
   resolutionErrorMessage,
   reservationUpdateHistory,
+  otherEventOps,
+  NoticeChange,
   ConflictResolution,
   DateConflict
 } from '@/utils/dateChangeConflicts';
 import {
   loadConflictReport,
-  swapUnitsInOtherEvent,
+  changeUnitsInOtherEvent,
   releaseStaleUse,
   ConflictChangedError
 } from '@/lib/dateConflictsServer';
@@ -147,7 +149,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         +new Date(oldEvent.endDate as any) !== newResEnd.getTime());
     // Choques al cambiar el RANGO: el 409 trae los datos para la ventana
     // (`DateConflictModal`), sin requests extra para abrirla.
-    const applied: { otherEventId: string; otherEventName: string; fromCode: string; toCode: string }[] = [];
+    const applied: (NoticeChange & { otherEventId: string; otherEventName: string })[] = [];
     const rangeConflictResponse = async (equipmentIds: string[], error?: string) => {
       const conflicts = await loadConflictReport(db, {
         eventId: String(eventId),
@@ -188,15 +190,11 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         const fromEventName = mergedForRange.type || mergedForRange.name || 'otro evento';
         const byName = context.user?.name || context.user?.email || '';
         try {
-          const byOther = new Map<string, { fromId: string; toId: string }[]>();
-          for (const r of resolutions) {
-            if (r.action !== 'replaceInOther') continue;
-            byOther.set(r.otherEventId, [...(byOther.get(r.otherEventId) || []), { fromId: r.equipmentId, toId: r.toId }]);
-          }
-          for (const [otherEventId, swaps] of Array.from(byOther.entries())) {
-            const changes = await swapUnitsInOtherEvent(db, {
+          // Cambios en OTROS eventos (reemplazar / tercerizar / quitar), UN aviso por evento
+          for (const [otherEventId, ops] of Array.from(otherEventOps(resolutions).entries())) {
+            const changes = await changeUnitsInOtherEvent(db, {
               otherEventId,
-              swaps,
+              ops,
               fromEventId: String(eventId),
               fromEventName,
               userSub: context.user?.sub,

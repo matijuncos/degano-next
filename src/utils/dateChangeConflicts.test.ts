@@ -7,6 +7,9 @@ import {
   resolutionErrorMessage,
   pruneResolutions,
   reservationUpdateHistory,
+  otherEventOps,
+  changeText,
+  appliedSummary,
   validateResolutions,
   applyLocalResolutions,
   buildChangeNotice,
@@ -288,5 +291,65 @@ describe('revisión final', () => {
       eventId: 'feria', eventName: 'Feria de Ciencias', eventDate: START, eventEndDate: END, eventLocation: 'Hotel Luz y Fuerza', eventClientName: 'Lucas'
     })]);
     expect(entries[0].details).toMatch(/^Reserva actualizada \(cambio de fechas\): /);
+  });
+});
+
+describe('tercerizar / quitar en el otro evento', () => {
+  it('validateResolutions acepta tercerizar o quitar en el otro evento si choca solo con ese', () => {
+    expect(validateResolutions([conflict({ otherCandidates: [] })], [{ equipmentId: 'c03', action: 'outsourceInOther', otherEventId: 'cumple' }])).toEqual([]);
+    expect(validateResolutions([conflict({ otherCandidates: [] })], [{ equipmentId: 'c03', action: 'removeInOther', otherEventId: 'cumple' }])).toEqual([]);
+  });
+
+  it('validateResolutions rechaza tercerizar/quitar en otro evento si es otro id, sobrante o choca con dos', () => {
+    const b = conflict().busyWith[0];
+    expect(validateResolutions([conflict()], [{ equipmentId: 'c03', action: 'outsourceInOther', otherEventId: 'otro' }])).toEqual([{ equipmentId: 'c03', code: 'other_not_allowed' }]);
+    expect(validateResolutions([conflict({ busyWith: [{ ...b, stale: true }] })], [{ equipmentId: 'c03', action: 'removeInOther', otherEventId: 'cumple' }])).toEqual([{ equipmentId: 'c03', code: 'other_not_allowed' }]);
+    expect(validateResolutions([conflict({ busyWith: [b, { ...b, eventId: 'boda' }] })], [{ equipmentId: 'c03', action: 'removeInOther', otherEventId: 'cumple' }])).toEqual([{ equipmentId: 'c03', code: 'other_not_allowed' }]);
+  });
+
+  it('applyLocalResolutions: tercerizar/quitar en el otro evento no toca el evento actual', () => {
+    const eq = [{ _id: 'c03', name: 'Zed 12FX', code: 'CNSL-03' }, { _id: 'tp01', name: 'Tripode', code: 'TP-01' }];
+    const out = applyLocalResolutions(eq, [], [
+      { equipmentId: 'c03', action: 'outsourceInOther', otherEventId: 'cumple' },
+      { equipmentId: 'tp01', action: 'removeInOther', otherEventId: 'cumple' }
+    ], new Map());
+    expect(out.equipment).toEqual(eq);
+    expect(out.extraEquipment).toEqual([]);
+  });
+
+  it('otherEventOps agrupa por evento los cambios en otros eventos', () => {
+    const ops = otherEventOps([
+      { equipmentId: 'c03', action: 'replaceInOther', otherEventId: 'cumple', toId: 'c07' },
+      { equipmentId: 'tp01', action: 'outsourceInOther', otherEventId: 'cumple' },
+      { equipmentId: 'pa01', action: 'removeInOther', otherEventId: 'boda' },
+      { equipmentId: 'x', action: 'remove' }
+    ]);
+    expect(ops.get('cumple')).toEqual([
+      { fromId: 'c03', kind: 'replace', toId: 'c07' },
+      { fromId: 'tp01', kind: 'outsource' }
+    ]);
+    expect(ops.get('boda')).toEqual([{ fromId: 'pa01', kind: 'remove' }]);
+    expect(ops.size).toBe(2);
+  });
+
+  it('changeText describe cada cambio del aviso', () => {
+    expect(changeText({ fromName: 'Zed', fromCode: 'CNSL-03', toName: 'Zed', toCode: 'CNSL-07' })).toBe('CNSL-03 → CNSL-07');
+    expect(changeText({ fromName: 'Tripode', fromCode: 'TP-01', toName: '', toCode: '', kind: 'outsource' })).toBe('TP-01 pasa a tercerizado');
+    expect(changeText({ fromName: 'Tripode', fromCode: 'TP-01', toName: '', toCode: '', kind: 'remove' })).toBe('TP-01 se quitó del evento');
+  });
+
+  it('buildChangeNotice conserva el tipo de cambio', () => {
+    const n = buildChangeNotice({ byName: 'Juan', fromEventId: 'feria', fromEventName: 'Feria', now: NOW, changes: [{ fromName: 'Tripode', fromCode: 'TP-01', toName: '', toCode: '', kind: 'outsource' }] });
+    expect(n.changes[0].kind).toBe('outsource');
+  });
+});
+
+describe('appliedSummary', () => {
+  it('resume por evento con el texto de cada cambio', () => {
+    expect(appliedSummary([
+      { otherEventId: 'cumple', otherEventName: 'Cumpleaños de 50', fromName: 'Zed', fromCode: 'CNSL-03', toName: 'Zed', toCode: 'CNSL-07', kind: 'replace' },
+      { otherEventId: 'cumple', otherEventName: 'Cumpleaños de 50', fromName: 'Tripode', fromCode: 'TP-01', toName: '', toCode: '', kind: 'outsource' },
+      { otherEventId: 'boda', otherEventName: '', fromName: 'PA', fromCode: 'PA-01', toName: '', toCode: '', kind: 'remove' }
+    ])).toBe('En Cumpleaños de 50: CNSL-03 → CNSL-07, TP-01 pasa a tercerizado. En el otro evento: PA-01 se quitó del evento');
   });
 });
