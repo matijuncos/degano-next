@@ -16,7 +16,7 @@ import {
   IconX
 } from '@tabler/icons-react';
 import { cloneDeep, isEqual } from 'lodash';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
 import { useEventSave } from '@/components/DateConflictModal/DateConflictProvider';
@@ -56,6 +56,19 @@ const EditableData = ({
   //  const [textareaHover, setTextareaHover] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
+  // Mostrar el valor de afuera cuando cambia (ej. la página vuelve a la fecha
+  // guardada porque el guardado no se hizo). Nunca mientras se está editando,
+  // y sin re-render si es el mismo valor (hay `value={new Date(...)}` inline).
+  const editing =
+    editState.showInput || editState.showEditableRating || editState.showEditableStringArray || editState.showEditableDate;
+  const lastValue = useRef(value);
+  useEffect(() => {
+    if (isEqual(lastValue.current, value)) return; // solo cambios reales de afuera
+    lastValue.current = value;
+    if (editing) return;
+    setEditState((prev) => (isEqual(prev.inputValue, value) ? prev : { ...prev, inputValue: value as any }));
+  }, [value, editing]);
+
   // Detectar dispositivo táctil
   useEffect(() => {
     setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -77,6 +90,8 @@ const EditableData = ({
           : event;
       const result = await saveEvent(body);
       if (!result.ok) {
+        // No se guardó (error o se cerró la ventana de choques): volver al valor guardado
+        setEditState((prev) => ({ ...prev, inputValue: value as any }));
         if (!result.cancelled || result.error !== 'Cancelado') {
           notify({
             title: 'Operación errónea',
@@ -91,6 +106,7 @@ const EditableData = ({
       updateEventInList(updatedEvent);
       notify();
     } catch (error) {
+      setEditState((prev) => ({ ...prev, inputValue: value as any }));
       notify({ type: 'defaultError' });
       console.log(error);
     } finally {

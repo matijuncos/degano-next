@@ -177,8 +177,11 @@ const MainInformation = ({
     parseISODate(selectedEvent?.equipmentArrivalDate)
   );
 
-  // Sincronizar estados cuando cambia selectedEvent
-  useEffect(() => {
+  // Fechas en pantalla = las GUARDADAS del evento. Se llama al cambiar el
+  // evento y cuando un guardado NO se hizo (error, o se cerró la ventana de
+  // choques sin resolver): los onSave ponen la fecha nueva antes de guardar y,
+  // si no, la pantalla mostraría una fecha que en la base no cambió.
+  const syncDateFields = () => {
     if (selectedEvent?.date) {
       setDateOnly(new Date(selectedEvent.date));
       setTimeOnly(toTimeString(new Date(selectedEvent.date)));
@@ -188,14 +191,14 @@ const MainInformation = ({
       setEndTimeOnly(toTimeString(new Date(selectedEvent.endDate)));
     }
     // Usar parseISODate para evitar problemas de zona horaria
-    const staffDate = parseISODate(selectedEvent?.staffArrivalDate);
-    if (staffDate) {
-      setStaffArrivalDateOnly(staffDate);
-    }
-    const equipmentDate = parseISODate(selectedEvent?.equipmentArrivalDate);
-    if (equipmentDate) {
-      setEquipmentArrivalDateOnly(equipmentDate);
-    }
+    setStaffArrivalDateOnly(parseISODate(selectedEvent?.staffArrivalDate));
+    setEquipmentArrivalDateOnly(parseISODate(selectedEvent?.equipmentArrivalDate));
+  };
+
+  // Sincronizar estados cuando cambia selectedEvent
+  useEffect(() => {
+    syncDateFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEvent?.date, selectedEvent?.endDate, selectedEvent?.staffArrivalDate, selectedEvent?.equipmentArrivalDate]);
 
   // Valida si la fecha/hora de fin es anterior a la de inicio
@@ -223,6 +226,7 @@ const MainInformation = ({
     try {
       const result = await saveEvent({ _id: String(selectedEvent._id), ...updates });
       if (!result.ok) {
+        syncDateFields(); // no se guardó: volver a las fechas guardadas
         if (result.cancelled) {
           if (result.error !== 'Cancelado') notify({ type: 'defaultError', message: result.error });
           return;
@@ -234,6 +238,7 @@ const MainInformation = ({
       updateEventInList(eventToUse);
       notify();
     } catch (error) {
+      syncDateFields();
       notify({
         title: 'Operación errónea',
         message: (error as Error)?.message || 'Algo salió mal, vuelve a intentarlo',
