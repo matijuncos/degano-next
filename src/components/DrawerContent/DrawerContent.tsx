@@ -47,6 +47,7 @@ import { openS3File } from '@/utils/s3Utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { obfuscatePhone } from '@/utils/roleUtils';
 import { isRental } from '@/utils/eventKind';
+import EquipmentChangeNotice from '@/components/EquipmentChangeNotice/EquipmentChangeNotice';
 
 interface FileItem {
   url: string;
@@ -451,6 +452,7 @@ const DrawerContent = () => {
       </DrawerHeader>
 
       <Stack gap='xl' style={{ padding: '0 16px', marginBottom: '20px', paddingBottom: '50px' }}>
+        <EquipmentChangeNotice event={selectedEvent} onEventUpdated={(ev) => setSelectedEvent(ev)} />
         {/* FECHA */}
         <Text size='sm' c='dimmed'>
           {(selectedEvent?.date || selectedEvent?.start)

@@ -53,6 +53,7 @@ import { isRental } from '@/utils/eventKind';
 import RentalBadge from '@/components/EventKindChooser/RentalBadge';
 import ArrivalLeadWarning from '@/components/ArrivalLeadWarning/ArrivalLeadWarning';
 import { DateConflictProvider, useEventSave } from '@/components/DateConflictModal/DateConflictProvider';
+import EquipmentChangeNotice from '@/components/EquipmentChangeNotice/EquipmentChangeNotice';
 
 // Pestañas que un alquiler no tiene
 const RENTAL_HIDDEN_PAGE_TABS = ['bands', 'music', 'timing', 'files'];
@@ -2769,6 +2770,13 @@ const EventPageContent = () => {
               {`${dateString} - ${selectedEvent.type} -  ${selectedEvent.lugar}`}
             </Title>
           </Group>
+          <EquipmentChangeNotice
+            event={eventForFiles}
+            onEventUpdated={(ev) => {
+              setSelectedEvent(ev);
+              updateEventInList(ev);
+            }}
+          />
           {showTabsVersion ? tabsVersionContent : allAccordionsContent}
         </Box>
       )}

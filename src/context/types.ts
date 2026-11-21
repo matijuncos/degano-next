@@ -1,3 +1,4 @@
+import type { EquipmentChangeNotice } from '@/utils/dateChangeConflicts';
 import { NewEquipment } from '@/components/equipmentStockTable/types';
 import { ReactNode } from 'react';
 
@@ -90,6 +91,8 @@ export interface EventModel {
   // stock real disponible (se muestran en rojo). NO son unidades del inventario:
   // no tienen _id ni scheduledUses y NO afectan la disponibilidad real.
   extraEquipment?: ExtraEquipmentItem[];
+  // Avisos de equipos cambiados al resolver un choque de fechas de OTRO evento (solo los escribe el servidor)
+  equipmentChangeNotices?: EquipmentChangeNotice[];
   equipmentPrice: number;
   payment: {
     upfrontAmount: string;
