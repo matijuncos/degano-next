@@ -13,6 +13,8 @@
 import { conflictingUses, isEquipmentUnavailable } from './equipmentAvailability';
 import { rankUnitsForEvent, usedSameDay, equivalentModels } from './equipmentSuggestions';
 import { PRICE_FIELDS, stripPriceFields } from './equipmentPrices';
+import { arDateTimeLabel } from './reservationRange';
+import type { CreateHistoryEntryParams } from '../types/equipmentHistory';
 
 export interface CandidateUnit {
   _id: string;
@@ -161,6 +163,63 @@ export function defaultResolution(c: DateConflict): ConflictResolution | null {
     return { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: only.eventId, toId: c.otherCandidates[0]._id };
   }
   return null;
+}
+
+/**
+ * Pre-elegidas de TODOS los choques en una pasada: una unidad que ya se
+ * pre-eligió para un equipo no se repite en otro (si no, el servidor rechaza
+ * con `duplicate_to`). Sin unidad libre acá cae al otro evento, o null.
+ */
+export function defaultResolutions(conflicts: DateConflict[]): Map<string, ConflictResolution | null> {
+  const taken = new Set<string>();
+  const out = new Map<string, ConflictResolution | null>();
+  for (const c of conflicts) {
+    const free = (list: CandidateUnit[]) => list.filter((u) => !taken.has(u._id));
+    const r = defaultResolution({ ...c, hereCandidates: free(c.hereCandidates), otherCandidates: free(c.otherCandidates) });
+    if (r && 'toId' in r) taken.add(r.toId);
+    out.set(c.equipmentId, r);
+  }
+  return out;
+}
+
+/** ¿La misma unidad elegida para dos equipos? */
+export function hasDuplicateTargets(resolutions: ConflictResolution[]): boolean {
+  const ids = resolutions.flatMap((r) => ('toId' in r ? [String(r.toId)] : []));
+  return new Set(ids).size !== ids.length;
+}
+
+/** Mensaje del 409 cuando lo elegido no vale. */
+export function resolutionErrorMessage(errors: ResolutionError[]): string {
+  return errors.some((e) => e.code === 'duplicate_to')
+    ? 'Elegiste la misma unidad para dos equipos. Elegí otra para uno de ellos.'
+    : 'Los equipos cambiaron mientras elegías. Revisá de nuevo.';
+}
+
+/** Descarta lo elegido para equipos que ya no chocan (ej. movieron el otro evento mientras se elegía). */
+export function pruneResolutions(report: DateConflict[], resolutions: ConflictResolution[]): ConflictResolution[] {
+  const ids = new Set(report.map((c) => c.equipmentId));
+  return resolutions.filter((r) => ids.has(String(r.equipmentId)));
+}
+
+/** Historial "Reserva actualizada" de equipos cuya reserva cambió de fechas (regla 1). */
+export function reservationUpdateHistory(
+  rows: { _id: any; name?: string; code?: string }[],
+  info: { eventId: string; type?: string; lugar?: string; fullName?: string; start: Date; end: Date; userId?: string; reason: string }
+): CreateHistoryEntryParams[] {
+  return rows.map((eq) => ({
+    equipmentId: String(eq._id),
+    equipmentName: eq.name || '',
+    equipmentCode: eq.code,
+    action: 'uso_evento' as const,
+    userId: info.userId,
+    eventId: String(info.eventId),
+    eventName: info.type,
+    eventDate: info.start,
+    eventEndDate: info.end,
+    eventLocation: info.lugar,
+    eventClientName: info.fullName,
+    details: `Reserva actualizada (${info.reason}): ${arDateTimeLabel(info.start)} a ${arDateTimeLabel(info.end)} - ${info.type || ''} - ${info.lugar || ''}`
+  }));
 }
 
 /** Valida lo elegido contra los choques recalculados en el servidor. [] = todo bien. */

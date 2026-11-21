@@ -160,24 +160,9 @@ export async function swapUnitsInOtherEvent(
     return { fromName: from.name || '', fromCode: from.code || '', toName: to.name || '', toCode: to.code || '' };
   });
   const now = new Date();
-  await db.collection('events').updateOne(
-    { _id: other._id },
-    {
-      $set: { equipment, equipmentPrice: sumRentalPrice(equipment), updatedAt: now },
-      $push: {
-        equipmentChangeNotices: buildChangeNotice({
-          byName: args.byName,
-          fromEventId: args.fromEventId,
-          fromEventName: args.fromEventName,
-          now,
-          changes
-        })
-      } as any
-    }
-  );
-
-  // Reserva: la de ese evento pasa de la unidad vieja a la nueva (2 pasos:
-  // primero se agrega a la nueva, después releaseEquipmentFromEvent la saca de la vieja)
+  // ORDEN (si la request se corta a la mitad): 1) reserva en la unidad nueva,
+  // 2) el evento, 3) se libera la vieja. Una reserva de más se ve y se limpia
+  // ("reserva sobrante"); una que FALTA dejaría la unidad libre para otro evento.
   const sample: any = swaps
     .map((s) => unitById.get(String(s.fromId)))
     .flatMap((u: any) => u?.scheduledUses || [])
@@ -206,6 +191,22 @@ export async function swapUnitsInOtherEvent(
       }
     );
   }
+  await db.collection('events').updateOne(
+    { _id: other._id },
+    {
+      $set: { equipment, equipmentPrice: sumRentalPrice(equipment), updatedAt: now },
+      $push: {
+        equipmentChangeNotices: buildChangeNotice({
+          byName: args.byName,
+          fromEventId: args.fromEventId,
+          fromEventName: args.fromEventName,
+          now,
+          changes
+        })
+      } as any
+    }
+  );
+
   const released = await releaseEquipmentFromEvent(db, swaps.map((s) => s.fromId), String(otherEventId));
   const decisionById = new Map(released.map((r) => [String(r._id), r.decision]));
 

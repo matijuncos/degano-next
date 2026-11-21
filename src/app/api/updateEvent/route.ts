@@ -15,13 +15,16 @@ import { checkBookingConflicts } from '@/lib/bookingGuard';
 import { eventKindOf, sanitizeKindUpdate } from '@/utils/eventKind';
 import { withoutCategoryItems } from '@/utils/categoryItemGuard';
 import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
-import { reservationStart, arDateTimeLabel } from '@/utils/reservationRange';
+import { reservationStart } from '@/utils/reservationRange';
 import { sumRentalPrice } from '@/utils/equipmentPrices';
 import { bookingConflictMessage } from '@/utils/equipmentSuggestions';
 import {
   stripServerOnlyFields,
   validateResolutions,
   applyLocalResolutions,
+  pruneResolutions,
+  resolutionErrorMessage,
+  reservationUpdateHistory,
   ConflictResolution,
   DateConflict
 } from '@/utils/dateChangeConflicts';
@@ -171,75 +174,81 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         end: newResEnd,
         eventEquipmentIds: baseIds
       });
-      if (validateResolutions(report, conflictResolutions).length) {
+      // Lo elegido para equipos que ya no chocan se descarta (ej. movieron el
+      // otro evento mientras se elegía); si no queda nada, sigue el guardado normal
+      const resolutions = pruneResolutions(report, conflictResolutions);
+      const resolutionErrors = resolutions.length ? validateResolutions(report, resolutions) : [];
+      if (resolutionErrors.length) {
         return NextResponse.json(
-          { error: 'Los equipos cambiaron mientras elegías. Revisá de nuevo.', conflicts: report },
+          { error: resolutionErrorMessage(resolutionErrors), conflicts: report },
           { status: 409 }
         );
       }
-      const fromEventName = mergedForRange.type || mergedForRange.name || 'otro evento';
-      const byName = context.user?.name || context.user?.email || '';
-      try {
-        const byOther = new Map<string, { fromId: string; toId: string }[]>();
-        for (const r of conflictResolutions) {
-          if (r.action !== 'replaceInOther') continue;
-          byOther.set(r.otherEventId, [...(byOther.get(r.otherEventId) || []), { fromId: r.equipmentId, toId: r.toId }]);
-        }
-        for (const [otherEventId, swaps] of Array.from(byOther.entries())) {
-          const changes = await swapUnitsInOtherEvent(db, {
-            otherEventId,
-            swaps,
-            fromEventId: String(eventId),
-            fromEventName,
-            userSub: context.user?.sub,
-            byName
-          });
-          const otherEventName =
-            report.find((c) => c.busyWith[0]?.eventId === otherEventId)?.busyWith[0]?.eventName || '';
-          applied.push(...changes.map((c) => ({ otherEventId, otherEventName, ...c })));
-        }
-        for (const r of conflictResolutions) {
-          if (r.action === 'releaseOrphan') {
-            await releaseStaleUse(db, { equipmentId: r.equipmentId, orphanEventId: r.orphanEventId, userSub: context.user?.sub });
+      if (resolutions.length) {
+        const fromEventName = mergedForRange.type || mergedForRange.name || 'otro evento';
+        const byName = context.user?.name || context.user?.email || '';
+        try {
+          const byOther = new Map<string, { fromId: string; toId: string }[]>();
+          for (const r of resolutions) {
+            if (r.action !== 'replaceInOther') continue;
+            byOther.set(r.otherEventId, [...(byOther.get(r.otherEventId) || []), { fromId: r.equipmentId, toId: r.toId }]);
           }
+          for (const [otherEventId, swaps] of Array.from(byOther.entries())) {
+            const changes = await swapUnitsInOtherEvent(db, {
+              otherEventId,
+              swaps,
+              fromEventId: String(eventId),
+              fromEventName,
+              userSub: context.user?.sub,
+              byName
+            });
+            const otherEventName =
+              report.find((c) => c.busyWith[0]?.eventId === otherEventId)?.busyWith[0]?.eventName || '';
+            applied.push(...changes.map((c) => ({ otherEventId, otherEventName, ...c })));
+          }
+          for (const r of resolutions) {
+            if (r.action === 'releaseOrphan') {
+              await releaseStaleUse(db, { equipmentId: r.equipmentId, orphanEventId: r.orphanEventId, userSub: context.user?.sub });
+            }
+          }
+        } catch (err) {
+          if (!(err instanceof ConflictChangedError)) throw err;
+          const res = await rangeConflictResponse(baseIds, 'Los equipos cambiaron mientras elegías. Revisá de nuevo.');
+          if (res) return res;
         }
-      } catch (err) {
-        if (!(err instanceof ConflictChangedError)) throw err;
-        const res = await rangeConflictResponse(baseIds, 'Los equipos cambiaron mientras elegías. Revisá de nuevo.');
-        if (res) return res;
-      }
 
-      const toIds = conflictResolutions.flatMap((r) => (r.action === 'replaceHere' ? [String(r.toId)] : []));
-      const units = toIds.length
-        ? await db
-            .collection('equipment')
-            .find(
-              { _id: { $in: toIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id)) } },
-              { projection: { history: 0 } }
-            )
-            .toArray()
-        : [];
-      const local = applyLocalResolutions(
-        baseEquipment,
-        baseExtra,
-        conflictResolutions,
-        new Map(units.map((u: any) => [String(u._id), u]))
-      );
-      // El cuerpo queda completo para que corra el diff normal de equipos
-      // (reservas + historial de agregados/quitados), aunque haya llegado parcial
-      for (const k of ['date', 'endDate', 'type', 'name', 'lugar', 'fullName']) {
-        if (!(k in body)) body[k] = mergedForRange[k];
+        const toIds = resolutions.flatMap((r) => (r.action === 'replaceHere' ? [String(r.toId)] : []));
+        const units = toIds.length
+          ? await db
+              .collection('equipment')
+              .find(
+                { _id: { $in: toIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id)) } },
+                { projection: { history: 0 } }
+              )
+              .toArray()
+          : [];
+        const local = applyLocalResolutions(
+          baseEquipment,
+          baseExtra,
+          resolutions,
+          new Map(units.map((u: any) => [String(u._id), u]))
+        );
+        // El cuerpo queda completo para que corra el diff normal de equipos
+        // (reservas + historial de agregados/quitados), aunque haya llegado parcial
+        for (const k of ['date', 'endDate', 'type', 'name', 'lugar', 'fullName']) {
+          if (!(k in body)) body[k] = mergedForRange[k];
+        }
+        body.equipment = local.equipment;
+        body.extraEquipment = local.extraEquipment;
+        eventEquipment = local.equipment;
+        Object.assign(updateData, {
+          date: body.date,
+          endDate: body.endDate,
+          equipment: local.equipment,
+          extraEquipment: local.extraEquipment,
+          equipmentPrice: sumRentalPrice(local.equipment)
+        });
       }
-      body.equipment = local.equipment;
-      body.extraEquipment = local.extraEquipment;
-      eventEquipment = local.equipment;
-      Object.assign(updateData, {
-        date: body.date,
-        endDate: body.endDate,
-        equipment: local.equipment,
-        extraEquipment: local.extraEquipment,
-        equipmentPrice: sumRentalPrice(local.equipment)
-      });
     }
 
     const fullEquipmentBody = Array.isArray(eventEquipment) && !!body.date && !!body.endDate;
@@ -389,6 +398,26 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
           }
         );
 
+        // Regla 1: si cambió el rango de la reserva, queda en el historial (en lote)
+        if (rangeChanged) {
+          await createHistoryEntries(
+            db,
+            reservationUpdateHistory(
+              (eventEquipment || []).filter((eq: any) => keptEquipmentIds.includes(eq._id.toString())),
+              {
+                eventId: String(eventId),
+                type: body.type,
+                lugar: body.lugar,
+                fullName: body.fullName,
+                start: eventStart,
+                end: eventEnd,
+                userId: context.user?.sub,
+                reason: 'cambio de fechas'
+              }
+            )
+          );
+        }
+
         // Si el evento es actual/pasado, actualizar estado
         if (isCurrentOrPast && eventoActivo) {
           await db.collection('equipment').updateMany(
@@ -536,20 +565,19 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       // Regla 1: nunca cambiar scheduledUses sin historial (en lote)
       await createHistoryEntries(
         db,
-        (oldEvent?.equipment || []).filter((eq: any) => withUse.has(String(eq._id))).map((eq: any) => ({
-          equipmentId: eq._id,
-          equipmentName: eq.name,
-          equipmentCode: eq.code,
-          action: 'uso_evento' as const,
-          userId: context.user?.sub,
-          eventId,
-          eventName: mergedForRange.type,
-          eventDate: newResStart,
-          eventEndDate: newResEnd,
-          eventLocation: mergedForRange.lugar,
-          eventClientName: mergedForRange.fullName,
-          details: `Reserva actualizada (llegada del equipamiento): ${arDateTimeLabel(newResStart)} a ${arDateTimeLabel(newResEnd)} - ${mergedForRange.type} - ${mergedForRange.lugar}`
-        }))
+        reservationUpdateHistory(
+          (oldEvent?.equipment || []).filter((eq: any) => withUse.has(String(eq._id))),
+          {
+            eventId: String(eventId),
+            type: mergedForRange.type,
+            lugar: mergedForRange.lugar,
+            fullName: mergedForRange.fullName,
+            start: newResStart,
+            end: newResEnd,
+            userId: context.user?.sub,
+            reason: 'cambio de fechas o llegada del equipamiento'
+          }
+        )
       );
     }
 

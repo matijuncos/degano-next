@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   buildConflictReport,
   defaultResolution,
+  defaultResolutions,
+  hasDuplicateTargets,
+  resolutionErrorMessage,
+  pruneResolutions,
+  reservationUpdateHistory,
   validateResolutions,
   applyLocalResolutions,
   buildChangeNotice,
@@ -215,5 +220,54 @@ describe('buildChangeNotice / stripServerOnlyFields', () => {
   });
   it('ignora los avisos que manda el cliente', () => {
     expect(stripServerOnlyFields({ _id: 'x', endDate: 'y', equipmentChangeNotices: [] })).toEqual({ _id: 'x', endDate: 'y' });
+  });
+});
+
+describe('revisión final', () => {
+  const sameModel = (id: string, code: string) =>
+    conflict({ equipmentId: id, code, hereCandidates: [
+      { _id: 'c07', name: 'Zed 12FX', code: 'CNSL-07', sameDay: false, isEquivalent: false },
+      { _id: 'c08', name: 'Zed 12FX', code: 'CNSL-08', sameDay: false, isEquivalent: false }
+    ] });
+
+  it('defaultResolutions no pre-elige la misma unidad para dos choques', () => {
+    const out = defaultResolutions([sameModel('c03', 'CNSL-03'), sameModel('c04', 'CNSL-04')]);
+    expect(out.get('c03')).toEqual({ equipmentId: 'c03', action: 'replaceHere', toId: 'c07' });
+    expect(out.get('c04')).toEqual({ equipmentId: 'c04', action: 'replaceHere', toId: 'c08' });
+  });
+
+  it('defaultResolutions: si no queda unidad acá, cae al otro evento o a null', () => {
+    const one = (id: string) => conflict({ equipmentId: id, hereCandidates: [{ _id: 'c07', name: 'Zed 12FX', code: 'CNSL-07', sameDay: false, isEquivalent: false }], otherCandidates: [] });
+    const out = defaultResolutions([one('c03'), one('c04')]);
+    expect(out.get('c03')).toMatchObject({ toId: 'c07' });
+    expect(out.get('c04')).toBeNull();
+  });
+
+  it('hasDuplicateTargets detecta la misma unidad elegida dos veces', () => {
+    expect(hasDuplicateTargets([{ equipmentId: 'a', action: 'replaceHere', toId: 'x' }, { equipmentId: 'b', action: 'replaceInOther', otherEventId: 'o', toId: 'x' }])).toBe(true);
+    expect(hasDuplicateTargets([{ equipmentId: 'a', action: 'replaceHere', toId: 'x' }, { equipmentId: 'b', action: 'remove' }])).toBe(false);
+  });
+
+  it('resolutionErrorMessage distingue la unidad repetida de un cambio de datos', () => {
+    expect(resolutionErrorMessage([{ equipmentId: 'a', code: 'duplicate_to' }])).toBe('Elegiste la misma unidad para dos equipos. Elegí otra para uno de ellos.');
+    expect(resolutionErrorMessage([{ equipmentId: 'a', code: 'toId_busy' }])).toBe('Los equipos cambiaron mientras elegías. Revisá de nuevo.');
+  });
+
+  it('pruneResolutions descarta lo elegido para equipos que ya no chocan', () => {
+    const r = [{ equipmentId: 'c03', action: 'remove' as const }, { equipmentId: 'zz', action: 'remove' as const }];
+    expect(pruneResolutions([conflict()], r)).toEqual([{ equipmentId: 'c03', action: 'remove' }]);
+    expect(pruneResolutions([], r)).toEqual([]);
+  });
+
+  it('reservationUpdateHistory arma una entrada uso_evento por equipo con el rango nuevo', () => {
+    const entries = reservationUpdateHistory(
+      [{ _id: 'a', name: 'A', code: 'A-1' }],
+      { eventId: 'feria', type: 'Feria de Ciencias', lugar: 'Hotel Luz y Fuerza', fullName: 'Lucas', start: START, end: END, userId: 'u1', reason: 'cambio de fechas' }
+    );
+    expect(entries).toEqual([expect.objectContaining({
+      equipmentId: 'a', equipmentName: 'A', equipmentCode: 'A-1', action: 'uso_evento', userId: 'u1',
+      eventId: 'feria', eventName: 'Feria de Ciencias', eventDate: START, eventEndDate: END, eventLocation: 'Hotel Luz y Fuerza', eventClientName: 'Lucas'
+    })]);
+    expect(entries[0].details).toMatch(/^Reserva actualizada \(cambio de fechas\): /);
   });
 });

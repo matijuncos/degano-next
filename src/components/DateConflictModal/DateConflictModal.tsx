@@ -5,7 +5,8 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useResponsive } from '@/hooks/useResponsive';
 import { arDateTimeLabel } from '@/utils/reservationRange';
 import {
-  defaultResolution,
+  defaultResolutions,
+  hasDuplicateTargets,
   CandidateUnit,
   ConflictResolution,
   DateConflict
@@ -67,11 +68,21 @@ export default function DateConflictModal({
   useEffect(() => {
     setChoices((prev) => {
       const next: Record<string, Choice | undefined> = {};
+      const kept = new Set<string>();
       for (const c of conflicts) {
-        next[c.equipmentId] = stillValid(c, prev[c.equipmentId])
-          ? prev[c.equipmentId]
-          : choiceOf(defaultResolution(c)) ?? undefined;
+        if (stillValid(c, prev[c.equipmentId])) {
+          next[c.equipmentId] = prev[c.equipmentId];
+          if (prev[c.equipmentId]?.toId) kept.add(prev[c.equipmentId]!.toId!);
+        }
       }
+      // El resto, en una pasada y sin repetir unidades (ni las ya conservadas)
+      const without = (list: CandidateUnit[]) => list.filter((u) => !kept.has(u._id));
+      const defaults = defaultResolutions(
+        conflicts
+          .filter((c) => !next[c.equipmentId])
+          .map((c) => ({ ...c, hereCandidates: without(c.hereCandidates), otherCandidates: without(c.otherCandidates) }))
+      );
+      for (const [eqId, r] of Array.from(defaults.entries())) next[eqId] = choiceOf(r) ?? undefined;
       return next;
     });
   }, [conflicts]);
@@ -87,7 +98,8 @@ export default function DateConflictModal({
     const ch = choices[c.equipmentId];
     return ch ? toResolution(c, ch) : null;
   });
-  const ready = resolutions.every(Boolean);
+  const ready =
+    resolutions.every(Boolean) && !hasDuplicateTargets(resolutions.filter(Boolean) as ConflictResolution[]);
 
   const setChoice = (eqId: string, ch: Choice) => setChoices((prev) => ({ ...prev, [eqId]: ch }));
 
