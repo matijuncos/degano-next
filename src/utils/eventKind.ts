@@ -34,6 +34,7 @@ export const RENTAL_HIDDEN_FIELDS = [
   'ambienceMusic',
   'timing',
   'files',
+  'musicFiles',
   'churchDate',
   'civil'
 ] as const;
@@ -98,7 +99,8 @@ const hasContent = (v: unknown): boolean => {
 
 // ¿Hay algo cargado en Show / Música / Timing / Archivos? (para avisar antes de pasar a alquiler)
 export function hasRentalHiddenData(ev: Record<string, any>): { any: boolean; files: { url: string }[] } {
-  const files = Array.isArray(ev.files) ? ev.files : [];
+  // Archivos subidos de las dos listas (Archivos y Música): se borran al pasar a alquiler
+  const files = [...(Array.isArray(ev.files) ? ev.files : []), ...(Array.isArray(ev.musicFiles) ? ev.musicFiles : [])];
   return { any: RENTAL_HIDDEN_FIELDS.some((f) => hasContent(ev[f])), files };
 }
 

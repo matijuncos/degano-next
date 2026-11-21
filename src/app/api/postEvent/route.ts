@@ -43,6 +43,7 @@ export const POST = withAuth(async (context: AuthContext, req: Request) => {
     if ('staff' in restBody) restBody.staff = sanitizeStaffRoleIds(restBody.staff);
     // Archivos subidos antes de finalizar: solo los de la carpeta de ESTE evento
     if ('files' in restBody) restBody.files = ownFiles(restBody.files, restBody.folderId);
+    if ('musicFiles' in restBody) restBody.musicFiles = ownFiles(restBody.musicFiles, restBody.folderId);
     const db = client.db(DB_NAME);
     // Una categoría nunca se guarda como equipo (pasaba al tocar una subcategoría
     // en la tabla de Equipamiento)

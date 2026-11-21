@@ -139,6 +139,12 @@ Usar utilidades de `/src/utils/equipmentHistoryUtils.ts`: `createHistoryEntry()`
 - Los cambios de precio del historial solo los ve el admin (`stripHistoryPrices`).
 - Lógica pura en `/src/utils/equipmentLife.ts` (testeada): tipos importantes vs automáticos, filtros, resumen de vida, agrupado por mes.
 
+**Aumento masivo de precios (SOLO admin):** Equipamiento → "Aumentar precios" (`/api/equipment/bulkPrice`, lógica en `/src/utils/bulkPrice.ts`, testeada).
+- Todo el stock o categorías enteras; alquiler, inversión o ambos; porcentaje o monto fijo. **Exacto, sin redondeos** (2 decimales como máximo). En la vista previa gana el precio que tipea la persona. Nunca se inventa un precio que el equipo no tenía.
+- El precio anterior sale de la base y tiene que ser el que vio la vista previa (`expected`): si cambió → 409 y no se toca nada.
+- Orden: lote `pending` en `price_batches` → escritura con el precio anterior en el filtro → historial `edicion` solo de lo escrito (estricto) → lote `applied`.
+- Deshacer = solo el último lote, tomado de forma atómica; vuelve atrás solo lo que sigue con el precio del aumento.
+
 ### 4. Identidad: STAFF es el directorio único (CRÍTICO)
 
 La colección `employees` (STAFF) es el directorio de personas de la app. **No hay colección de usuarios aparte** (la vieja `users` ya no se usa). El puente entre la cuenta de login (Auth0) y el registro de STAFF es el **email**.
@@ -235,6 +241,7 @@ Panel en `/lugares`: lo **ven admin y manager**; **solo el admin modifica** (edi
 - **Nuevo evento JAMÁS lee `selectedEvent`.** Todo componente que se use ahí recibe el evento del formulario por props (ej. `<FilesHandlerComponent event={event} onEventUpdated={...} />`). Los archivos se pueden subir ANTES de finalizar: van a la carpeta propia del formulario (`folderId` único) y quedan en el formulario/borrador; `postEvent` solo adjunta los de esa carpeta (`ownFiles`). Antes de crear, solo se puede borrar un archivo de esa carpeta (`fileInFolder`).
 - **Página de un evento:** solo se muestra/edita cuando el seleccionado es el de la URL (`eventForPage(selectedEvent, id)` en `/src/utils/eventScope.ts`). Mientras carga → spinner, nunca el evento anterior.
 - **Al guardar un evento, mandar SOLO `_id` + lo que cambia** (`filesUpdateBody`, `{ _id, staff }`, etc.). Nunca `{ ...selectedEvent, ... }`: una copia vieja en memoria pisa el resto del evento (o a otro evento). `updateEvent` acepta cuerpos parciales.
+- **Archivos de Música** (`musicFiles`, subcarpeta `<folderId>/musica`): mismo componente (`FilesHandlerComponent field='musicFiles'`), mismas reglas. En Nuevo evento va DENTRO de `MusicForm` (viaja con sus datos al cambiar de pestaña); en la página del evento, al final de la pestaña Música. `postEvent` solo adjunta los de la carpeta propia (`ownFiles`). Un alquiler no guarda `musicFiles`. Renombrar cambia solo el nombre visible (conserva la extensión); "Ver" usa link firmado (`openS3File`).
 - **Borrar un archivo:** primero sacarlo del evento y recién después de S3 (si falla lo primero, el archivo no se pierde). El bucket `degano-events-files` tiene versionado: lo borrado se puede recuperar.
 - Componente nuevo que use `useDeganoCtx().selectedEvent`: revisar en qué páginas se monta. Si puede aparecer en Nuevo evento, pasarle el evento por props.
 
@@ -326,6 +333,7 @@ src/
 | `boards` | Tableros de Comunicación Interna con `visibility`/`ownerId`/`memberIds` |
 | `tasks` | Tareas de los tableros (`boardId`, `status`, `order`, `assigneeId` = `_id` de empleado) |
 | `staff_roles` | Roles de STAFF con historial de montos por evento (ver regla 8) |
+| `price_batches` | Lotes del aumento masivo de precios de equipos (para deshacer el último) |
 | `staff_ledger` | Cuenta corriente de cobros de STAFF: montos por evento, extras, pagos y adelantos (ver regla 7) |
 
 ## Convenciones de Código

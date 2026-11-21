@@ -1681,6 +1681,16 @@ const MusicInformation = ({
         </Text>
         <SpotifyTable />
       </Box>
+
+      <Divider my='md' />
+
+      {/* Archivos de música (subcarpeta 'musica' del evento). Se guarda solo esa lista. */}
+      <FilesHandlerComponent
+        field='musicFiles'
+        subfolder='musica'
+        title='Archivos de música'
+        event={selectedEvent}
+      />
     </Flex>
   );
 };
@@ -2722,6 +2732,9 @@ const EventPageContent = () => {
           </AccordionSet>
           <AccordionSet value='Playlist'>
             <SpotifyTable />
+          </AccordionSet>
+          <AccordionSet value='Archivos de música'>
+            <FilesHandlerComponent field='musicFiles' subfolder='musica' title='Archivos de música' event={eventForFiles} />
           </AccordionSet>
         </AccordionSet>
         </>

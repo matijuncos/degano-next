@@ -147,6 +147,8 @@ export interface EventModel {
   // Orden de los equipos (por nombre) DENTRO de cada categoría.
   // Mapa: nombre de categoría → lista ordenada de nombres de equipo.
   equipmentItemOrder?: { [categoryName: string]: string[] };
+  // Archivos de la sección Música (misma forma que `files`, subcarpeta 'musica')
+  musicFiles?: { url: string; name: string; mimeType: string; uploadedAt: string }[];
   files?: {
     url: string;
     name: string;
