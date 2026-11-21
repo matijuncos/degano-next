@@ -285,9 +285,10 @@ const NewEventPage = () => {
           })
         );
         const remaining = (data.files || []).filter((f: any) => !deleted.includes(f.url));
+        const remainingMusic = (data.musicFiles || []).filter((f: any) => !deleted.includes(f.url));
         if (failed.length) {
           // No se cambia el tipo: quedan los archivos que no se pudieron borrar
-          const kept: EventModel = { ...data, files: remaining };
+          const kept: EventModel = { ...data, files: remaining, musicFiles: remainingMusic };
           currentFormDataRef.current = kept;
           setEvent(kept);
           onFormDataChange(kept);
@@ -297,7 +298,7 @@ const NewEventPage = () => {
           });
           return;
         }
-        base = { ...data, files: remaining };
+        base = { ...data, files: remaining, musicFiles: remainingMusic };
       }
     }
     const updated: EventModel = withKind(base, next);

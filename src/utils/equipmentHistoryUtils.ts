@@ -122,7 +122,8 @@ export async function createHistoryEntry(
  */
 export async function createHistoryEntries(
   db: any,
-  list: CreateHistoryEntryParams[]
+  list: CreateHistoryEntryParams[],
+  opts: { strict?: boolean } = {}
 ): Promise<void> {
   if (!list.length) return;
   const now = new Date();
@@ -152,7 +153,9 @@ export async function createHistoryEntries(
     await db.collection('equipmentHistory').insertMany(entries, { ordered: false });
   } catch (error) {
     console.error('Error creating history entries:', error);
-    // No lanzar error para no romper el flujo principal (igual que createHistoryEntry)
+    // strict: quien llama necesita saber que no quedó registrado (ej. aumento masivo de precios)
+    if (opts.strict) throw error;
+    // Si no, no lanzar error para no romper el flujo principal (igual que createHistoryEntry)
   }
 }
 

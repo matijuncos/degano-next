@@ -25,6 +25,7 @@ import styles from './MusicForm.module.css';
 import { EVENT_TABS } from '@/context/config';
 import { useGenres, transformGenresForMusic } from '@/hooks/useGenres';
 import { usePermissions } from '@/hooks/usePermissions';
+import FilesHandlerComponent from '@/components/FilesHandlerComponent/FilesHandlerComponent';
 
 type GenreType = {
   genre: string;
@@ -1316,6 +1317,23 @@ const MusicForm = forwardRef<MusicFormRef, {
         </Accordion.Item>
         )}
       </Accordion>
+
+      {/* Archivos de música (Nuevo evento). Van DENTRO de este formulario para
+          que viajen con sus datos al cambiar de pestaña (si no, se perdían).
+          Antes de crear el evento se suben a su carpeta propia (subcarpeta musica). */}
+      {!hideNavigation && (
+        <Box mt='lg'>
+          <FilesHandlerComponent
+            field='musicFiles'
+            subfolder='musica'
+            title='Archivos de música'
+            event={musicData}
+            onEventUpdated={(ev: any) =>
+              setMusicData((prev: any) => ({ ...prev, musicFiles: ev.musicFiles, folderId: ev.folderId }))
+            }
+          />
+        </Box>
+      )}
 
       {!hideNavigation && (
         <Flex direction='column' gap='xs' mt='lg'>

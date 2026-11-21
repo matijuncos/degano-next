@@ -290,6 +290,20 @@ export const PrintableMusicContent: React.FC<PrintableMusicSectionProps> = ({
       </View>
     )}
 
+    {/* Archivos de música (solo los nombres) */}
+    {event.musicFiles && event.musicFiles.length > 0 && (
+      <View style={styles.subsection}>
+        <View style={styles.subsectionHeader}>
+          <Text style={styles.subsectionTitle}>Archivos de música</Text>
+        </View>
+        {event.musicFiles.map((f, index) => (
+          <View key={index} style={styles.fieldRow}>
+            <Text style={styles.fieldValue}>{f.name}</Text>
+          </View>
+        ))}
+      </View>
+    )}
+
     {/* Géneros Musicales */}
     {event.music.genres && event.music.genres.length > 0 && (
       <View style={styles.subsection}>

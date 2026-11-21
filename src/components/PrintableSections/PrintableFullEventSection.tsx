@@ -79,7 +79,8 @@ const PrintableFullEventSection: React.FC<PrintableFullEventSectionProps> = ({
     event.customMoments?.length ||
     event.ambienceMusic?.length ||
     (event.music?.genres && event.music.genres.length > 0) ||
-    event.playlist?.length
+    event.playlist?.length ||
+    event.musicFiles?.length
   );
   const hasTiming = !rental && event.timing && event.timing.length > 0;
   const hasMoreData = event.moreData && Object.keys(event.moreData).length > 0;

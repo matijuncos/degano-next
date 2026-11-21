@@ -1,6 +1,6 @@
 'use client';
 import '@mantine/dropzone/styles.css';
-import { Box, Button, Flex, Loader } from '@mantine/core';
+import { Box, Button, Flex, Loader, TextInput, Tooltip } from '@mantine/core';
 import { Group, Text, rem } from '@mantine/core';
 import {
   IconUpload,
@@ -12,13 +12,16 @@ import {
   IconFileTypePdf,
   IconFileText,
   IconFileZip,
-  IconDownload
+  IconDownload,
+  IconEye,
+  IconPencil
 } from '@tabler/icons-react';
 import { Dropzone } from '@mantine/dropzone';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { useDeganoCtx } from '@/context/DeganoContext';
-import { filesUpdateBody, fileInFolder } from '@/utils/eventScope';
+import { listUpdateBody, fileInFolder, renameFile, FileListField } from '@/utils/eventScope';
+import { openS3File } from '@/utils/s3Utils';
 import useNotification from '@/hooks/useNotification';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -42,12 +45,21 @@ interface LoadingState {
 // Evento todavía NO creado (sin _id, Nuevo evento): los archivos se suben a SU
 // carpeta (folderId único del formulario) y quedan en el formulario; se
 // guardan junto con el evento al finalizar.
+// `field`: qué lista de archivos maneja ('files' = Archivos del evento,
+// 'musicFiles' = archivos de Música). `subfolder`: subcarpeta dentro de la del
+// evento en S3 (ej. 'musica'). Se guarda SOLO esa lista (cuerpo parcial).
 export default function FilesHandlerComponent({
   event,
-  onEventUpdated
+  onEventUpdated,
+  field = 'files',
+  subfolder,
+  title = 'Archivos del evento'
 }: {
   event?: any;
   onEventUpdated?: (event: any) => void;
+  field?: FileListField;
+  subfolder?: string;
+  title?: string;
 } = {}) {
   const { can } = usePermissions();
   const canUploadFiles = can('canUploadFiles');
@@ -64,8 +76,15 @@ export default function FilesHandlerComponent({
     deletingFile: null
   });
 
-  // Archivos del evento (guardados en MongoDB)
-  const files: EventFile[] = selectedEvent?.files || [];
+  // Archivos de esta lista (guardados en MongoDB)
+  const files: EventFile[] = selectedEvent?.[field] || [];
+  // Renombrar: archivo en edición y nombre escrito
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  // Enter / Escape ya resolvieron: el blur que dispara el campo al cerrarse no
+  // tiene que volver a guardar (ni guardar al cancelar con Escape)
+  const renameDoneRef = useRef(false);
+  const [renaming, setRenaming] = useState(false);
 
   // Función para obtener el ícono según el tipo de archivo
   const getFileIcon = (mimeType: string, fileName: string) => {
@@ -112,7 +131,7 @@ export default function FilesHandlerComponent({
             fileName: file.name,
             fileType: file.type,
             bucket: 'events',
-            folder: folderId
+            folder: subfolder ? `${folderId}/${subfolder}` : folderId
           })
         });
 
@@ -140,7 +159,7 @@ export default function FilesHandlerComponent({
 
       // Evento sin crear: quedan en el formulario (se guardan al finalizar)
       if (!persisted) {
-        setSelectedEvent({ ...selectedEvent, files: updatedFiles, folderId });
+        setSelectedEvent({ ...selectedEvent, [field]: updatedFiles, folderId });
         setAllfiles([]);
         notify({ message: 'Archivos subidos. Se guardan con el evento al finalizar.' });
         return;
@@ -153,13 +172,13 @@ export default function FilesHandlerComponent({
         headers: { 'Content-Type': 'application/json' },
         // Solo lo que cambia (updateEvent acepta cuerpos parciales): mandar el
         // evento entero pisaba el resto con una copia vieja de memoria
-        body: JSON.stringify(filesUpdateBody(selectedEvent._id, updatedFiles, folderId))
+        body: JSON.stringify(listUpdateBody(selectedEvent._id, field, updatedFiles, folderId))
       });
 
       if (!saveRes.ok) throw new Error('Error guardando archivos en el evento');
 
       const data = await saveRes.json();
-      setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles, folderId });
+      setSelectedEvent(data.event || { ...selectedEvent, [field]: updatedFiles, folderId });
 
       setAllfiles([]);
       notify({ message: 'Archivos subidos correctamente' });
@@ -182,7 +201,7 @@ export default function FilesHandlerComponent({
     try {
       if (!persisted) {
         const updatedFiles = files.filter((f) => f.url !== fileUrl);
-        setSelectedEvent({ ...selectedEvent, files: updatedFiles });
+        setSelectedEvent({ ...selectedEvent, [field]: updatedFiles });
         await fetch('/api/deleteFromS3', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -192,17 +211,17 @@ export default function FilesHandlerComponent({
         return;
       }
 
-      // 1. Sacarlo del evento (solo `files`). Si esto falla, el archivo NO se
+      // 1. Sacarlo del evento (solo esta lista). Si esto falla, el archivo NO se
       // borra de S3 (antes se borraba primero y podía perderse)
       const updatedFiles = files.filter((f) => f.url !== fileUrl);
       const saveRes = await fetch('/api/updateEvent', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filesUpdateBody(selectedEvent._id, updatedFiles))
+        body: JSON.stringify(listUpdateBody(selectedEvent._id, field, updatedFiles))
       });
       const data = await saveRes.json().catch(() => ({}));
       if (!saveRes.ok) throw new Error(data?.error || 'No se pudo quitar el archivo del evento');
-      setSelectedEvent(data.event || { ...selectedEvent, files: updatedFiles });
+      setSelectedEvent(data.event || { ...selectedEvent, [field]: updatedFiles });
 
       // 2. Recién ahora, borrarlo de S3
       await fetch('/api/deleteFromS3', {
@@ -217,6 +236,35 @@ export default function FilesHandlerComponent({
       notify({ type: 'defaultError', message: 'Error al eliminar archivo' });
     } finally {
       setLoading((prev) => ({ ...prev, deletingFile: null }));
+    }
+  };
+
+  // Renombrar: solo cambia el nombre visible (el archivo en S3 no se toca)
+  const saveRename = async (fileUrl: string) => {
+    const updated = renameFile(files, fileUrl, editName);
+    setEditingUrl(null);
+    if (updated === files || !selectedEvent) return;
+    if (!selectedEvent._id) {
+      setSelectedEvent({ ...selectedEvent, [field]: updated });
+      return;
+    }
+    // El aviso de la app actualiza el de "Cargando…": hay que abrirlo antes
+    notify({ loading: true });
+    setRenaming(true);
+    try {
+      const res = await fetch('/api/updateEvent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(listUpdateBody(selectedEvent._id, field, updated))
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'No se pudo renombrar');
+      setSelectedEvent(data.event || { ...selectedEvent, [field]: updated });
+      notify({ message: 'Nombre actualizado' });
+    } catch (error: any) {
+      notify({ type: 'defaultError', message: error?.message });
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -388,7 +436,7 @@ export default function FilesHandlerComponent({
           )}
 
           <Flex direction='column' gap='12px' align='flex-start' pb='100px'>
-            <h2>Archivos del evento</h2>
+            <h2>{title}</h2>
             {files.length === 0 ? (
               <Text size='sm' c='dimmed'>No hay archivos subidos.</Text>
             ) : (
@@ -410,7 +458,7 @@ export default function FilesHandlerComponent({
                     cursor: 'pointer',
                     transition: 'background-color 0.2s, transform 0.1s'
                   }}
-                  onClick={() => window.open(file.url, '_blank')}
+                  onClick={() => editingUrl !== file.url && openS3File(file.url)}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
                     e.currentTarget.style.transform = 'translateX(4px)';
@@ -429,9 +477,60 @@ export default function FilesHandlerComponent({
                       textOverflow: 'ellipsis'
                     }}
                   >
-                    {file.name}
+                    {editingUrl === file.url ? (
+                      <TextInput
+                        size='xs'
+                        value={editName}
+                        autoFocus
+                        aria-label='Nuevo nombre del archivo'
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setEditName(e.currentTarget.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            renameDoneRef.current = true;
+                            saveRename(file.url);
+                          }
+                          if (e.key === 'Escape') {
+                            renameDoneRef.current = true; // cancelar: no guarda
+                            setEditingUrl(null);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (renameDoneRef.current) return;
+                          saveRename(file.url);
+                        }}
+                      />
+                    ) : (
+                      file.name
+                    )}
                   </div>
                   <Flex gap='6px' align='center' style={{ flexShrink: 0 }}>
+                    <Tooltip label='Ver'>
+                      <IconEye
+                        size={18}
+                        style={{ opacity: 0.6, cursor: 'pointer' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openS3File(file.url);
+                        }}
+                      />
+                    </Tooltip>
+                    {canUploadFiles && (
+                      <Tooltip label='Renombrar'>
+                        <IconPencil
+                          size={18}
+                          style={{ opacity: renaming ? 0.2 : 0.6, cursor: renaming ? 'not-allowed' : 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Mientras se guarda un nombre, no se edita otro (pisaría el primero)
+                            if (renaming) return;
+                            renameDoneRef.current = false;
+                            setEditName(file.name);
+                            setEditingUrl(file.url);
+                          }}
+                        />
+                      </Tooltip>
+                    )}
                     <IconDownload
                       size={18}
                       style={{ opacity: 0.6, cursor: 'pointer' }}

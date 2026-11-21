@@ -6,9 +6,10 @@ import ContentPanel from '@/components/ContentPanel/ContentPanel';
 import CreationPanel from '@/components/CreationPanel/CreationPanel';
 import EquipmentSetsPanel from '@/components/EquipmentSetsPanel/EquipmentSetsPanel';
 import { Box, Tabs, Flex, SegmentedControl, Group, Button } from '@mantine/core';
-import { IconPrinter, IconArchive, IconCalendarSearch } from '@tabler/icons-react';
+import { IconPrinter, IconArchive, IconCalendarSearch, IconTrendingUp } from '@tabler/icons-react';
 import StockExportModal from '@/components/StockExport/StockExportModal';
 import AvailabilityModal from '@/components/AvailabilityModal/AvailabilityModal';
+import BulkPriceModal from '@/components/BulkPriceModal/BulkPriceModal';
 import DeletedEquipmentModal from '@/components/EquipmentHistory/DeletedEquipmentModal';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -23,6 +24,7 @@ export default function EquipmentPage() {
   const [section, setSection] = useState<'equipment' | 'sets'>('equipment');
   const [stockExportOpen, setStockExportOpen] = useState(false);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [deletedOpen, setDeletedOpen] = useState(false);
 
   const { isMobile, isTablet } = useResponsive();
@@ -30,6 +32,8 @@ export default function EquipmentPage() {
   const canViewEquipment = can('canViewEquipment');
   // Disponibilidad por fechas: solo admin y manager
   const canViewAvailability = can('canViewAvailability');
+  // Aumento masivo de precios: solo quien ve precios (admin)
+  const canEditPrices = can('canViewEquipmentPrices');
 
   const handleEdit = (item: any) => { setEditItem(item); };
 
@@ -74,6 +78,18 @@ export default function EquipmentPage() {
           Disponibilidad
         </Button>
         )}
+        {canEditPrices && (
+          <Button
+            variant='light'
+            color='orange'
+            size='sm'
+            leftSection={<IconTrendingUp size={16} />}
+            onClick={() => setBulkPriceOpen(true)}
+            style={{ flex: isMobile ? '1 1 auto' : '0 0 auto' }}
+          >
+            Aumentar precios
+          </Button>
+        )}
         <Button
           variant='light'
           size='sm'
@@ -109,6 +125,7 @@ export default function EquipmentPage() {
       />
       <DeletedEquipmentModal opened={deletedOpen} onClose={() => setDeletedOpen(false)} />
       {canViewAvailability && <AvailabilityModal opened={availabilityOpen} onClose={() => setAvailabilityOpen(false)} />}
+      {canEditPrices && <BulkPriceModal opened={bulkPriceOpen} onClose={() => setBulkPriceOpen(false)} />}
     </>
   );
 

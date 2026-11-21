@@ -68,7 +68,7 @@ describe('eventKind: campos que un alquiler no guarda', () => {
     const body = {
       bands: [1], music: { genres: [] }, playlist: [1], welcomeSongs: ['a'], walkIn: ['a'], vals: ['a'],
       openingPartySong: 'x', openingPartySongs: ['a'], closingSongs: ['a'], customMoments: [1],
-      ceremoniaCivil: {}, ceremoniaExtra: {}, ambienceMusic: [1], timing: [1], files: [1],
+      ceremoniaCivil: {}, ceremoniaExtra: {}, ambienceMusic: [1], timing: [1], files: [1], musicFiles: [1],
       folderId: 'evt-x', lugar: 'X', equipment: [1]
     };
     expect(stripRentalFields(body)).toEqual({ folderId: 'evt-x', lugar: 'X', equipment: [1] });
@@ -85,6 +85,9 @@ describe('eventKind: campos que un alquiler no guarda', () => {
     const files = [{ url: 'https://x/evt-1/a.pdf' }];
     expect(hasRentalHiddenData({ files })).toEqual({ any: true, files });
     expect(hasRentalHiddenData({}).files).toEqual([]);
+    // revisión: los archivos de Música también se cuentan (y se borran) al pasar a alquiler
+    const music = [{ url: 'https://x/evt-1/musica/vals.mp3' }];
+    expect(hasRentalHiddenData({ files, musicFiles: music }).files).toEqual([...files, ...music]);
   });
   it('updateEvent: el tipo nunca cambia; un alquiler no guarda esas secciones', () => {
     expect(sanitizeKindUpdate({ eventKind: 'alquiler', bands: [1] }, 'evento')).toEqual({ bands: [1] });
