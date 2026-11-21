@@ -16,6 +16,24 @@ import { eventKindOf, sanitizeKindUpdate } from '@/utils/eventKind';
 import { withoutCategoryItems } from '@/utils/categoryItemGuard';
 import { categoryIdsAmong } from '@/lib/categoryItemGuardServer';
 import { reservationStart, arDateTimeLabel } from '@/utils/reservationRange';
+import { sumRentalPrice } from '@/utils/equipmentPrices';
+import { bookingConflictMessage } from '@/utils/equipmentSuggestions';
+import {
+  stripServerOnlyFields,
+  validateResolutions,
+  applyLocalResolutions,
+  ConflictResolution,
+  DateConflict
+} from '@/utils/dateChangeConflicts';
+import {
+  loadConflictReport,
+  swapUnitsInOtherEvent,
+  releaseStaleUse,
+  ConflictChangedError
+} from '@/lib/dateConflictsServer';
+
+const conflictText = (conflicts: DateConflict[]) =>
+  bookingConflictMessage(conflicts.map((c) => ({ name: c.name, code: c.code, busyWith: c.busyWith })));
 
 // Solo admin y manager pueden editar eventos
 export const PUT = withAuth(async (context: AuthContext, req: Request) => {
@@ -23,7 +41,15 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
     const typedClientPromise: Promise<MongoClient> =
       clientPromise as Promise<MongoClient>;
     const client = await typedClientPromise;
-    const body = await req.json();
+    // `conflictResolutions` (lo elegido en la ventana de choques) y
+    // `markNoticeSeen` (botón "Visto" de un aviso) no se guardan tal cual; los
+    // avisos (`equipmentChangeNotices`) solo los escribe el servidor.
+    const {
+      conflictResolutions,
+      markNoticeSeen,
+      ...body
+    }: { conflictResolutions?: ConflictResolution[]; markNoticeSeen?: string; [k: string]: any } =
+      stripServerOnlyFields(await req.json());
     const db = client.db(DB_NAME);
     const eventId = body._id;
     // Una categoría nunca se guarda como equipo (pasaba al tocar una subcategoría
@@ -33,7 +59,7 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       // `nearWith` (aviso de eventos a menos de 6 h) es solo para mostrar: no se guarda
       body.equipment = body.equipment.map(({ nearWith: _near, ...e }: any) => e);
     }
-    const eventEquipment = body.equipment;
+    let eventEquipment = body.equipment;
     delete body._id;
 
     console.log('=== UPDATE EVENT CALLED ===');
@@ -116,33 +142,128 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       Number.isFinite(newResEnd.getTime()) &&
       (reservationStart(oldEvent as any).getTime() !== newResStart.getTime() ||
         +new Date(oldEvent.endDate as any) !== newResEnd.getTime());
+    // Choques al cambiar el RANGO: el 409 trae los datos para la ventana
+    // (`DateConflictModal`), sin requests extra para abrirla.
+    const applied: { otherEventId: string; otherEventName: string; fromCode: string; toCode: string }[] = [];
+    const rangeConflictResponse = async (equipmentIds: string[], error?: string) => {
+      const conflicts = await loadConflictReport(db, {
+        eventId: String(eventId),
+        start: newResStart,
+        end: newResEnd,
+        eventEquipmentIds: equipmentIds
+      });
+      if (!conflicts.length) return null;
+      return NextResponse.json(
+        { error: error || conflictText(conflicts), conflicts, ...(applied.length ? { applied } : {}) },
+        { status: 409 }
+      );
+    };
+
+    // Lo elegido en la ventana: se revalida TODO contra la base y se aplica
+    // (primero en los otros eventos, después en este) antes del guard normal.
+    if (Array.isArray(conflictResolutions) && conflictResolutions.length && rangeChanged) {
+      const baseEquipment: any[] = Array.isArray(body.equipment) ? body.equipment : oldEvent?.equipment || [];
+      const baseExtra: any[] = Array.isArray(body.extraEquipment) ? body.extraEquipment : oldEvent?.extraEquipment || [];
+      const baseIds = baseEquipment.map((e: any) => String(e._id));
+      const report = await loadConflictReport(db, {
+        eventId: String(eventId),
+        start: newResStart,
+        end: newResEnd,
+        eventEquipmentIds: baseIds
+      });
+      if (validateResolutions(report, conflictResolutions).length) {
+        return NextResponse.json(
+          { error: 'Los equipos cambiaron mientras elegías. Revisá de nuevo.', conflicts: report },
+          { status: 409 }
+        );
+      }
+      const fromEventName = mergedForRange.type || mergedForRange.name || 'otro evento';
+      const byName = context.user?.name || context.user?.email || '';
+      try {
+        const byOther = new Map<string, { fromId: string; toId: string }[]>();
+        for (const r of conflictResolutions) {
+          if (r.action !== 'replaceInOther') continue;
+          byOther.set(r.otherEventId, [...(byOther.get(r.otherEventId) || []), { fromId: r.equipmentId, toId: r.toId }]);
+        }
+        for (const [otherEventId, swaps] of Array.from(byOther.entries())) {
+          const changes = await swapUnitsInOtherEvent(db, {
+            otherEventId,
+            swaps,
+            fromEventId: String(eventId),
+            fromEventName,
+            userSub: context.user?.sub,
+            byName
+          });
+          const otherEventName =
+            report.find((c) => c.busyWith[0]?.eventId === otherEventId)?.busyWith[0]?.eventName || '';
+          applied.push(...changes.map((c) => ({ otherEventId, otherEventName, ...c })));
+        }
+        for (const r of conflictResolutions) {
+          if (r.action === 'releaseOrphan') {
+            await releaseStaleUse(db, { equipmentId: r.equipmentId, orphanEventId: r.orphanEventId, userSub: context.user?.sub });
+          }
+        }
+      } catch (err) {
+        if (!(err instanceof ConflictChangedError)) throw err;
+        const res = await rangeConflictResponse(baseIds, 'Los equipos cambiaron mientras elegías. Revisá de nuevo.');
+        if (res) return res;
+      }
+
+      const toIds = conflictResolutions.flatMap((r) => (r.action === 'replaceHere' ? [String(r.toId)] : []));
+      const units = toIds.length
+        ? await db
+            .collection('equipment')
+            .find(
+              { _id: { $in: toIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id)) } },
+              { projection: { history: 0 } }
+            )
+            .toArray()
+        : [];
+      const local = applyLocalResolutions(
+        baseEquipment,
+        baseExtra,
+        conflictResolutions,
+        new Map(units.map((u: any) => [String(u._id), u]))
+      );
+      // El cuerpo queda completo para que corra el diff normal de equipos
+      // (reservas + historial de agregados/quitados), aunque haya llegado parcial
+      for (const k of ['date', 'endDate', 'type', 'name', 'lugar', 'fullName']) {
+        if (!(k in body)) body[k] = mergedForRange[k];
+      }
+      body.equipment = local.equipment;
+      body.extraEquipment = local.extraEquipment;
+      eventEquipment = local.equipment;
+      Object.assign(updateData, {
+        date: body.date,
+        endDate: body.endDate,
+        equipment: local.equipment,
+        extraEquipment: local.extraEquipment,
+        equipmentPrice: sumRentalPrice(local.equipment)
+      });
+    }
+
     const fullEquipmentBody = Array.isArray(eventEquipment) && !!body.date && !!body.endDate;
 
     // GUARD doble asignación: los equipos NUEVOS del evento (o todos, si
     // cambió el rango de la reserva) no pueden estar reservados por otro evento
     // en esas fechas. Se valida ANTES de escribir nada.
     if (fullEquipmentBody) {
-      const prevIds = new Set((oldEvent?.equipment || []).map((e: any) => String(e._id)));
-      const toCheck = eventEquipment
-        .map((e: any) => String(e._id))
-        .filter((id: string) => rangeChanged || !prevIds.has(id));
-      const conflictMsg = await checkBookingConflicts(db, toCheck, newResStart, newResEnd, eventId);
-      if (conflictMsg) {
-        return NextResponse.json({ error: conflictMsg }, { status: 409 });
+      if (rangeChanged) {
+        const res = await rangeConflictResponse(eventEquipment.map((e: any) => String(e._id)));
+        if (res) return res;
+      } else {
+        const prevIds = new Set((oldEvent?.equipment || []).map((e: any) => String(e._id)));
+        const toCheck = eventEquipment.map((e: any) => String(e._id)).filter((id: string) => !prevIds.has(id));
+        const conflictMsg = await checkBookingConflicts(db, toCheck, newResStart, newResEnd, eventId);
+        if (conflictMsg) {
+          return NextResponse.json({ error: conflictMsg }, { status: 409 });
+        }
       }
     } else if (rangeChanged && (oldEvent?.equipment || []).length) {
       // Cuerpo parcial que cambia el rango (ej. solo la llegada del equipamiento
       // desde la página del evento): se chequean los equipos ya guardados
-      const conflictMsg = await checkBookingConflicts(
-        db,
-        (oldEvent?.equipment || []).map((e: any) => String(e._id)),
-        newResStart,
-        newResEnd,
-        eventId
-      );
-      if (conflictMsg) {
-        return NextResponse.json({ error: conflictMsg }, { status: 409 });
-      }
+      const res = await rangeConflictResponse((oldEvent?.equipment || []).map((e: any) => String(e._id)));
+      if (res) return res;
     }
 
     // GUARD datos ocultos: lo que el rol no puede ver le llega vacío/null desde
@@ -169,10 +290,19 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
         {
           $set: {
             ...updateData,
+            ...(markNoticeSeen
+              ? {
+                  'equipmentChangeNotices.$[n].seenAt': new Date().toISOString(),
+                  'equipmentChangeNotices.$[n].seenByName': context.user?.name || context.user?.email || ''
+                }
+              : {}),
             updatedAt: new Date()
           }
         },
-        { returnDocument: 'after' }
+        {
+          returnDocument: 'after',
+          ...(markNoticeSeen ? { arrayFilters: [{ 'n.id': String(markNoticeSeen) }] } : {})
+        }
       );
 
     // PERF: detectar si cambió algo relacionado a equipamiento. Los scheduledUses
@@ -423,7 +553,10 @@ export const PUT = withAuth(async (context: AuthContext, req: Request) => {
       );
     }
 
-    return NextResponse.json({ event: sanitizeEventForRole(event, context.role) }, { status: 201 });
+    return NextResponse.json(
+      { event: sanitizeEventForRole(event, context.role), ...(applied.length ? { applied } : {}) },
+      { status: 201 }
+    );
   } catch (error) {
     console.error(error);
     return NextResponse.json(
