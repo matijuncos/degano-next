@@ -19,6 +19,10 @@ import { cloneDeep, isEqual } from 'lodash';
 import React, { useState, useEffect } from 'react';
 import useLoadingCursor from '@/hooks/useLoadingCursor';
 import useNotification from '@/hooks/useNotification';
+import { useEventSave } from '@/components/DateConflictModal/DateConflictProvider';
+
+// Campos que cambian el rango de la reserva de equipos
+const RANGE_PROPERTIES = ['date', 'endDate', 'equipmentArrivalDate', 'equipmentArrivalTime'];
 
 const EditableData = ({
   title,
@@ -38,6 +42,7 @@ const EditableData = ({
   disabled?: boolean;
 }) => {
   const { selectedEvent, setSelectedEvent, updateEventInList } = useDeganoCtx();
+  const saveEvent = useEventSave();
   const setLoadingCursor = useLoadingCursor();
   const [editState, setEditState] = useState({
     showInput: false,
@@ -63,26 +68,25 @@ const EditableData = ({
     if (areOjectsEqual) return;
     setLoadingCursor(true);
     notify({ loading: true });
-    const timeStamp = new Date().toISOString();
     try {
-      const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(event)
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        notify({
-          title: 'Operación errónea',
-          message: data.error || 'Algo salió mal, vuelve a intentarlo',
-          color: 'red'
-        });
+      // Fechas de la reserva: solo `_id` + ese campo (regla 10); si choca con
+      // otro evento, useEventSave abre la ventana para resolverlo.
+      const body =
+        RANGE_PROPERTIES.includes(property) && event?._id
+          ? { _id: String(event._id), [property]: event[property] }
+          : event;
+      const result = await saveEvent(body);
+      if (!result.ok) {
+        if (!result.cancelled || result.error !== 'Cancelado') {
+          notify({
+            title: 'Operación errónea',
+            message: result.error || 'Algo salió mal, vuelve a intentarlo',
+            color: 'red'
+          });
+        }
         return;
       }
-      const updatedEvent = data.event || event;
+      const updatedEvent = result.event || event;
       setSelectedEvent(updatedEvent);
       updateEventInList(updatedEvent);
       notify();

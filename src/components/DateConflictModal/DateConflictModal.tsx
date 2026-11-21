@@ -1,0 +1,213 @@
+'use client';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Badge, Button, Card, Group, Modal, Radio, Select, Stack, Text } from '@mantine/core';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { useResponsive } from '@/hooks/useResponsive';
+import { arDateTimeLabel } from '@/utils/reservationRange';
+import {
+  defaultResolution,
+  CandidateUnit,
+  ConflictResolution,
+  DateConflict
+} from '@/utils/dateChangeConflicts';
+
+type Action = ConflictResolution['action'];
+type Choice = { action: Action; toId?: string };
+
+const candidateLabel = (u: CandidateUnit) =>
+  `${u.code || u.name}${u.isEquivalent ? ` · ${u.name} (equivalente)` : ''}${u.sameDay ? ' · se usa ese día' : ''}`;
+
+const choiceOf = (r: ConflictResolution | null): Choice | null =>
+  r ? { action: r.action, toId: 'toId' in r ? r.toId : undefined } : null;
+
+/** ¿Lo elegido sigue valiendo con los choques (re)calculados? */
+function stillValid(c: DateConflict, ch: Choice | undefined): boolean {
+  if (!ch) return false;
+  const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
+  if (ch.action === 'replaceHere') return c.hereCandidates.some((u) => u._id === ch.toId);
+  if (ch.action === 'replaceInOther') return c.otherCandidates.some((u) => u._id === ch.toId);
+  if (ch.action === 'releaseOrphan') return !!only?.stale;
+  return true;
+}
+
+function toResolution(c: DateConflict, ch: Choice): ConflictResolution | null {
+  const only = c.busyWith[0];
+  switch (ch.action) {
+    case 'replaceHere':
+      return ch.toId ? { equipmentId: c.equipmentId, action: 'replaceHere', toId: ch.toId } : null;
+    case 'replaceInOther':
+      return ch.toId ? { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: only.eventId, toId: ch.toId } : null;
+    case 'releaseOrphan':
+      return { equipmentId: c.equipmentId, action: 'releaseOrphan', orphanEventId: only.eventId };
+    default:
+      return { equipmentId: c.equipmentId, action: ch.action };
+  }
+}
+
+export default function DateConflictModal({
+  opened,
+  conflicts,
+  submitting,
+  error,
+  onSubmit,
+  onCancel
+}: {
+  opened: boolean;
+  conflicts: DateConflict[];
+  submitting: boolean;
+  error: string | null;
+  onSubmit: (resolutions: ConflictResolution[]) => void;
+  onCancel: () => void;
+}) {
+  const { isMobile } = useResponsive();
+  const [choices, setChoices] = useState<Record<string, Choice | undefined>>({});
+
+  // Pre-elegida: la primera opción que exista. Si los choques se recalculan,
+  // se conserva lo elegido que siga valiendo.
+  useEffect(() => {
+    setChoices((prev) => {
+      const next: Record<string, Choice | undefined> = {};
+      for (const c of conflicts) {
+        next[c.equipmentId] = stillValid(c, prev[c.equipmentId])
+          ? prev[c.equipmentId]
+          : choiceOf(defaultResolution(c)) ?? undefined;
+      }
+      return next;
+    });
+  }, [conflicts]);
+
+  // Una unidad elegida en una tarjeta no se ofrece en las demás
+  const takenBy = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [eqId, ch] of Object.entries(choices)) if (ch?.toId) m.set(ch.toId, eqId);
+    return m;
+  }, [choices]);
+
+  const resolutions = conflicts.map((c) => {
+    const ch = choices[c.equipmentId];
+    return ch ? toResolution(c, ch) : null;
+  });
+  const ready = resolutions.every(Boolean);
+
+  const setChoice = (eqId: string, ch: Choice) => setChoices((prev) => ({ ...prev, [eqId]: ch }));
+
+  const unitSelect = (c: DateConflict, list: CandidateUnit[], action: Action) => {
+    const current = choices[c.equipmentId];
+    return (
+      <Select
+        size='xs'
+        mt={4}
+        ml={28}
+        placeholder='Elegí la unidad'
+        value={current?.action === action ? current.toId ?? null : null}
+        data={list.map((u) => ({
+          value: u._id,
+          label: candidateLabel(u),
+          disabled: takenBy.has(u._id) && takenBy.get(u._id) !== c.equipmentId
+        }))}
+        onChange={(v) => v && setChoice(c.equipmentId, { action, toId: v })}
+        comboboxProps={{ withinPortal: true }}
+        allowDeselect={false}
+      />
+    );
+  };
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onCancel}
+      fullScreen={!!isMobile}
+      size='lg'
+      title={<Text fw={600}>Hay equipos ocupados en las fechas nuevas</Text>}
+      closeOnClickOutside={!submitting}
+      closeOnEscape={!submitting}
+    >
+      <Stack gap='sm'>
+        <Text size='sm' c='dimmed'>
+          {conflicts.length === 1
+            ? '1 equipo está reservado por otro evento en esas fechas.'
+            : `${conflicts.length} equipos están reservados por otro evento en esas fechas.`}{' '}
+          Elegí qué hacer con cada uno y se guarda todo junto.
+        </Text>
+        {error && (
+          <Alert color='red' icon={<IconAlertTriangle size={16} />}>
+            {error}
+          </Alert>
+        )}
+        {conflicts.map((c) => {
+          const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
+          const current = choices[c.equipmentId];
+          return (
+            <Card key={c.equipmentId} withBorder padding='sm' radius='md'>
+              <Group gap={6} mb={4} wrap='wrap'>
+                <Text fw={600} size='sm'>
+                  {c.name}
+                </Text>
+                {c.code && <Badge variant='light'>{c.code}</Badge>}
+              </Group>
+              {c.busyWith.map((b) => (
+                <Text key={`${b.eventId}-${b.startDate}`} size='xs' c='dimmed'>
+                  {b.stale
+                    ? `Reserva sobrante de "${b.eventName || 'un evento'}" (ese evento ya no existe o ya no tiene este equipo)`
+                    : `Ocupado por ${b.eventName || b.eventType}${b.location ? ` — ${b.location}` : ''} — ${arDateTimeLabel(b.startDate)} a ${arDateTimeLabel(b.endDate)}`}
+                </Text>
+              ))}
+              <Radio.Group
+                mt='xs'
+                value={current?.action ?? null}
+                onChange={(v) => {
+                  const action = v as Action;
+                  const list = action === 'replaceHere' ? c.hereCandidates : action === 'replaceInOther' ? c.otherCandidates : [];
+                  const first = list.find((u) => !takenBy.has(u._id) || takenBy.get(u._id) === c.equipmentId);
+                  setChoice(c.equipmentId, { action, toId: list.length ? first?._id : undefined });
+                }}
+              >
+                <Stack gap={6}>
+                  {only?.stale && <Radio value='releaseOrphan' label='Liberar la reserva sobrante (este evento se queda con la unidad)' />}
+                  {c.hereCandidates.length > 0 && (
+                    <div>
+                      <Radio value='replaceHere' label='Usar otra unidad en este evento' />
+                      {current?.action === 'replaceHere' && unitSelect(c, c.hereCandidates, 'replaceHere')}
+                    </div>
+                  )}
+                  {only && !only.stale && c.otherCandidates.length > 0 && (
+                    <div>
+                      <Radio value='replaceInOther' label={`Cambiar la unidad en "${only.eventName || only.eventType}" (este evento se queda con la suya)`} />
+                      {current?.action === 'replaceInOther' && (
+                        <>
+                          {unitSelect(c, c.otherCandidates, 'replaceInOther')}
+                          {only.otherEventInProgress && (
+                            <Alert mt={6} ml={28} color='yellow' p='xs'>
+                              <Text size='xs'>Ese evento está en curso: la unidad probablemente ya está allá; hay que cambiarla físicamente.</Text>
+                            </Alert>
+                          )}
+                          <Text size='xs' c='dimmed' ml={28} mt={4}>
+                            Queda un aviso en ese evento para que vuelvan a imprimir la lista.
+                          </Text>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <Radio value='outsource' label='Tercerizar en este evento' />
+                  <Radio value='remove' label='Quitar de este evento' />
+                </Stack>
+              </Radio.Group>
+            </Card>
+          );
+        })}
+        <Group justify='flex-end' gap='sm' mt='xs'>
+          <Button variant='default' onClick={onCancel} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => onSubmit(resolutions.filter(Boolean) as ConflictResolution[])}
+            disabled={!ready}
+            loading={submitting}
+          >
+            Guardar cambios
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}

@@ -52,6 +52,7 @@ import { eventForPage } from '@/utils/eventScope';
 import { isRental } from '@/utils/eventKind';
 import RentalBadge from '@/components/EventKindChooser/RentalBadge';
 import ArrivalLeadWarning from '@/components/ArrivalLeadWarning/ArrivalLeadWarning';
+import { DateConflictProvider, useEventSave } from '@/components/DateConflictModal/DateConflictProvider';
 
 // Pestañas que un alquiler no tiene
 const RENTAL_HIDDEN_PAGE_TABS = ['bands', 'music', 'timing', 'files'];
@@ -144,6 +145,7 @@ const MainInformation = ({
   const [isMissingFieldsModalOpen, setIsMissingFieldsModalOpen] =
     useState(false);
   const { setSelectedEvent, updateEventInList } = useDeganoCtx();
+  const saveEvent = useEventSave();
 
   // Solo puede editar teléfonos de cliente quien puede verlos (no ofuscados).
   // Evita que un manager guarde '****' pisando el teléfono real.
@@ -211,24 +213,22 @@ const MainInformation = ({
   const missingFieldsCount = missingFields.length;
 
   // Función para actualizar el evento
+  // Regla 10: se manda SOLO `_id` + lo que cambia. Si un cambio de fechas
+  // choca con otro evento, useEventSave abre la ventana para resolverlo.
   const updateEventData = async (updates: Partial<EventModel>) => {
     if (!selectedEvent) return;
     setLoadingCursor(true);
     notify({ loading: true });
-    const timeStamp = new Date().toISOString();
     try {
-      const updatedEvent = { ...selectedEvent, ...updates };
-      const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updatedEvent)
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
-      const eventToUse = data.event || updatedEvent;
+      const result = await saveEvent({ _id: String(selectedEvent._id), ...updates });
+      if (!result.ok) {
+        if (result.cancelled) {
+          if (result.error !== 'Cancelado') notify({ type: 'defaultError', message: result.error });
+          return;
+        }
+        throw new Error(result.error || 'Error al actualizar');
+      }
+      const eventToUse = result.event || { ...selectedEvent, ...updates };
       setSelectedEvent(eventToUse);
       updateEventInList(eventToUse);
       notify();
@@ -417,15 +417,16 @@ const MainInformation = ({
     if (!selectedEvent?._id) return;
     setConfirmingArrival(true);
     try {
-      const response = await fetch('/api/updateEvent', {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _id: selectedEvent._id, equipmentArrivalConfirmedFor: key })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'No se pudo confirmar');
-      const eventToUse = data.event || { ...selectedEvent, equipmentArrivalConfirmedFor: key };
+      // Si la reserva extendida choca, useEventSave abre la ventana para resolverlo
+      const result = await saveEvent({ _id: String(selectedEvent._id), equipmentArrivalConfirmedFor: key });
+      if (!result.ok) {
+        if (result.cancelled) {
+          if (result.error !== 'Cancelado') notify({ type: 'defaultError', message: result.error });
+          return;
+        }
+        throw new Error(result.error || 'No se pudo confirmar');
+      }
+      const eventToUse = result.event || { ...selectedEvent, equipmentArrivalConfirmedFor: key };
       setSelectedEvent(eventToUse);
       updateEventInList(eventToUse);
       notify({ message: 'Llegada confirmada: los equipos quedan reservados desde esa fecha' });
@@ -1976,25 +1977,24 @@ const TimingInformation = ({
   const setLoadingCursor = useLoadingCursor();
   const notify = useNotification();
   const { isAdmin } = usePermissions();
+  const saveEvent = useEventSave();
 
+  // Regla 10: se manda SOLO `_id` + lo que cambia. Si un cambio de fechas
+  // choca con otro evento, useEventSave abre la ventana para resolverlo.
   const updateEventData = async (updates: Partial<EventModel>) => {
     if (!selectedEvent) return;
     setLoadingCursor(true);
     notify({ loading: true });
-    const timeStamp = new Date().toISOString();
     try {
-      const updatedEvent = { ...selectedEvent, ...updates };
-      const response = await fetch(`/api/updateEvent?id=${timeStamp}`, {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updatedEvent)
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
-      const eventToUse = data.event || updatedEvent;
+      const result = await saveEvent({ _id: String(selectedEvent._id), ...updates });
+      if (!result.ok) {
+        if (result.cancelled) {
+          if (result.error !== 'Cancelado') notify({ type: 'defaultError', message: result.error });
+          return;
+        }
+        throw new Error(result.error || 'Error al actualizar');
+      }
+      const eventToUse = result.event || { ...selectedEvent, ...updates };
       setSelectedEvent(eventToUse);
       updateEventInList(eventToUse);
       notify();
@@ -2330,7 +2330,7 @@ const MoreInfoInformation = ({
   );
 };
 
-const EventPage = () => {
+const EventPageContent = () => {
   const { setSelectedEvent, selectedEvent, loading, setFolderName, updateEventInList } =
     useDeganoCtx();
   const { user } = useUser();
@@ -2848,5 +2848,13 @@ const EventPage = () => {
     <Center h='60vh'>{loadError ? <Text>{loadError}</Text> : <Loader />}</Center>
   );
 };
+
+// La ventana de choques (al cambiar fechas) envuelve toda la página: la usan los
+// guardados de fechas de MainInformation y de EditableData.
+const EventPage = () => (
+  <DateConflictProvider>
+    <EventPageContent />
+  </DateConflictProvider>
+);
 
 export default withPageAuthRequired(EventPage);
