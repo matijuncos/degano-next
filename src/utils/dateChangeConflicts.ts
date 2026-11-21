@@ -34,6 +34,9 @@ export interface ConflictBusy {
   stale: boolean; // su evento no existe o ya no tiene este equipo
   otherEventEnded: boolean;
   otherEventInProgress: boolean;
+  // el otro evento empieza DESPUÉS que el actual: por logística conviene cambiar
+  // la unidad allá (la del evento que sale primero ya está preparada)
+  otherStartsLater: boolean;
 }
 
 export interface DateConflict {
@@ -140,7 +143,8 @@ export function buildConflictReport(args: {
         endDate: iso(u.endDate),
         stale,
         otherEventEnded: oEnd.getTime() < now.getTime(),
-        otherEventInProgress: oStart.getTime() <= now.getTime() && now.getTime() <= oEnd.getTime()
+        otherEventInProgress: oStart.getTime() <= now.getTime() && now.getTime() <= oEnd.getTime(),
+        otherStartsLater: oStart.getTime() > start.getTime()
       };
     });
     const target = { name: eq.name || '', categoryId };
@@ -154,15 +158,22 @@ export function buildConflictReport(args: {
   });
 }
 
-/** La opción pre-elegida en la ventana (null = que elija el usuario). */
+/**
+ * La opción pre-elegida en la ventana (null = que elija el usuario).
+ * Si el otro evento empieza DESPUÉS que el actual (y no está en curso), primero
+ * se cambia la unidad allá: el equipo del evento que sale primero ya está
+ * preparado (pedido del usuario, 21/11/2026). Si no, otra unidad en el actual.
+ */
 export function defaultResolution(c: DateConflict): ConflictResolution | null {
   const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
   if (only?.stale) return { equipmentId: c.equipmentId, action: 'releaseOrphan', orphanEventId: only.eventId };
+  const inOther = (): ConflictResolution | null =>
+    only && !only.otherEventInProgress && c.otherCandidates[0]
+      ? { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: only.eventId, toId: c.otherCandidates[0]._id }
+      : null;
+  if (only?.otherStartsLater && inOther()) return inOther();
   if (c.hereCandidates[0]) return { equipmentId: c.equipmentId, action: 'replaceHere', toId: c.hereCandidates[0]._id };
-  if (only && !only.otherEventInProgress && c.otherCandidates[0]) {
-    return { equipmentId: c.equipmentId, action: 'replaceInOther', otherEventId: only.eventId, toId: c.otherCandidates[0]._id };
-  }
-  return null;
+  return inOther();
 }
 
 /**

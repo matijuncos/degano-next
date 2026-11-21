@@ -101,6 +101,13 @@ describe('buildConflictReport', () => {
     expect(sinEquipo.busyWith[0].stale).toBe(true);
   });
 
+  it('marca otherStartsLater si el otro evento empieza después que el actual', () => {
+    const [c] = report();
+    expect(c.busyWith[0].otherStartsLater).toBe(true);
+    const [antes] = report({ start: new Date('2026-11-27T00:00:00Z'), end: new Date('2026-11-28T00:00:00Z') });
+    expect(antes.busyWith[0].otherStartsLater).toBe(false);
+  });
+
   it('marca otherEventInProgress cuando now está dentro del rango del otro', () => {
     const [c] = report({ now: new Date('2026-11-26T22:00:00Z') });
     expect(c.busyWith[0].otherEventInProgress).toBe(true);
@@ -110,13 +117,25 @@ describe('buildConflictReport', () => {
 
 const conflict = (over: Partial<DateConflict> = {}): DateConflict => ({
   equipmentId: 'c03', name: 'Zed 12FX', code: 'CNSL-03', categoryId: 'consolas',
-  busyWith: [{ eventId: 'cumple', eventName: 'Cumpleaños de 50', eventType: 'Cumpleaños de 50', location: 'Villa Golf', startDate: CUMPLE.startDate, endDate: CUMPLE.endDate, stale: false, otherEventEnded: false, otherEventInProgress: false }],
+  busyWith: [{ eventId: 'cumple', eventName: 'Cumpleaños de 50', eventType: 'Cumpleaños de 50', location: 'Villa Golf', startDate: CUMPLE.startDate, endDate: CUMPLE.endDate, stale: false, otherEventEnded: false, otherEventInProgress: false, otherStartsLater: false }],
   hereCandidates: [{ _id: 'c07', name: 'Zed 12FX', code: 'CNSL-07', sameDay: false, isEquivalent: false }],
   otherCandidates: [{ _id: 'q16', name: 'QU-16', code: 'CNSL-20', sameDay: false, isEquivalent: true }],
   ...over
 });
 
 describe('defaultResolution', () => {
+  it('el otro evento empieza después y tiene unidad libre → cambiar en el otro (aunque haya acá)', () => {
+    const c = conflict({ busyWith: [{ ...conflict().busyWith[0], otherStartsLater: true }] });
+    expect(defaultResolution(c)).toEqual({ equipmentId: 'c03', action: 'replaceInOther', otherEventId: 'cumple', toId: 'q16' });
+  });
+  it('el otro evento empieza después pero sin unidad libre allá → otra unidad acá', () => {
+    const c = conflict({ otherCandidates: [], busyWith: [{ ...conflict().busyWith[0], otherStartsLater: true }] });
+    expect(defaultResolution(c)).toEqual({ equipmentId: 'c03', action: 'replaceHere', toId: 'c07' });
+  });
+  it('el otro evento empieza después pero está en curso → otra unidad acá', () => {
+    const c = conflict({ busyWith: [{ ...conflict().busyWith[0], otherStartsLater: true, otherEventInProgress: true }] });
+    expect(defaultResolution(c)).toEqual({ equipmentId: 'c03', action: 'replaceHere', toId: 'c07' });
+  });
   it('reserva sobrante → liberarla', () => {
     const c = conflict({ busyWith: [{ ...conflict().busyWith[0], stale: true }] });
     expect(defaultResolution(c)).toEqual({ equipmentId: 'c03', action: 'releaseOrphan', orphanEventId: 'cumple' });
