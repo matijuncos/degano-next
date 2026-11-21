@@ -207,7 +207,7 @@ export function validateResolutions(report: DateConflict[], resolutions: Conflic
 const VOLATILE_FIELDS = ['scheduledUses', 'busyWith', 'nearWith', 'history', 'outOfService'];
 
 /** Renglón del evento para la unidad nueva: hereda categoría y nota del anterior; precio real de la base. */
-function replacementRow(old: any, unit: any): any {
+export function replacementRow(old: any, unit: any): any {
   const fresh: any = stripPriceFields({ ...unit });
   for (const f of VOLATILE_FIELDS) delete fresh[f];
   for (const f of PRICE_FIELDS) if (unit[f] !== undefined) fresh[f] = unit[f];
