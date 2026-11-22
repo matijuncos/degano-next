@@ -2,12 +2,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Card, Group, Modal, Radio, Select, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
+import { isEqual } from 'lodash';
 import { useResponsive } from '@/hooks/useResponsive';
 import { arDateTimeLabel } from '@/utils/reservationRange';
 import {
   defaultResolutions,
   hasDuplicateTargets,
   isChoiceValid,
+  noUnitsText,
   ConflictChoice,
   CandidateUnit,
   ConflictResolution,
@@ -229,6 +231,39 @@ export default function DateConflictModal({
                     : `Ocupado por ${b.eventName || b.eventType}${b.location ? ` — ${b.location}` : ''} — ${arDateTimeLabel(b.startDate)} a ${arDateTimeLabel(b.endDate)}`}
                 </Text>
               ))}
+              {/* Por qué faltan opciones: dónde están las otras unidades del equipo */}
+              {(c.hereSummary || (otherAllowed && c.otherSummary)) && (
+                <Alert mt='xs' p='xs' color='gray' variant='light'>
+                  <Stack gap={2}>
+                    {c.hereSummary && otherAllowed && c.otherSummary && isEqual(c.hereSummary, c.otherSummary) ? (
+                      // Mismo motivo en los dos eventos: una sola frase
+                      <Text size='xs'>
+                        No hay otra unidad de {c.name} libre ni en el {ACTUAL} ni para cambiarla en &quot;{otherName}&quot;:{' '}
+                        {noUnitsText(c.hereSummary)}
+                        {c.categoryId ? ', y no hay equivalentes libres de la misma categoría' : ''}.
+                      </Text>
+                    ) : (
+                      <>
+                        {c.hereSummary && (
+                          <Text size='xs'>
+                            No hay otra unidad de {c.name} libre en todo el {ACTUAL}: {noUnitsText(c.hereSummary)}
+                            {c.categoryId ? ', y no hay equivalentes libres de la misma categoría' : ''}.
+                          </Text>
+                        )}
+                        {otherAllowed && c.otherSummary && (
+                          <Text size='xs'>
+                            {c.hereSummary ? 'Tampoco hay' : 'No hay'} una libre para cambiarla en &quot;{otherName}&quot;:{' '}
+                            {noUnitsText(c.otherSummary)}.
+                          </Text>
+                        )}
+                      </>
+                    )}
+                    {c.hereSummary && (!otherAllowed || c.otherSummary) && (
+                      <Text size='xs'>Por eso solo queda tercerizar o quitar.</Text>
+                    )}
+                  </Stack>
+                </Alert>
+              )}
               <Radio.Group
                 mt='xs'
                 value={current?.action ?? null}

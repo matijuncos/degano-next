@@ -12,6 +12,7 @@ import {
   appliedSummary,
   isChoiceValid,
   unresolvedAfter,
+  noUnitsText,
   validateResolutions,
   applyLocalResolutions,
   buildChangeNotice,
@@ -388,5 +389,44 @@ describe('revisión 2', () => {
     // reserva sobrante liberada → resuelto
     const stale = conflict({ busyWith: [{ ...b, stale: true }] });
     expect(unresolvedAfter([stale], [{ equipmentId: 'c03', action: 'releaseOrphan', orphanEventId: 'cumple' }])).toEqual([]);
+  });
+});
+
+describe('por qué no hay unidades', () => {
+  it('hereSummary: dónde están las otras unidades del modelo cuando no hay libre acá', () => {
+    const [c] = report({ eventEquipmentIds: ['c03', 'c07'], pool: [CNSL03, CNSL07, CNSL10, ROTA] });
+    expect(c.hereCandidates).toEqual([]);
+    expect(c.hereSummary).toEqual({ total: 3, inThisEvent: 1, inOtherEvent: 0, outOfService: 1, busy: [{ eventName: 'Boda', count: 1 }] });
+  });
+
+  it('sin summary cuando sí hay unidades', () => {
+    const [c] = report();
+    expect(c.hereSummary).toBeUndefined();
+  });
+
+  it('otherSummary: cuenta las que ya están en el otro evento y en el actual', () => {
+    const [c] = report({
+      eventEquipmentIds: ['c03', 'c07'],
+      pool: [CNSL03, CNSL07, CNSL10],
+      otherEvents: new Map([['cumple', cumpleInfo]])
+    });
+    expect(c.otherCandidates).toEqual([]);
+    expect(c.otherSummary).toEqual({ total: 2, inThisEvent: 1, inOtherEvent: 0, outOfService: 0, busy: [{ eventName: 'Boda', count: 1 }] });
+  });
+
+  it('noUnitsText arma la explicación', () => {
+    expect(noUnitsText({ total: 15, inThisEvent: 9, inOtherEvent: 0, outOfService: 0, busy: [{ eventName: 'Acto de Cierre', count: 6 }] }))
+      .toBe('9 ya están en el evento actual y 6 ocupadas en Acto de Cierre');
+    expect(noUnitsText({ total: 4, inThisEvent: 0, inOtherEvent: 1, outOfService: 1, busy: [{ eventName: 'Boda', count: 1 }, { eventName: 'Fiesta', count: 1 }] }))
+      .toBe('1 ya está en ese evento, 1 ocupada en Boda, 1 ocupada en Fiesta y 1 fuera de servicio');
+    expect(noUnitsText({ total: 0, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [] })).toBe('no hay otras unidades de este equipo');
+  });
+});
+
+describe('por qué no hay unidades (nombres)', () => {
+  it('recorta espacios del nombre del evento ocupante', () => {
+    const conEspacio = { ...CNSL10, scheduledUses: [{ ...BODA, eventName: 'Acto de Cierre ' }] };
+    const [c] = report({ eventEquipmentIds: ['c03', 'c07'], pool: [CNSL03, CNSL07, conEspacio] });
+    expect(c.hereSummary?.busy).toEqual([{ eventName: 'Acto de Cierre', count: 1 }]);
   });
 });

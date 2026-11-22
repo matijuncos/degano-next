@@ -39,6 +39,15 @@ export interface ConflictBusy {
   otherStartsLater: boolean;
 }
 
+/** Dónde están las OTRAS unidades del mismo equipo (para explicar por qué no hay libre). */
+export interface UnitsSummary {
+  total: number; // otras unidades del mismo equipo (sin contar la que choca)
+  inThisEvent: number;
+  inOtherEvent: number;
+  outOfService: number;
+  busy: { eventName: string; count: number }[];
+}
+
 export interface DateConflict {
   equipmentId: string;
   name: string;
@@ -47,6 +56,8 @@ export interface DateConflict {
   busyWith: ConflictBusy[];
   hereCandidates: CandidateUnit[];
   otherCandidates: CandidateUnit[];
+  hereSummary?: UnitsSummary; // solo si no hay unidad libre en el evento actual
+  otherSummary?: UnitsSummary; // solo si no hay unidad libre en el otro evento
 }
 
 export type ConflictResolution =
@@ -133,6 +144,48 @@ function candidatesFor(
   }));
 }
 
+function summarizeUnits(args: {
+  name: string;
+  pool: any[];
+  excludeId: string;
+  inThisEvent: Set<string>;
+  inOtherEvent: Set<string>;
+  start: Date;
+  end: Date;
+  ignoreEventId: string;
+}): UnitsSummary {
+  const out: UnitsSummary = { total: 0, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [] };
+  const busy = new Map<string, number>();
+  for (const u of args.pool) {
+    const id = String(u._id);
+    if (u.name !== args.name || id === args.excludeId) continue;
+    out.total++;
+    if (args.inThisEvent.has(id)) out.inThisEvent++;
+    else if (args.inOtherEvent.has(id)) out.inOtherEvent++;
+    else if (isEquipmentUnavailable(u.outOfService)) out.outOfService++;
+    else {
+      const use = conflictingUses(args.start, args.end, u.scheduledUses, { ignoreEventId: args.ignoreEventId })[0];
+      if (use) {
+        const key = String(use.eventName || use.eventType || '').trim() || 'otro evento';
+        busy.set(key, (busy.get(key) || 0) + 1);
+      }
+    }
+  }
+  out.busy = Array.from(busy.entries()).map(([eventName, count]) => ({ eventName, count }));
+  return out;
+}
+
+/** "9 ya están en el evento actual y 6 ocupadas en Acto de Cierre". */
+export function noUnitsText(s: UnitsSummary): string {
+  if (!s.total) return 'no hay otras unidades de este equipo';
+  const parts: string[] = [];
+  if (s.inThisEvent) parts.push(`${s.inThisEvent} ${s.inThisEvent === 1 ? 'ya está' : 'ya están'} en el evento actual`);
+  if (s.inOtherEvent) parts.push(`${s.inOtherEvent} ${s.inOtherEvent === 1 ? 'ya está' : 'ya están'} en ese evento`);
+  for (const b of s.busy) parts.push(`${b.count} ${b.count === 1 ? 'ocupada' : 'ocupadas'} en ${b.eventName}`);
+  if (s.outOfService) parts.push(`${s.outOfService} fuera de servicio`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts[0] || '';
+}
+
 export function buildConflictReport(args: {
   eventId: string;
   start: Date;
@@ -177,7 +230,35 @@ export function buildConflictReport(args: {
     const otherCandidates = other
       ? candidatesFor(target, pool, new Set([...other.equipmentIds.map(String), ...inThisEvent]), other.start, other.end, other._id)
       : [];
-    return [{ equipmentId: id, name: eq.name || '', code: eq.code || '', categoryId, busyWith, hereCandidates, otherCandidates }];
+    const hereSummary = hereCandidates.length
+      ? undefined
+      : summarizeUnits({ name: target.name, pool, excludeId: id, inThisEvent: inThisEvent, inOtherEvent: new Set(), start, end, ignoreEventId: eventId });
+    const otherSummary =
+      other && !otherCandidates.length
+        ? summarizeUnits({
+            name: target.name,
+            pool,
+            excludeId: id,
+            inThisEvent: inThisEvent,
+            inOtherEvent: new Set(other.equipmentIds.map(String)),
+            start: other.start,
+            end: other.end,
+            ignoreEventId: other._id
+          })
+        : undefined;
+    return [
+      {
+        equipmentId: id,
+        name: eq.name || '',
+        code: eq.code || '',
+        categoryId,
+        busyWith,
+        hereCandidates,
+        otherCandidates,
+        ...(hereSummary ? { hereSummary } : {}),
+        ...(otherSummary ? { otherSummary } : {})
+      }
+    ];
   });
 }
 
