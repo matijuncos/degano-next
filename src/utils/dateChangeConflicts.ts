@@ -45,7 +45,8 @@ export interface UnitsSummary {
   inThisEvent: number;
   inOtherEvent: number;
   outOfService: number;
-  busy: { eventName: string; count: number }[];
+  // agrupadas por EVENTO (dos eventos con el mismo nombre no se suman)
+  busy: { eventId: string; eventName: string; location: string; startDate: string; count: number }[];
 }
 
 export interface DateConflict {
@@ -155,7 +156,7 @@ function summarizeUnits(args: {
   ignoreEventId: string;
 }): UnitsSummary {
   const out: UnitsSummary = { total: 0, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [] };
-  const busy = new Map<string, number>();
+  const busy = new Map<string, UnitsSummary['busy'][number]>();
   for (const u of args.pool) {
     const id = String(u._id);
     if (u.name !== args.name || id === args.excludeId) continue;
@@ -166,12 +167,25 @@ function summarizeUnits(args: {
     else {
       const use = conflictingUses(args.start, args.end, u.scheduledUses, { ignoreEventId: args.ignoreEventId })[0];
       if (use) {
-        const key = String(use.eventName || use.eventType || '').trim() || 'otro evento';
-        busy.set(key, (busy.get(key) || 0) + 1);
+        const eventName = String(use.eventName || use.eventType || '').trim() || 'otro evento';
+        const key = use.eventId ? String(use.eventId) : eventName;
+        const prev = busy.get(key);
+        busy.set(
+          key,
+          prev
+            ? { ...prev, count: prev.count + 1 }
+            : {
+                eventId: String(use.eventId ?? ''),
+                eventName,
+                location: String(use.location || '').trim(),
+                startDate: iso(use.startDate),
+                count: 1
+              }
+        );
       }
     }
   }
-  out.busy = Array.from(busy.entries()).map(([eventName, count]) => ({ eventName, count }));
+  out.busy = Array.from(busy.values());
   return out;
 }
 
@@ -181,7 +195,13 @@ export function noUnitsText(s: UnitsSummary): string {
   const parts: string[] = [];
   if (s.inThisEvent) parts.push(`${s.inThisEvent} ${s.inThisEvent === 1 ? 'ya está' : 'ya están'} en el evento actual`);
   if (s.inOtherEvent) parts.push(`${s.inOtherEvent} ${s.inOtherEvent === 1 ? 'ya está' : 'ya están'} en ese evento`);
-  for (const b of s.busy) parts.push(`${b.count} ${b.count === 1 ? 'ocupada' : 'ocupadas'} en ${b.eventName}`);
+  // Lugar entre paréntesis; si dos eventos coinciden en nombre y lugar, también la fecha
+  const sameLabel = (b: UnitsSummary['busy'][number]) =>
+    s.busy.filter((x) => x.eventName === b.eventName && x.location === b.location).length > 1;
+  for (const b of s.busy) {
+    const extra = [b.location, sameLabel(b) ? arDateTimeLabel(b.startDate) : ''].filter(Boolean).join(', ');
+    parts.push(`${b.count} ${b.count === 1 ? 'ocupada' : 'ocupadas'} en ${b.eventName}${extra ? ` (${extra})` : ''}`);
+  }
   if (s.outOfService) parts.push(`${s.outOfService} fuera de servicio`);
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts[0] || '';
 }
@@ -514,10 +534,11 @@ export type AppliedChange = NoticeChange & { otherEventId: string; otherEventNam
 
 /** "En Cumpleaños de 50: CNSL-03 → CNSL-07, TP-01 pasa a tercerizado" (un tramo por evento). */
 export function appliedSummary(applied: AppliedChange[]): string {
+  // Agrupado por id de evento (dos eventos con el mismo nombre no se mezclan)
   const byEvent = new Map<string, AppliedChange[]>();
-  for (const a of applied) byEvent.set(a.otherEventName, [...(byEvent.get(a.otherEventName) || []), a]);
-  return Array.from(byEvent.entries())
-    .map(([name, list]) => `En ${name || 'el otro evento'}: ${list.map(changeText).join(', ')}`)
+  for (const a of applied) byEvent.set(a.otherEventId, [...(byEvent.get(a.otherEventId) || []), a]);
+  return Array.from(byEvent.values())
+    .map((list) => `En ${list[0].otherEventName || 'el otro evento'}: ${list.map(changeText).join(', ')}`)
     .join('. ');
 }
 

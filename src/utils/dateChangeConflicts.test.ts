@@ -397,7 +397,7 @@ describe('por qué no hay unidades', () => {
   it('hereSummary: dónde están las otras unidades del modelo cuando no hay libre acá', () => {
     const [c] = report({ eventEquipmentIds: ['c03', 'c07'], pool: [CNSL03, CNSL07, CNSL10, ROTA] });
     expect(c.hereCandidates).toEqual([]);
-    expect(c.hereSummary).toEqual({ total: 3, inThisEvent: 1, inOtherEvent: 0, outOfService: 1, busy: [{ eventName: 'Boda', count: 1 }] });
+    expect(c.hereSummary).toEqual({ total: 3, inThisEvent: 1, inOtherEvent: 0, outOfService: 1, busy: [{ eventId: 'boda', eventName: 'Boda', location: 'Casas Viejas', startDate: BODA.startDate, count: 1 }] });
   });
 
   it('sin summary cuando sí hay unidades', () => {
@@ -412,14 +412,17 @@ describe('por qué no hay unidades', () => {
       otherEvents: new Map([['cumple', cumpleInfo]])
     });
     expect(c.otherCandidates).toEqual([]);
-    expect(c.otherSummary).toEqual({ total: 2, inThisEvent: 1, inOtherEvent: 0, outOfService: 0, busy: [{ eventName: 'Boda', count: 1 }] });
+    expect(c.otherSummary).toEqual({ total: 2, inThisEvent: 1, inOtherEvent: 0, outOfService: 0, busy: [{ eventId: 'boda', eventName: 'Boda', location: 'Casas Viejas', startDate: BODA.startDate, count: 1 }] });
   });
 
   it('noUnitsText arma la explicación', () => {
-    expect(noUnitsText({ total: 15, inThisEvent: 9, inOtherEvent: 0, outOfService: 0, busy: [{ eventName: 'Acto de Cierre', count: 6 }] }))
-      .toBe('9 ya están en el evento actual y 6 ocupadas en Acto de Cierre');
-    expect(noUnitsText({ total: 4, inThisEvent: 0, inOtherEvent: 1, outOfService: 1, busy: [{ eventName: 'Boda', count: 1 }, { eventName: 'Fiesta', count: 1 }] }))
-      .toBe('1 ya está en ese evento, 1 ocupada en Boda, 1 ocupada en Fiesta y 1 fuera de servicio');
+    const acto = { eventId: 'acto', eventName: 'Acto de Cierre', location: 'Anfiteatro Municipal La Falda', startDate: '2026-11-25T13:00:00.000Z' };
+    expect(noUnitsText({ total: 15, inThisEvent: 9, inOtherEvent: 0, outOfService: 0, busy: [{ ...acto, count: 6 }] }))
+      .toBe('9 ya están en el evento actual y 6 ocupadas en Acto de Cierre (Anfiteatro Municipal La Falda)');
+    expect(noUnitsText({ total: 4, inThisEvent: 0, inOtherEvent: 1, outOfService: 1, busy: [
+      { eventId: 'b', eventName: 'Boda', location: '', startDate: BODA.startDate, count: 1 },
+      { eventId: 'f', eventName: 'Fiesta', location: 'Villa Golf', startDate: BODA.startDate, count: 1 }
+    ] })).toBe('1 ya está en ese evento, 1 ocupada en Boda, 1 ocupada en Fiesta (Villa Golf) y 1 fuera de servicio');
     expect(noUnitsText({ total: 0, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [] })).toBe('es la única unidad de este equipo');
   });
 });
@@ -428,7 +431,7 @@ describe('por qué no hay unidades (nombres)', () => {
   it('recorta espacios del nombre del evento ocupante', () => {
     const conEspacio = { ...CNSL10, scheduledUses: [{ ...BODA, eventName: 'Acto de Cierre ' }] };
     const [c] = report({ eventEquipmentIds: ['c03', 'c07'], pool: [CNSL03, CNSL07, conEspacio] });
-    expect(c.hereSummary?.busy).toEqual([{ eventName: 'Acto de Cierre', count: 1 }]);
+    expect(c.hereSummary?.busy).toEqual([{ eventId: 'boda', eventName: 'Acto de Cierre', location: 'Casas Viejas', startDate: BODA.startDate, count: 1 }]);
   });
 });
 
@@ -444,5 +447,32 @@ describe('qué opciones quedan', () => {
   });
   it('choca con dos eventos: solo en el evento actual', () => {
     expect(remainingOptionsText(conflict({ busyWith: [b, { ...b, eventId: 'boda' }] }))).toBe('Por eso queda tercerizar o quitar del evento actual.');
+  });
+});
+
+describe('ocupadas por evento (no por nombre)', () => {
+  it('dos eventos con el mismo nombre no se suman', () => {
+    const bodaA = { ...BODA, eventId: 'bodaA', location: 'Villa Golf', startDate: '2026-11-24T21:00:00.000Z', endDate: '2026-11-25T05:00:00.000Z' };
+    const bodaB = { ...BODA, eventId: 'bodaB', location: 'Villa Golf' };
+    const u1 = unit('u1', 'Zed 12FX', 'CNSL-11', [bodaA]);
+    const u2 = unit('u2', 'Zed 12FX', 'CNSL-12', [bodaB]);
+    const [c] = report({ eventEquipmentIds: ['c03'], pool: [CNSL03, u1, u2] });
+    expect(c.hereSummary?.busy.map((b) => [b.eventId, b.count])).toEqual([['bodaA', 1], ['bodaB', 1]]);
+  });
+  it('mismo nombre y lugar: agrega la fecha para distinguirlos', () => {
+    const text = noUnitsText({ total: 2, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [
+      { eventId: 'a', eventName: 'Boda', location: 'Villa Golf', startDate: '2026-11-24T21:00:00.000Z', count: 1 },
+      { eventId: 'b', eventName: 'Boda', location: 'Villa Golf', startDate: '2026-11-26T21:00:00.000Z', count: 1 }
+    ] });
+    expect(text).toBe('1 ocupada en Boda (Villa Golf, mar 24/11 18:00) y 1 ocupada en Boda (Villa Golf, jue 26/11 18:00)');
+  });
+});
+
+describe('appliedSummary por id de evento', () => {
+  it('dos eventos con el mismo nombre van por separado', () => {
+    expect(appliedSummary([
+      { otherEventId: 'a', otherEventName: 'Boda', fromName: 'X', fromCode: 'TP-01', toName: '', toCode: '', kind: 'remove' },
+      { otherEventId: 'b', otherEventName: 'Boda', fromName: 'X', fromCode: 'TP-02', toName: '', toCode: '', kind: 'remove' }
+    ])).toBe('En Boda: TP-01 se quitó del evento. En Boda: TP-02 se quitó del evento');
   });
 });
