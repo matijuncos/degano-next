@@ -13,6 +13,7 @@ import {
   isChoiceValid,
   unresolvedAfter,
   noUnitsText,
+  remainingOptionsText,
   validateResolutions,
   applyLocalResolutions,
   buildChangeNotice,
@@ -419,7 +420,7 @@ describe('por qué no hay unidades', () => {
       .toBe('9 ya están en el evento actual y 6 ocupadas en Acto de Cierre');
     expect(noUnitsText({ total: 4, inThisEvent: 0, inOtherEvent: 1, outOfService: 1, busy: [{ eventName: 'Boda', count: 1 }, { eventName: 'Fiesta', count: 1 }] }))
       .toBe('1 ya está en ese evento, 1 ocupada en Boda, 1 ocupada en Fiesta y 1 fuera de servicio');
-    expect(noUnitsText({ total: 0, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [] })).toBe('no hay otras unidades de este equipo');
+    expect(noUnitsText({ total: 0, inThisEvent: 0, inOtherEvent: 0, outOfService: 0, busy: [] })).toBe('es la única unidad de este equipo');
   });
 });
 
@@ -428,5 +429,20 @@ describe('por qué no hay unidades (nombres)', () => {
     const conEspacio = { ...CNSL10, scheduledUses: [{ ...BODA, eventName: 'Acto de Cierre ' }] };
     const [c] = report({ eventEquipmentIds: ['c03', 'c07'], pool: [CNSL03, CNSL07, conEspacio] });
     expect(c.hereSummary?.busy).toEqual([{ eventName: 'Acto de Cierre', count: 1 }]);
+  });
+});
+
+describe('qué opciones quedan', () => {
+  const b = conflict().busyWith[0];
+  it('reserva sobrante: ofrece liberarla además de tercerizar o quitar', () => {
+    expect(remainingOptionsText(conflict({ busyWith: [{ ...b, stale: true }] }))).toBe(
+      'Por eso conviene liberar la reserva sobrante; si no, tercerizar o quitar.'
+    );
+  });
+  it('con otro evento: tercerizar o quitar en cualquiera de los dos', () => {
+    expect(remainingOptionsText(conflict())).toBe('Por eso queda tercerizar o quitar, en el evento actual o en "Cumpleaños de 50".');
+  });
+  it('choca con dos eventos: solo en el evento actual', () => {
+    expect(remainingOptionsText(conflict({ busyWith: [b, { ...b, eventId: 'boda' }] }))).toBe('Por eso queda tercerizar o quitar del evento actual.');
   });
 });

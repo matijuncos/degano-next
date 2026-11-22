@@ -177,13 +177,23 @@ function summarizeUnits(args: {
 
 /** "9 ya están en el evento actual y 6 ocupadas en Acto de Cierre". */
 export function noUnitsText(s: UnitsSummary): string {
-  if (!s.total) return 'no hay otras unidades de este equipo';
+  if (!s.total) return 'es la única unidad de este equipo';
   const parts: string[] = [];
   if (s.inThisEvent) parts.push(`${s.inThisEvent} ${s.inThisEvent === 1 ? 'ya está' : 'ya están'} en el evento actual`);
   if (s.inOtherEvent) parts.push(`${s.inOtherEvent} ${s.inOtherEvent === 1 ? 'ya está' : 'ya están'} en ese evento`);
   for (const b of s.busy) parts.push(`${b.count} ${b.count === 1 ? 'ocupada' : 'ocupadas'} en ${b.eventName}`);
   if (s.outOfService) parts.push(`${s.outOfService} fuera de servicio`);
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts[0] || '';
+}
+
+/** Qué queda cuando no hay otra unidad (cierre de la explicación en la ventana). */
+export function remainingOptionsText(c: DateConflict): string {
+  const only = c.busyWith.length === 1 ? c.busyWith[0] : null;
+  if (only?.stale) return 'Por eso conviene liberar la reserva sobrante; si no, tercerizar o quitar.';
+  if (only && !only.otherEventEnded) {
+    return `Por eso queda tercerizar o quitar, en el evento actual o en "${only.eventName || only.eventType}".`;
+  }
+  return 'Por eso queda tercerizar o quitar del evento actual.';
 }
 
 export function buildConflictReport(args: {

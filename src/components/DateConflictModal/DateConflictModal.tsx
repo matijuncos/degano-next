@@ -10,6 +10,7 @@ import {
   hasDuplicateTargets,
   isChoiceValid,
   noUnitsText,
+  remainingOptionsText,
   ConflictChoice,
   CandidateUnit,
   ConflictResolution,
@@ -238,28 +239,29 @@ export default function DateConflictModal({
                     {c.hereSummary && otherAllowed && c.otherSummary && isEqual(c.hereSummary, c.otherSummary) ? (
                       // Mismo motivo en los dos eventos: una sola frase
                       <Text size='xs'>
-                        No hay otra unidad de {c.name} libre ni en el {ACTUAL} ni para cambiarla en &quot;{otherName}&quot;:{' '}
+                        No hay otra unidad de {c.name} libre ni durante el {ACTUAL} ni para cambiarla en &quot;{otherName}&quot;:{' '}
                         {noUnitsText(c.hereSummary)}
-                        {c.categoryId ? ', y no hay equivalentes libres de la misma categoría' : ''}.
+                        {c.categoryId ? ' y no hay equivalentes libres de la misma categoría' : ''}.
                       </Text>
                     ) : (
                       <>
                         {c.hereSummary && (
                           <Text size='xs'>
-                            No hay otra unidad de {c.name} libre en todo el {ACTUAL}: {noUnitsText(c.hereSummary)}
-                            {c.categoryId ? ', y no hay equivalentes libres de la misma categoría' : ''}.
+                            No hay otra unidad de {c.name} libre durante todo el {ACTUAL}: {noUnitsText(c.hereSummary)}
+                            {c.categoryId ? ' y no hay equivalentes libres de la misma categoría' : ''}.
                           </Text>
                         )}
                         {otherAllowed && c.otherSummary && (
                           <Text size='xs'>
                             {c.hereSummary ? 'Tampoco hay' : 'No hay'} una libre para cambiarla en &quot;{otherName}&quot;:{' '}
-                            {noUnitsText(c.otherSummary)}.
+                            {noUnitsText(c.otherSummary)}
+                            {c.categoryId ? ' y no hay equivalentes libres de la misma categoría' : ''}.
                           </Text>
                         )}
                       </>
                     )}
                     {c.hereSummary && (!otherAllowed || c.otherSummary) && (
-                      <Text size='xs'>Por eso solo queda tercerizar o quitar.</Text>
+                      <Text size='xs'>{remainingOptionsText(c)}</Text>
                     )}
                   </Stack>
                 </Alert>
